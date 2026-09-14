@@ -1,352 +1,471 @@
-# HRM Cloud – HR Management Platform for SMEs
+# HRMs – HR Management Platform for SMEs
 
-# Menber Group 2
-Nguyen Hoang Bach - HE190498
-Đặng Hoàng Sơn - HE180524
-Ngọc Anh: Phạm Ngọc Anh - HE180850
-Nguyễn Huy Hoàng - HE181330
-Hoàng Lê Đạt - HE160652
+## Team
+
+**Group 2**
+
+| Member | Student ID |
+| --- | --- |
+| Nguyen Hoang Bach | HE190498 |
+| Dang Hoang Son | HE180524 |
+| Pham Ngoc Anh | HE180850 |
+| Nguyen Huy Hoang | HE181330 |
+| Hoang Le Dat | HE160652 |
 
 ## 1. Project Overview
 
-**HRM Cloud** is a cloud-based Human Resource Management platform designed for **Small and Medium-sized Enterprises (SMEs)**.
+HRMs is a cloud-based, B2B SaaS platform that helps small and medium-sized enterprises (SMEs) manage employees throughout their active employment period.
 
-The project follows the **B2B (Business-to-Business)** business model, in which HRM Cloud provides human resource management software services to businesses through a centralized digital platform.
+The platform centralizes employee information and supports five core workflows:
 
-The system aims to help SMEs digitalize and simplify their HR processes, reduce administrative workload, improve workforce management efficiency, and provide businesses with an affordable and convenient HR management solution.
+- Attendance management
+- Leave management
+- Task management
+- Custom performance management
+- Payroll management
+
+HRMs is designed to reduce manual administrative work, improve visibility into employee operations, and allow each company to configure processes that match its own policies.
+---
+
+## Business Model
+
+HRMs follows a **B2B (Business-to-Business)** model:
+
+```
+HRMs Provider
+      |
+      v
+SME Customer
+      |
+      v
+Employee Work Management Services
+```
+
+Businesses register for the platform, choose a service plan, create a company workspace, configure their organization, add existing employees, and use the available modules.
 
 ---
 
-## 2. Business Model
+## 2. Project Scope
 
-**Model:** B2B – Business-to-Business
+### In Scope
 
-The main business relationship is:
+The system supports employees who have already been hired and are actively working in an organization.
 
-**HRM Cloud Provider → SME Customer → HR Management Services**
+- Company registration and workspace creation
+- Service plan selection, renewal, and upgrade
+- Organization configuration
+- Employee profile management
+- Department and position management
+- Attendance management
+- Leave management
+- Task management
+- Configurable performance management
+- Payroll management
+- Reports and analytics
 
-Businesses can register an organization account, select a service plan, create their company workspace, add employees, and use HRM functions through the platform.
+### Out of Scope
 
-### Main Business Process
+The initial version does not cover:
 
-**Business Registration → Select Service Plan → Subscription → Create Company Workspace → Add Employees → Use HRM Services → Reports → Renew / Upgrade**
+- Recruitment and candidate management
+- Interview management and candidate selection
+- Pre-employment onboarding
+- Employment contract signing
+- Resignation and termination procedures
+- Exit interviews
+- Complex legal payroll calculations, including tax and social insurance
 
 ---
 
-## 3. Project Goals
+## 3. User Roles
 
-The main goals of HRM Cloud are to:
+### System Admin
 
-* Develop a centralized HR management platform for SMEs.
-* Digitalize common human resource management processes.
-* Reduce manual HR administrative tasks.
-* Improve employee information management.
-* Support attendance and leave management.
-* Support payroll management.
-* Support recruitment and employee performance evaluation.
-* Provide HR reports for managers.
-* Allow businesses to manage HR activities through a single platform.
-* Provide a scalable B2B HRM solution for multiple organizations.
+Manages the overall HRMs platform:
 
----
+- Manage companies, accounts, service plans, and subscriptions
+- Monitor platform activity
+- View platform-level reports
 
-## 4. Target Users
+### Company Admin / HR
 
-### Business Administrator
+Manages employee-related operations within a company workspace:
 
-The Business Administrator manages the organization's account, subscription, company information, HR configurations, and user permissions.
-
-### HR Manager
-
-HR Managers can manage employee information, attendance, leave requests, payroll, recruitment, performance, and HR reports.
+- Configure departments, positions, and organization structure
+- Manage employee profiles, attendance, and leave policies
+- Configure performance frameworks
+- Manage payroll
+- View reports and analytics
 
 ### Department Manager
 
-Department Managers can manage employees within their departments, approve requests, monitor attendance, and evaluate employee performance.
+Supervises employees within a department or team:
+
+- Assign tasks and monitor progress
+- Approve or reject leave requests
+- Review employee performance
+- View team attendance and performance
 
 ### Employee
 
-Employees can access their personal information, view attendance records, submit leave requests, view payroll information, and track their performance.
+Uses the platform for daily work-related activities:
+
+- Check in and check out
+- View attendance records and leave balances
+- Submit leave requests
+- View and update assigned tasks
+- View performance results and payslips
 
 ---
 
-## 5. Main Features
-
-### Organization Management
-
-* Business registration
-* Company profile management
-* Department management
-* Role and permission management
-* Subscription management
+## 4. Core Supporting Module
 
 ### Employee Management
 
-* Employee profiles
-* Employment information
-* Department assignment
-* Position management
-* Employment status
-* Employee records
+Employee Management is a shared supporting module used by every main workflow. It stores the employee data required by attendance, leave, tasks, performance, and payroll.
 
-### Attendance Management
+Key capabilities:
 
-* Check-in / Check-out
-* Attendance tracking
-* Working-hour calculation
-* Late/absence records
-* Attendance reports
+- Add and update employee information
+- Assign departments, positions, and managers
+- Set employment status
+- Create employee accounts
+- View employee profiles
 
-### Leave Management
+Supported employee statuses:
 
-* Submit leave requests
-* Approve/reject leave requests
-* Leave balance management
-* Leave history
+```text
+Active
+On Leave
+Inactive
+```
 
-### Payroll Management
-
-* Salary information
-* Allowances
-* Bonuses
-* Deductions
-* Payroll calculation
-* Payslip management
-
-### Recruitment Management
-
-* Job vacancy management
-* Candidate information
-* Application tracking
-* Interview scheduling
-* Recruitment status
-
-### Performance Management
-
-* Performance evaluation
-* KPI management
-* Employee feedback
-* Performance history
-
-### Reporting
-
-* Employee reports
-* Attendance reports
-* Leave reports
-* Payroll reports
-* Recruitment reports
-* Performance reports
+HRMs stores and updates the employee's current status; it does not manage recruitment or termination workflows.
 
 ---
 
-## 6. Basic System Workflow
+## 5. Core Workflows
+
+### 5.1 Attendance Management
+
+Tracks employee working time and attendance status.
 
 ```text
-HRM Cloud Provider
+Employee
+   |
+   v
+Check In
+   |
+   v
+Working
+   |
+   v
+Check Out
+   |
+   v
+Calculate Working Hours
+   |
+   v
+Generate Attendance Status
+```
+
+Key capabilities:
+
+- Check in and check out
+- View attendance history
+- Calculate working hours and overtime
+- Record late arrivals, early departures, and absences
+- Allow HR to adjust attendance records
+
+Possible statuses: `Present`, `Late`, `Absent`, `On Leave`, `Early Leave`, and `Overtime`.
+
+### 5.2 Leave Management
+
+Allows employees to request leave and managers to approve or reject requests.
+
+```text
+Employee
+   |
+   v
+Create Leave Request
+   |
+   v
+Select Leave Type and Dates
+   |
+   v
+Check Leave Balance
+   |
+   v
+Manager Reviews Request
+   |
+   +--> Approved --> Update Balance --> Notify Employee
+   |
+   +--> Rejected ---------------------> Notify Employee
+```
+
+Key capabilities:
+
+- Submit and review leave requests
+- Configure leave types and company policies
+- Check and update leave balances
+- Approve or reject requests
+- View leave history
+
+### 5.3 Task Management
+
+Tracks work assigned to employees from creation through completion.
+
+```text
+Manager
+   |
+   v
+Create and Assign Task
+   |
+   v
+Set Priority and Deadline
+   |
+   v
+Employee Updates Progress
+   |
+   v
+Submit Task
+   |
+   v
+Manager Reviews and Completes Task
+```
+
+Task statuses:
+
+```text
+To Do
+In Progress
+Pending Review
+Completed
+Overdue
+```
+
+Key capabilities:
+
+- Create, assign, and prioritize tasks
+- Set deadlines and update progress
+- Review submitted work
+- Track overdue tasks and task history
+
+### 5.4 Custom Performance Management
+
+Each company can configure its own performance framework instead of using a fixed KPI model.
+
+```text
+Create Framework
+      |
+      v
+Define Criteria, Weights, and Rating Scale
+      |
+      v
+Assign Framework to Departments or Positions
+      |
+      v
+Start Evaluation Cycle
+      |
+      v
+Manager Evaluates Employee
+      |
+      v
+Calculate Score and Review
+      |
+      v
+Finalize Evaluation
+      |
+      v
+Employee Views Result
+```
+
+Key capabilities:
+
+- Create frameworks, criteria, and rating scales
+- Set criterion weights
+- Assign frameworks by department or position
+- Create evaluation cycles
+- Calculate, review, finalize, and track evaluations
+
+Example weighted criteria:
+
+| Department | Criteria |
+| --- | --- |
+| IT | Task Completion (40%), Work Quality (30%), Attendance (10%), Teamwork (20%) |
+| Sales | Sales Revenue (50%), New Customers (20%), Customer Feedback (15%), Discipline (15%) |
+
+Example calculation:
+
+```text
+Final Performance Score = Sum(Criterion Score x Weight)
+```
+
+### 5.5 Payroll Management
+
+Calculates employee pay using employee information and work-related data.
+
+```text
+Employee Information
+        +
+Attendance and Leave
+        +
+Overtime, Bonuses, and Deductions
         |
         v
+Payroll Calculation
+        |
+        v
+HR Review and Approval
+        |
+        v
+Generate Payslip
+        |
+        v
+Employee Views Payslip
+```
+
+Initial payroll formula:
+
+```text
+Net Salary = Base Salary + Overtime + Bonus - Deduction
+```
+
+Key capabilities:
+
+- Configure base salaries
+- Add overtime, bonuses, and deductions
+- Calculate and review payroll
+- Approve payroll and generate payslips
+- View payroll history
+
+---
+
+## 6. Workflow Relationships
+
+All workflows use employee data from the Employee Management module.
+
+```text
+Attendance + Leave --> Payroll
+Task                --> Performance
+```
+
+Attendance and leave information can be used in payroll calculations, while task results can contribute to performance evaluations.
+
+---
+
+## 7. End-to-End Business Process
+
+```text
 Business Registration
-        |
-        v
+          |
+          v
 Select Service Plan
-        |
-        v
+          |
+          v
 Create Company Workspace
-        |
-        v
+          |
+          v
 Configure Organization
-        |
-        v
-Add Employees
-        |
-        v
-+-----------------------------+
-|     HR Management System    |
-+-----------------------------+
-| Employee Management         |
-| Attendance Management       |
-| Leave Management            |
-| Payroll Management          |
-| Recruitment Management      |
-| Performance Management      |
-+-----------------------------+
-        |
-        v
-Reports & Analytics
-        |
-        v
-Subscription Renewal / Upgrade
+          |
+          v
+Add Existing Employees
+          |
+          v
+Use Employee Work Management Modules
+          |
+          v
+View Reports and Analytics
+          |
+          v
+Renew or Upgrade Subscription
 ```
 
 ---
 
-## 7. Tools & Technologies
+## 8. Reports and Analytics
 
-### Requirement & Design
+### Company Admin / HR Dashboard
 
-| Tool        | Purpose                                                                                |
-| ----------- | -------------------------------------------------------------------------------------- |
-| **Figma**   | UI/UX design, wireframes, mockups, and prototypes                                      |
-| **Draw.io** | BPMN, Use Case, ERD, Activity, Sequence, and system diagrams                           |
-| **ChatGPT** | Requirement analysis, documentation support, brainstorming, and development assistance |
-| **Gemini**  | Requirement analysis, research support, documentation, and AI-assisted development     |
+- Total employees and employees by department
+- Employees present, absent, or on leave
+- Pending leave requests
+- Completed and overdue tasks
+- Payroll costs
+- Performance results
 
-### Coding & Debugging
+### Manager Dashboard
 
-| Tool                   | Purpose                                         |
-| ---------------------- | ----------------------------------------------- |
-| **Visual Studio Code** | Source-code editing and development             |
-| **Visual Studio**      | Application development, debugging, and testing |
+- Team members and attendance
+- Pending leave requests
+- Tasks in progress, completed, or overdue
+- Team performance
 
-### Database
+### Employee Dashboard
 
-| Tool                                         | Purpose                                                               |
-| -------------------------------------------- | --------------------------------------------------------------------- |
-| **SQL Server Management Studio 2022 (SSMS)** | Database design, development, querying, administration, and debugging |
-
-### Testing
-
-| Tool                                | Purpose                                              |
-| ----------------------------------- | ---------------------------------------------------- |
-| **JUnit**                           | Unit testing for Java-based components               |
-| **NUnit**                           | Unit testing for .NET-based components               |
-| **Postman**                         | API testing and validation                           |
-| **Selenium**                        | Automated web application testing                    |
-| **AI-powered Test Case Generators** | AI-assisted generation and improvement of test cases |
-
-> JUnit or NUnit will be selected depending on the programming language and framework used in the implementation.
-
-### Project Management & Version Control
-
-| Tool               | Purpose                                                                           |
-| ------------------ | --------------------------------------------------------------------------------- |
-| **Jira**           | Task management, sprint planning, issue tracking, and project progress monitoring |
-| **Git**            | Source-code version control                                                       |
-| **GitHub / Gitea** | Repository hosting, collaboration, branch management, and code review             |
-
-### Deployment
-
-| Tool       | Purpose                                     |
-| ---------- | ------------------------------------------- |
-| **Docker** | Application containerization and deployment |
+- Attendance summary
+- Leave balance
+- Assigned tasks and task progress
+- Performance score
+- Payslip information
 
 ---
 
-## 8. Development Process
+## 9. Team Workflow Distribution
 
-The project follows a structured software development process:
+| Team Member | Assigned Workflow |
+| --- | --- |
+| Member 1 | Attendance Management |
+| Member 2 | Leave Management |
+| Member 3 | Task Management |
+| Member 4 | Custom Performance Management |
+| Member 5 | Payroll Management |
 
-```text
-Requirement Analysis
-        ↓
-Business Process Analysis
-        ↓
-System Design
-        ↓
-UI/UX Design
-        ↓
-Database Design
-        ↓
-Implementation
-        ↓
-Testing
-        ↓
-Deployment
-        ↓
-Maintenance & Improvement
-```
-
-### Phase 1 – Requirement Analysis
-
-Identify business requirements, user requirements, system requirements, actors, use cases, and business processes.
-
-**Tools:** ChatGPT, Gemini, Jira
-
-### Phase 2 – System & UI/UX Design
-
-Design the business process, system architecture, database structure, diagrams, wireframes, and user interfaces.
-
-**Tools:** Figma, Draw.io
-
-### Phase 3 – Development
-
-Implement frontend, backend, business logic, APIs, and database integration.
-
-**Tools:** VS Code / Visual Studio, Git
-
-### Phase 4 – Testing
-
-Perform unit testing, API testing, integration testing, and automated UI testing.
-
-**Tools:** JUnit / NUnit, Postman, Selenium, AI-powered test case generators
-
-### Phase 5 – Deployment
-
-Package the application and its dependencies into containers for consistent deployment.
-
-**Tool:** Docker
+Employee Management is a shared core module maintained and used by the entire team.
 
 ---
 
-## 9. Project Management Workflow
+## 10. Tools and Technologies
 
-The development team uses Jira and Git-based version control to manage the project.
-
-```text
-Product Backlog
-      ↓
-Sprint Planning
-      ↓
-Task Assignment
-      ↓
-Development Branch
-      ↓
-Coding & Testing
-      ↓
-Commit & Push
-      ↓
-Pull Request / Code Review
-      ↓
-Merge
-      ↓
-Sprint Review
-```
-
-Team members should create separate branches for assigned features and use meaningful commit messages to maintain a clear development history.
+| Area | Tools | Purpose |
+| --- | --- | --- |
+| Requirements and design | Figma | UI/UX design, wireframes, mockups, and prototypes |
+| Diagrams | Draw.io | BPMN, use case, ERD, activity, sequence, and architecture diagrams |
+| Development | Visual Studio Code, Visual Studio | Source-code editing, application development, and debugging |
+| Database | SQL Server Management Studio 2022 | Database design, querying, administration, and debugging |
+| Testing | JUnit or NUnit | Unit testing, depending on the backend technology |
+| API and web testing | Postman, Selenium | API testing and automated web testing |
+| Project management | Jira | Task management, sprint planning, and issue tracking |
+| Version control | Git, GitHub / Gitea | Repository hosting, branching, collaboration, and code review |
+| Deployment | Docker | Application containerization and deployment |
+| AI assistance | ChatGPT, Gemini | Requirement analysis, research, documentation, and development assistance |
 
 ---
 
-## 10. Proposed Repository Structure
+## 11. Proposed Repository Structure
 
 ```text
-HRM-Cloud/
-│
+HRMs/
 ├── frontend/
-│   └── # Frontend application
-│
+│   └── source code
 ├── backend/
-│   └── # Backend application and APIs
-│
+│   └── source code and APIs
 ├── database/
 │   ├── schema/
 │   ├── scripts/
 │   └── sample-data/
-│
 ├── tests/
 │   ├── unit/
 │   ├── api/
 │   └── automation/
-│
 ├── docs/
 │   ├── requirements/
 │   ├── business-process/
 │   ├── diagrams/
 │   ├── database-design/
 │   └── ui-ux/
-│
 ├── docker/
-│   └── # Docker configuration
-│
+│   └── configuration/
 ├── .gitignore
 ├── docker-compose.yml
 └── README.md
@@ -354,19 +473,14 @@ HRM-Cloud/
 
 ---
 
-## 11. Expected Outcome
-
-At the end of the project, HRM Cloud is expected to provide a functional prototype of a **B2B Human Resource Management platform for SMEs**.
-
-The system should demonstrate how a cloud-based software application can support both the business relationship between the HRM service provider and SME customers and the internal HR processes of each registered organization.
-
----
-
 ## 12. Project Information
 
-**Project Name:** HRM Cloud – HR Management Platform for SMEs
-**Business Model:** B2B – Business-to-Business
-**Project Type:** Web-based Human Resource Management System
-**Target Customers:** Small and Medium-sized Enterprises (SMEs)
-**Repository:** DX Laboratory – Gitea Service
-**Status:** In Development
+| Property | Value |
+| --- | --- |
+| Project name | HRMs — HR Management Platform for SMEs |
+| Business model | B2B (Business-to-Business) |
+| Project type | Web-based employee work management system |
+| Target customers | Small and medium-sized enterprises (SMEs) |
+| Platform model | SaaS |
+| Repository | GitHub / Gitea |
+| Status | In development |
