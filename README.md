@@ -169,7 +169,7 @@ Create Company Workspace
 Configure Company Information
         |
         v
-Use HRMs
+     Use HRMs
         |
         +--------------------+
         |                    |
@@ -747,13 +747,13 @@ HRMs/
 Requirement Analysis
         |
         v
-SRS
+       SRS
         |
         v
 Business Process Design
         |
         v
-SDS
+       SDS
         |
         v
 Database & UI Design
@@ -762,10 +762,10 @@ Database & UI Design
 Implementation
         |
         v
-Testing
+     Testing
         |
         v
-Deployment
+    Deployment
 ```
 
 The project is developed in **3 iterations over 10 weeks**.
