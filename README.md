@@ -14,174 +14,293 @@
 
 ## 1. Project Overview
 
-HRMs is a cloud-based, B2B SaaS platform that helps small and medium-sized enterprises (SMEs) manage employees throughout their active employment period.
+**HRMs** is a web-based Human Resource Management System designed for **Small and Medium-sized Enterprises (SMEs)** using a **B2B SaaS Multi-tenant Architecture**.
 
-The platform centralizes employee information and supports five core workflows:
+The system consists of two main portals:
+1. **Public Marketing Portal (Landing Page):** Showcases features, pricing plans, solutions, company info, and handles lead generation (Request Demo / Contact Sales / Company Registration).
+2. **Company Workspace Portal (`{companydomain}.hrms.com`):** Isolated workspace for company admins, managers, and employees to handle daily HR operations.
 
-- Attendance management
-- Leave management
-- Task management
-- Custom performance management
-- Payroll management
-
-HRMs is designed to reduce manual administrative work, improve visibility into employee operations, and allow each company to configure processes that match its own policies.
----
-
-## Business Model
-
-HRMs follows a **B2B (Business-to-Business)** model:
-
-```
-HRMs Provider
-      |
-      v
-SME Customer
-      |
-      v
-Employee Work Management Services
-```
-
-Businesses register for the platform, choose a service plan, create a company workspace, configure their organization, add existing employees, and use the available modules.
+The system focuses on the **active working stage** of the employee lifecycle (excluding recruitment and resignation).
 
 ---
 
-## 2. Project Scope
+## 2. Business Model
+
+- **Business Model:** B2B (Business-to-Business) SaaS
+- **Tenant Architecture:** Multi-Tenancy via Company Domain / Subdomain.
+- **Onboarding Flow:** 
+  `Public Landing Page` -> `Register / Request Demo` -> `Provision Tenant Domain ({companydomain})` -> `Admin Log in & Customize Workspace` -> `Invite Employees`.
+
+---
+
+## 3. Project Scope
 
 ### In Scope
-
-The system supports employees who have already been hired and are actively working in an organization.
-
-- Company registration and workspace creation
-- Service plan selection, renewal, and upgrade
-- Organization configuration
-- Employee profile management
-- Department and position management
-- Attendance management
-- Leave management
-- Task management
-- Configurable performance management
-- Payroll management
-- Reports and analytics
+- Public Landing Page (Features, Pricing, Solution, About Us, Request Demo / Contact Form)
+- Tenant / Company Registration & Domain Provisioning (`{companydomain}.hrms.com`)
+- Workspace Configuration & Customization (Company logo, shift policies, organization structure)
+- Subscription & Plan Management (Upgrade, Renew)
+- Employee Management & Profile Portal
+- Attendance Management (Check-in/out, GPS/Wifi/Manual)
+- Leave Policy & Request Approval Workflow
+- Payroll Calculation (Base salary, Bonuses, Deductions, Payslips)
+- Bulk Excel Data Import (Employees, Attendance, Payroll)
+- Multi-role Dashboards & Analytics
 
 ### Out of Scope
-
-The initial version does not cover:
-
-- Recruitment and candidate management
-- Interview management and candidate selection
-- Pre-employment onboarding
-- Employment contract signing
-- Resignation and termination procedures
-- Exit interviews
-- Complex legal payroll calculations, including tax and social insurance
+- Candidate Recruitment & Interview Management
+- Pre-employment Onboarding & Offboarding workflows
+- Contract Electronic Signing
+- Performance Evaluation (KPI/OKR) & Task Management
+- Complex Tax (PIT) and Social Insurance (BHXH) automated deductions
 
 ---
 
-## 3. User Roles
+## 4. Main Actors
 
-### System Admin
-
-Manages the overall HRMs platform:
-
-- Manage companies, accounts, service plans, and subscriptions
-- Monitor platform activity
-- View platform-level reports
-
-### Company Admin / HR
-
-Manages employee-related operations within a company workspace:
-
-- Configure departments, positions, and organization structure
-- Manage employee profiles, attendance, and leave policies
-- Configure performance frameworks
-- Manage payroll
-- View reports and analytics
-
-### Department Manager
-
-Supervises employees within a department or team:
-
-- Assign tasks and monitor progress
-- Approve or reject leave requests
-- Review employee performance
-- View team attendance and performance
-
-### Employee
-
-Uses the platform for daily work-related activities:
-
-- Check in and check out
-- View attendance records and leave balances
-- Submit leave requests
-- View and update assigned tasks
-- View performance results and payslips
+1. **Public Guest:** Visitors on Landing Page looking for HR solutions, requesting demos or registering a company.
+2. **System Admin:** Platform owner managing companies, plans, subscriptions, and system health.
+3. **Company Admin / HR:** Configures company workspace, customizes modules, manages employee data, leave, attendance, and payroll.
+4. **Manager:** Oversees team attendance, reviews, and approves/rejects team leave requests.
+5. **Employee:** Accesses personal workspace (`{companydomain}.hrms.com`), checks in/out, views payslips, and requests leave.
 
 ---
 
-## 4. Core Supporting Module
+# 5. Main Core Workflow 
 
-### Employee Management
+1. Public Portal & Registration
 
-Employee Management is a shared supporting module used by every main workflow. It stores the employee data required by attendance, leave, tasks, performance, and payroll.
+2. Workspace Setup & Customization
 
-Key capabilities:
+3. Employee Lifecycle Data Management
 
-- Add and update employee information
-- Assign departments, positions, and managers
-- Set employment status
-- Create employee accounts
-- View employee profiles
+4. Attendance Tracking
 
-Supported employee statuses:
+5. Leave Approval Management
 
+6. Payroll Calculation & Payslip Generation
+
+7. Bulk Data Excel Import
+
+---
+
+## 6. System Workflows
+
+### 6.1 Public Portal & Tenant Registration Flow
+```text
+Guest / SME Prospect
+        |
+        v
+Landing Page (Features / Pricing / Solutions / About)
+        |
+        +-----------------------+
+        |                       |
+        v                       v
+Request Demo / Contact     Register Company
+        |                       |
+        v                       v
+Sales Follow-up /          Enter Company Code / Subdomain 
+Auto-provisioning               |
+                                v
+                   Create Company Admin Account
+                                |
+                                v
+               Provision Workspace ({companydomain}.hrms.com)
+```
+
+Main Functions:
+- View public solution details, features, and pricing tiers.
+- Submit "Request Demo / Contact" form for direct sales consultation.
+- Self-service company registration with real-time domain availability check.
+- Select service plan, initiate subscription, and create primary Admin credentials.
+- Automated provisioning of isolated company workspace.
+
+---
+
+### 6.2 Tenant Domain Login Flow
+```text
+User Accesses App
+        |
+        v
+Enter Company Domain / Code
+        |
+        v
+System Identifies Tenant Workspace
+        |
+        v
+Display Company-Branded Login Screen
+        |
+        v
+Enter Username / Password
+        |
+        v
+Access Workspace Dashboard
+```
+
+Main Functions:
+- Tenant domain identification and verification.
+- Dynamic interface customization (Company logo, name, custom theme).
+- Role-Based Access Control (RBAC) authentication (Admin, Manager, Employee).
+-Tenant-level data isolation enforcement.
+
+---
+
+## 6.3 Company Onboarding & Subscription Management
+
+```text
+Company Representative
+        |
+        v
+Register Company
+        |
+        v
+Create Company Account
+        |
+        v
+Select Service Plan
+        |
+        v
+Activate Subscription
+        |
+        v
+Create Company Workspace
+        |
+        v
+Configure Company Information
+        |
+        v
+Use HRMs
+        |
+        +--------------------+
+        |                    |
+        v                    v
+      Renew               Upgrade
+```
+
+Main functions:
+- Register company
+- Create company account
+- Select service plan
+- Activate subscription
+- Create workspace
+- Configure company information
+- Renew subscription
+- Upgrade service plan
+- View subscription status
+
+---
+
+## 6.4 Employee Management
+
+```text
+Company Admin / HR
+        |
+        v
+Add Employee
+        |
+        v
+Enter Employee Information
+        |
+        v
+Assign Department
+        |
+        v
+Assign Position
+        |
+        v
+Create Employee Account
+        |
+        v
+Activate Employee
+```
+
+Main functions:
+- Add employee
+- Update employee information
+- View employee profile
+- Assign department
+- Assign position
+- Assign manager
+- Set base salary
+- Create employee account
+- Change employee status
+
+Employee status:
 ```text
 Active
 On Leave
 Inactive
 ```
 
-HRMs stores and updates the employee's current status; it does not manage recruitment or termination workflows.
-
 ---
 
-## 5. Core Workflows
+## 6.5 Attendance Management
 
-### 5.1 Attendance Management
+Attendance Management handles employee working-time records independently from payroll calculation.
 
-Tracks employee working time and attendance status.
+### Attendance Workflow
 
 ```text
 Employee
    |
    v
-Check In
+Check-in
    |
    v
 Working
    |
    v
-Check Out
+Check-out
    |
    v
-Calculate Working Hours
+System Records Working Time
    |
    v
-Generate Attendance Status
+Attendance Report
 ```
 
-Key capabilities:
+### Attendance Functions
 
-- Check in and check out
+- Check-in
+- Check-out
 - View attendance history
-- Calculate working hours and overtime
-- Record late arrivals, early departures, and absences
-- Allow HR to adjust attendance records
+- Record working time
+- Record late arrival
+- Record early leave
+- Record absence
+- HR attendance adjustment
+- Attendance report
 
-Possible statuses: `Present`, `Late`, `Absent`, `On Leave`, `Early Leave`, and `Overtime`.
+### Possible Attendance Status
 
-### 5.2 Leave Management
+```text
+Present
+Late
+Absent
+On Leave
+Early Leave
+```
 
-Allows employees to request leave and managers to approve or reject requests.
+### Relationship with Payroll
+
+Attendance is **not used directly in the payroll calculation formula**.
+
+Attendance data is used for:
+
+- Working-time tracking
+- Attendance reports
+- HR monitoring
+- Supporting leave and workforce records
+
+Payroll deductions are entered or imported separately by HR.
+
+---
+
+## 6.6 Leave Management
+
+Leave Management allows employees to submit leave requests and managers or HR staff to review and process them.
+
+### Leave Workflow
 
 ```text
 Employee
@@ -190,133 +309,89 @@ Employee
 Create Leave Request
    |
    v
-Select Leave Type and Dates
+Select Leave Type and Date
    |
    v
-Check Leave Balance
+Submit Request
    |
    v
-Manager Reviews Request
+Manager / HR Reviews
    |
-   +--> Approved --> Update Balance --> Notify Employee
-   |
-   +--> Rejected ---------------------> Notify Employee
+   +-----------+
+   |           |
+   v           v
+Approve      Reject
+   |           |
+   v           v
+Update      Notify
+Leave       Employee
+Balance
 ```
 
-Key capabilities:
+### Leave Functions
 
-- Submit and review leave requests
-- Configure leave types and company policies
-- Check and update leave balances
-- Approve or reject requests
+- Submit leave request
+- Select leave type
+- Select leave date
+- Check leave balance
+- Approve leave request
+- Reject leave request
+- Update leave balance
 - View leave history
+- Configure leave types
+- Configure leave policy
 
-### 5.3 Task Management
+### Relationship with Attendance
 
-Tracks work assigned to employees from creation through completion.
+Approved leave can update the employee's attendance status to **On Leave** for the approved period.
+
+Leave data is not used directly in the payroll formula.
+
+---
+
+## 6.7 Payroll Management
+
+### Salary Formula
 
 ```text
-Manager
-   |
-   v
-Create and Assign Task
-   |
-   v
-Set Priority and Deadline
-   |
-   v
-Employee Updates Progress
-   |
-   v
-Submit Task
-   |
-   v
-Manager Reviews and Completes Task
+Net Salary = Base Salary + Bonuses - Deductions
 ```
 
-Task statuses:
+Example:
 
 ```text
-To Do
-In Progress
-Pending Review
-Completed
-Overdue
+Base Salary:   15,000,000 VND
+Bonuses:        2,000,000 VND
+Deductions:       500,000 VND
+
+Net Salary = 16,500,000 VND
 ```
 
-Key capabilities:
-
-- Create, assign, and prioritize tasks
-- Set deadlines and update progress
-- Review submitted work
-- Track overdue tasks and task history
-
-### 5.4 Custom Performance Management
-
-Each company can configure its own performance framework instead of using a fixed KPI model.
+### Payroll Workflow
 
 ```text
-Create Framework
-      |
-      v
-Define Criteria, Weights, and Rating Scale
-      |
-      v
-Assign Framework to Departments or Positions
-      |
-      v
-Start Evaluation Cycle
-      |
-      v
-Manager Evaluates Employee
-      |
-      v
-Calculate Score and Review
-      |
-      v
-Finalize Evaluation
-      |
-      v
-Employee Views Result
-```
-
-Key capabilities:
-
-- Create frameworks, criteria, and rating scales
-- Set criterion weights
-- Assign frameworks by department or position
-- Create evaluation cycles
-- Calculate, review, finalize, and track evaluations
-
-Example weighted criteria:
-
-| Department | Criteria |
-| --- | --- |
-| IT | Task Completion (40%), Work Quality (30%), Attendance (10%), Teamwork (20%) |
-| Sales | Sales Revenue (50%), New Customers (20%), Customer Feedback (15%), Discipline (15%) |
-
-Example calculation:
-
-```text
-Final Performance Score = Sum(Criterion Score x Weight)
-```
-
-### 5.5 Payroll Management
-
-Calculates employee pay using employee information and work-related data.
-
-```text
-Employee Information
-        +
-Attendance and Leave
-        +
-Overtime, Bonuses, and Deductions
+HR Selects Payroll Period
         |
         v
-Payroll Calculation
+System Loads Employees
         |
         v
-HR Review and Approval
+Load Base Salary
+        |
+        v
+Enter / Import Bonuses
+        |
+        v
+Enter / Import Deductions
+        |
+        v
+Calculate Net Salary
+        |
+        v
+HR Reviews Payroll
+        |
+        v
+Approve Payroll
         |
         v
 Generate Payslip
@@ -325,162 +400,407 @@ Generate Payslip
 Employee Views Payslip
 ```
 
-Initial payroll formula:
-
+Payroll status:
 ```text
-Net Salary = Base Salary + Overtime + Bonus - Deduction
+Draft
+Calculated
+Reviewed
+Approved
 ```
 
-Key capabilities:
-
-- Configure base salaries
-- Add overtime, bonuses, and deductions
-- Calculate and review payroll
-- Approve payroll and generate payslips
+Main functions:
+- Configure base salary
+- Create payroll period
+- Enter bonus
+- Enter deduction
+- Import payroll adjustments
+- Calculate net salary
+- Review payroll
+- Approve payroll
+- Generate payslip
 - View payroll history
 
+Out of payroll scope:
+- Overtime-based salary calculation
+- Complex tax calculation
+- Complex social insurance calculation
+- Performance-based automatic salary calculation
+
 ---
 
-## 6. Workflow Relationships
-
-All workflows use employee data from the Employee Management module.
+## 6.8 Bulk Data Import Management
 
 ```text
-Attendance + Leave --> Payroll
-Task                --> Performance
+HR
+ |
+ v
+Download Excel Template
+ |
+ v
+Fill Data
+ |
+ v
+Upload Excel File
+ |
+ v
+System Reads File
+ |
+ v
+Validate Data
+ |
+ v
+Show Preview
+ |
+ v
+Display Valid / Invalid Rows
+ |
+ v
+HR Confirms Import
+ |
+ v
+Import Valid Data
+ |
+ v
+Show Import Result
 ```
 
-Attendance and leave information can be used in payroll calculations, while task results can contribute to performance evaluations.
+### Supported Import Types
+
+#### Employee Import
+```text
+EmployeeCode
+FullName
+Email
+Phone
+Department
+Position
+StartDate
+BaseSalary
+```
+
+#### Attendance Import
+```text
+EmployeeCode
+Date
+CheckIn
+CheckOut
+Status
+```
+
+#### Payroll Adjustment Import
+```text
+EmployeeCode
+PayrollMonth
+Bonus
+Deduction
+Note
+```
+
+### Validation Rules
+- Duplicate employee code
+- Invalid email format
+- Missing required fields
+- Invalid department
+- Invalid position
+- Invalid date format
+- Invalid salary format
+- Invalid bonus or deduction values
+
+Example:
+```text
+Row 2: Valid
+Row 3: Valid
+Row 4: Invalid - EmployeeCode already exists
+Row 5: Invalid - Department not found
+```
 
 ---
 
-## 7. End-to-End Business Process
+# 7. Overall Business Process
 
 ```text
-Business Registration
-          |
-          v
+HRMs Provider
+      |
+      v
+Company Registration
+      |
+      v
 Select Service Plan
-          |
-          v
+      |
+      v
+Activate Subscription
+      |
+      v
 Create Company Workspace
-          |
-          v
+      |
+      v
 Configure Organization
-          |
-          v
-Add Existing Employees
-          |
-          v
-Use Employee Work Management Modules
-          |
-          v
-View Reports and Analytics
-          |
-          v
-Renew or Upgrade Subscription
+      |
+      v
++----------------------------------+
+|       HR MANAGEMENT SYSTEM       |
++----------------------------------+
+| Employee Management              |
+| Attendance Management            |
+| Leave Management                 |
+| Payroll Management               |
+| Bulk Data Import Management      |
++----------------------------------+
+      |
+      v
+Reports & Analytics
+      |
+      v
+Subscription Renewal / Upgrade
 ```
 
 ---
 
-## 8. Reports and Analytics
+# 8. Relationships Between Modules
+
+```text
+Company
+   |
+   +--> Subscription
+   |
+   +--> Department
+   |
+   +--> Position
+   |
+   +--> Employee
+           |
+           +--> Attendance
+           |
+           +--> Leave
+           |
+           +--> Payroll
+
+Bulk Data Import
+   |
+   +--> Employee Data
+   |
+   +--> Attendance Data
+   |
+   +--> Payroll Adjustment Data
+```
+
+Payroll does not depend directly on Attendance.
+
+```text
+Employee.BaseSalary
+      +
+Payroll.Bonus
+      -
+Payroll.Deduction
+      =
+NetSalary
+```
+
+---
+
+# 9. Role-Based Access Control
+
+| Function | System Admin | Company Admin / HR | Manager | Employee |
+|---|:---:|:---:|:---:|:---:|
+| Manage companies | ✓ | | | |
+| Manage service plans | ✓ | | | |
+| Manage subscription | ✓ | ✓ | | |
+| Configure company | | ✓ | | |
+| Manage employees | | ✓ | Limited | |
+| View attendance | | ✓ | Team | Own |
+| Edit attendance | | ✓ | | |
+| Submit leave request | | | ✓ | ✓ |
+| Approve leave request | | ✓ | ✓ | |
+| Manage payroll | | ✓ | | |
+| View payslip | | ✓ | | Own |
+| Import Excel data | | ✓ | | |
+| View reports | ✓ | ✓ | Limited | Limited |
+
+---
+
+# 10. Reports & Analytics
 
 ### Company Admin / HR Dashboard
-
-- Total employees and employees by department
-- Employees present, absent, or on leave
+- Total employees
+- Employees by department
+- Present employees
+- Absent employees
+- Employees on leave
 - Pending leave requests
-- Completed and overdue tasks
-- Payroll costs
-- Performance results
+- Monthly payroll total
+- Subscription status
+- Import history
 
 ### Manager Dashboard
-
-- Team members and attendance
+- Team members
+- Team attendance
+- Employees on leave
 - Pending leave requests
-- Tasks in progress, completed, or overdue
-- Team performance
 
 ### Employee Dashboard
-
+- Personal information
 - Attendance summary
 - Leave balance
-- Assigned tasks and task progress
-- Performance score
-- Payslip information
+- Leave request status
+- Latest payslip
 
 ---
 
-## 9. Team Workflow Distribution
+# 11. Tools & Technologies
 
-| Team Member | Assigned Workflow |
-| --- | --- |
-| Member 1 | Attendance Management |
-| Member 2 | Leave Management |
-| Member 3 | Task Management |
-| Member 4 | Custom Performance Management |
-| Member 5 | Payroll Management |
+## Requirement & Design
 
-Employee Management is a shared core module maintained and used by the entire team.
+| Tool | Purpose |
+|---|---|
+| Figma | UI/UX design, wireframes, mockups, prototypes |
+| Draw.io | BPMN, Use Case, ERD, Activity, Sequence, and architecture diagrams |
+| ChatGPT | Requirement analysis, documentation, brainstorming, development assistance |
+| Gemini | Requirement analysis, research, documentation, AI-assisted development |
+
+## Coding & Debugging
+
+| Tool | Purpose |
+|---|---|
+| Visual Studio Code | Source-code editing and development |
+| Visual Studio | Application development and debugging |
+
+## Database
+
+| Tool | Purpose |
+|---|---|
+| SQL Server Management Studio 2022 | Database design, querying, administration, and debugging |
+
+## Testing
+
+| Tool | Purpose |
+|---|---|
+| JUnit | Unit testing for Java-based components |
+| NUnit | Unit testing for .NET-based components |
+| Postman | API testing |
+| Selenium | Automated web testing |
+| AI-powered Test Case Generators | AI-assisted test case generation |
+
+## Project Management
+
+| Tool | Purpose |
+|---|---|
+| Jira | Task management, sprint planning, issue tracking |
+| Git | Version control |
+| GitHub / Gitea | Repository hosting, branch management, collaboration, and code review |
 
 ---
 
-## 10. Tools and Technologies
-
-| Area | Tools | Purpose |
-| --- | --- | --- |
-| Requirements and design | Figma | UI/UX design, wireframes, mockups, and prototypes |
-| Diagrams | Draw.io | BPMN, use case, ERD, activity, sequence, and architecture diagrams |
-| Development | Visual Studio Code, Visual Studio | Source-code editing, application development, and debugging |
-| Database | SQL Server Management Studio 2022 | Database design, querying, administration, and debugging |
-| Testing | JUnit or NUnit | Unit testing, depending on the backend technology |
-| API and web testing | Postman, Selenium | API testing and automated web testing |
-| Project management | Jira | Task management, sprint planning, and issue tracking |
-| Version control | Git, GitHub / Gitea | Repository hosting, branching, collaboration, and code review |
-| Deployment | Docker | Application containerization and deployment |
-| AI assistance | ChatGPT, Gemini | Requirement analysis, research, documentation, and development assistance |
-
----
-
-## 11. Proposed Repository Structure
+# 12. Proposed Repository Structure
 
 ```text
 HRMs/
-├── frontend/
-│   └── source code
-├── backend/
-│   └── source code and APIs
+│
+├── src/
+│   └── main/
+│       ├── java/
+│       │   └── com/hrms/
+│       │       ├── controller/
+│       │       │       ├── auth/
+│       │       │       ├── admin/
+│       │       │       ├── hr/
+│       │       │       ├── manager/
+│       │       │       └── employee/
+│       │       ├── dao/
+│       │       ├── model/
+│       │       ├── filter/
+│       │       ├── common/
+│       │       └── util/
+│       │
+│       └── webapp/
+│           ├── WEB-INF/
+│           │   ├── views/
+│           │   │   ├── auth/
+│           │   │   ├── admin/
+│           │   │   ├── hr/
+│           │   │   ├── manager/
+│           │   │   └── employee/
+│           │   │
+│	    │   ├── asset
+│           │   └── web.xml
+│           │
+│           └── index.jsp
+│
 ├── database/
-│   ├── schema/
 │   ├── scripts/
 │   └── sample-data/
-├── tests/
-│   ├── unit/
-│   ├── api/
-│   └── automation/
+│
 ├── docs/
-│   ├── requirements/
-│   ├── business-process/
+│   ├── Requirement/
 │   ├── diagrams/
-│   ├── database-design/
 │   └── ui-ux/
-├── docker/
-│   └── configuration/
+│
 ├── .gitignore
-├── docker-compose.yml
+├── pom.xml
 └── README.md
 ```
 
 ---
 
-## 12. Project Information
+# 13. Development Process
 
-| Property | Value |
-| --- | --- |
-| Project name | HRMs — HR Management Platform for SMEs |
-| Business model | B2B (Business-to-Business) |
-| Project type | Web-based employee work management system |
-| Target customers | Small and medium-sized enterprises (SMEs) |
-| Platform model | SaaS |
-| Repository | GitHub / Gitea |
-| Status | In development |
+```text
+Requirement Analysis
+        |
+        v
+SRS
+        |
+        v
+Business Process Design
+        |
+        v
+SDS
+        |
+        v
+Database & UI Design
+        |
+        v
+Implementation
+        |
+        v
+Testing
+        |
+        v
+Deployment
+```
+
+The project is developed in **3 iterations over 10 weeks**.
+
+Each iteration includes requirement refinement, design, implementation, testing, and documentation updates.
+
+---
+
+# 14. Project Goal
+
+The goal of HRMs is to develop a B2B Human Resource Management System that supports SMEs in managing employees during their active working period.
+
+The system focuses on six main workflows:
+
+1. Public Portal & Registration
+2. Workspace Setup & Customization
+3. Employee Management
+4. Attendance Management
+5. Leave Management
+6. Payroll Management
+7. Bulk Data Import Management
+
+The system aims to reduce manual HR work, improve data consistency, simplify payroll processing, provide convenient employee self-service functions, and allow businesses to import existing HR data from Excel efficiently.
+
+---
+
+# 15. Project Information
+
+**Project Name:** HRMs – HR Management System for SMEs  
+**Business Model:** B2B – Business-to-Business  
+**Project Type:** Web-based Human Resource Management System  
+**Target Customers:** Small and Medium-sized Enterprises (SMEs)  
+**System Scope:** Employee Working Stage Management  
+**Platform Model:** SaaS  
+**Repository:** GitHub / Gitea  
+**Development Duration:** 10 Weeks  
+**Development Model:** 3 Iterations  
+**Status:** In Development
