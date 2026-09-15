@@ -1,0 +1,17 @@
+target/
+.idea/
+.vscode/
+*.iml
+*.class
+.settings/
+.project
+.classpath
+Servers/
+nbproject/private/
+nbbuild/
+dist/
+.DS_Store
+
+# Local database/config files
+.env
+application-local.properties

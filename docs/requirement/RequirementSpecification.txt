@@ -1,0 +1,86 @@
+---
+### III. TÀI LIỆU YÊU CẦU HỆ THỐNG (SYSTEM REQUIREMENTS DOCUMENTATION)
+
+```text
+===============================================================================
+                       HRMs - SYSTEM REQUIREMENTS SPECIFICATION
+===============================================================================
+Document Version : 1.0
+Target Audience  : Developers, QA/Testers, Product Owners
+Architecture     : B2B SaaS Multi-Tenant Platform
+
+-------------------------------------------------------------------------------
+MODULE 1: PUBLIC LANDING PAGE & MARKETING PORTAL
+-------------------------------------------------------------------------------
+[REQ-LAND-01] Navigation Header:
+  - Header toolbar MUST contain: Features (Tính năng), Pricing (Giá cả), 
+    Solutions (Giải pháp), Why HRMs (Tại sao chọn), About Us (Về chúng tôi).
+  - Top-Right Actions: "Sign In" (Đăng nhập) and "Request Demo / Register".
+
+[REQ-LAND-02] Pricing Display & Plan Selection:
+  - Display available service plans (e.g., Starter, Professional, Enterprise).
+  - Each plan lists supported employee limits, features, and monthly/yearly pricing.
+  - Clicking "Choose Plan" redirects to the Tenant Registration form with the chosen plan pre-selected.
+
+[REQ-LAND-03] Request Demo / Lead Contact Form:
+  - Allow prospective customers to submit contact information without creating an account.
+  - Required Fields: Full Name, Work Email, Phone Number, Company Name, Company Size, Message.
+  - Action: Store lead data in System Admin Database and send notification email to Internal Sales team.
+
+-------------------------------------------------------------------------------
+MODULE 2: TENANT REGISTRATION & DOMAIN PROVISIONING
+-------------------------------------------------------------------------------
+[REQ-TENANT-01] Company Registration Workflow:
+  - Required Fields: Company Name, Company Domain Code (e.g., "acme"), Admin Email, Password, Phone Number.
+  - Domain Validation: The system MUST check in real-time whether the requested Company Domain Code is available.
+  - Format constraint: Only alphanumeric characters and hyphens allowed (Regex: ^[a-zA-Z0-9-]+$).
+
+[REQ-TENANT-02] Workspace Provisioning:
+  - Upon successful registration, automatically generate a tenant-isolated workspace mapped to: `{companydomain}.hrms.com` (or tenant ID routing).
+  - Initialize default settings for the tenant: 1 Default Branch, 1 Default Department ("General"), Admin Role for the registrant.
+
+-------------------------------------------------------------------------------
+MODULE 3: MULTI-TENANT DOMAIN LOGIN (BAMBOOHR STYLE)
+-------------------------------------------------------------------------------
+[REQ-AUTH-01] Centralized Domain Lookup:
+  - Accessing `app.hrms.com/login` prompts the user: "Enter your Company Domain to sign in".
+  - Input field placeholder: "companydomain".
+  - Validation: System searches active tenants matching the entered code.
+  - Redirect: If valid, redirects user to `{companydomain}.hrms.com/login`. If invalid, displays error: "Company domain not found".
+
+[REQ-AUTH-02] Tenant Workspace Authentication:
+  - Accessing `{companydomain}.hrms.com/login` displays company-specific branding (Company Logo & Name if configured).
+  - User logs in using Email/Username and Password assigned under that specific Tenant.
+  - System MUST restrict users from logging into Tenant B using Tenant A credentials.
+
+-------------------------------------------------------------------------------
+MODULE 4: COMPANY WORKSPACE CUSTOMIZATION (AFTER LOGIN)
+-------------------------------------------------------------------------------
+[REQ-CUST-01] Organization Configuration (Company Admin Only):
+  - Company Settings: Upload Company Logo, edit Company Name, Tax Code, Address, Working Days (e.g., Mon-Fri).
+  - Department & Position Tree: Add, Edit, Delete, or Deactivate Departments and Job Titles.
+
+[REQ-CUST-02] Module Activation / Customization:
+  - Allow Company Admin to toggle optional workspace modules based on their subscription tier (e.g., Enable/Disable Attendance GPS tracking, Custom Leave Policies).
+
+-------------------------------------------------------------------------------
+MODULE 5: CORE HR MANAGEMENT WORKFLOWS
+-------------------------------------------------------------------------------
+[REQ-EMP-01] Employee Profile Management:
+  - Manage Employee details: Personal Info, Contact, Emergency Contact, Department, Position, Manager, Base Salary, Status (Active, On Leave, Inactive).
+
+[REQ-ATT-01] Attendance Tracking:
+  - Check-In / Check-Out actions recorded with exact Timestamp, IP Address, or GPS Location.
+  - Support HR manual attendance adjustments with change logs.
+
+[REQ-LEAVE-01] Leave Request Workflow:
+  - Employee submits Leave Request -> Manager/HR receives notification -> Manager Approves/Rejects -> System updates Leave Balance and Attendance status ("On Leave").
+
+[REQ-PAY-01] Payroll Processing:
+  - Formula: Net Salary = Base Salary + Bonuses - Deductions.
+  - HR sets Payroll Month -> System loads Base Salaries -> HR enters/imports Bonuses & Deductions -> System calculates Net Salary -> Approve -> Generate Payslips.
+
+[REQ-IMP-01] Bulk Excel Data Import:
+  - Provide standard `.xlsx` templates for Employee Data, Attendance Records, and Payroll Adjustments.
+  - Pre-import Validation: Check for duplicate Employee Codes, invalid emails, or non-existent Departments. Display line-by-line validation status before final commit.
+===============================================================================
