@@ -28,8 +28,8 @@ The system focuses on the **active working stage** of the employee lifecycle (ex
 
 - **Business Model:** B2B (Business-to-Business) SaaS
 - **Tenant Architecture:** Multi-Tenancy via Company Domain / Subdomain.
-- **Onboarding Flow:**
-  `Public Landing Page` -> `Register / Request Demo` -> `Provision Tenant Domain ({companydomain})` -> `Company Admin: Initial Workspace Setup` -> `Invite Employees & Start Operations`.
+- **Company Registration Flow:**
+        `Public Landing Page` -> `Register / Request Demo` -> `Select Service Plan` -> `Provision Tenant Domain ({companydomain})` -> `Invite Employees & Start Operations`.
 
 ---
 
@@ -38,7 +38,6 @@ The system focuses on the **active working stage** of the employee lifecycle (ex
 ### In Scope
 - Public Landing Page (Features, Pricing, Solution, About Us, Request Demo / Contact Form)
 - Tenant / Company Registration & Domain Provisioning (`{companydomain}.hrms.com`)
-- Initial Workspace Setup (Company logo/branding, legal information, departments, job positions, default leave policies)
 - Ongoing Workspace Configuration & Customization (Shift policies, organization structure updates)
 - Subscription & Plan Management (Upgrade, Renew)
 - Platform Administration (Company management, service plans, subscriptions, system accounts, platform reports)
@@ -62,7 +61,7 @@ The system focuses on the **active working stage** of the employee lifecycle (ex
 
 1. **Public Guest / Company Representative:** Visitors on the Landing Page looking for HR solutions, requesting demos, or self-registering a company and selecting a service plan.
 2. **System Admin:** Platform owner responsible for platform-level administration — managing tenant companies, service plans, subscriptions, system accounts, and viewing platform-wide reports. Does **not** access tenant HR data.
-3. **Company Admin / HR:** Performs initial workspace setup after provisioning (branding, departments, positions, leave policies) and manages all ongoing tenant HR operations — employee data, attendance, leave, and payroll.
+3. **Company Admin / HR:** Manages tenant HR operations — employee data, attendance, leave, payroll, and ongoing workspace configuration.
 4. **Manager:** Oversees team attendance, reviews, and approves/rejects team leave requests.
 5. **Employee:** Accesses personal workspace (`{companydomain}.hrms.com`), checks in/out, views payslips, and requests leave.
 
@@ -70,7 +69,7 @@ The system focuses on the **active working stage** of the employee lifecycle (ex
 
 # 5. Main Core Workflow
 
-1. Public Portal, Company Registration & Workspace Onboarding
+1. Public Portal & Company Registration
 
 2. Employee Lifecycle Data Management
 
@@ -86,7 +85,7 @@ The system focuses on the **active working stage** of the employee lifecycle (ex
 
 ## 6. System Workflows
 
-### 6.1 Public Portal, Company Registration & Workspace Onboarding Flow
+### 6.1 Public Portal & Company Registration Flow
 
 ```text
 Public Guest / Company Representative
@@ -114,14 +113,6 @@ Sales Follow-up                  Enter Company Info / Subdomain
                                  ({companydomain}.hrms.com)
                                            |
                                            v
-                             [Company Admin] Initial Workspace Setup
-                               - Configure company logo and branding
-                               - Enter legal company information
-                               - Create initial departments
-                               - Define job positions
-                               - Configure leave types and policies
-                                           |
-                                           v
                          [Company Admin / HR] Invite Employees & Start Operations
 ```
 
@@ -130,13 +121,7 @@ Main Functions:
 - Submit "Request Demo / Contact" form for direct sales consultation.
 - Self-service company registration with real-time domain availability check.
 - Select service plan, initiate subscription, and create primary Admin credentials.
-- Automated provisioning of isolated company workspace.
-- Initial Workspace Setup (Company Admin):
-        - Configure the company logo and branding theme.
-        - Enter legal company information (registered name, address, tax ID).
-        - Create the initial organizational departments.
-        - Define initial job positions within departments.
-        - Configure default leave types and policies.
+- Automated provisioning of an isolated company workspace.
 - Invite employees and begin day-to-day HR operations.
 
 ---
@@ -169,7 +154,7 @@ Main Functions:
 
 ---
 
-## 6.3 Company Onboarding & Subscription Management
+## 6.3 Company Registration & Subscription Management
 
 ```text
 [Public Guest / Company Representative]
@@ -190,12 +175,7 @@ Activate Subscription
 [Platform] Create Company Workspace
         |
         v
-[Company Admin] Initial Workspace Setup
-        (Branding, legal information, departments,
-         job positions, and leave policies)
-        |
-        v
-Use HRMs
+[Company Admin / HR] Use HRMs
         |
         +--------------------+
         |                    |
@@ -209,7 +189,6 @@ Main functions:
 - Select service plan (Company Representative)
 - Activate subscription (Company Representative)
 - Create workspace (Platform / automated)
-- Initial workspace setup — branding, legal info, departments, positions, leave policies (Company Admin)
 - Ongoing configuration updates (Company Admin / HR)
 - Renew subscription (Company Admin)
 - Upgrade service plan (Company Admin)
@@ -555,84 +534,22 @@ System Admin
       v
 Platform Administration Dashboard
       |
-        +-------------------+---------------------+
-        |                   |                     |
-        v                   v                     v
-Manage Companies   Manage Service Plans   Manage Subscriptions
-        |                   |                     |
-        +-------------------+---------------------+
-                                  |
-                                  v
-                   Manage System Accounts
-                                  |
-                                  v
-                    View Platform Reports
+        v
+Select Administration Area
+        |
+        +--> Company Management
+        +--> Service Plan Management
+        +--> Subscription Management
+        +--> System Account Management
+        +--> Platform Reports
 ```
 
-### Manage Companies
-**Actor:** System Admin
-
-**Purpose:** View and administer all registered tenant companies on the platform.
-
-**Functions:**
-- View the list of all registered companies and their statuses.
-- View company details (name, domain, registration date, plan, subscription status).
-- Activate or deactivate a company tenant.
-- Search and filter companies by status, plan, or registration date.
-
----
-
-### Manage Service Plans
-**Actor:** System Admin
-
-**Purpose:** Define and maintain the service plans offered to tenant companies.
-
-**Functions:**
-- View all service plans (e.g., Basic, Standard, Premium).
-- Create a new service plan with name, price, feature limits (employee cap, module access), and billing cycle.
-- Update plan details (pricing, feature limits, description).
-- Deactivate or remove a plan that is no longer offered.
-
----
-
-### Manage Subscriptions
-**Actor:** System Admin
-
-**Purpose:** Oversee and administer all company subscriptions across the platform.
-
-**Functions:**
-- View all subscriptions with status (Active, Expired, Cancelled).
-- View subscription details per company (plan, start date, expiry date, renewal history).
-- Manually activate, suspend, or cancel a subscription.
-- Search and filter subscriptions by company, plan, or status.
-
----
-
-### Manage System Accounts
-**Actor:** System Admin
-
-**Purpose:** Manage platform-level administrative accounts (System Admin accounts only). This is distinct from tenant employee account management performed by Company Admin / HR.
-
-**Functions:**
-- View all system-level admin accounts.
-- Create a new System Admin account.
-- Update System Admin account details (name, email, role).
-- Deactivate or remove a System Admin account.
-- Reset System Admin account credentials.
-
----
-
-### View Platform Reports
-**Actor:** System Admin
-
-**Purpose:** Access aggregated, platform-wide reports to support business oversight and decision-making. These are platform-level metrics, not tenant HR reports.
-
-**Functions:**
-- View total number of registered companies.
-- View subscription statistics (active, expired, cancelled counts).
-- View revenue summary by plan and billing period.
-- View new company registrations over a selected time range.
-- Export platform report data.
+Main functions:
+- Review and search registered companies, inspect company profiles, and activate or deactivate tenants.
+- View service plans and create, update, or deactivate plans that are no longer offered.
+- Browse and filter subscriptions, inspect their details, and activate, suspend, or cancel them.
+- Create and update System Admin accounts, change their access status, and reset credentials.
+- Review platform-wide company, subscription, and revenue reports; filter results and export report data.
 
 ---
 
@@ -649,11 +566,6 @@ Activate Subscription
       |
       v
 [Platform] Create Company Workspace
-      |
-      v
-[Company Admin] Initial Workspace Setup
-  (Logo/Branding, Legal Info, Departments,
-   Job Positions, Default Leave Policies)
       |
       v
 +----------------------------------+
@@ -911,7 +823,7 @@ The goal of HRMs is to develop a B2B Human Resource Management System that suppo
 
 The system focuses on six main workflows:
 
-1. Public Portal, Company Registration & Workspace Onboarding
+1. Public Portal & Company Registration
 2. Employee Management
 3. Attendance Management
 4. Leave Management
