@@ -28,8 +28,8 @@ The system focuses on the **active working stage** of the employee lifecycle (ex
 
 - **Business Model:** B2B (Business-to-Business) SaaS
 - **Tenant Architecture:** Multi-Tenancy via Company Domain / Subdomain.
-- **Onboarding Flow:** 
-  `Public Landing Page` -> `Register / Request Demo` -> `Provision Tenant Domain ({companydomain})` -> `Admin Log in & Customize Workspace` -> `Invite Employees`.
+- **Onboarding Flow:**
+  `Public Landing Page` -> `Register / Request Demo` -> `Provision Tenant Domain ({companydomain})` -> `Company Admin: Initial Workspace Setup` -> `Invite Employees & Start Operations`.
 
 ---
 
@@ -38,8 +38,10 @@ The system focuses on the **active working stage** of the employee lifecycle (ex
 ### In Scope
 - Public Landing Page (Features, Pricing, Solution, About Us, Request Demo / Contact Form)
 - Tenant / Company Registration & Domain Provisioning (`{companydomain}.hrms.com`)
-- Workspace Configuration & Customization (Company logo, shift policies, organization structure)
+- Initial Workspace Setup (Company logo/branding, legal information, departments, job positions, default leave policies)
+- Ongoing Workspace Configuration & Customization (Shift policies, organization structure updates)
 - Subscription & Plan Management (Upgrade, Renew)
+- Platform Administration (Company management, service plans, subscriptions, system accounts, platform reports)
 - Employee Management & Profile Portal
 - Attendance Management (Check-in/out, GPS/Wifi/Manual)
 - Leave Policy & Request Approval Workflow
@@ -58,54 +60,69 @@ The system focuses on the **active working stage** of the employee lifecycle (ex
 
 ## 4. Main Actors
 
-1. **Public Guest:** Visitors on Landing Page looking for HR solutions, requesting demos or registering a company.
-2. **System Admin:** Platform owner managing companies, plans, subscriptions, and system health.
-3. **Company Admin / HR:** Configures company workspace, customizes modules, manages employee data, leave, attendance, and payroll.
+1. **Public Guest / Company Representative:** Visitors on the Landing Page looking for HR solutions, requesting demos, or self-registering a company and selecting a service plan.
+2. **System Admin:** Platform owner responsible for platform-level administration — managing tenant companies, service plans, subscriptions, system accounts, and viewing platform-wide reports. Does **not** access tenant HR data.
+3. **Company Admin / HR:** Performs initial workspace setup after provisioning (branding, departments, positions, leave policies) and manages all ongoing tenant HR operations — employee data, attendance, leave, and payroll.
 4. **Manager:** Oversees team attendance, reviews, and approves/rejects team leave requests.
 5. **Employee:** Accesses personal workspace (`{companydomain}.hrms.com`), checks in/out, views payslips, and requests leave.
 
 ---
 
-# 5. Main Core Workflow 
+# 5. Main Core Workflow
 
-1. Public Portal & Registration
+1. Public Portal, Company Registration & Workspace Onboarding
 
-2. Workspace Setup & Customization
+2. Employee Lifecycle Data Management
 
-3. Employee Lifecycle Data Management
+3. Attendance Tracking
 
-4. Attendance Tracking
+4. Leave Approval Management
 
-5. Leave Approval Management
+5. Payroll Calculation & Payslip Generation
 
-6. Payroll Calculation & Payslip Generation
-
-7. Bulk Data Excel Import
+6. Bulk Data Excel Import
 
 ---
 
 ## 6. System Workflows
 
-### 6.1 Public Portal & Tenant Registration Flow
+### 6.1 Public Portal, Company Registration & Workspace Onboarding Flow
+
 ```text
-Guest / SME Prospect
+Public Guest / Company Representative
         |
         v
 Landing Page (Features / Pricing / Solutions / About)
-        |
-        +-----------------------+
-        |                       |
-        v                       v
-Request Demo / Contact     Register Company
-        |                       |
-        v                       v
-Sales Follow-up /          Enter Company Code / Subdomain 
-Auto-provisioning               |
-                                v
-                   Create Company Admin Account
-                                |
-                                v
-               Provision Workspace ({companydomain}.hrms.com)
+        |                                  |
+        v                                  v
+Request Demo / Contact                Register Company
+        |                                  |
+        v                                  v
+Sales Follow-up                  Enter Company Info / Subdomain
+                                           |
+                                           v
+                                  Select Service Plan
+                                           |
+                                           v
+                                  Create Company Admin Account
+                                           |
+                                           v
+                                  Activate Subscription
+                                           |
+                                           v
+                             [Platform] Provision Workspace
+                                 ({companydomain}.hrms.com)
+                                           |
+                                           v
+                             [Company Admin] Initial Workspace Setup
+                               - Configure company logo and branding
+                               - Enter legal company information
+                               - Create initial departments
+                               - Define job positions
+                               - Configure leave types and policies
+                                           |
+                                           v
+                         [Company Admin / HR] Invite Employees & Start Operations
 ```
 
 Main Functions:
@@ -114,6 +131,13 @@ Main Functions:
 - Self-service company registration with real-time domain availability check.
 - Select service plan, initiate subscription, and create primary Admin credentials.
 - Automated provisioning of isolated company workspace.
+- Initial Workspace Setup (Company Admin):
+        - Configure the company logo and branding theme.
+        - Enter legal company information (registered name, address, tax ID).
+        - Create the initial organizational departments.
+        - Define initial job positions within departments.
+        - Configure default leave types and policies.
+- Invite employees and begin day-to-day HR operations.
 
 ---
 
@@ -141,20 +165,20 @@ Main Functions:
 - Tenant domain identification and verification.
 - Dynamic interface customization (Company logo, name, custom theme).
 - Role-Based Access Control (RBAC) authentication (Admin, Manager, Employee).
--Tenant-level data isolation enforcement.
+- Tenant-level data isolation enforcement.
 
 ---
 
 ## 6.3 Company Onboarding & Subscription Management
 
 ```text
-Company Representative
+[Public Guest / Company Representative]
         |
         v
 Register Company
         |
         v
-Create Company Account
+Create Company Admin Account
         |
         v
 Select Service Plan
@@ -163,13 +187,15 @@ Select Service Plan
 Activate Subscription
         |
         v
-Create Company Workspace
+[Platform] Create Company Workspace
         |
         v
-Configure Company Information
+[Company Admin] Initial Workspace Setup
+        (Branding, legal information, departments,
+         job positions, and leave policies)
         |
         v
-     Use HRMs
+Use HRMs
         |
         +--------------------+
         |                    |
@@ -178,15 +204,16 @@ Configure Company Information
 ```
 
 Main functions:
-- Register company
-- Create company account
-- Select service plan
-- Activate subscription
-- Create workspace
-- Configure company information
-- Renew subscription
-- Upgrade service plan
-- View subscription status
+- Register company (Company Representative)
+- Create company admin account (Company Representative)
+- Select service plan (Company Representative)
+- Activate subscription (Company Representative)
+- Create workspace (Platform / automated)
+- Initial workspace setup — branding, legal info, departments, positions, leave policies (Company Admin)
+- Ongoing configuration updates (Company Admin / HR)
+- Renew subscription (Company Admin)
+- Upgrade service plan (Company Admin)
+- View subscription status (Company Admin)
 
 ---
 
@@ -516,25 +543,117 @@ Row 5: Invalid - Department not found
 
 ---
 
+## 6.9 Platform Administration & Reporting
+
+> **Note:** This is a **platform-level** workflow performed exclusively by the **System Admin**. It is separate from tenant HR administration carried out by Company Admin / HR within an individual workspace.
+
+### Platform Administration Flow
+
+```text
+System Admin
+      |
+      v
+Platform Administration Dashboard
+      |
+        +-------------------+---------------------+
+        |                   |                     |
+        v                   v                     v
+Manage Companies   Manage Service Plans   Manage Subscriptions
+        |                   |                     |
+        +-------------------+---------------------+
+                                  |
+                                  v
+                   Manage System Accounts
+                                  |
+                                  v
+                    View Platform Reports
+```
+
+### Manage Companies
+**Actor:** System Admin
+
+**Purpose:** View and administer all registered tenant companies on the platform.
+
+**Functions:**
+- View the list of all registered companies and their statuses.
+- View company details (name, domain, registration date, plan, subscription status).
+- Activate or deactivate a company tenant.
+- Search and filter companies by status, plan, or registration date.
+
+---
+
+### Manage Service Plans
+**Actor:** System Admin
+
+**Purpose:** Define and maintain the service plans offered to tenant companies.
+
+**Functions:**
+- View all service plans (e.g., Basic, Standard, Premium).
+- Create a new service plan with name, price, feature limits (employee cap, module access), and billing cycle.
+- Update plan details (pricing, feature limits, description).
+- Deactivate or remove a plan that is no longer offered.
+
+---
+
+### Manage Subscriptions
+**Actor:** System Admin
+
+**Purpose:** Oversee and administer all company subscriptions across the platform.
+
+**Functions:**
+- View all subscriptions with status (Active, Expired, Cancelled).
+- View subscription details per company (plan, start date, expiry date, renewal history).
+- Manually activate, suspend, or cancel a subscription.
+- Search and filter subscriptions by company, plan, or status.
+
+---
+
+### Manage System Accounts
+**Actor:** System Admin
+
+**Purpose:** Manage platform-level administrative accounts (System Admin accounts only). This is distinct from tenant employee account management performed by Company Admin / HR.
+
+**Functions:**
+- View all system-level admin accounts.
+- Create a new System Admin account.
+- Update System Admin account details (name, email, role).
+- Deactivate or remove a System Admin account.
+- Reset System Admin account credentials.
+
+---
+
+### View Platform Reports
+**Actor:** System Admin
+
+**Purpose:** Access aggregated, platform-wide reports to support business oversight and decision-making. These are platform-level metrics, not tenant HR reports.
+
+**Functions:**
+- View total number of registered companies.
+- View subscription statistics (active, expired, cancelled counts).
+- View revenue summary by plan and billing period.
+- View new company registrations over a selected time range.
+- Export platform report data.
+
+---
+
 # 7. Overall Business Process
 
 ```text
-HRMs Provider
+HRMs Provider / Platform
       |
       v
-Company Registration
-      |
-      v
-Select Service Plan
+Company Registration & Plan Selection
       |
       v
 Activate Subscription
       |
       v
-Create Company Workspace
+[Platform] Create Company Workspace
       |
       v
-Configure Organization
+[Company Admin] Initial Workspace Setup
+  (Logo/Branding, Legal Info, Departments,
+   Job Positions, Default Leave Policies)
       |
       v
 +----------------------------------+
@@ -602,10 +721,15 @@ NetSalary
 
 | Function | System Admin | Company Admin / HR | Manager | Employee |
 |---|:---:|:---:|:---:|:---:|
-| Manage companies | ✓ | | | |
+| **— Platform Administration —** | | | | |
+| Manage tenant companies | ✓ | | | |
 | Manage service plans | ✓ | | | |
-| Manage subscription | ✓ | ✓ | | |
-| Configure company | | ✓ | | |
+| Manage subscriptions — platform-level | ✓ | | | |
+| Manage system admin accounts | ✓ | | | |
+| View platform reports | ✓ | | | |
+| **— Tenant Workspace Administration —** | | | | |
+| Configure company workspace | | ✓ | | |
+| Manage own subscription (renew/upgrade) | | ✓ | | |
 | Manage employees | | ✓ | Limited | |
 | View attendance | | ✓ | Team | Own |
 | Edit attendance | | ✓ | | |
@@ -614,11 +738,18 @@ NetSalary
 | Manage payroll | | ✓ | | |
 | View payslip | | ✓ | | Own |
 | Import Excel data | | ✓ | | |
-| View reports | ✓ | ✓ | Limited | Limited |
+| View tenant HR reports | | ✓ | Limited | Limited |
 
 ---
 
 # 10. Reports & Analytics
+
+### System Admin Dashboard
+- Total registered companies
+- Active / Expired / Cancelled subscription counts
+- New company registrations by time period
+- Revenue summary by service plan
+- Export platform report data
 
 ### Company Admin / HR Dashboard
 - Total employees
@@ -780,13 +911,12 @@ The goal of HRMs is to develop a B2B Human Resource Management System that suppo
 
 The system focuses on six main workflows:
 
-1. Public Portal & Registration
-2. Workspace Setup & Customization
-3. Employee Management
-4. Attendance Management
-5. Leave Management
-6. Payroll Management
-7. Bulk Data Import Management
+1. Public Portal, Company Registration & Workspace Onboarding
+2. Employee Management
+3. Attendance Management
+4. Leave Management
+5. Payroll Management
+6. Bulk Data Import Management
 
 The system aims to reduce manual HR work, improve data consistency, simplify payroll processing, provide convenient employee self-service functions, and allow businesses to import existing HR data from Excel efficiently.
 
