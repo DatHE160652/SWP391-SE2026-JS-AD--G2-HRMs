@@ -1,5 +1,8 @@
 package com.hrms.model;
 
-/** Domain model placeholder for SystemAdmin. */
-public class SystemAdmin {
+public class SystemAdmin extends User {
+	public SystemAdmin() {
+		setCompanyId(null);
+		setRoleCode("SYSTEM_ADMIN");
+	}
 }
