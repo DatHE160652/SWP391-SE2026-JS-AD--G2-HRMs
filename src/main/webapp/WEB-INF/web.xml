@@ -16,6 +16,36 @@
         <welcome-file>index.jsp</welcome-file>
     </welcome-file-list>
 
+    <servlet>
+        <servlet-name>EmployeeServlet</servlet-name>
+        <servlet-class>com.hrms.controller.EmployeeServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>EmployeeServlet</servlet-name>
+        <url-pattern>/employees</url-pattern>
+        <url-pattern>/employees/detail</url-pattern>
+        <url-pattern>/employees/create</url-pattern>
+        <url-pattern>/employees/update</url-pattern>
+        <url-pattern>/employees/delete</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>DocumentServlet</servlet-name>
+        <servlet-class>com.hrms.controller.DocumentServlet</servlet-class>
+        <multipart-config>
+            <max-file-size>10485760</max-file-size>
+            <max-request-size>11534336</max-request-size>
+            <file-size-threshold>0</file-size-threshold>
+        </multipart-config>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>DocumentServlet</servlet-name>
+        <url-pattern>/documents</url-pattern>
+        <url-pattern>/documents/upload</url-pattern>
+        <url-pattern>/documents/download</url-pattern>
+        <url-pattern>/documents/delete</url-pattern>
+    </servlet-mapping>
+
     <session-config>
         <session-timeout>30</session-timeout>
     </session-config>
