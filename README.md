@@ -71,15 +71,17 @@ The system focuses on the **active working stage** of the employee lifecycle (ex
 
 1. Public Portal & Company Registration
 
-2. Employee Lifecycle Data Management
+2. Platform Administration
 
-3. Attendance Tracking
+3. Employee Management
 
-4. Leave Approval Management
+4. Attendance Tracking
 
-5. Payroll Calculation & Payslip Generation
+5. Leave Approval Management
 
-6. Bulk Data Excel Import
+6. Payroll Calculation & Payslip Generation
+
+7. Bulk Data Excel Import
 
 ---
 
@@ -126,7 +128,50 @@ Main Functions:
 
 ---
 
-### 6.2 Tenant Domain Login Flow
+### 6.2 Platform Administration
+
+```text
+System Admin
+        |
+        v
+Platform Administration Dashboard
+        |
+        +--> View / Search Company List
+        |          |
+        |          v
+        |     View Company Detail
+        |          |
+        |          v
+        |     View Current Subscription
+        |          |
+        |          +--> Activate Subscription
+        |          +--> Suspend Subscription
+        |          +--> Cancel Subscription
+        |
+        +--> View System Account Tree
+```
+
+### Main Functions
+
+- View and search the company list by company name, workspace code, email, or tax code.
+- View company details: company name, workspace code, contact information, status, and registration date.
+- View the company's current subscription: plan, price, billing cycle, start date, end date, payment method, and status.
+- Activate, suspend, or cancel a subscription.
+- View the system account tree by company and role: System Admin, Company Admin / HR, Manager, and Employee.
+
+### Subscription Status
+
+```text
+Active -> Suspended -> Active
+Active -> Cancelled
+Active -> Expired
+```
+
+Only the **System Admin** can manage subscriptions at platform level. Company Admin / HR can manage HR data and their own workspace only.
+
+---
+
+### 6.3 Tenant Domain Login Flow
 ```text
 User Accesses App
         |
@@ -154,7 +199,7 @@ Main Functions:
 
 ---
 
-## 6.3 Company Registration & Subscription Management
+## 6.4 Company Registration & Subscription Management
 
 ```text
 [Public Guest / Company Representative]
@@ -196,7 +241,7 @@ Main functions:
 
 ---
 
-## 6.4 Employee Management
+## 6.5 Employee Management
 
 ```text
 Company Admin / HR
@@ -240,7 +285,7 @@ Inactive
 
 ---
 
-## 6.5 Attendance Management
+## 6.6 Attendance Management
 
 Attendance Management handles employee working-time records independently from payroll calculation.
 
@@ -302,7 +347,7 @@ Payroll deductions are entered or imported separately by HR.
 
 ---
 
-## 6.6 Leave Management
+## 6.7 Leave Management
 
 Leave Management allows employees to submit leave requests and managers or HR staff to review and process them.
 
@@ -355,7 +400,7 @@ Leave data is not used directly in the payroll formula.
 
 ---
 
-## 6.7 Payroll Management
+## 6.8 Payroll Management
 
 ### Salary Formula
 
@@ -434,7 +479,7 @@ Out of payroll scope:
 
 ---
 
-## 6.8 Bulk Data Import Management
+## 6.9 Bulk Data Import Management
 
 ```text
 HR
@@ -519,37 +564,6 @@ Row 3: Valid
 Row 4: Invalid - EmployeeCode already exists
 Row 5: Invalid - Department not found
 ```
-
----
-
-## 6.9 Platform Administration & Reporting
-
-> **Note:** This is a **platform-level** workflow performed exclusively by the **System Admin**. It is separate from tenant HR administration carried out by Company Admin / HR within an individual workspace.
-
-### Platform Administration Flow
-
-```text
-System Admin
-      |
-      v
-Platform Administration Dashboard
-      |
-        v
-Select Administration Area
-        |
-        +--> Company Management
-        +--> Service Plan Management
-        +--> Subscription Management
-        +--> System Account Management
-        +--> Platform Reports
-```
-
-Main functions:
-- Review and search registered companies, inspect company profiles, and activate or deactivate tenants.
-- View service plans and create, update, or deactivate plans that are no longer offered.
-- Browse and filter subscriptions, inspect their details, and activate, suspend, or cancel them.
-- Create and update System Admin accounts, change their access status, and reset credentials.
-- Review platform-wide company, subscription, and revenue reports; filter results and export report data.
 
 ---
 
@@ -821,14 +835,15 @@ Each iteration includes requirement refinement, design, implementation, testing,
 
 The goal of HRMs is to develop a B2B Human Resource Management System that supports SMEs in managing employees during their active working period.
 
-The system focuses on six main workflows:
+The system focuses on seven main workflows:
 
 1. Public Portal & Company Registration
-2. Employee Management
-3. Attendance Management
-4. Leave Management
-5. Payroll Management
-6. Bulk Data Import Management
+2. Platform Administration
+3. Employee Management
+4. Attendance Management
+5. Leave Management
+6. Payroll Management
+7. Bulk Data Import Management
 
 The system aims to reduce manual HR work, improve data consistency, simplify payroll processing, provide convenient employee self-service functions, and allow businesses to import existing HR data from Excel efficiently.
 
