@@ -59,6 +59,19 @@
         <url-pattern>/departments/delete</url-pattern>
     </servlet-mapping>
 
+    <servlet>
+        <servlet-name>PositionServlet</servlet-name>
+        <servlet-class>com.hrms.controller.PositionServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>PositionServlet</servlet-name>
+        <url-pattern>/positions</url-pattern>
+        <url-pattern>/positions/detail</url-pattern>
+        <url-pattern>/positions/create</url-pattern>
+        <url-pattern>/positions/update</url-pattern>
+        <url-pattern>/positions/delete</url-pattern>
+    </servlet-mapping>
+
     <session-config>
         <session-timeout>30</session-timeout>
     </session-config>

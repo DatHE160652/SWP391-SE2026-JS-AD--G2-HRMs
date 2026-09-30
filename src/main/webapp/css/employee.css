@@ -314,13 +314,19 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
     width: 100%;
     border: 1px solid #d5dbeb;
     border-radius: 8px;
     padding: 11px 12px;
     background: #f8f9ff;
     font: inherit;
+}
+
+textarea {
+    min-height: 96px;
+    resize: vertical;
 }
 
 input[type="file"] {
