@@ -72,6 +72,18 @@
         <url-pattern>/positions/delete</url-pattern>
     </servlet-mapping>
 
+    <servlet>
+        <servlet-name>EmployeeAssignmentServlet</servlet-name>
+        <servlet-class>com.hrms.controller.EmployeeAssignmentServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>EmployeeAssignmentServlet</servlet-name>
+        <url-pattern>/employees/organization</url-pattern>
+        <url-pattern>/employees/assign-department</url-pattern>
+        <url-pattern>/employees/assign-position</url-pattern>
+        <url-pattern>/employees/assign-manager</url-pattern>
+    </servlet-mapping>
+
     <session-config>
         <session-timeout>30</session-timeout>
     </session-config>

@@ -50,6 +50,7 @@ async function getEmployeeDetail() {
     try {
         const payload = await EmployeeApi.get(`/employees/detail?id=${employeeId}`);
         renderEmployeeDetail(payload.data);
+        await setupOrganizationForm(payload.data);
     } catch (error) {
         showMessage(error.message, 'error');
     }
@@ -161,6 +162,88 @@ function renderEmployeeDetail(employee) {
         ${detailItem('Account Status', employee.accountActive === true ? 'Active' : employee.accountActive === false ? 'Inactive' : null)}
         ${detailItem('UserId', employee.userId)}
     `;
+}
+
+async function setupOrganizationForm(employee) {
+    const form = document.querySelector('#organizationForm');
+    if (!form) {
+        return;
+    }
+
+    form.employeeId.value = employee.employeeId;
+    document.querySelector('#organizationEmployeeName').value = employee.fullName || '';
+
+    const [organizationPayload, departmentPayload, positionPayload, employeePayload] = await Promise.all([
+        EmployeeApi.get(`/employees/organization?id=${employee.employeeId}`),
+        EmployeeApi.get('/departments'),
+        EmployeeApi.get('/positions'),
+        EmployeeApi.get('/employees')
+    ]);
+
+    renderSelect(
+        form.departmentId,
+        departmentPayload.data,
+        'departmentId',
+        'departmentName',
+        'Select Department',
+        organizationPayload.data.departmentId
+    );
+    renderSelect(
+        form.positionId,
+        positionPayload.data,
+        'positionId',
+        'positionTitle',
+        'Select Position',
+        organizationPayload.data.positionId
+    );
+    renderManagerSelect(form.managerId, employeePayload.data, employee.employeeId, organizationPayload.data.managerId);
+
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        await saveOrganization(form);
+    });
+}
+
+async function saveOrganization(form) {
+    const data = readForm(form);
+    if (data.employeeId === data.managerId) {
+        showMessage('Employee cannot be assigned as their own manager.', 'error');
+        return;
+    }
+
+    try {
+        await EmployeeApi.post('/employees/assign-department', {
+            employeeId: data.employeeId,
+            departmentId: data.departmentId
+        });
+        await EmployeeApi.post('/employees/assign-position', {
+            employeeId: data.employeeId,
+            positionId: data.positionId
+        });
+        await EmployeeApi.post('/employees/assign-manager', {
+            employeeId: data.employeeId,
+            managerId: data.managerId
+        });
+        showMessage('Organization information updated successfully.');
+    } catch (error) {
+        showMessage(error.message, 'error');
+    }
+}
+
+function renderSelect(select, items, valueKey, labelKey, placeholder, selectedValue) {
+    select.innerHTML = `<option value="">${placeholder}</option>` + items.map(item => `
+        <option value="${item[valueKey]}">${safe(item[labelKey])}</option>
+    `).join('');
+    select.value = selectedValue || '';
+}
+
+function renderManagerSelect(select, employees, currentEmployeeId, selectedValue) {
+    select.innerHTML = '<option value="">Select Manager</option>' + employees.map(employee => {
+        const disabled = employee.employeeId === currentEmployeeId ? ' disabled' : '';
+        const label = `${safe(employee.employeeCode)} - ${safe(employee.fullName)}`;
+        return `<option value="${employee.employeeId}"${disabled}>${label}</option>`;
+    }).join('');
+    select.value = selectedValue || '';
 }
 
 function detailItem(label, value) {

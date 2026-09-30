@@ -37,10 +37,37 @@
             <div class="tabs">
                 <button class="tab-button active" data-tab="profile">Profile</button>
                 <button class="tab-button" data-tab="employment">Employment</button>
+                <button class="tab-button" data-tab="organization">Organization Information</button>
                 <button class="tab-button" data-tab="documents">Documents</button>
             </div>
             <div id="profileTab" class="tab-panel detail-grid"></div>
             <div id="employmentTab" class="tab-panel detail-grid hidden"></div>
+            <div id="organizationTab" class="tab-panel hidden">
+                <form id="organizationForm">
+                    <input type="hidden" name="employeeId">
+                    <div class="form-grid">
+                        <div>
+                            <label>Employee Name</label>
+                            <input id="organizationEmployeeName" readonly>
+                        </div>
+                        <div>
+                            <label>Department</label>
+                            <select name="departmentId" required></select>
+                        </div>
+                        <div>
+                            <label>Position</label>
+                            <select name="positionId" required></select>
+                        </div>
+                        <div>
+                            <label>Manager</label>
+                            <select name="managerId" required></select>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit">Save Organization Information</button>
+                    </div>
+                </form>
+            </div>
             <div id="documentsTab" class="tab-panel hidden">
                 <div class="document-toolbar">
                     <h2>Employee Documents</h2>
