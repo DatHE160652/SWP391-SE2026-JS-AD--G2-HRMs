@@ -9,7 +9,7 @@ public final class DBConnection {
 
     private static final String DEFAULT_SERVER = "localhost";
     private static final String DEFAULT_PORT = "1433";
-    private static final String DEFAULT_DATABASE = "HRMs";
+    private static final String DEFAULT_DATABASE = "HRMsDB";
 
     private DBConnection() {
         // Utility class.
