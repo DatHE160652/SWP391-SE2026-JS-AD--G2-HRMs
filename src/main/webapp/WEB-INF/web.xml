@@ -46,6 +46,19 @@
         <url-pattern>/documents/delete</url-pattern>
     </servlet-mapping>
 
+    <servlet>
+        <servlet-name>DepartmentServlet</servlet-name>
+        <servlet-class>com.hrms.controller.DepartmentServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>DepartmentServlet</servlet-name>
+        <url-pattern>/departments</url-pattern>
+        <url-pattern>/departments/detail</url-pattern>
+        <url-pattern>/departments/create</url-pattern>
+        <url-pattern>/departments/update</url-pattern>
+        <url-pattern>/departments/delete</url-pattern>
+    </servlet-mapping>
+
     <session-config>
         <session-timeout>30</session-timeout>
     </session-config>

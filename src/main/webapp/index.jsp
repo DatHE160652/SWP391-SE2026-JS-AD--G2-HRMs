@@ -13,6 +13,7 @@
         <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
         <div class="nav-label">Phân hệ quản trị</div>
         <a class="nav-link active" href="${pageContext.request.contextPath}/employee/employee-list.html">Quản lý Nhân sự</a>
+        <a class="nav-link" href="${pageContext.request.contextPath}/department/department-list.html">Quản lý Phòng ban</a>
         <a class="nav-link" href="${pageContext.request.contextPath}/employee/employee-list.html">Hồ sơ nhân viên</a>
         <div class="plan-card"><strong>Gói Pro SME</strong><br>Iteration 1: Employee Lifecycle</div>
     </aside>
@@ -50,6 +51,11 @@
                 <div class="summary-label">UC16 / UC27 / UC28</div>
                 <div class="summary-number">Documents</div>
                 <p class="page-subtitle">Quản lý tài liệu nhân viên.</p>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">UC07</div>
+                <div class="summary-number">Departments</div>
+                <p class="page-subtitle">CRUD phòng ban trong công ty.</p>
             </div>
         </section>
 
