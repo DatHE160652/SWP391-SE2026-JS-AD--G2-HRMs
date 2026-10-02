@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Department Management</title>
+    <link rel="stylesheet" href="../css/employee.css">
+</head>
+<body data-page="department-list">
+<div class="shell">
+    <aside class="sidebar">
+        <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
+        <div class="nav-label">Phân hệ quản trị</div>
+        <a class="nav-link" href="../employee/employee-list.html">Quản lý Nhân sự</a>
+        <a class="nav-link active" href="department-list.html">Quản lý Phòng ban</a>
+        <a class="nav-link" href="../position/position-list.html">Quản lý Chức danh</a>
+        <div class="plan-card"><strong>Gói Pro SME</strong><br>UC07 Manage Departments</div>
+    </aside>
+
+    <main class="content">
+        <div class="topbar">
+            <div class="search-box">Department Management CRUD</div>
+            <div class="today">UC07</div>
+            <div class="user">HR Director / Admin</div>
+        </div>
+
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Quản lý Phòng ban</h1>
+                <p class="page-subtitle">UC07 - Manage Departments</p>
+            </div>
+            <a class="button" href="department-form.html">+ Add Department</a>
+        </div>
+
+        <section class="summary-grid">
+            <div class="summary-card">
+                <div class="summary-label">Total Departments</div>
+                <div id="totalDepartments" class="summary-number">0</div>
+            </div>
+        </section>
+
+        <div id="message" class="message"></div>
+
+        <section class="panel">
+            <table>
+                <thead>
+                <tr>
+                    <th>Department Code</th>
+                    <th>Department Name</th>
+                    <th>Created At</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody id="departmentRows"></tbody>
+            </table>
+        </section>
+    </main>
+</div>
+<script src="../js/department.js"></script>
+</body>
+</html>

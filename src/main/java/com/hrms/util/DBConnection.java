@@ -7,6 +7,7 @@ import java.sql.SQLException;
 /** Provides JDBC connections to the application's SQL Server database. */
 public final class DBConnection {
 
+    private static final String DRIVER = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
     private static final String DEFAULT_SERVER = "localhost";
     private static final String DEFAULT_PORT = "1433";
     private static final String DEFAULT_DATABASE = "HRMsDB";
@@ -16,6 +17,12 @@ public final class DBConnection {
     }
 
     public static Connection getConnection() throws SQLException {
+        try {
+            Class.forName(DRIVER);
+        } catch (ClassNotFoundException e) {
+            throw new SQLException("SQL Server JDBC driver was not found.", e);
+        }
+
         String server = getSetting("HRM_DB_SERVER", "hrm.db.server", DEFAULT_SERVER);
         String port = getSetting("HRM_DB_PORT", "hrm.db.port", DEFAULT_PORT);
         String database = getSetting("HRM_DB_NAME", "hrm.db.name", DEFAULT_DATABASE);

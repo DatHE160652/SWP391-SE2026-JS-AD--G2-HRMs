@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Detail</title>
+    <link rel="stylesheet" href="../css/employee.css">
+</head>
+<body data-page="detail">
+<div class="shell">
+    <aside class="sidebar">
+        <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
+        <div class="nav-label">Phân hệ quản trị</div>
+        <a class="nav-link active" href="employee-list.html">Quản lý Nhân sự</a>
+        <a class="nav-link" href="../department/department-list.html">Quản lý Phòng ban</a>
+        <a class="nav-link" href="../position/position-list.html">Quản lý Chức danh</a>
+        <div class="plan-card"><strong>Gói Pro SME</strong><br>Iteration 1: Employee CRUD</div>
+    </aside>
+
+    <main class="content">
+        <div class="topbar">
+            <div class="search-box">Employee Profile</div>
+            <div class="today">UC03</div>
+            <div class="user">HR Director / Admin</div>
+        </div>
+
+        <div class="page-header">
+            <div>
+                <h1 id="detailTitle" class="page-title">Employee Profile</h1>
+                <p class="page-subtitle">UC03 - View Employee Profile</p>
+            </div>
+            <a class="button secondary" href="employee-list.html">Cancel</a>
+        </div>
+
+        <div id="message" class="message"></div>
+        <section class="panel">
+            <div class="tabs">
+                <button class="tab-button active" data-tab="profile">Profile</button>
+                <button class="tab-button" data-tab="employment">Employment</button>
+                <button class="tab-button" data-tab="organization">Organization Information</button>
+                <button class="tab-button" data-tab="documents">Documents</button>
+            </div>
+            <div id="profileTab" class="tab-panel detail-grid"></div>
+            <div id="employmentTab" class="tab-panel detail-grid hidden"></div>
+            <div id="organizationTab" class="tab-panel hidden">
+                <form id="organizationForm">
+                    <input type="hidden" name="employeeId">
+                    <div class="form-grid">
+                        <div>
+                            <label>Employee Name</label>
+                            <input id="organizationEmployeeName" readonly>
+                        </div>
+                        <div>
+                            <label>Department</label>
+                            <select name="departmentId" required></select>
+                        </div>
+                        <div>
+                            <label>Position</label>
+                            <select name="positionId" required></select>
+                        </div>
+                        <div>
+                            <label>Manager</label>
+                            <select name="managerId" required></select>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit">Save Organization Information</button>
+                    </div>
+                </form>
+            </div>
+            <div id="documentsTab" class="tab-panel hidden">
+                <div class="document-toolbar">
+                    <h2>Employee Documents</h2>
+                    <a id="uploadDocumentLink" class="button" href="#">Upload Document</a>
+                </div>
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Document Name</th>
+                        <th>Document Type</th>
+                        <th>Uploaded Date</th>
+                        <th>Uploaded By</th>
+                        <th>Action</th>
+                    </tr>
+                    </thead>
+                    <tbody id="documentRows"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</div>
+<script src="../js/employee.js"></script>
+<script src="../js/document.js"></script>
+</body>
+</html>
