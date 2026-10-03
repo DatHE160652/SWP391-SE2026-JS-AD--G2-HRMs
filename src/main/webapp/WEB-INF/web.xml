@@ -7,14 +7,18 @@
 
     <display-name>HRMs - HR Management Platform for SMEs</display-name>
 
-    <!--
-        Servlet mappings will be added here as controllers are implemented.
-        This project intentionally uses web.xml mappings instead of @WebServlet.
-    -->
-
     <welcome-file-list>
         <welcome-file>index.jsp</welcome-file>
     </welcome-file-list>
+
+    <filter>
+        <filter-name>SystemAdminAuthFilter</filter-name>
+        <filter-class>com.hrms.filter.SystemAdminAuthFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>SystemAdminAuthFilter</filter-name>
+        <url-pattern>/systemadmin/*</url-pattern>
+    </filter-mapping>
 
     <servlet>
         <servlet-name>EmployeeServlet</servlet-name>
@@ -84,7 +88,44 @@
         <url-pattern>/employees/assign-manager</url-pattern>
     </servlet-mapping>
 
+    <servlet>
+        <servlet-name>SystemAdminLoginController</servlet-name>
+        <servlet-class>com.hrms.controller.auth.SystemAdminLoginController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>SystemAdminLoginController</servlet-name>
+        <url-pattern>/systemadmin/login</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>SystemAdminLogoutController</servlet-name>
+        <servlet-class>com.hrms.controller.auth.SystemAdminLogoutController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>SystemAdminLogoutController</servlet-name>
+        <url-pattern>/systemadmin/logout</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>RegistrationRequestController</servlet-name>
+        <servlet-class>com.hrms.controller.admin.RegistrationRequestController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>RegistrationRequestController</servlet-name>
+        <url-pattern>/systemadmin/dashboard</url-pattern>
+        <url-pattern>/systemadmin/registration-request</url-pattern>
+        <url-pattern>/systemadmin/registration-request-details</url-pattern>
+    </servlet-mapping>
+
     <session-config>
         <session-timeout>30</session-timeout>
+        <cookie-config>
+            <http-only>true</http-only>
+        </cookie-config>
+        <tracking-mode>COOKIE</tracking-mode>
     </session-config>
+
+    <request-character-encoding>UTF-8</request-character-encoding>
+    <response-character-encoding>UTF-8</response-character-encoding>
+
 </web-app>
