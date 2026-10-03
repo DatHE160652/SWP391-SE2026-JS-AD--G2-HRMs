@@ -1,0 +1,22 @@
+<%@ page pageEncoding="UTF-8" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<c:set var="base" value="${pageContext.request.contextPath}"/>
+<header class="public-header">
+    <div class="public-container public-header-inner">
+        <a class="brand-mark" href="${base}/homepage" aria-label="HRMs Cloud - Trang chủ">
+            <span class="logo-box">HC</span>
+            <span class="brand-copy"><strong>HRMs<span>Cloud</span></strong><small>DOANH NGHIỆP THÔNG MINH</small></span>
+        </a>
+        <nav class="public-nav" aria-label="Điều hướng chính">
+            <a href="${base}/homepage">Trang chủ</a>
+            <a href="${base}/features-solutions">Tính năng</a>
+            <a href="${base}/Pricing">Bảng giá</a>
+            <a href="${base}/faqs">Hỏi đáp (FAQ)</a>
+            <a href="${base}/consultation-request">Liên hệ</a>
+        </nav>
+        <div class="header-actions">
+            <a class="button button-outline" href="${base}/login">Đăng nhập Tenant</a>
+            <a class="button button-primary" href="${base}/consultation-request">Đăng ký tư vấn</a>
+        </div>
+    </div>
+</header>
