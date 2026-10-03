@@ -16,6 +16,15 @@
         <welcome-file>index.jsp</welcome-file>
     </welcome-file-list>
 
+    <filter>
+        <filter-name>CharacterEncodingFilter</filter-name>
+        <filter-class>com.hrms.filter.CharacterEncodingFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>CharacterEncodingFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
     <servlet>
         <servlet-name>EmployeeServlet</servlet-name>
         <servlet-class>com.hrms.controller.EmployeeServlet</servlet-class>
@@ -82,6 +91,24 @@
         <url-pattern>/employees/assign-department</url-pattern>
         <url-pattern>/employees/assign-position</url-pattern>
         <url-pattern>/employees/assign-manager</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>AttendanceController</servlet-name>
+        <servlet-class>com.hrms.controller.hr.AttendanceController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>AttendanceController</servlet-name>
+        <url-pattern>/attendance/personal</url-pattern>
+        <url-pattern>/attendance/team</url-pattern>
+        <url-pattern>/attendance/all</url-pattern>
+        <url-pattern>/attendance/check-in</url-pattern>
+        <url-pattern>/attendance/check-out</url-pattern>
+        <url-pattern>/attendance/batch-complete</url-pattern>
+        <url-pattern>/attendance/company</url-pattern>
+        <url-pattern>/attendance/report</url-pattern>
+        <url-pattern>/attendance/export-report</url-pattern>
+        <url-pattern>/attendance/meta</url-pattern>
     </servlet-mapping>
 
     <session-config>

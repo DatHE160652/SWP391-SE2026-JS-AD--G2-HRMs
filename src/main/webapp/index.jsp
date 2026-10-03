@@ -12,10 +12,15 @@
     <aside class="sidebar">
         <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
         <div class="nav-label">Phân hệ quản trị</div>
-        <a class="nav-link active" href="${pageContext.request.contextPath}/employee/employee-list.html">Quản lý Nhân sự</a>
+        <a class="nav-link" href="${pageContext.request.contextPath}/employee/employee-list.html">Quản lý Nhân sự</a>
         <a class="nav-link" href="${pageContext.request.contextPath}/department/department-list.html">Quản lý Phòng ban</a>
         <a class="nav-link" href="${pageContext.request.contextPath}/position/position-list.html">Quản lý Chức danh</a>
-        <div class="plan-card"><strong>Gói Pro SME</strong><br>Iteration 1: Employee Lifecycle</div>
+        <div class="nav-label">Phân hệ Chấm công (BF-03)</div>
+        <a class="nav-link" href="${pageContext.request.contextPath}/attendance/manager-attendance.html">Điểm danh Nhân sự</a>
+        <a class="nav-link" href="${pageContext.request.contextPath}/attendance/employee-attendance.html">Chấm công Cá nhân</a>
+        <a class="nav-link" href="${pageContext.request.contextPath}/attendance/company-attendance.html">Giám sát Công ty</a>
+        <a class="nav-link" href="${pageContext.request.contextPath}/attendance/attendance-report.html">Báo cáo Chấm công</a>
+        <div class="plan-card"><strong>Gói Pro SME</strong><br>Iteration 1 & 2: Core HR & Attendance</div>
     </aside>
 
     <main class="content">
