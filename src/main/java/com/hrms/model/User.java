@@ -17,6 +17,9 @@ public class User {
     private LocalDateTime lastLoginAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String displayName;
+    private byte[] rowVersion;
+
 
     public Integer getUserId() { return userId; }
     public void setUserId(Integer userId) { this.userId = userId; }
@@ -50,4 +53,8 @@ public class User {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public String getDisplayName() {return displayName;}
+    public void setDisplayName(String displayName) {this.displayName = displayName;}
+    public byte[] getRowVersion() {return rowVersion == null ? null : rowVersion.clone();}
+    public void setRowVersion(byte[] rowVersion) {this.rowVersion = rowVersion == null ? null : rowVersion.clone();}
 }
