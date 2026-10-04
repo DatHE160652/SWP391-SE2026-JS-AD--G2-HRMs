@@ -17,6 +17,31 @@
     </welcome-file-list>
 
     <servlet>
+        <servlet-name>PublicPortalController</servlet-name>
+        <servlet-class>com.hrms.controller.publicportal.PublicPortalController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>PublicPortalController</servlet-name>
+        <url-pattern>/homepage</url-pattern>
+        <url-pattern>/features-solutions</url-pattern>
+        <url-pattern>/Pricing</url-pattern>
+        <url-pattern>/faqs</url-pattern>
+        <url-pattern>/consultation-request</url-pattern>
+        <url-pattern>/faqs/topics</url-pattern>
+        <url-pattern>/faqs/comments</url-pattern>
+        <url-pattern>/login</url-pattern>
+    </servlet-mapping>
+
+    <filter>
+        <filter-name>SystemAdminAuthFilter</filter-name>
+        <filter-class>com.hrms.filter.SystemAdminAuthFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>SystemAdminAuthFilter</filter-name>
+        <url-pattern>/systemadmin/*</url-pattern>
+    </filter-mapping>
+
+    <servlet>
         <servlet-name>EmployeeServlet</servlet-name>
         <servlet-class>com.hrms.controller.EmployeeServlet</servlet-class>
     </servlet>
@@ -84,7 +109,43 @@
         <url-pattern>/employees/assign-manager</url-pattern>
     </servlet-mapping>
 
+    <servlet>
+        <servlet-name>SystemAdminLoginController</servlet-name>
+        <servlet-class>com.hrms.controller.auth.SystemAdminLoginController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>SystemAdminLoginController</servlet-name>
+        <url-pattern>/systemadmin/login</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>SystemAdminLogoutController</servlet-name>
+        <servlet-class>com.hrms.controller.auth.SystemAdminLogoutController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>SystemAdminLogoutController</servlet-name>
+        <url-pattern>/systemadmin/logout</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>RegistrationRequestController</servlet-name>
+        <servlet-class>com.hrms.controller.admin.RegistrationRequestController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>RegistrationRequestController</servlet-name>
+        <url-pattern>/systemadmin/dashboard</url-pattern>
+        <url-pattern>/systemadmin/registration-request</url-pattern>
+        <url-pattern>/systemadmin/registration-request-details</url-pattern>
+    </servlet-mapping>
+
     <session-config>
         <session-timeout>30</session-timeout>
+        <cookie-config>
+            <http-only>true</http-only>
+        </cookie-config>
+        <tracking-mode>COOKIE</tracking-mode>
     </session-config>
+
+    <request-character-encoding>UTF-8</request-character-encoding>
+    <response-character-encoding>UTF-8</response-character-encoding>
 </web-app>
