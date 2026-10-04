@@ -1,0 +1,81 @@
+<%@ page pageEncoding="UTF-8" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<c:set var="base" value="${pageContext.request.contextPath}"/>
+<footer class="public-footer">
+    <div class="public-container footer-grid">
+        <div>
+            <a class="brand-mark" href="${base}/homepage">
+                <span class="logo-box">
+                    HC
+                </span>
+                <span class="brand-copy">
+                    <strong>
+                        HRMs
+                        <span>
+                            Cloud
+                        </span>
+                    </strong>
+                    <small>
+                        DOANH NGHIỆP THÔNG MINH
+                    </small>
+                </span>
+            </a>
+            <p>
+                Hệ sinh thái số hóa hồ sơ, chấm công, tính lương và tự phục vụ nhân viên cho doanh nghiệp tăng trưởng tại Việt Nam.
+            </p>
+            <p class="footer-contact">
+                Hotline tư vấn:
+                <strong>
+                    0904 885 833
+                </strong>
+                <br>
+                Email: contact@hrmscloud.vn
+            </p>
+        </div>
+        <div>
+            <h2>
+                Giải pháp &amp; Sản phẩm
+            </h2>
+            <a href="${base}/features-solutions">
+                Hồ sơ nhân sự số
+            </a>
+            <a href="${base}/features-solutions">
+                Chấm công &amp; ca kíp
+            </a>
+            <a href="${base}/features-solutions">
+                Tính lương tự động
+            </a>
+            <a href="${base}/features-solutions">
+                Cổng ESS
+            </a>
+        </div>
+        <div>
+            <h2>
+                Hỗ trợ &amp; Tài nguyên
+            </h2>
+            <a href="${base}/faqs">
+                Trung tâm Hỏi đáp
+            </a>
+            <a href="${base}/consultation-request">
+                Yêu cầu tư vấn
+            </a>
+            <a href="${base}/login">
+                Tenant Portal
+            </a>
+        </div>
+        <div>
+            <h2>
+                Pháp lý &amp; Bảo mật
+            </h2>
+            <p>
+                Thiết kế theo hướng bảo vệ dữ liệu doanh nghiệp và phân tách quyền truy cập theo workspace.
+            </p>
+            <a href="${base}/Pricing">
+                Bảng giá tham chiếu
+            </a>
+        </div>
+    </div>
+    <div class="public-container footer-bottom">
+        © 2026 HRMs Cloud. Tất cả các quyền được bảo lưu.
+    </div>
+</footer>
