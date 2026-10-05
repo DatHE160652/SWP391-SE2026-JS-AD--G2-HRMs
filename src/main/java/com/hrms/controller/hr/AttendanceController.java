@@ -1,8 +1,8 @@
 package com.hrms.controller.hr;
 
-import com.hrms.dao.AttendanceDTO;
-import com.hrms.dao.AttendanceReportDTO;
-import com.hrms.dao.AttendanceSummaryDTO;
+import com.hrms.dao.AttendanceDAO.AttendanceDTO;
+import com.hrms.dao.AttendanceReportDAO;
+import com.hrms.dao.AttendanceSummaryDAO;
 import com.hrms.model.Department;
 import com.hrms.model.Employee;
 import com.hrms.service.AttendanceService;
@@ -199,7 +199,7 @@ public class AttendanceController extends HttpServlet {
         int year = parseOptionalInt(request.getParameter("year"), LocalDate.now().getYear());
 
         List<AttendanceDTO> list = attendanceService.getPersonalAttendance(employeeId, month, year);
-        AttendanceSummaryDTO summary = attendanceService.getPersonalSummary(employeeId, month, year);
+        AttendanceSummaryDAO summary = attendanceService.getPersonalSummary(employeeId, month, year);
 
         String json = "{\"success\":true,\"data\":" + toJsonArray(list) + ",\"summary\":" + toJson(summary) + "}";
         writeJson(response, HttpServletResponse.SC_OK, json);
@@ -255,7 +255,7 @@ public class AttendanceController extends HttpServlet {
         int month = parseOptionalInt(request.getParameter("month"), LocalDate.now().getMonthValue());
         int year = parseOptionalInt(request.getParameter("year"), LocalDate.now().getYear());
 
-        List<AttendanceReportDTO> reports = attendanceService.getAttendanceReport(companyId, departmentId, month, year);
+        List<AttendanceReportDAO> reports = attendanceService.getAttendanceReport(companyId, departmentId, month, year);
         writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":" + toReportJsonArray(reports) + "}");
     }
 
@@ -268,7 +268,7 @@ public class AttendanceController extends HttpServlet {
         int month = parseOptionalInt(request.getParameter("month"), LocalDate.now().getMonthValue());
         int year = parseOptionalInt(request.getParameter("year"), LocalDate.now().getYear());
 
-        List<AttendanceReportDTO> reports = attendanceService.getAttendanceReport(companyId, departmentId, month, year);
+        List<AttendanceReportDAO> reports = attendanceService.getAttendanceReport(companyId, departmentId, month, year);
         String csv = attendanceService.exportCsvReport(reports, month, year);
 
         byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
@@ -346,7 +346,7 @@ public class AttendanceController extends HttpServlet {
                 + "}";
     }
 
-    private String toJson(AttendanceSummaryDTO s) {
+    private String toJson(AttendanceSummaryDAO s) {
         if (s == null) return "{}";
         return "{"
                 + "\"totalWorkingDays\":" + s.getTotalWorkingDays() + ","
@@ -368,11 +368,11 @@ public class AttendanceController extends HttpServlet {
         return sb.append("]").toString();
     }
 
-    private String toReportJsonArray(List<AttendanceReportDTO> list) {
+    private String toReportJsonArray(List<AttendanceReportDAO> list) {
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < list.size(); i++) {
             if (i > 0) sb.append(",");
-            AttendanceReportDTO r = list.get(i);
+            AttendanceReportDAO r = list.get(i);
             sb.append("{")
                     .append("\"employeeId\":").append(r.getEmployeeId()).append(",")
                     .append("\"employeeCode\":").append(quote(r.getEmployeeCode())).append(",")
