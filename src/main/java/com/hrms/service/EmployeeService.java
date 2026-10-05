@@ -45,6 +45,7 @@ public class EmployeeService {
                 User user = new User();
                 user.setCompanyId(companyId);
                 user.setUsername(username);
+                user.setDisplayName(employee.getFullName());
                 user.setEmail(buildGeneratedEmail(username));
                 user.setPasswordHash(DEFAULT_PASSWORD_HASH);
 
@@ -129,14 +130,16 @@ public class EmployeeService {
         }
 
         String insertSql = """
-                INSERT INTO Companies (WorkspaceCode, CompanyName, ContactEmail)
-                VALUES (?, ?, ?)
+                INSERT INTO Companies (WorkspaceCode, CompanyName, CompanyNameNormalized, Region, ContactEmail)
+                VALUES (?, ?, ?, ?, ?)
                 """;
 
         try (PreparedStatement statement = connection.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
             statement.setString(1, "demo");
             statement.setString(2, "Demo Company");
-            statement.setString(3, "admin@hrms.local");
+            statement.setString(3, "demo company");
+            statement.setString(4, "NORTH");
+            statement.setString(5, "admin@hrms.local");
             statement.executeUpdate();
 
             try (ResultSet generatedKeys = statement.getGeneratedKeys()) {

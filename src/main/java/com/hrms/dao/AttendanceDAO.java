@@ -1,8 +1,5 @@
 package com.hrms.dao;
 
-import com.hrms.dto.AttendanceDTO;
-import com.hrms.dto.AttendanceReportDTO;
-import com.hrms.dto.AttendanceSummaryDTO;
 import com.hrms.util.DBConnection;
 
 import java.math.BigDecimal;
@@ -180,13 +177,14 @@ public class AttendanceDAO {
                        ISNULL(a.Status, 'Absent') AS Status, a.Note,
                        ISNULL(a.IsManualAdjusted, 0) AS IsManualAdjusted, a.AdjustedByUserId,
                        e.EmployeeCode, e.FullName, e.DepartmentId, d.DepartmentName,
-                       p.PositionTitle, e.ManagerId, m.FullName AS ManagerName
+                       p.PositionTitle, e.ManagerId, m.FullName AS ManagerName,
+                       e.Status AS EmployeeStatus
                 FROM Employees e
                 LEFT JOIN Attendances a ON e.EmployeeId = a.EmployeeId AND a.AttendanceDate = ?
                 LEFT JOIN Departments d ON e.DepartmentId = d.DepartmentId
                 LEFT JOIN Positions p ON e.PositionId = p.PositionId
                 LEFT JOIN Employees m ON e.ManagerId = m.EmployeeId
-                WHERE e.ManagerId = ? AND e.Status = 'Active'
+                WHERE e.ManagerId = ?
                 ORDER BY e.FullName ASC
                 """;
 
@@ -214,7 +212,8 @@ public class AttendanceDAO {
                        e.EmployeeCode, e.FullName, e.DepartmentId, d.DepartmentName,
                        p.PositionTitle, e.ManagerId, m.FullName AS ManagerName,
                        ISNULL(r.RoleCode, 'EMPLOYEE') AS RoleCode,
-                       ISNULL(r.RoleName, N'Nhân viên') AS RoleName
+                       ISNULL(r.RoleName, N'Nhân viên') AS RoleName,
+                       e.Status AS EmployeeStatus
                 FROM Employees e
                 LEFT JOIN Attendances a ON e.EmployeeId = a.EmployeeId AND a.AttendanceDate = ?
                 LEFT JOIN Departments d ON e.DepartmentId = d.DepartmentId
@@ -222,7 +221,6 @@ public class AttendanceDAO {
                 LEFT JOIN Employees m ON e.ManagerId = m.EmployeeId
                 LEFT JOIN Users u ON e.UserId = u.UserId
                 LEFT JOIN Roles r ON u.RoleId = r.RoleId
-                WHERE e.Status = 'Active'
                 ORDER BY e.EmployeeId ASC
                 """;
 
@@ -322,7 +320,7 @@ public class AttendanceDAO {
                 LEFT JOIN Positions p ON e.PositionId = p.PositionId
                 LEFT JOIN Attendances a ON e.EmployeeId = a.EmployeeId 
                      AND MONTH(a.AttendanceDate) = ? AND YEAR(a.AttendanceDate) = ?
-                WHERE e.Status = 'Active'
+                WHERE 1=1
                 """);
 
         List<Object> params = new ArrayList<>();
@@ -425,6 +423,9 @@ public class AttendanceDAO {
         } catch (SQLException ignored) {}
         try {
             dto.setRoleName(rs.getString("RoleName"));
+        } catch (SQLException ignored) {}
+        try {
+            dto.setEmployeeStatus(rs.getString("EmployeeStatus"));
         } catch (SQLException ignored) {}
         return dto;
     }

@@ -26,15 +26,16 @@ public class UserDAO {
 
     public int createEmployeeAccount(Connection connection, User user) throws SQLException {
         String sql = """
-                INSERT INTO Users (CompanyId, RoleId, Username, Email, PasswordHash, IsActive, IsLocked)
-                VALUES (?, ?, ?, ?, ?, 1, 0)
+                INSERT INTO Users (CompanyId, RoleId, Username, Email, DisplayName, PasswordHash, IsActive, IsLocked)
+                VALUES (?, ?, ?, ?, ?, ?, 1, 0)
                 """;
         try (PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             statement.setInt(1, user.getCompanyId());
             statement.setInt(2, getEmployeeRoleId(connection));
             statement.setString(3, user.getUsername());
             statement.setString(4, user.getEmail());
-            statement.setString(5, user.getPasswordHash());
+            statement.setString(5, user.getDisplayName() != null && !user.getDisplayName().isBlank() ? user.getDisplayName() : user.getUsername());
+            statement.setString(6, user.getPasswordHash());
             if (statement.executeUpdate() == 0) throw new SQLException("Creating employee account failed.");
             try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
                 if (generatedKeys.next()) return generatedKeys.getInt(1);
