@@ -9,7 +9,6 @@ public class User {
     private String roleCode;
     private String username;
     private String email;
-    private String displayName;
     private String passwordHash;
     private Boolean active;
     private Boolean locked;
@@ -18,6 +17,9 @@ public class User {
     private LocalDateTime lastLoginAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String displayName;
+    private byte[] rowVersion;
+
 
     public Integer getUserId() { return userId; }
     public void setUserId(Integer userId) { this.userId = userId; }
@@ -31,8 +33,6 @@ public class User {
     public void setUsername(String username) { this.username = username; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
-    public String getDisplayName() { return displayName; }
-    public void setDisplayName(String displayName) { this.displayName = displayName; }
     public String getPasswordHash() { return passwordHash; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public Boolean getActive() { return active; }
@@ -53,4 +53,8 @@ public class User {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public String getDisplayName() {return displayName;}
+    public void setDisplayName(String displayName) {this.displayName = displayName;}
+    public byte[] getRowVersion() {return rowVersion == null ? null : rowVersion.clone();}
+    public void setRowVersion(byte[] rowVersion) {this.rowVersion = rowVersion == null ? null : rowVersion.clone();}
 }
