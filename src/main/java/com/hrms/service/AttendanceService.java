@@ -1,9 +1,9 @@
 package com.hrms.service;
 
 import com.hrms.dao.AttendanceDAO;
-import com.hrms.dto.AttendanceDTO;
-import com.hrms.dto.AttendanceReportDTO;
-import com.hrms.dto.AttendanceSummaryDTO;
+import com.hrms.dao.AttendanceDTO;
+import com.hrms.dao.AttendanceReportDTO;
+import com.hrms.dao.AttendanceSummaryDTO;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;

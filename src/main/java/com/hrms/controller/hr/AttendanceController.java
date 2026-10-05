@@ -1,8 +1,8 @@
 package com.hrms.controller.hr;
 
-import com.hrms.dto.AttendanceDTO;
-import com.hrms.dto.AttendanceReportDTO;
-import com.hrms.dto.AttendanceSummaryDTO;
+import com.hrms.dao.AttendanceDTO;
+import com.hrms.dao.AttendanceReportDTO;
+import com.hrms.dao.AttendanceSummaryDTO;
 import com.hrms.model.Department;
 import com.hrms.model.Employee;
 import com.hrms.service.AttendanceService;
@@ -341,7 +341,8 @@ public class AttendanceController extends HttpServlet {
                 + "\"note\":" + quote(a.getNote()) + ","
                 + "\"manualAdjusted\":" + (a.getManualAdjusted() != null && a.getManualAdjusted()) + ","
                 + "\"roleCode\":" + quote(a.getRoleCode()) + ","
-                + "\"roleName\":" + quote(a.getRoleName())
+                + "\"roleName\":" + quote(a.getRoleName()) + ","
+                + "\"employeeStatus\":" + quote(a.getEmployeeStatus())
                 + "}";
     }
 

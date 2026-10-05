@@ -36,8 +36,8 @@ GO
 DECLARE @CompanyId INT = (SELECT TOP 1 CompanyId FROM Companies);
 IF @CompanyId IS NULL
 BEGIN
-    INSERT INTO Companies (WorkspaceCode, CompanyName, ContactEmail)
-    VALUES ('technova', N'TechNova JSC', 'contact@technova.vn');
+    INSERT INTO Companies (WorkspaceCode, CompanyName, CompanyNameNormalized, Region, ContactEmail)
+    VALUES ('technova', N'TechNova JSC', N'technova jsc', 'NORTH', 'contact@technova.vn');
     SET @CompanyId = SCOPE_IDENTITY();
 END
 

@@ -289,7 +289,8 @@ function renderAllAttendanceTable() {
             const dept = (m.departmentName || '').toLowerCase();
             const pos = (m.positionTitle || '').toLowerCase();
             return name.includes(currentSearchKeyword) || code.includes(currentSearchKeyword)
-                || dept.includes(currentSearchKeyword) || pos.includes(currentSearchKeyword);
+                || dept.includes(currentSearchKeyword) || pos.includes(currentSearchKeyword)
+                || (m.employeeStatus || '').toLowerCase().includes(currentSearchKeyword);
         });
     }
 
@@ -344,6 +345,10 @@ function renderAllAttendanceTable() {
             actionHtml = `<span class="badge badge-present" style="font-size:11px; padding:4px 8px;">✓ Đã hoàn tất</span>`;
         }
 
+        const empStatusBadge = m.employeeStatus && m.employeeStatus !== 'Active'
+            ? `<span class="badge" style="background:#fee4e2; color:#d92d20; font-size:10px; padding:2px 6px; font-weight:600;">${safe(m.employeeStatus)}</span>`
+            : '';
+
         return `
             <tr>
                 <td class="checkbox-col">
@@ -351,7 +356,10 @@ function renderAllAttendanceTable() {
                 </td>
                 <td><strong>${safe(m.employeeCode)}</strong></td>
                 <td>
-                    <div style="font-weight:700; color:#101828;">${safe(m.fullName)}</div>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span style="font-weight:700; color:#101828;">${safe(m.fullName)}</span>
+                        ${empStatusBadge}
+                    </div>
                     <div style="font-size:12px; color:#667085;">${safe(m.positionTitle || '-')} &bull; ${safe(m.departmentName || '-')}</div>
                 </td>
                 <td>${roleBadge}</td>
