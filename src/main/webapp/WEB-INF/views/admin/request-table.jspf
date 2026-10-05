@@ -1,0 +1,21 @@
+<%@ page pageEncoding="UTF-8" %>
+<div class="table-wrap" tabindex="0" role="region" aria-label="Bảng yêu cầu đăng ký">
+<table class="request-table">
+    <caption class="sr-only">Yêu cầu đăng ký tenant, thời gian hiển thị theo UTC</caption>
+    <thead><tr><th scope="col">Mã yêu cầu</th><th scope="col">Doanh nghiệp SME</th><th scope="col">Đại diện &amp; liên hệ</th><th scope="col">Khu vực</th><th scope="col">Thời gian gửi <span class="cell-block">UTC</span></th><th scope="col">Trạng thái</th><th scope="col">Thao tác</th></tr></thead>
+    <tbody>
+    <c:forEach var="item" items="${registrationRequests}">
+        <tr>
+            <td><a class="request-id" href="${pageContext.request.contextPath}/systemadmin/registration-request-details?id=${item.registrationRequestId}">REQ-<c:out value="${item.registrationRequestId}"/></a></td>
+            <td class="company-cell"><strong><c:out value="${item.companyName}"/></strong></td>
+            <td><strong class="cell-block"><c:out value="${item.fullName}"/></strong><span class="muted cell-block"><c:out value="${item.email}"/></span><span class="muted"><c:out value="${item.phone}"/></span></td>
+            <td><span class="region-label"><c:out value="${item.regionLabel}"/></span></td>
+            <td class="date-cell"><c:out value="${item.createdAtDisplay}"/></td>
+            <td><span class="status status-${item.status}"><span class="status-dot" aria-hidden="true"></span><c:out value="${item.statusLabel}"/></span></td>
+            <td><a class="button button-small button-primary" href="${pageContext.request.contextPath}/systemadmin/registration-request-details?id=${item.registrationRequestId}">Chi tiết<svg class="icon" aria-hidden="true"><use href="${icons}#arrow-right"/></svg><span class="sr-only"> yêu cầu <c:out value="${item.registrationRequestId}"/></span></a></td>
+        </tr>
+    </c:forEach>
+    <c:if test="${empty registrationRequests}"><tr><td colspan="7"><div class="empty-state"><svg class="icon" aria-hidden="true"><use href="${icons}#requests"/></svg><h3>Không có yêu cầu đăng ký</h3><p>Chưa có dữ liệu hoặc không có yêu cầu phù hợp với bộ lọc.</p></div></td></tr></c:if>
+    </tbody>
+</table>
+</div>
