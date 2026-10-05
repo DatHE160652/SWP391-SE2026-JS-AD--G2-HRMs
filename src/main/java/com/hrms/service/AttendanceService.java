@@ -1,9 +1,9 @@
 package com.hrms.service;
 
 import com.hrms.dao.AttendanceDAO;
-import com.hrms.dao.AttendanceDTO;
-import com.hrms.dao.AttendanceReportDTO;
-import com.hrms.dao.AttendanceSummaryDTO;
+import com.hrms.dao.AttendanceDAO.AttendanceDTO;
+import com.hrms.dao.AttendanceReportDAO;
+import com.hrms.dao.AttendanceSummaryDAO;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -107,7 +107,7 @@ public class AttendanceService {
         return attendanceDAO.getPersonalAttendance(employeeId, month, year);
     }
 
-    public AttendanceSummaryDTO getPersonalSummary(int employeeId, int month, int year) throws SQLException {
+    public AttendanceSummaryDAO getPersonalSummary(int employeeId, int month, int year) throws SQLException {
         return attendanceDAO.getPersonalSummary(employeeId, month, year);
     }
 
@@ -142,21 +142,21 @@ public class AttendanceService {
     /**
      * UC36: Generate attendance reports by department / company
      */
-    public List<AttendanceReportDTO> getAttendanceReport(Integer companyId, Integer departmentId, int month, int year) throws SQLException {
+    public List<AttendanceReportDAO> getAttendanceReport(Integer companyId, Integer departmentId, int month, int year) throws SQLException {
         return attendanceDAO.getAttendanceReport(companyId, departmentId, month, year);
     }
 
     /**
      * UC36: Export attendance report to CSV formatted string with UTF-8 BOM
      */
-    public String exportCsvReport(List<AttendanceReportDTO> reports, int month, int year) {
+    public String exportCsvReport(List<AttendanceReportDAO> reports, int month, int year) {
         StringBuilder csv = new StringBuilder();
         // UTF-8 BOM for Excel to open Vietnamese characters properly
         csv.append("\uFEFF");
         csv.append("BÁO CÁO TỔNG HỢP CHẤM CÔNG THÁNG ").append(month).append("/").append(year).append("\n\n");
         csv.append("Mã Nhân Viên,Họ và Tên,Phòng Ban,Chức Danh,Số Ngày Đi Làm,Tổng Giờ Làm,Đúng Giờ,Đi Muộn,Về Sớm,Vắng Mặt,Nghỉ Phép,Tỉ Lệ Đúng Giờ (%)\n");
 
-        for (AttendanceReportDTO r : reports) {
+        for (AttendanceReportDAO r : reports) {
             csv.append("\"").append(escapeCsv(r.getEmployeeCode())).append("\",");
             csv.append("\"").append(escapeCsv(r.getFullName())).append("\",");
             csv.append("\"").append(escapeCsv(r.getDepartmentName())).append("\",");
