@@ -126,6 +126,10 @@
         <servlet-name>AttendanceController</servlet-name>
         <url-pattern>/attendance/personal</url-pattern>
         <url-pattern>/attendance/team</url-pattern>
+        <url-pattern>/attendance/manager-attendance</url-pattern>
+        <url-pattern>/attendance/employee-attendance</url-pattern>
+        <url-pattern>/attendance/company-attendance</url-pattern>
+        <url-pattern>/attendance/attendance-report</url-pattern>
         <url-pattern>/attendance/all</url-pattern>
         <url-pattern>/attendance/check-in</url-pattern>
         <url-pattern>/attendance/check-out</url-pattern>
@@ -134,6 +138,12 @@
         <url-pattern>/attendance/report</url-pattern>
         <url-pattern>/attendance/export-report</url-pattern>
         <url-pattern>/attendance/meta</url-pattern>
+        <!-- Compatibility / Legacy manager routes -->
+        <url-pattern>/manager/team-attendance</url-pattern>
+        <url-pattern>/manager/employee-attendance</url-pattern>
+        <url-pattern>/manager/employee-attendance.html</url-pattern>
+        <url-pattern>/manager/company-attendance.html</url-pattern>
+        <url-pattern>/manager/attendance-report.html</url-pattern>
     </servlet-mapping>
 
     <servlet>
