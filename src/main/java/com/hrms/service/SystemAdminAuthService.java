@@ -1,6 +1,6 @@
 package com.hrms.service;
 
-import com.hrms.api.SystemAdminPrincipal;
+import com.hrms.service.security.SystemAdminPrincipal;
 import com.hrms.dao.UserDAO;
 import com.hrms.model.User;
 

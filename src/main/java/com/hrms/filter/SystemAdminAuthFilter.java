@@ -1,7 +1,7 @@
 package com.hrms.filter;
 
 import com.hrms.api.ApiRoutes;
-import com.hrms.api.SystemAdminPrincipal;
+import com.hrms.service.security.SystemAdminPrincipal;
 import com.hrms.service.SystemAdminAuthService;
 import com.hrms.util.SecuritySupport;
 

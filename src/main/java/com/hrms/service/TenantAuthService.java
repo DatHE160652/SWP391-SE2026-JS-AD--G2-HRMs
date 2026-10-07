@@ -1,6 +1,6 @@
 package com.hrms.service;
 
-import com.hrms.api.TenantPrincipal;
+import com.hrms.service.security.TenantPrincipal;
 import com.hrms.dao.UserDAO;
 import com.hrms.model.TenantAccount;
 import com.hrms.service.BCryptPasswordVerifier;
