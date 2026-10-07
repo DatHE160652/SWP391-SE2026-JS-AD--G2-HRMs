@@ -1,7 +1,7 @@
 package com.hrms.controller.publicportal;
 
 import com.hrms.api.ApiRoutes;
-import com.hrms.api.TenantPrincipal;
+import com.hrms.service.security.TenantPrincipal;
 import com.hrms.model.publicportal.ConsultationSubmission;
 import com.hrms.model.publicportal.FaqTopic;
 import com.hrms.service.TenantAuthService;

@@ -1,8 +1,8 @@
 package com.hrms.util;
 
 import com.hrms.api.ApiRoutes;
-import com.hrms.api.SystemAdminPrincipal;
-import com.hrms.api.TenantPrincipal;
+import com.hrms.service.security.SystemAdminPrincipal;
+import com.hrms.service.security.TenantPrincipal;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;

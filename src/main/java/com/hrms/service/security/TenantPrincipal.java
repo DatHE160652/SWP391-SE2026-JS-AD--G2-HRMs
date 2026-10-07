@@ -1,4 +1,4 @@
-package com.hrms.api;
+package com.hrms.service.security;
 
 /** Session principal for an authenticated tenant workspace user. */
 public final class TenantPrincipal {
