@@ -1,5 +1,6 @@
 package com.hrms.controller.hr;
 
+import com.hrms.api.ApiRoutes;
 import com.hrms.dao.AttendanceDAO.AttendanceDTO;
 import com.hrms.dao.AttendanceReportDAO;
 import com.hrms.dao.AttendanceSummaryDAO;
@@ -34,16 +35,25 @@ import java.util.List;
  * - UC36: Generate Attendance Reports & CSV Export (HR / Manager)
  */
 @WebServlet(name = "AttendanceController", urlPatterns = {
-        "/attendance/personal",
-        "/attendance/team",
-        "/attendance/all",
-        "/attendance/check-in",
-        "/attendance/check-out",
-        "/attendance/batch-complete",
-        "/attendance/company",
-        "/attendance/report",
-        "/attendance/export-report",
-        "/attendance/meta"
+        ApiRoutes.ATTENDANCE_PERSONAL,
+        ApiRoutes.ATTENDANCE_TEAM,
+        ApiRoutes.ATTENDANCE_PAGE_MANAGER,
+        ApiRoutes.ATTENDANCE_PAGE_EMPLOYEE,
+        ApiRoutes.ATTENDANCE_PAGE_COMPANY,
+        ApiRoutes.ATTENDANCE_PAGE_REPORT,
+        ApiRoutes.ATTENDANCE_ALL,
+        ApiRoutes.ATTENDANCE_CHECK_IN,
+        ApiRoutes.ATTENDANCE_CHECK_OUT,
+        ApiRoutes.ATTENDANCE_BATCH_COMPLETE,
+        ApiRoutes.ATTENDANCE_COMPANY,
+        ApiRoutes.ATTENDANCE_REPORT,
+        ApiRoutes.ATTENDANCE_EXPORT_REPORT,
+        ApiRoutes.ATTENDANCE_META,
+        ApiRoutes.MANAGER_TEAM_ATTENDANCE,
+        ApiRoutes.MANAGER_EMPLOYEE_ATTENDANCE,
+        ApiRoutes.MANAGER_EMPLOYEE_ATTENDANCE_HTML,
+        ApiRoutes.MANAGER_COMPANY_ATTENDANCE_HTML,
+        ApiRoutes.MANAGER_ATTENDANCE_REPORT_HTML
 })
 public class AttendanceController extends HttpServlet {
     private final AttendanceService attendanceService = new AttendanceService();
@@ -57,13 +67,41 @@ public class AttendanceController extends HttpServlet {
 
         try {
             switch (path) {
-                case "/attendance/personal" -> handlePersonalAttendance(request, response);
-                case "/attendance/team" -> handleTeamAttendance(request, response);
-                case "/attendance/all" -> handleAllAttendance(request, response);
-                case "/attendance/company" -> handleCompanyAttendance(request, response);
-                case "/attendance/report" -> handleAttendanceReport(request, response);
-                case "/attendance/export-report" -> handleExportReport(request, response);
-                case "/attendance/meta" -> handleMeta(request, response);
+                case ApiRoutes.ATTENDANCE_PERSONAL -> handlePersonalAttendance(request, response);
+                case ApiRoutes.ATTENDANCE_TEAM -> handleTeamAttendance(request, response);
+                case ApiRoutes.MANAGER_TEAM_ATTENDANCE -> {
+                    String accept = request.getHeader("Accept");
+                    if (accept != null && accept.contains("application/json") && request.getParameter("managerId") != null) {
+                        handleTeamAttendance(request, response);
+                    } else {
+                        response.sendRedirect(request.getContextPath() + ApiRoutes.ATTENDANCE_PAGE_MANAGER);
+                    }
+                }
+                case ApiRoutes.ATTENDANCE_PAGE_MANAGER -> {
+                    String accept = request.getHeader("Accept");
+                    if (accept != null && accept.contains("application/json") && request.getParameter("managerId") != null) {
+                        handleTeamAttendance(request, response);
+                    } else {
+                        request.getRequestDispatcher(ApiRoutes.VIEW_ATTENDANCE_MANAGER).forward(request, response);
+                    }
+                }
+                case ApiRoutes.ATTENDANCE_PAGE_EMPLOYEE ->
+                        request.getRequestDispatcher(ApiRoutes.VIEW_ATTENDANCE_EMPLOYEE).forward(request, response);
+                case ApiRoutes.ATTENDANCE_PAGE_COMPANY ->
+                        request.getRequestDispatcher(ApiRoutes.VIEW_ATTENDANCE_COMPANY).forward(request, response);
+                case ApiRoutes.ATTENDANCE_PAGE_REPORT ->
+                        request.getRequestDispatcher(ApiRoutes.VIEW_ATTENDANCE_REPORT).forward(request, response);
+                case ApiRoutes.MANAGER_EMPLOYEE_ATTENDANCE, ApiRoutes.MANAGER_EMPLOYEE_ATTENDANCE_HTML ->
+                        response.sendRedirect(request.getContextPath() + ApiRoutes.ATTENDANCE_PAGE_EMPLOYEE);
+                case ApiRoutes.MANAGER_COMPANY_ATTENDANCE_HTML ->
+                        response.sendRedirect(request.getContextPath() + ApiRoutes.ATTENDANCE_PAGE_COMPANY);
+                case ApiRoutes.MANAGER_ATTENDANCE_REPORT_HTML ->
+                        response.sendRedirect(request.getContextPath() + ApiRoutes.ATTENDANCE_PAGE_REPORT);
+                case ApiRoutes.ATTENDANCE_ALL -> handleAllAttendance(request, response);
+                case ApiRoutes.ATTENDANCE_COMPANY -> handleCompanyAttendance(request, response);
+                case ApiRoutes.ATTENDANCE_REPORT -> handleAttendanceReport(request, response);
+                case ApiRoutes.ATTENDANCE_EXPORT_REPORT -> handleExportReport(request, response);
+                case ApiRoutes.ATTENDANCE_META -> handleMeta(request, response);
                 default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Endpoint not found."));
             }
         } catch (SQLException e) {
@@ -82,9 +120,9 @@ public class AttendanceController extends HttpServlet {
 
         try {
             switch (path) {
-                case "/attendance/check-in" -> handleCheckIn(request, response);
-                case "/attendance/check-out" -> handleCheckOut(request, response);
-                case "/attendance/batch-complete" -> handleBatchComplete(request, response);
+                case ApiRoutes.ATTENDANCE_CHECK_IN -> handleCheckIn(request, response);
+                case ApiRoutes.ATTENDANCE_CHECK_OUT -> handleCheckOut(request, response);
+                case ApiRoutes.ATTENDANCE_BATCH_COMPLETE -> handleBatchComplete(request, response);
                 default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Endpoint not found."));
             }
         } catch (SQLException e) {
