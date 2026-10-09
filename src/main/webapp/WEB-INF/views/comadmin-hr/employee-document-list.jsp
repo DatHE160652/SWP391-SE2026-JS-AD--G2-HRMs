@@ -1,3 +1,4 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -11,16 +12,11 @@
     <aside class="sidebar">
         <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
         <div class="nav-label">Phân hệ quản trị</div>
-        <a class="nav-link active" href="../employee/employee-list.html">Quản lý Nhân sự</a>
-        <div class="plan-card"><strong>Gói Pro SME</strong><br>Employee Documents</div>
+        <a class="nav-link active" href="../employee/employee-list">Quản lý Nhân sự</a>
+        <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
     </aside>
 
     <main class="content">
-        <div class="topbar">
-            <div class="search-box">Employee Documents</div>
-            <div class="today">UC16 / UC27</div>
-            <div class="user">HR Director / Admin</div>
-        </div>
 
         <div class="page-header">
             <div>

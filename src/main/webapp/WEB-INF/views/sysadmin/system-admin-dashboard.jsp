@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/system-admin.css">
 </head>
 <body class="admin-page">
-<%@ include file="/WEB-INF/views/admin/admin-shell.jspf" %>
+<%@ include file="/WEB-INF/views/sysadmin/admin-shell.jspf" %>
 <main class="admin-main" id="main-content">
     <div class="page-heading">
         <h1>System Admin Overview</h1>
@@ -23,7 +23,7 @@
     </section>
     <section class="panel queue-panel" aria-labelledby="queue-title">
         <div class="panel-heading"><div><h2 id="queue-title">Yêu cầu đăng ký cần xử lý</h2><p class="muted">5 yêu cầu mới nhất đang chờ xử lý</p></div><a class="button button-secondary button-small" href="${pageContext.request.contextPath}/systemadmin/registration-request?status=PENDING">Xem tất cả <c:out value="${stats.pendingCount}"/> yêu cầu<svg class="icon" aria-hidden="true"><use href="${icons}#arrow-right"/></svg></a></div>
-        <%@ include file="/WEB-INF/views/admin/request-table.jspf" %>
+        <%@ include file="/WEB-INF/views/sysadmin/request-table.jspf" %>
         <div class="table-footer"><span>Hiển thị <strong><c:out value="${registrationRequests.size()}"/></strong> trên <strong><c:out value="${stats.pendingCount}"/></strong> yêu cầu cần xử lý</span></div>
     </section>
 </main>

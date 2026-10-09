@@ -1,3 +1,4 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -11,25 +12,18 @@
     <aside class="sidebar">
         <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
         <div class="nav-label">Phân hệ quản trị</div>
-        <a class="nav-link active" href="employee-list.html">Quản lý Nhân sự</a>
-        <a class="nav-link" href="../department/department-list.html">Quản lý Phòng ban</a>
-        <a class="nav-link" href="../position/position-list.html">Quản lý Chức danh</a>
-        <div class="plan-card"><strong>Gói Pro SME</strong><br>Iteration 1: Employee CRUD</div>
+        <a class="nav-link active" href="employee-list">Quản lý Nhân sự</a>
+        <a class="nav-link" href="../department/department-list">Quản lý Phòng ban</a>
+        <a class="nav-link" href="../position/position-list">Quản lý Chức danh</a>
+        <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
     </aside>
 
     <main class="content">
-        <div class="topbar">
-            <div class="search-box">Employee Form</div>
-            <div class="today">UC04 / UC05</div>
-            <div class="user">HR Director / Admin</div>
-        </div>
-
         <div class="page-header">
             <div>
                 <h1 id="formTitle" class="page-title">Add Employee</h1>
-                <p class="page-subtitle">UC04 Add Employee / UC05 Update Employee Profile</p>
             </div>
-            <a class="button secondary" href="employee-list.html">Cancel</a>
+            <a class="button secondary" href="employee-list">Cancel</a>
         </div>
 
         <div id="message" class="message"></div>
@@ -38,20 +32,16 @@
             <input type="hidden" name="employeeId">
             <div class="form-grid">
                 <div>
-                    <label>Employee Code</label>
-                    <input name="employeeCode" required>
-                </div>
-                <div>
                     <label>Full Name</label>
                     <input name="fullName" required>
                 </div>
                 <div>
                     <label>Phone</label>
-                    <input name="phone">
+                    <input name="phone" required>
                 </div>
                 <div>
                     <label>Gender</label>
-                    <select name="gender">
+                    <select name="gender" required>
                         <option value="">Select gender</option>
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
@@ -60,7 +50,7 @@
                 </div>
                 <div>
                     <label>Date Of Birth</label>
-                    <input name="dateOfBirth" type="date">
+                    <input name="dateOfBirth" type="date" required>
                 </div>
                 <div>
                     <label>Start Date</label>
@@ -72,7 +62,7 @@
                 </div>
                 <div>
                     <label>Status</label>
-                    <select name="status">
+                    <select name="status" required>
                         <option value="Active">Active</option>
                         <option value="Inactive">Inactive</option>
                     </select>
@@ -80,7 +70,7 @@
             </div>
             <div class="form-actions">
                 <button type="submit">Save</button>
-                <a class="button secondary" href="employee-list.html">Cancel</a>
+                <a class="button secondary" href="employee-list">Cancel</a>
             </div>
         </form>
     </main>

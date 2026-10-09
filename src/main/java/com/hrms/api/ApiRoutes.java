@@ -18,6 +18,7 @@ public final class ApiRoutes {
     public static final String REGISTRATION_REQUEST_DETAILS = SYSTEM_ADMIN_PREFIX + "/registration-request-details";
     public static final String TENANT_WORKSPACE_TEMPLATE = "https://{companydomain}.hrms.com/";
     public static final String TENANT_LOGIN = "/login";
+    public static final String TENANT_LOGOUT = "/logout";
     public static final String CANONICAL_ORIGIN = "https://hrms.com";
 
     // --- Attendance Flow (BF-03) ---
@@ -38,10 +39,12 @@ public final class ApiRoutes {
     public static final String ATTENDANCE_PAGE_EMPLOYEE = ATTENDANCE_PREFIX + "/employee-attendance";
     public static final String ATTENDANCE_PAGE_COMPANY = ATTENDANCE_PREFIX + "/company-attendance";
     public static final String ATTENDANCE_PAGE_REPORT = ATTENDANCE_PREFIX + "/attendance-report";
-    public static final String VIEW_ATTENDANCE_MANAGER = ATTENDANCE_PREFIX + "/manager-attendance.html";
-    public static final String VIEW_ATTENDANCE_EMPLOYEE = ATTENDANCE_PREFIX + "/employee-attendance.html";
-    public static final String VIEW_ATTENDANCE_COMPANY = ATTENDANCE_PREFIX + "/company-attendance.html";
-    public static final String VIEW_ATTENDANCE_REPORT = ATTENDANCE_PREFIX + "/attendance-report.html";
+    public static final String ATTENDANCE_PAGE_MANAGER_PERSONAL = ATTENDANCE_PREFIX + "/manager-personal-attendance";
+    public static final String VIEW_ATTENDANCE_MANAGER = "/WEB-INF/views/manager/manager-attendance.jsp";
+    public static final String VIEW_ATTENDANCE_EMPLOYEE = "/WEB-INF/views/employee/employee-attendance.jsp";
+    public static final String VIEW_ATTENDANCE_COMPANY = "/WEB-INF/views/comadmin-hr/company-attendance.jsp";
+    public static final String VIEW_ATTENDANCE_MANAGER_PERSONAL = "/WEB-INF/views/manager/manager-personal-attendance.jsp";
+    public static final String VIEW_ATTENDANCE_REPORT = "/WEB-INF/views/manager/attendance-report.jsp";
 
     // Compatibility / Legacy Manager Routes (Redirect to canonical /attendance routes)
     public static final String MANAGER_TEAM_ATTENDANCE = "/manager/team-attendance";

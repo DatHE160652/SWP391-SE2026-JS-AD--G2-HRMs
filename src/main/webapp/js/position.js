@@ -40,6 +40,7 @@ async function loadPositions() {
 async function setupPositionForm() {
     const positionId = new URLSearchParams(location.search).get('id');
     const form = document.querySelector('#positionForm');
+    await loadDepartmentOptions(form);
 
     if (positionId) {
         document.querySelector('#positionFormTitle').textContent = 'Update Position';
@@ -93,17 +94,18 @@ async function deletePosition(positionId) {
 function renderPositionRows(positions) {
     const tbody = document.querySelector('#positionRows');
     if (!positions.length) {
-        tbody.innerHTML = '<tr><td colspan="4">No positions found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5">No positions found.</td></tr>';
         return;
     }
 
     tbody.innerHTML = positions.map(position => `
         <tr>
             <td><strong>${safePositionValue(position.positionTitle)}</strong></td>
+            <td>${safePositionValue(position.departmentName)}</td>
             <td>${safePositionValue(position.description)}</td>
             <td>${safePositionValue(position.createdAt)}</td>
             <td class="actions">
-                <a href="position-form.html?id=${position.positionId}">Edit</a>
+                <a href="position-form?id=${position.positionId}">Edit</a>
                 <button class="danger" onclick="deletePosition(${position.positionId})">Delete</button>
             </td>
         </tr>
@@ -120,6 +122,14 @@ function fillPositionForm(form, position) {
 
 function readPositionForm(form) {
     return Object.fromEntries(new FormData(form).entries());
+}
+
+async function loadDepartmentOptions(form) {
+    const payload = await PositionApi.get('/departments');
+    const departments = payload.data || [];
+    form.departmentId.innerHTML = '<option value="">Select Department</option>' + departments.map(department => `
+        <option value="${department.departmentId}">${safePositionValue(department.departmentName)}</option>
+    `).join('');
 }
 
 function positionApiUrl(url) {

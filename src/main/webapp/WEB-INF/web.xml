@@ -25,6 +25,28 @@
         <url-pattern>/*</url-pattern>
     </filter-mapping>
 
+    <filter>
+        <filter-name>TenantAuthorizationFilter</filter-name>
+        <filter-class>com.hrms.filter.TenantAuthorizationFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>TenantAuthorizationFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+    <mime-mapping>
+        <extension>html</extension>
+        <mime-type>text/html;charset=UTF-8</mime-type>
+    </mime-mapping>
+    <mime-mapping>
+        <extension>css</extension>
+        <mime-type>text/css;charset=UTF-8</mime-type>
+    </mime-mapping>
+    <mime-mapping>
+        <extension>js</extension>
+        <mime-type>application/javascript;charset=UTF-8</mime-type>
+    </mime-mapping>
+
     <servlet>
         <servlet-name>PublicPortalController</servlet-name>
         <servlet-class>com.hrms.controller.publicportal.PublicPortalController</servlet-class>
@@ -39,6 +61,8 @@
         <url-pattern>/faqs/topics</url-pattern>
         <url-pattern>/faqs/comments</url-pattern>
         <url-pattern>/login</url-pattern>
+        <url-pattern>/logout</url-pattern>
+        <url-pattern>/change-password</url-pattern>
     </servlet-mapping>
 
     <filter>
@@ -57,7 +81,11 @@
     <servlet-mapping>
         <servlet-name>EmployeeServlet</servlet-name>
         <url-pattern>/employees</url-pattern>
+        <url-pattern>/employees/me</url-pattern>
+        <url-pattern>/employees/me/history</url-pattern>
+        <url-pattern>/employees/me/update-profile</url-pattern>
         <url-pattern>/employees/detail</url-pattern>
+        <url-pattern>/employees/history</url-pattern>
         <url-pattern>/employees/create</url-pattern>
         <url-pattern>/employees/update</url-pattern>
         <url-pattern>/employees/delete</url-pattern>
@@ -74,10 +102,42 @@
     </servlet>
     <servlet-mapping>
         <servlet-name>DocumentServlet</servlet-name>
+        <url-pattern>/documents/me</url-pattern>
+        <url-pattern>/documents/me/upload</url-pattern>
+        <url-pattern>/documents/me/download</url-pattern>
+        <url-pattern>/documents/me/delete</url-pattern>
         <url-pattern>/documents</url-pattern>
         <url-pattern>/documents/upload</url-pattern>
         <url-pattern>/documents/download</url-pattern>
         <url-pattern>/documents/delete</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>TenantPageController</servlet-name>
+        <servlet-class>com.hrms.controller.TenantPageController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>TenantPageController</servlet-name>
+        <url-pattern>/employee/my-profile</url-pattern>
+        <url-pattern>/employee/my-profile.html</url-pattern>
+        <url-pattern>/employee/employee-list</url-pattern>
+        <url-pattern>/employee/employee-list.html</url-pattern>
+        <url-pattern>/employee/employee-form</url-pattern>
+        <url-pattern>/employee/employee-form.html</url-pattern>
+        <url-pattern>/employee/employee-detail</url-pattern>
+        <url-pattern>/employee/employee-detail.html</url-pattern>
+        <url-pattern>/department/department-list</url-pattern>
+        <url-pattern>/department/department-list.html</url-pattern>
+        <url-pattern>/department/department-form</url-pattern>
+        <url-pattern>/department/department-form.html</url-pattern>
+        <url-pattern>/position/position-list</url-pattern>
+        <url-pattern>/position/position-list.html</url-pattern>
+        <url-pattern>/position/position-form</url-pattern>
+        <url-pattern>/position/position-form.html</url-pattern>
+        <url-pattern>/document/employee-document-list</url-pattern>
+        <url-pattern>/document/employee-document-list.html</url-pattern>
+        <url-pattern>/document/document-upload</url-pattern>
+        <url-pattern>/document/document-upload.html</url-pattern>
     </servlet-mapping>
 
     <servlet>
@@ -116,6 +176,8 @@
         <url-pattern>/employees/assign-department</url-pattern>
         <url-pattern>/employees/assign-position</url-pattern>
         <url-pattern>/employees/assign-manager</url-pattern>
+        <url-pattern>/departments/members</url-pattern>
+        <url-pattern>/departments/assign-members</url-pattern>
     </servlet-mapping>
 
     <servlet>
@@ -129,7 +191,13 @@
         <url-pattern>/attendance/manager-attendance</url-pattern>
         <url-pattern>/attendance/employee-attendance</url-pattern>
         <url-pattern>/attendance/company-attendance</url-pattern>
+        <url-pattern>/attendance/manager-personal-attendance</url-pattern>
         <url-pattern>/attendance/attendance-report</url-pattern>
+        <url-pattern>/attendance/manager-attendance.html</url-pattern>
+        <url-pattern>/attendance/employee-attendance.html</url-pattern>
+        <url-pattern>/attendance/company-attendance.html</url-pattern>
+        <url-pattern>/attendance/manager-personal-attendance.html</url-pattern>
+        <url-pattern>/attendance/attendance-report.html</url-pattern>
         <url-pattern>/attendance/all</url-pattern>
         <url-pattern>/attendance/check-in</url-pattern>
         <url-pattern>/attendance/check-out</url-pattern>

@@ -1,3 +1,4 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -11,25 +12,19 @@
     <aside class="sidebar">
         <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
         <div class="nav-label">Phân hệ quản trị</div>
-        <a class="nav-link" href="../employee/employee-list.html">Quản lý Nhân sự</a>
-        <a class="nav-link" href="../department/department-list.html">Quản lý Phòng ban</a>
-        <a class="nav-link active" href="position-list.html">Quản lý Chức danh</a>
-        <div class="plan-card"><strong>Gói Pro SME</strong><br>UC08 Manage Positions</div>
+        <a class="nav-link" href="../employee/employee-list">Quản lý Nhân sự</a>
+        <a class="nav-link" href="../department/department-list">Quản lý Phòng ban</a>
+        <a class="nav-link active" href="position-list">Quản lý Chức danh</a>
+        <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
     </aside>
 
     <main class="content">
-        <div class="topbar">
-            <div class="search-box">Position Form</div>
-            <div class="today">UC08</div>
-            <div class="user">HR Director / Admin</div>
-        </div>
-
         <div class="page-header">
             <div>
                 <h1 id="positionFormTitle" class="page-title">Add Position</h1>
                 <p class="page-subtitle">Create or update position information.</p>
             </div>
-            <a class="button secondary" href="position-list.html">Cancel</a>
+            <a class="button secondary" href="position-list">Cancel</a>
         </div>
 
         <div id="message" class="message"></div>
@@ -37,6 +32,10 @@
         <form id="positionForm" class="panel">
             <input type="hidden" name="positionId">
             <div class="form-grid">
+                <div>
+                    <label>Department</label>
+                    <select name="departmentId" required></select>
+                </div>
                 <div>
                     <label>Position Title</label>
                     <input name="positionTitle" required>
@@ -48,7 +47,7 @@
             </div>
             <div class="form-actions">
                 <button type="submit">Save</button>
-                <a class="button secondary" href="position-list.html">Cancel</a>
+                <a class="button secondary" href="position-list">Cancel</a>
             </div>
         </form>
     </main>

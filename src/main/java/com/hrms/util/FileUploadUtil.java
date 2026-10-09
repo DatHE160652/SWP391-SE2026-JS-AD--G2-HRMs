@@ -24,11 +24,11 @@ public final class FileUploadUtil {
         String extension = getExtension(originalFileName);
         String baseName = originalFileName.substring(0, originalFileName.length() - extension.length());
         String savedFileName = baseName + "-" + System.currentTimeMillis() + extension;
-        String relativeDirectory = "/uploads/employees/" + employeeId;
+        String relativeDirectory = "/images/employees/" + employeeId;
         String absoluteDirectory = servletContext.getRealPath(relativeDirectory);
 
         if (absoluteDirectory == null) {
-            absoluteDirectory = Paths.get(System.getProperty("user.dir"), "uploads", "employees",
+            absoluteDirectory = Paths.get(System.getProperty("user.dir"), "src", "main", "webapp", "images", "employees",
                     String.valueOf(employeeId)).toString();
             relativeDirectory = absoluteDirectory;
         }
@@ -52,7 +52,18 @@ public final class FileUploadUtil {
         if (filePath.startsWith("/")) {
             String absolutePath = servletContext.getRealPath(filePath);
             if (absolutePath != null) {
-                return new File(absolutePath);
+                File storedFile = new File(absolutePath);
+                if (storedFile.exists()) {
+                    return storedFile;
+                }
+            }
+
+            if (filePath.startsWith("/uploads/employees/")) {
+                String migratedPath = filePath.replaceFirst("^/uploads/", "/images/");
+                String migratedAbsolutePath = servletContext.getRealPath(migratedPath);
+                if (migratedAbsolutePath != null) {
+                    return new File(migratedAbsolutePath);
+                }
             }
         }
 

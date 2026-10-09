@@ -1,3 +1,4 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -11,25 +12,19 @@
     <aside class="sidebar">
         <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
         <div class="nav-label">Phân hệ quản trị</div>
-        <a class="nav-link" href="../employee/employee-list.html">Quản lý Nhân sự</a>
-        <a class="nav-link active" href="department-list.html">Quản lý Phòng ban</a>
-        <a class="nav-link" href="../position/position-list.html">Quản lý Chức danh</a>
-        <div class="plan-card"><strong>Gói Pro SME</strong><br>UC07 Manage Departments</div>
+        <a class="nav-link" href="../employee/employee-list">Quản lý Nhân sự</a>
+        <a class="nav-link active" href="department-list">Quản lý Phòng ban</a>
+        <a class="nav-link" href="../position/position-list">Quản lý Chức danh</a>
+        <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
     </aside>
 
     <main class="content">
-        <div class="topbar">
-            <div class="search-box">Department Management CRUD</div>
-            <div class="today">UC07</div>
-            <div class="user">HR Director / Admin</div>
-        </div>
 
         <div class="page-header">
             <div>
                 <h1 class="page-title">Quản lý Phòng ban</h1>
-                <p class="page-subtitle">UC07 - Manage Departments</p>
             </div>
-            <a class="button" href="department-form.html">+ Add Department</a>
+            <a class="button" href="department-form">+ Add Department</a>
         </div>
 
         <section class="summary-grid">

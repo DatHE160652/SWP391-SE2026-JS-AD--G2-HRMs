@@ -17,7 +17,7 @@ public class DocumentDAO {
                 SELECT DocumentId, EmployeeId, DocumentName, DocumentType, FileName, FilePath,
                        UploadedBy, UploadedDate, Status
                 FROM EmployeeDocuments
-                WHERE EmployeeId = ? AND Status = 'Active'
+                WHERE EmployeeId = ? AND (Status = 'Active' OR Status IS NULL)
                 ORDER BY UploadedDate DESC
                 """;
 
@@ -56,9 +56,9 @@ public class DocumentDAO {
         ensureTableExists();
         String sql = """
                 INSERT INTO EmployeeDocuments (
-                    EmployeeId, DocumentName, DocumentType, FileName, FilePath, UploadedBy
+                    EmployeeId, DocumentName, DocumentType, FileName, FilePath, UploadedBy, Status
                 )
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, 'Active')
                 """;
 
         try (Connection connection = DBConnection.getConnection();

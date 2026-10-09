@@ -15,20 +15,24 @@ public class PositionService {
     private final PositionDAO positionDAO = new PositionDAO();
 
     public List<Position> getPositions() throws SQLException {
+        positionDAO.ensureDepartmentColumn();
         return positionDAO.getAllPositions(getOrCreateDefaultCompanyId());
     }
 
     public Position getPositionDetail(int id) throws SQLException {
+        positionDAO.ensureDepartmentColumn();
         return positionDAO.getPositionById(id);
     }
 
     public boolean createPosition(Position position) throws SQLException {
+        positionDAO.ensureDepartmentColumn();
         position.setCompanyId(getOrCreateDefaultCompanyId());
         validate(position, null);
         return positionDAO.insertPosition(position);
     }
 
     public boolean updatePosition(Position position) throws SQLException {
+        positionDAO.ensureDepartmentColumn();
         Position existing = positionDAO.getPositionById(position.getPositionId());
         if (existing == null) {
             throw new IllegalArgumentException("Position not found.");
@@ -43,11 +47,18 @@ public class PositionService {
     }
 
     private void validate(Position position, Integer excludePositionId) throws SQLException {
+        if (position.getDepartmentId() == null || position.getDepartmentId() <= 0) {
+            throw new IllegalArgumentException("Department is required.");
+        }
+        if (!positionDAO.departmentExists(position.getCompanyId(), position.getDepartmentId())) {
+            throw new IllegalArgumentException("Department does not exist.");
+        }
         if (position.getPositionTitle() == null || position.getPositionTitle().isBlank()) {
             throw new IllegalArgumentException("Position title is required.");
         }
-        if (positionDAO.positionTitleExists(position.getCompanyId(), position.getPositionTitle(), excludePositionId)) {
-            throw new IllegalArgumentException("Position title already exists.");
+        if (positionDAO.positionTitleExists(position.getCompanyId(), position.getDepartmentId(),
+                position.getPositionTitle(), excludePositionId)) {
+            throw new IllegalArgumentException("Position title already exists in this department.");
         }
     }
 

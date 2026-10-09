@@ -58,7 +58,7 @@ public class RegistrationRequestController extends HttpServlet {
         try {
             setNavigation(request, "dashboard");
             request.setAttribute("registrationRequests", registrationRequestService.getRecentPending());
-            request.getRequestDispatcher("/WEB-INF/views/admin/system-admin-dashboard.jsp")
+            request.getRequestDispatcher("/WEB-INF/views/sysadmin/system-admin-dashboard.jsp")
                     .forward(request, response);
         } catch (SQLException exception) {
             showError(request, response, "Không thể tải tổng quan quản trị.");
@@ -76,7 +76,7 @@ public class RegistrationRequestController extends HttpServlet {
             request.setAttribute("filter", filter);
             request.setAttribute("requestPage", page);
             request.setAttribute("registrationRequests", page.getItems());
-            request.getRequestDispatcher("/WEB-INF/views/admin/registration-request-list.jsp")
+            request.getRequestDispatcher("/WEB-INF/views/sysadmin/registration-request-list.jsp")
                     .forward(request, response);
         } catch (IllegalArgumentException exception) {
             showErrorWithStatus(request, response, HttpServletResponse.SC_BAD_REQUEST, exception.getMessage());
@@ -106,7 +106,7 @@ public class RegistrationRequestController extends HttpServlet {
             }
             setNavigation(request, "requests");
             request.setAttribute("registrationRequest", registrationRequest);
-            request.getRequestDispatcher("/WEB-INF/views/admin/registration-request-details.jsp")
+            request.getRequestDispatcher("/WEB-INF/views/sysadmin/registration-request-details.jsp")
                     .forward(request, response);
         } catch (SQLException exception) {
             showError(request, response, "Không thể tải chi tiết Registration Request.");

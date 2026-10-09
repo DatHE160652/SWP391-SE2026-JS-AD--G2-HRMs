@@ -63,6 +63,7 @@ public class PositionServlet extends HttpServlet {
     private Position readPosition(HttpServletRequest request) {
         Position position = new Position();
         position.setPositionId(parseOptionalInt(request.getParameter("positionId")));
+        position.setDepartmentId(parseOptionalInteger(request.getParameter("departmentId")));
         position.setPositionTitle(trimToNull(request.getParameter("positionTitle")));
         position.setDescription(trimToNull(request.getParameter("description")));
         return position;
@@ -83,6 +84,8 @@ public class PositionServlet extends HttpServlet {
         return "{"
                 + "\"positionId\":" + position.getPositionId() + ","
                 + "\"companyId\":" + position.getCompanyId() + ","
+                + "\"departmentId\":" + nullableInteger(position.getDepartmentId()) + ","
+                + "\"departmentName\":" + quote(position.getDepartmentName()) + ","
                 + "\"positionTitle\":" + quote(position.getPositionTitle()) + ","
                 + "\"description\":" + quote(position.getDescription()) + ","
                 + "\"createdAt\":" + quote(position.getCreatedAt() == null ? null : position.getCreatedAt().toString())
@@ -122,6 +125,14 @@ public class PositionServlet extends HttpServlet {
 
     private int parseOptionalInt(String value) {
         return value == null || value.isBlank() ? 0 : Integer.parseInt(value);
+    }
+
+    private Integer parseOptionalInteger(String value) {
+        return value == null || value.isBlank() ? null : Integer.parseInt(value);
+    }
+
+    private String nullableInteger(Integer value) {
+        return value == null ? "null" : value.toString();
     }
 
     private String trimToNull(String value) {

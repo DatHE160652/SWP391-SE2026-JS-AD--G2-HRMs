@@ -127,6 +127,30 @@ public class EmployeeDAO {
         }
     }
 
+    public boolean phoneExists(String phone, Integer excludeEmployeeId) throws SQLException {
+        String sql = """
+                SELECT COUNT(*)
+                FROM Employees
+                WHERE Phone = ?
+                  AND (? IS NULL OR EmployeeId <> ?)
+                """;
+
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, phone);
+            if (excludeEmployeeId == null) {
+                statement.setNull(2, Types.INTEGER);
+                statement.setNull(3, Types.INTEGER);
+            } else {
+                statement.setInt(2, excludeEmployeeId);
+                statement.setInt(3, excludeEmployeeId);
+            }
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next() && resultSet.getInt(1) > 0;
+            }
+        }
+    }
+
     public boolean deleteEmployee(int employeeId) throws SQLException {
         String sql = "DELETE FROM Employees WHERE EmployeeId = ?";
 

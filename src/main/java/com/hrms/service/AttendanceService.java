@@ -146,6 +146,11 @@ public class AttendanceService {
         return attendanceDAO.getAttendanceReport(companyId, departmentId, month, year);
     }
 
+    public List<AttendanceReportDAO> getManagerAttendanceReport(int managerId, Integer departmentId,
+                                                                int month, int year) throws SQLException {
+        return attendanceDAO.getAttendanceReportForManager(managerId, departmentId, month, year);
+    }
+
     /**
      * UC36: Export attendance report to CSV formatted string with UTF-8 BOM
      */

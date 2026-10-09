@@ -53,6 +53,58 @@ public class UserDAO {
         }
     }
 
+    public boolean emailExists(Connection connection, String email) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT COUNT(*) FROM Users WHERE EmailNormalized = LOWER(LTRIM(RTRIM(?)))")) {
+            statement.setString(1, email);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next() && resultSet.getInt(1) > 0;
+            }
+        }
+    }
+
+    public boolean updateTenantPassword(int userId, String passwordHash) throws SQLException {
+        String sql = """
+                UPDATE Users
+                SET PasswordHash = ?,
+                    MustChangePassword = 0,
+                    ActivatedAt = COALESCE(ActivatedAt, SYSUTCDATETIME()),
+                    PasswordChangedAt = SYSUTCDATETIME(),
+                    UpdatedAt = SYSUTCDATETIME()
+                WHERE UserId = ?
+                  AND CompanyId IS NOT NULL
+                  AND IsActive = 1
+                  AND IsLocked = 0
+                """;
+        try (Connection connection = DBConnection.getConnection()) {
+            applyAuthWriteOptions(connection);
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setString(1, passwordHash);
+                statement.setInt(2, userId);
+                return statement.executeUpdate() == 1;
+            }
+        }
+    }
+
+    public boolean updateTenantUserRoleByEmployeeId(int employeeId, String roleCode) throws SQLException {
+        String sql = """
+                UPDATE u
+                SET RoleId = ?,
+                    UpdatedAt = SYSUTCDATETIME()
+                FROM Users u
+                INNER JOIN Employees e ON e.UserId = u.UserId
+                WHERE e.EmployeeId = ?
+                  AND u.CompanyId IS NOT NULL
+                """;
+        try (Connection connection = DBConnection.getConnection()) {
+            int roleId = getRoleIdForCode(connection, roleCode);
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setInt(1, roleId);
+                statement.setInt(2, employeeId);
+                return statement.executeUpdate() > 0;
+            }
+        }
+    }
+
     public User findSystemAdminByIdentifier(String identifier) throws SQLException {
         if (identifier == null || identifier.isBlank()) return null;
         String normalizedIdentifier = identifier.trim();
@@ -85,11 +137,12 @@ public class UserDAO {
                        u.MustChangePassword, u.ActivatedAt, u.PasswordChangedAt,
                        u.IsActive, u.IsLocked, u.FailedLoginAttempts,
                        u.LockedUntil, u.LastLoginAt, u.CreatedAt, u.UpdatedAt, u.RowVersion,
-                       c.WorkspaceCode, c.CompanyName
+                       c.WorkspaceCode, c.CompanyName, e.EmployeeId
                 FROM Users u
                 INNER JOIN Roles r ON r.RoleId = u.RoleId
                 INNER JOIN Companies c ON c.CompanyId = u.CompanyId
                 INNER JOIN Subscriptions s ON s.CompanyId = c.CompanyId
+                LEFT JOIN Employees e ON e.UserId = u.UserId
                 WHERE c.WorkspaceCode = ?
                   AND u.EmailNormalized = LOWER(LTRIM(RTRIM(?)))
                   AND c.IsActive = 1 AND s.Status = N'ACTIVE'
@@ -105,7 +158,8 @@ public class UserDAO {
                 User user = mapUser(resultSet);
                 TenantAccount account = new TenantAccount(user, resultSet.getInt("CompanyId"),
                         resultSet.getString("WorkspaceCode"), resultSet.getString("CompanyName"),
-                        resultSet.getString("RoleCode"), resultSet.getBoolean("MustChangePassword"));
+                        resultSet.getString("RoleCode"), resultSet.getObject("EmployeeId", Integer.class),
+                        resultSet.getBoolean("MustChangePassword"));
                 return resultSet.next() ? null : account;
             }
         }
@@ -119,7 +173,7 @@ public class UserDAO {
                 INNER JOIN Companies c ON c.CompanyId = u.CompanyId
                 INNER JOIN Subscriptions s ON s.CompanyId = c.CompanyId
                 WHERE u.UserId = ? AND u.CompanyId IS NOT NULL
-                  AND r.RoleCode IN ('COMPANY_ADMIN', 'MANAGER', 'EMPLOYEE', 'HR')
+                  AND r.RoleCode IN ('COMPANY_ADMIN', 'MANAGER', 'EMPLOYEE')
                   AND c.IsActive = 1 AND s.Status = N'ACTIVE'
                   AND u.IsActive = 1 AND u.IsLocked = 0
                   AND (u.LockedUntil IS NULL OR u.LockedUntil <= SYSUTCDATETIME())
@@ -248,6 +302,27 @@ public class UserDAO {
 
     private LocalDateTime toLocalDateTime(Timestamp timestamp) {
         return timestamp == null ? null : timestamp.toLocalDateTime();
+    }
+
+    private int getRoleIdForCode(Connection connection, String roleCode) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT RoleId FROM Roles WHERE RoleCode = ?")) {
+            statement.setString(1, roleCode);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) return resultSet.getInt("RoleId");
+            }
+        }
+        String roleName = "MANAGER".equalsIgnoreCase(roleCode) ? "Manager" : "Employee";
+        String insertSql = "INSERT INTO Roles (RoleCode, RoleName, Description) VALUES (?, ?, ?)";
+        try (PreparedStatement statement = connection.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
+            statement.setString(1, roleCode);
+            statement.setString(2, roleName);
+            statement.setString(3, roleName + " tenant role");
+            statement.executeUpdate();
+            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                if (generatedKeys.next()) return generatedKeys.getInt(1);
+            }
+        }
+        throw new SQLException("Role " + roleCode + " was not found and could not be created.");
     }
 
     private int getEmployeeRoleId(Connection connection) throws SQLException {

@@ -374,6 +374,45 @@ public class AttendanceDAO {
         return reports;
     }
 
+    public List<AttendanceReportDAO> getAttendanceReportForManager(int managerId, Integer departmentId,
+                                                                    int month, int year) throws SQLException {
+        StringBuilder sql = new StringBuilder("""
+                SELECT
+                    e.EmployeeId, e.EmployeeCode, e.FullName,
+                    d.DepartmentName, p.PositionTitle,
+                    COUNT(CASE WHEN a.Status IN ('Present', 'Late', 'Early Leave') THEN 1 END) AS TotalWorkDays,
+                    ISNULL(SUM(CASE WHEN a.Status IN ('Present', 'Late', 'Early Leave') THEN a.TotalHours ELSE 0 END), 0) AS TotalHours,
+                    COUNT(CASE WHEN a.Status = 'Present' THEN 1 END) AS PresentCount,
+                    COUNT(CASE WHEN a.Status = 'Late' THEN 1 END) AS LateCount,
+                    COUNT(CASE WHEN a.Status = 'Early Leave' THEN 1 END) AS EarlyLeaveCount,
+                    COUNT(CASE WHEN a.Status = 'Absent' THEN 1 END) AS AbsentCount,
+                    COUNT(CASE WHEN a.Status = 'On Leave' THEN 1 END) AS OnLeaveCount
+                FROM Employees e
+                LEFT JOIN Departments d ON e.DepartmentId = d.DepartmentId
+                LEFT JOIN Positions p ON e.PositionId = p.PositionId
+                LEFT JOIN Attendances a ON e.EmployeeId = a.EmployeeId
+                     AND MONTH(a.AttendanceDate) = ? AND YEAR(a.AttendanceDate) = ?
+                WHERE e.ManagerId = ?
+                """);
+
+        List<Object> params = new ArrayList<>();
+        params.add(month);
+        params.add(year);
+        params.add(managerId);
+
+        if (departmentId != null && departmentId > 0) {
+            sql.append(" AND e.DepartmentId = ?");
+            params.add(departmentId);
+        }
+
+        sql.append("""
+                 GROUP BY e.EmployeeId, e.EmployeeCode, e.FullName, d.DepartmentName, p.PositionTitle
+                 ORDER BY d.DepartmentName ASC, e.FullName ASC
+                """);
+
+        return mapAttendanceReports(sql.toString(), params);
+    }
+
     public int getEmployeeCompanyId(int employeeId) throws SQLException {
         String sql = "SELECT CompanyId FROM Employees WHERE EmployeeId = ?";
         try (Connection conn = DBConnection.getConnection();
@@ -386,6 +425,44 @@ public class AttendanceDAO {
             }
         }
         return 1; // default company
+    }
+
+    private List<AttendanceReportDAO> mapAttendanceReports(String sql, List<Object> params) throws SQLException {
+        List<AttendanceReportDAO> reports = new ArrayList<>();
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            for (int i = 0; i < params.size(); i++) {
+                Object p = params.get(i);
+                if (p instanceof Integer v) {
+                    ps.setInt(i + 1, v);
+                }
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    AttendanceReportDAO r = new AttendanceReportDAO();
+                    r.setEmployeeId(rs.getInt("EmployeeId"));
+                    r.setEmployeeCode(rs.getString("EmployeeCode"));
+                    r.setFullName(rs.getString("FullName"));
+                    r.setDepartmentName(rs.getString("DepartmentName"));
+                    r.setPositionTitle(rs.getString("PositionTitle"));
+                    int workDays = rs.getInt("TotalWorkDays");
+                    r.setTotalWorkDays(workDays);
+                    r.setTotalHours(rs.getBigDecimal("TotalHours"));
+                    int present = rs.getInt("PresentCount");
+                    r.setPresentCount(present);
+                    r.setLateCount(rs.getInt("LateCount"));
+                    r.setEarlyLeaveCount(rs.getInt("EarlyLeaveCount"));
+                    r.setAbsentCount(rs.getInt("AbsentCount"));
+                    r.setOnLeaveCount(rs.getInt("OnLeaveCount"));
+
+                    double rate = workDays > 0 ? (double) present / workDays * 100.0 : 0.0;
+                    r.setPunctualityRate(Math.round(rate * 10.0) / 10.0);
+
+                    reports.add(r);
+                }
+            }
+        }
+        return reports;
     }
 
     private AttendanceDTO mapAttendanceDTO(ResultSet rs) throws SQLException {

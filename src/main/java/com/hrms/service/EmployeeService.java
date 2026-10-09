@@ -6,21 +6,23 @@ import com.hrms.model.Employee;
 import com.hrms.model.User;
 import com.hrms.util.DBConnection;
 
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.Normalizer;
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.Locale;
 
 public class EmployeeService {
-    private static final String DEFAULT_PASSWORD_HASH = "CHANGE_ME";
+    private static final String DEFAULT_EMPLOYEE_PASSWORD = "1";
 
     private final EmployeeDAO employeeDAO = new EmployeeDAO();
     private final UserDAO userDAO = new UserDAO();
+    private final BCryptPasswordHasher passwordHasher = new BCryptPasswordHasher();
+    private final SecureRandom random = new SecureRandom();
 
     public List<Employee> getAllEmployees() throws SQLException {
         return employeeDAO.getAllEmployees();
@@ -31,23 +33,31 @@ public class EmployeeService {
     }
 
     public boolean createEmployee(Employee employee) throws SQLException {
-        normalize(employee);
+        validate(employee, true);
+        validateUniquePhone(employee);
 
         try (Connection connection = DBConnection.getConnection()) {
             ensureEmployeeCreationSchema(connection);
             connection.setAutoCommit(false);
 
             try {
-                int companyId = getOrCreateDefaultCompanyId(connection);
-                int employeeId = employeeDAO.insertEmployee(connection, employee, companyId);
-                String username = generateAvailableUsername(connection, employee.getFullName());
+                CompanyInfo company = getOrCreateDefaultCompany(connection);
+                String companyPrefix = companyPrefix(company.companyName());
+                String randomDigits = generateUniqueRandomDigits(connection, company.companyId(), companyPrefix,
+                        employee.getFullName());
+                employee.setEmployeeCode(companyPrefix.toUpperCase(Locale.ROOT) + randomDigits);
+
+                int employeeId = employeeDAO.insertEmployee(connection, employee, company.companyId());
+                employee.setEmployeeId(employeeId);
+                String accountLocalPart = buildAccountLocalPart(employee.getFullName(), randomDigits);
+                String email = accountLocalPart + "@" + companyPrefix + ".hrms";
 
                 User user = new User();
-                user.setCompanyId(companyId);
-                user.setUsername(username);
+                user.setCompanyId(company.companyId());
+                user.setUsername(generateAvailableUsername(connection, accountLocalPart));
                 user.setDisplayName(employee.getFullName());
-                user.setEmail(buildGeneratedEmail(username));
-                user.setPasswordHash(DEFAULT_PASSWORD_HASH);
+                user.setEmail(email);
+                user.setPasswordHash(passwordHasher.hash(DEFAULT_EMPLOYEE_PASSWORD));
 
                 int userId = userDAO.createEmployeeAccount(connection, user);
                 boolean linked = employeeDAO.updateEmployeeUserId(connection, employeeId, userId);
@@ -67,7 +77,8 @@ public class EmployeeService {
     }
 
     public boolean updateEmployee(Employee employee) throws SQLException {
-        normalize(employee);
+        validate(employee, false);
+        validateUniquePhone(employee);
         return employeeDAO.updateEmployee(employee);
     }
 
@@ -75,21 +86,37 @@ public class EmployeeService {
         return employeeDAO.deleteEmployee(employeeId);
     }
 
-    private void normalize(Employee employee) {
-        if (employee.getEmployeeCode() == null || employee.getEmployeeCode().isBlank()) {
-            throw new IllegalArgumentException("Employee code is required.");
+    private void validate(Employee employee, boolean creating) {
+        if (!creating && employee.getEmployeeId() <= 0) {
+            throw new IllegalArgumentException("Employee id is required.");
         }
         if (employee.getFullName() == null || employee.getFullName().isBlank()) {
             throw new IllegalArgumentException("Full name is required.");
+        }
+        if (employee.getPhone() == null || employee.getPhone().isBlank()) {
+            throw new IllegalArgumentException("Phone is required.");
+        }
+        if (employee.getGender() == null || employee.getGender().isBlank()) {
+            throw new IllegalArgumentException("Gender is required.");
+        }
+        if (employee.getDateOfBirth() == null) {
+            throw new IllegalArgumentException("Date of birth is required.");
         }
         if (employee.getStartDate() == null) {
             throw new IllegalArgumentException("Start date is required.");
         }
         if (employee.getBaseSalary() == null) {
-            employee.setBaseSalary(BigDecimal.ZERO);
+            throw new IllegalArgumentException("Base salary is required.");
         }
         if (employee.getStatus() == null || employee.getStatus().isBlank()) {
-            employee.setStatus("Active");
+            throw new IllegalArgumentException("Status is required.");
+        }
+    }
+
+    private void validateUniquePhone(Employee employee) throws SQLException {
+        Integer excludeEmployeeId = employee.getEmployeeId() > 0 ? employee.getEmployeeId() : null;
+        if (employeeDAO.phoneExists(employee.getPhone().trim(), excludeEmployeeId)) {
+            throw new IllegalArgumentException("Phone number already exists.");
         }
     }
 
@@ -115,17 +142,64 @@ public class EmployeeService {
         return normalized.isBlank() ? "employee" : normalized;
     }
 
-    private String buildGeneratedEmail(String username) {
-        return username + "@hrms.local";
+    private String buildAccountLocalPart(String fullName, String randomDigits) {
+        String[] parts = normalizedWords(fullName);
+        String givenName = parts.length == 0 ? "employee" : parts[parts.length - 1];
+        String familyInitial = parts.length >= 1 ? parts[0].substring(0, 1) : "x";
+        String middleInitial = parts.length >= 3 ? parts[1].substring(0, 1) : "x";
+        return givenName + familyInitial + middleInitial + randomDigits;
     }
 
-    private int getOrCreateDefaultCompanyId(Connection connection) throws SQLException {
-        String selectSql = "SELECT TOP 1 CompanyId FROM Companies ORDER BY CompanyId";
+    private String generateUniqueRandomDigits(Connection connection, int companyId, String companyPrefix, String fullName)
+            throws SQLException {
+        for (int attempt = 0; attempt < 30; attempt++) {
+            String digits = String.format("%06d", random.nextInt(1_000_000));
+            String employeeCode = companyPrefix.toUpperCase(Locale.ROOT) + digits;
+            String email = buildAccountLocalPart(fullName, digits) + "@" + companyPrefix + ".hrms";
+            if (!employeeCodeExists(connection, companyId, employeeCode) && !userDAO.emailExists(connection, email)) {
+                return digits;
+            }
+        }
+        throw new SQLException("Could not generate a unique employee code. Please try again.");
+    }
+
+    private boolean employeeCodeExists(Connection connection, int companyId, String employeeCode) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM Employees WHERE CompanyId = ? AND EmployeeCode = ?";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, companyId);
+            statement.setString(2, employeeCode);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next() && resultSet.getInt(1) > 0;
+            }
+        }
+    }
+
+    private String companyPrefix(String companyName) {
+        String normalized = normalizeAscii(companyName).replaceAll("[^a-z0-9]", "");
+        if (normalized.length() >= 3) {
+            return normalized.substring(0, 3);
+        }
+        return (normalized + "xxx").substring(0, 3);
+    }
+
+    private String[] normalizedWords(String value) {
+        String normalized = normalizeAscii(value).replaceAll("[^a-z0-9 ]", " ").trim();
+        return normalized.isBlank() ? new String[0] : normalized.split("\\s+");
+    }
+
+    private String normalizeAscii(String value) {
+        return Normalizer.normalize(value == null ? "" : value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT);
+    }
+
+    private CompanyInfo getOrCreateDefaultCompany(Connection connection) throws SQLException {
+        String selectSql = "SELECT TOP 1 CompanyId, CompanyName FROM Companies ORDER BY CompanyId";
 
         try (Statement statement = connection.createStatement();
              ResultSet resultSet = statement.executeQuery(selectSql)) {
             if (resultSet.next()) {
-                return resultSet.getInt("CompanyId");
+                return new CompanyInfo(resultSet.getInt("CompanyId"), resultSet.getString("CompanyName"));
             }
         }
 
@@ -144,7 +218,7 @@ public class EmployeeService {
 
             try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
                 if (generatedKeys.next()) {
-                    return generatedKeys.getInt(1);
+                    return new CompanyInfo(generatedKeys.getInt(1), "Demo Company");
                 }
             }
         }
@@ -179,5 +253,8 @@ public class EmployeeService {
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("ALTER TABLE " + tableName + " ALTER COLUMN " + columnName + " INT NULL");
         }
+    }
+
+    private record CompanyInfo(int companyId, String companyName) {
     }
 }
