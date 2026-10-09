@@ -1,3 +1,4 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -11,8 +12,8 @@
     <aside class="sidebar">
         <div class="brand">HRMs Cloud<span>Employee Portal</span></div>
         <div class="nav-label">Chức năng cá nhân</div>
-        <a class="nav-link active" href="my-profile.html">Hồ sơ cá nhân</a>
-        <a class="nav-link" href="../attendance/employee-attendance.html">Chấm công cá nhân</a>
+        <a class="nav-link active" href="my-profile">Hồ sơ cá nhân</a>
+        <a class="nav-link" href="../attendance/employee-attendance">Chấm công cá nhân</a>
         <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
     </aside>
 
@@ -28,12 +29,12 @@
 
         <section class="panel">
             <div class="tabs">
-                <button class="tab-button active" data-tab="profile">Personal Info</button>
-                <button class="tab-button" data-tab="employment">Employment</button>
-                <button class="tab-button" data-tab="salary">Salary</button>
-                <button class="tab-button" data-tab="account">Account</button>
-                <button class="tab-button" data-tab="documents">Documents</button>
-                <button class="tab-button" data-tab="history">History</button>
+                <button type="button" class="tab-button active" data-tab="profile">Personal Info</button>
+                <button type="button" class="tab-button" data-tab="employment">Employment</button>
+                <button type="button" class="tab-button" data-tab="salary">Salary</button>
+                <button type="button" class="tab-button" data-tab="account">Account</button>
+                <button type="button" class="tab-button" data-tab="documents">Documents</button>
+                <button type="button" class="tab-button" data-tab="history">History</button>
             </div>
 
             <div id="profileTab" class="tab-panel">
@@ -129,15 +130,5 @@
     </main>
 </div>
 <script src="../js/employee.js"></script>
-<script>
-    document.querySelectorAll('.tab-button').forEach(button => {
-        button.addEventListener('click', () => {
-            document.querySelectorAll('.tab-button').forEach(item => item.classList.remove('active'));
-            document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
-            button.classList.add('active');
-            document.querySelector(`#${button.dataset.tab}Tab`).classList.remove('hidden');
-        });
-    });
-</script>
 </body>
 </html>

@@ -83,13 +83,15 @@ public class TenantAuthorizationFilter implements Filter {
 
     private boolean isManagerAllowed(String path, String method) {
         if (isGet(method) && (
-                path.equals("/employee/my-profile.html")
+                path.equals("/employee/my-profile")
+                        || path.equals("/employee/my-profile.html")
                         || path.equals("/employees/me")
                         || path.equals("/employees/me/history")
                         || path.equals("/documents/me")
                         || path.equals("/documents/me/download")
                         || path.equals("/attendance/manager-attendance")
                         || path.equals("/attendance/manager-attendance.html")
+                        || path.equals("/attendance/manager-personal-attendance")
                         || path.equals("/attendance/manager-personal-attendance.html")
                         || path.equals("/attendance/employee-attendance")
                         || path.equals("/attendance/employee-attendance.html")
@@ -127,7 +129,8 @@ public class TenantAuthorizationFilter implements Filter {
     private boolean isEmployeeAllowed(HttpServletRequest request, TenantPrincipal principal,
                                       String path, String method) {
         if (isGet(method) && (
-                path.equals("/employee/my-profile.html")
+                path.equals("/employee/my-profile")
+                        || path.equals("/employee/my-profile.html")
                         || path.equals("/employees/me")
                         || path.equals("/employees/me/history")
                         || path.equals("/documents/me")
@@ -220,7 +223,7 @@ public class TenantAuthorizationFilter implements Filter {
                 || path.startsWith("/positions/")
                 || path.equals("/documents")
                 || path.startsWith("/documents/")
-                || path.startsWith("/attendance/") && !path.endsWith(".html");
+                || path.startsWith("/attendance/") && !isAttendancePagePath(path) && !path.endsWith(".html");
     }
 
     private boolean isGet(String method) {
@@ -229,6 +232,14 @@ public class TenantAuthorizationFilter implements Filter {
 
     private boolean isPost(String method) {
         return "POST".equalsIgnoreCase(method);
+    }
+
+    private boolean isAttendancePagePath(String path) {
+        return path.equals("/attendance/manager-attendance")
+                || path.equals("/attendance/employee-attendance")
+                || path.equals("/attendance/company-attendance")
+                || path.equals("/attendance/manager-personal-attendance")
+                || path.equals("/attendance/attendance-report");
     }
 
     private String role(TenantPrincipal principal) {

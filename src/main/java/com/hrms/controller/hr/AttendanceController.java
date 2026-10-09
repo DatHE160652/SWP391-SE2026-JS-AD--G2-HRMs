@@ -26,6 +26,8 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Handles Attendance operations for Employee, Manager, and HR/Admin:
@@ -42,6 +44,12 @@ import java.util.List;
         ApiRoutes.ATTENDANCE_PAGE_MANAGER,
         ApiRoutes.ATTENDANCE_PAGE_EMPLOYEE,
         ApiRoutes.ATTENDANCE_PAGE_COMPANY,
+        ApiRoutes.ATTENDANCE_PAGE_MANAGER_PERSONAL,
+        "/attendance/manager-attendance.html",
+        "/attendance/employee-attendance.html",
+        "/attendance/company-attendance.html",
+        "/attendance/manager-personal-attendance.html",
+        "/attendance/attendance-report.html",
         ApiRoutes.ATTENDANCE_PAGE_REPORT,
         ApiRoutes.ATTENDANCE_ALL,
         ApiRoutes.ATTENDANCE_CHECK_IN,
@@ -68,6 +76,12 @@ public class AttendanceController extends HttpServlet {
         String path = request.getServletPath();
 
         try {
+            if (path.endsWith(".html") && path.startsWith(ApiRoutes.ATTENDANCE_PREFIX + "/")) {
+                String canonical = path.substring(0, path.length() - ".html".length());
+                response.sendRedirect(request.getContextPath() + canonical);
+                return;
+            }
+
             switch (path) {
                 case ApiRoutes.ATTENDANCE_PERSONAL -> handlePersonalAttendance(request, response);
                 case ApiRoutes.ATTENDANCE_TEAM -> handleTeamAttendance(request, response);
@@ -91,6 +105,8 @@ public class AttendanceController extends HttpServlet {
                         request.getRequestDispatcher(ApiRoutes.VIEW_ATTENDANCE_EMPLOYEE).forward(request, response);
                 case ApiRoutes.ATTENDANCE_PAGE_COMPANY ->
                         request.getRequestDispatcher(ApiRoutes.VIEW_ATTENDANCE_COMPANY).forward(request, response);
+                case ApiRoutes.ATTENDANCE_PAGE_MANAGER_PERSONAL ->
+                        request.getRequestDispatcher(ApiRoutes.VIEW_ATTENDANCE_MANAGER_PERSONAL).forward(request, response);
                 case ApiRoutes.ATTENDANCE_PAGE_REPORT ->
                         request.getRequestDispatcher(ApiRoutes.VIEW_ATTENDANCE_REPORT).forward(request, response);
                 case ApiRoutes.MANAGER_EMPLOYEE_ATTENDANCE, ApiRoutes.MANAGER_EMPLOYEE_ATTENDANCE_HTML ->
@@ -314,7 +330,7 @@ public class AttendanceController extends HttpServlet {
         int month = parseOptionalInt(request.getParameter("month"), LocalDate.now().getMonthValue());
         int year = parseOptionalInt(request.getParameter("year"), LocalDate.now().getYear());
 
-        List<AttendanceReportDAO> reports = attendanceService.getAttendanceReport(companyId, departmentId, month, year);
+        List<AttendanceReportDAO> reports = getReportRowsForPrincipal(request, companyId, departmentId, month, year);
         writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":" + toReportJsonArray(reports) + "}");
     }
 
@@ -327,7 +343,7 @@ public class AttendanceController extends HttpServlet {
         int month = parseOptionalInt(request.getParameter("month"), LocalDate.now().getMonthValue());
         int year = parseOptionalInt(request.getParameter("year"), LocalDate.now().getYear());
 
-        List<AttendanceReportDAO> reports = attendanceService.getAttendanceReport(companyId, departmentId, month, year);
+        List<AttendanceReportDAO> reports = getReportRowsForPrincipal(request, companyId, departmentId, month, year);
         String csv = attendanceService.exportCsvReport(reports, month, year);
 
         byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
@@ -354,6 +370,23 @@ public class AttendanceController extends HttpServlet {
             employees = employeeId == null
                     ? List.of()
                     : employees.stream().filter(employee -> employee.getEmployeeId() == employeeId).toList();
+        } else if (isRole(principal, "MANAGER")) {
+            Integer managerEmployeeId = principal.getEmployeeId();
+            List<AttendanceDTO> team = managerEmployeeId == null
+                    ? List.of()
+                    : attendanceService.getTeamAttendance(managerEmployeeId, LocalDate.now());
+            Set<Integer> teamEmployeeIds = team.stream()
+                    .map(AttendanceDTO::getEmployeeId)
+                    .collect(Collectors.toSet());
+            Set<Integer> teamDepartmentIds = team.stream()
+                    .map(AttendanceDTO::getDepartmentId)
+                    .collect(Collectors.toSet());
+            employees = employees.stream()
+                    .filter(employee -> teamEmployeeIds.contains(employee.getEmployeeId()))
+                    .toList();
+            departments = departments.stream()
+                    .filter(department -> teamDepartmentIds.contains(department.getDepartmentId()))
+                    .toList();
         }
 
         StringBuilder json = new StringBuilder("{\"success\":true,\"employees\":[");
@@ -390,6 +423,20 @@ public class AttendanceController extends HttpServlet {
                 throw new IllegalArgumentException("You can only manage attendance for your direct team.");
             }
         }
+    }
+
+    private List<AttendanceReportDAO> getReportRowsForPrincipal(HttpServletRequest request, Integer companyId,
+                                                                 Integer departmentId, int month, int year)
+            throws SQLException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (isRole(principal, "MANAGER")) {
+            Integer managerEmployeeId = principal.getEmployeeId();
+            if (managerEmployeeId == null) {
+                throw new IllegalArgumentException("Manager account is not linked to an employee profile.");
+            }
+            return attendanceService.getManagerAttendanceReport(managerEmployeeId, departmentId, month, year);
+        }
+        return attendanceService.getAttendanceReport(companyId, departmentId, month, year);
     }
 
     private boolean matchesPrincipalEmployee(TenantPrincipal principal, int employeeId) {

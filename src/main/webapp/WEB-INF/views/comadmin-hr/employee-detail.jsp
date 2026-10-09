@@ -1,3 +1,4 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -11,9 +12,9 @@
     <aside class="sidebar">
         <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
         <div class="nav-label">Phân hệ quản trị</div>
-        <a class="nav-link active" href="employee-list.html">Quản lý Nhân sự</a>
-        <a class="nav-link" href="../department/department-list.html">Quản lý Phòng ban</a>
-        <a class="nav-link" href="../position/position-list.html">Quản lý Chức danh</a>
+        <a class="nav-link active" href="employee-list">Quản lý Nhân sự</a>
+        <a class="nav-link" href="../department/department-list">Quản lý Phòng ban</a>
+        <a class="nav-link" href="../position/position-list">Quản lý Chức danh</a>
         <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
     </aside>
 
@@ -22,17 +23,17 @@
             <div>
                 <h1 id="detailTitle" class="page-title">Employee Profile</h1>
             </div>
-            <a class="button secondary" href="employee-list.html">Cancel</a>
+            <a class="button secondary" href="employee-list">Cancel</a>
         </div>
 
         <div id="message" class="message"></div>
         <section class="panel">
             <div class="tabs">
-                <button class="tab-button active" data-tab="profile">Profile</button>
-                <button class="tab-button" data-tab="employment">Employment</button>
-                <button class="tab-button" data-tab="organization">Organization Information</button>
-                <button class="tab-button" data-tab="documents">Documents</button>
-                <button class="tab-button" data-tab="history">History</button>
+                <button type="button" class="tab-button active" data-tab="profile">Profile</button>
+                <button type="button" class="tab-button" data-tab="employment">Employment</button>
+                <button type="button" class="tab-button" data-tab="organization">Organization Information</button>
+                <button type="button" class="tab-button" data-tab="documents">Documents</button>
+                <button type="button" class="tab-button" data-tab="history">History</button>
             </div>
             <div id="profileTab" class="tab-panel detail-grid"></div>
             <div id="employmentTab" class="tab-panel detail-grid hidden"></div>

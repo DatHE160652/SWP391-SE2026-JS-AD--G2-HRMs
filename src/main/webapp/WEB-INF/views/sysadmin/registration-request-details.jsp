@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/system-admin.css">
 </head>
 <body class="admin-page">
-<%@ include file="/WEB-INF/views/admin/admin-shell.jspf" %>
+<%@ include file="/WEB-INF/views/sysadmin/admin-shell.jspf" %>
 <main class="admin-main" id="main-content">
     <a class="back-link" href="${pageContext.request.contextPath}/systemadmin/registration-request"><svg class="icon" aria-hidden="true"><use href="${icons}#arrow-left"/></svg>Quay lại danh sách yêu cầu</a>
     <c:set var="item" value="${registrationRequest}"/>

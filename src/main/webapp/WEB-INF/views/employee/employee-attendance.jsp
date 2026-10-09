@@ -1,3 +1,4 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -12,8 +13,8 @@
     <aside class="sidebar">
         <div class="brand">HRMs Cloud<span>Employee Portal</span></div>
         <div class="nav-label">Chức năng cá nhân</div>
-        <a class="nav-link" href="../employee/my-profile.html">Hồ sơ cá nhân</a>
-        <a class="nav-link active" href="employee-attendance.html">Chấm công cá nhân</a>
+        <a class="nav-link" href="../employee/my-profile">Hồ sơ cá nhân</a>
+        <a class="nav-link active" href="employee-attendance">Chấm công cá nhân</a>
 
         <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
     </aside>

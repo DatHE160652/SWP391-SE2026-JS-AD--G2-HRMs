@@ -28,6 +28,8 @@ const EmployeeApi = {
 
 document.addEventListener('DOMContentLoaded', () => {
     const page = document.body.dataset.page;
+    setupTabs();
+
     if (page === 'list') {
         loadEmployees();
     }
@@ -41,6 +43,22 @@ document.addEventListener('DOMContentLoaded', () => {
         setupMyProfile();
     }
 });
+
+function setupTabs() {
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', event => {
+            event.preventDefault();
+            const target = document.querySelector(`#${button.dataset.tab}Tab`);
+            if (!target) {
+                return;
+            }
+            document.querySelectorAll('.tab-button').forEach(item => item.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
+            button.classList.add('active');
+            target.classList.remove('hidden');
+        });
+    });
+}
 
 async function loadEmployees() {
     try {
@@ -142,10 +160,10 @@ function renderMyProfileSidebar(roleCode) {
         sidebar.innerHTML = `
             <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
             <div class="nav-label">Phân hệ Chấm công</div>
-            <a class="nav-link active" href="../employee/my-profile.html">Hồ sơ cá nhân</a>
-            <a class="nav-link" href="../attendance/manager-attendance.html">Điểm danh Nhân sự</a>
-            <a class="nav-link" href="../attendance/manager-personal-attendance.html">Chấm công Cá nhân</a>
-            <a class="nav-link" href="../attendance/attendance-report.html">Báo cáo Chấm công</a>
+            <a class="nav-link active" href="../employee/my-profile">Hồ sơ cá nhân</a>
+            <a class="nav-link" href="../attendance/manager-attendance">Điểm danh Nhân sự</a>
+            <a class="nav-link" href="../attendance/manager-personal-attendance">Chấm công Cá nhân</a>
+            <a class="nav-link" href="../attendance/attendance-report">Báo cáo Chấm công</a>
             <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
         `;
         return;
@@ -154,10 +172,10 @@ function renderMyProfileSidebar(roleCode) {
         sidebar.innerHTML = `
             <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
             <div class="nav-label">Phân hệ quản trị</div>
-            <a class="nav-link active" href="../employee/my-profile.html">Hồ sơ cá nhân</a>
-            <a class="nav-link" href="../employee/employee-list.html">Quản lý Nhân sự</a>
-            <a class="nav-link" href="../department/department-list.html">Quản lý Phòng ban</a>
-            <a class="nav-link" href="../position/position-list.html">Quản lý Chức danh</a>
+            <a class="nav-link active" href="../employee/my-profile">Hồ sơ cá nhân</a>
+            <a class="nav-link" href="../employee/employee-list">Quản lý Nhân sự</a>
+            <a class="nav-link" href="../department/department-list">Quản lý Phòng ban</a>
+            <a class="nav-link" href="../position/position-list">Quản lý Chức danh</a>
             <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
         `;
         return;
@@ -165,8 +183,8 @@ function renderMyProfileSidebar(roleCode) {
     sidebar.innerHTML = `
         <div class="brand">HRMs Cloud<span>Employee Portal</span></div>
         <div class="nav-label">Chức năng cá nhân</div>
-        <a class="nav-link active" href="../employee/my-profile.html">Hồ sơ cá nhân</a>
-        <a class="nav-link" href="../attendance/employee-attendance.html">Chấm công cá nhân</a>
+        <a class="nav-link active" href="../employee/my-profile">Hồ sơ cá nhân</a>
+        <a class="nav-link" href="../attendance/employee-attendance">Chấm công cá nhân</a>
         <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
     `;
 }
@@ -307,8 +325,8 @@ function renderEmployeeRows(employees) {
             <td>${formatMoney(employee.baseSalary)}</td>
             <td><span class="badge ${safe(employee.status)}">${safe(employee.status)}</span></td>
             <td class="actions">
-                <a href="employee-detail.html?id=${employee.employeeId}">View</a>
-                <a href="employee-form.html?id=${employee.employeeId}">Edit</a>
+                <a href="employee-detail?id=${employee.employeeId}">View</a>
+                <a href="employee-form?id=${employee.employeeId}">Edit</a>
                 <button class="danger" onclick="deleteEmployee(${employee.employeeId})">Delete</button>
             </td>
         </tr>

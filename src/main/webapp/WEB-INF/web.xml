@@ -113,6 +113,34 @@
     </servlet-mapping>
 
     <servlet>
+        <servlet-name>TenantPageController</servlet-name>
+        <servlet-class>com.hrms.controller.TenantPageController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>TenantPageController</servlet-name>
+        <url-pattern>/employee/my-profile</url-pattern>
+        <url-pattern>/employee/my-profile.html</url-pattern>
+        <url-pattern>/employee/employee-list</url-pattern>
+        <url-pattern>/employee/employee-list.html</url-pattern>
+        <url-pattern>/employee/employee-form</url-pattern>
+        <url-pattern>/employee/employee-form.html</url-pattern>
+        <url-pattern>/employee/employee-detail</url-pattern>
+        <url-pattern>/employee/employee-detail.html</url-pattern>
+        <url-pattern>/department/department-list</url-pattern>
+        <url-pattern>/department/department-list.html</url-pattern>
+        <url-pattern>/department/department-form</url-pattern>
+        <url-pattern>/department/department-form.html</url-pattern>
+        <url-pattern>/position/position-list</url-pattern>
+        <url-pattern>/position/position-list.html</url-pattern>
+        <url-pattern>/position/position-form</url-pattern>
+        <url-pattern>/position/position-form.html</url-pattern>
+        <url-pattern>/document/employee-document-list</url-pattern>
+        <url-pattern>/document/employee-document-list.html</url-pattern>
+        <url-pattern>/document/document-upload</url-pattern>
+        <url-pattern>/document/document-upload.html</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
         <servlet-name>DepartmentServlet</servlet-name>
         <servlet-class>com.hrms.controller.DepartmentServlet</servlet-class>
     </servlet>
@@ -163,7 +191,13 @@
         <url-pattern>/attendance/manager-attendance</url-pattern>
         <url-pattern>/attendance/employee-attendance</url-pattern>
         <url-pattern>/attendance/company-attendance</url-pattern>
+        <url-pattern>/attendance/manager-personal-attendance</url-pattern>
         <url-pattern>/attendance/attendance-report</url-pattern>
+        <url-pattern>/attendance/manager-attendance.html</url-pattern>
+        <url-pattern>/attendance/employee-attendance.html</url-pattern>
+        <url-pattern>/attendance/company-attendance.html</url-pattern>
+        <url-pattern>/attendance/manager-personal-attendance.html</url-pattern>
+        <url-pattern>/attendance/attendance-report.html</url-pattern>
         <url-pattern>/attendance/all</url-pattern>
         <url-pattern>/attendance/check-in</url-pattern>
         <url-pattern>/attendance/check-out</url-pattern>

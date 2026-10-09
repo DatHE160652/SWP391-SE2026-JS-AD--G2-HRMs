@@ -1,0 +1,44 @@
+package com.hrms.controller;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.IOException;
+import java.util.Map;
+
+public class TenantPageController extends HttpServlet {
+    private static final Map<String, String> VIEWS = Map.ofEntries(
+            Map.entry("/employee/my-profile", "/WEB-INF/views/employee/my-profile.jsp"),
+            Map.entry("/employee/employee-list", "/WEB-INF/views/comadmin-hr/employee-list.jsp"),
+            Map.entry("/employee/employee-form", "/WEB-INF/views/comadmin-hr/employee-form.jsp"),
+            Map.entry("/employee/employee-detail", "/WEB-INF/views/comadmin-hr/employee-detail.jsp"),
+            Map.entry("/department/department-list", "/WEB-INF/views/comadmin-hr/department-list.jsp"),
+            Map.entry("/department/department-form", "/WEB-INF/views/comadmin-hr/department-form.jsp"),
+            Map.entry("/position/position-list", "/WEB-INF/views/comadmin-hr/position-list.jsp"),
+            Map.entry("/position/position-form", "/WEB-INF/views/comadmin-hr/position-form.jsp"),
+            Map.entry("/document/employee-document-list", "/WEB-INF/views/comadmin-hr/employee-document-list.jsp"),
+            Map.entry("/document/document-upload", "/WEB-INF/views/comadmin-hr/document-upload.jsp")
+    );
+
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        String path = request.getServletPath();
+        if (path.endsWith(".html")) {
+            String canonical = path.substring(0, path.length() - ".html".length());
+            String query = request.getQueryString();
+            response.sendRedirect(request.getContextPath() + canonical + (query == null ? "" : "?" + query));
+            return;
+        }
+
+        String view = VIEWS.get(path);
+        if (view == null) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+
+        request.getRequestDispatcher(view).forward(request, response);
+    }
+}

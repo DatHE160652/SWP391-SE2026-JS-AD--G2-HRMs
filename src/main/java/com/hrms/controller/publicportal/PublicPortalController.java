@@ -189,9 +189,9 @@ public class PublicPortalController extends HttpServlet {
     private String tenantLandingPath(TenantPrincipal principal) {
         String role = principal.getRoleCode() == null ? "" : principal.getRoleCode().toUpperCase();
         return switch (role) {
-            case "COMPANY_ADMIN" -> "/employee/employee-list.html";
+            case "COMPANY_ADMIN" -> "/employee/employee-list";
             case "MANAGER" -> "/attendance/manager-attendance";
-            case "EMPLOYEE" -> "/employee/my-profile.html";
+            case "EMPLOYEE" -> "/employee/my-profile";
             default -> "/login";
         };
     }

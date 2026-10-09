@@ -195,7 +195,7 @@ function renderDepartmentRows(departments) {
             <td>${safeDepartmentValue(department.departmentName)}</td>
             <td>${safeDepartmentValue(department.createdAt)}</td>
             <td class="actions">
-                <a href="department-form.html?id=${department.departmentId}">Edit</a>
+                <a href="department-form?id=${department.departmentId}">Edit</a>
                 <button class="danger" onclick="deleteDepartment(${department.departmentId})">Delete</button>
             </td>
         </tr>

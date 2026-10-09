@@ -115,10 +115,10 @@ function renderDocumentRows(documents) {
 
 function setupDocumentLinks(employeeId) {
     document.querySelectorAll('#uploadDocumentLink').forEach(link => {
-        link.href = `../document/document-upload.html?employeeId=${employeeId}`;
+        link.href = `../document/document-upload?employeeId=${employeeId}`;
     });
     document.querySelectorAll('#cancelDocumentLink, #cancelDocumentButton').forEach(link => {
-        link.href = `../document/employee-document-list.html?employeeId=${employeeId}`;
+        link.href = `../document/employee-document-list?employeeId=${employeeId}`;
     });
 }
 

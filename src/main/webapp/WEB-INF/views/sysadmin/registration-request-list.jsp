@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/system-admin.css">
 </head>
 <body class="admin-page">
-<%@ include file="/WEB-INF/views/admin/admin-shell.jspf" %>
+<%@ include file="/WEB-INF/views/sysadmin/admin-shell.jspf" %>
 <main class="admin-main" id="main-content">
     <nav class="breadcrumb" aria-label="Đường dẫn"><a href="${pageContext.request.contextPath}/systemadmin/dashboard">Quản lý tenant</a><svg class="icon" aria-hidden="true"><use href="${icons}#chevron"/></svg><span>Yêu cầu đăng ký</span></nav>
     <div class="page-heading"><h1>Danh sách yêu cầu đăng ký tenant</h1><a class="button" href="${pageContext.request.contextPath}/systemadmin/registration-request"><svg class="icon" aria-hidden="true"><use href="${icons}#refresh"/></svg>Làm mới dữ liệu</a></div>
@@ -38,7 +38,7 @@
         <div class="filter-summary"><span>Thống kê phía trên tính trên toàn bộ yêu cầu chưa xóa.</span><a href="${pageContext.request.contextPath}/systemadmin/registration-request">Xóa toàn bộ bộ lọc</a></div>
     </section>
     <section class="panel" aria-label="Kết quả yêu cầu đăng ký">
-        <%@ include file="/WEB-INF/views/admin/request-table.jspf" %>
+        <%@ include file="/WEB-INF/views/sysadmin/request-table.jspf" %>
         <div class="table-footer"><span>Hiển thị <strong>${requestPage.from}–${requestPage.to}</strong> trong số <strong>${requestPage.total}</strong> yêu cầu</span>
             <nav class="pagination" aria-label="Phân trang">
                 <c:url var="previousUrl" value="/systemadmin/registration-request"><c:param name="q" value="${filter.q}"/><c:param name="status" value="${filter.status}"/><c:param name="region" value="${filter.region}"/><c:param name="date" value="${filter.date}"/><c:param name="size" value="${requestPage.size}"/><c:param name="page" value="${requestPage.page - 1}"/></c:url>

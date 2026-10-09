@@ -105,7 +105,7 @@ function renderPositionRows(positions) {
             <td>${safePositionValue(position.description)}</td>
             <td>${safePositionValue(position.createdAt)}</td>
             <td class="actions">
-                <a href="position-form.html?id=${position.positionId}">Edit</a>
+                <a href="position-form?id=${position.positionId}">Edit</a>
                 <button class="danger" onclick="deletePosition(${position.positionId})">Delete</button>
             </td>
         </tr>
