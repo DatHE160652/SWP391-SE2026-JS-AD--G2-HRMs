@@ -11,31 +11,18 @@
 <div class="shell">
     <aside class="sidebar">
         <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
-        <div class="nav-label">Phân hệ Quản trị</div>
-        <a class="nav-link" href="../employee/employee-list.html">Quản lý Nhân sự</a>
-        <a class="nav-link" href="../department/department-list.html">Quản lý Phòng ban</a>
-        <a class="nav-link" href="../position/position-list.html">Quản lý Chức danh</a>
-
-        <div class="nav-label" style="margin-top: 18px;">Phân hệ Chấm công</div>
+        <div class="nav-label">Phân hệ Chấm công</div>
+        <a class="nav-link" href="../employee/my-profile.html?nav=manager">Hồ sơ cá nhân</a>
         <a class="nav-link active" href="manager-attendance.html">Điểm danh Nhân sự</a>
-        <a class="nav-link" href="employee-attendance.html">Chấm công Cá nhân</a>
-        <a class="nav-link" href="company-attendance.html">Giám sát Công ty</a>
+        <a class="nav-link" href="manager-personal-attendance.html">Chấm công Cá nhân</a>
         <a class="nav-link" href="attendance-report.html">Báo cáo Chấm công</a>
-
-        <div class="plan-card"><strong>Gói Pro SME</strong><br>BF-03: Attendance Tracking</div>
+        <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
     </aside>
 
     <main class="content">
-        <div class="topbar">
-            <div class="search-box">Attendance Management &bull; Điểm danh Nhân sự</div>
-            <div class="today">Hôm nay: <span id="currentDateDisplay">--/--/----</span></div>
-            <div class="user">Bộ phận Chấm công / Quản lý</div>
-        </div>
-
         <div class="page-header">
             <div>
                 <h1 class="page-title">Điểm danh Nhân sự</h1>
-                <p class="page-subtitle">Theo dõi điểm danh toàn bộ nhân sự • Lọc theo vai trò (Role) • Check-in, Check-out & Hoàn tất điểm danh hàng loạt</p>
             </div>
             <div class="header-actions">
                 <button class="button secondary" id="btnRefreshList">

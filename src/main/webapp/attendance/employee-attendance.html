@@ -3,39 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chấm công Cá nhân - HRMs Cloud</title>
+    <title>Chấm công cá nhân - HRMs Cloud</title>
     <link rel="stylesheet" href="../css/employee.css">
     <link rel="stylesheet" href="../css/attendance.css">
 </head>
 <body data-page="employee-attendance">
 <div class="shell">
     <aside class="sidebar">
-        <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
-        <div class="nav-label">Phân hệ Quản trị</div>
-        <a class="nav-link" href="../employee/employee-list.html">Quản lý Nhân sự</a>
-        <a class="nav-link" href="../department/department-list.html">Quản lý Phòng ban</a>
-        <a class="nav-link" href="../position/position-list.html">Quản lý Chức danh</a>
+        <div class="brand">HRMs Cloud<span>Employee Portal</span></div>
+        <div class="nav-label">Chức năng cá nhân</div>
+        <a class="nav-link" href="../employee/my-profile.html">Hồ sơ cá nhân</a>
+        <a class="nav-link active" href="employee-attendance.html">Chấm công cá nhân</a>
 
-        <div class="nav-label" style="margin-top: 18px;">Phân hệ Chấm công</div>
-        <a class="nav-link" href="manager-attendance.html">Điểm danh Nhân sự</a>
-        <a class="nav-link active" href="employee-attendance.html">Chấm công Cá nhân</a>
-        <a class="nav-link" href="company-attendance.html">Giám sát Công ty</a>
-        <a class="nav-link" href="attendance-report.html">Báo cáo Chấm công</a>
-
-        <div class="plan-card"><strong>Gói Pro SME</strong><br>UC31 Personal Attendance</div>
+        <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
     </aside>
 
     <main class="content">
-        <div class="topbar">
-            <div class="search-box">Attendance Management &bull; Personal Logs</div>
-            <div class="today">UC31 Personal View</div>
-            <div class="user">Vai trò: Nhân viên (Employee)</div>
-        </div>
 
         <div class="page-header">
             <div>
-                <h1 class="page-title">Bảng Chấm công Cá nhân</h1>
-                <p class="page-subtitle">UC31 - View Personal Attendance History (Chế độ xem bảng công cá nhân theo tháng)</p>
+                <h1 class="page-title">Bảng chấm công cá nhân</h1>
+                <p class="page-subtitle">Nhân viên xem lịch sử chấm công theo tháng. Điểm danh vào ca/tan ca do Manager phụ trách.</p>
             </div>
         </div>
 
@@ -44,15 +32,14 @@
                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
             </svg>
             <div>
-                <strong>Lưu ý:</strong> Chế độ xem dành riêng cho Nhân viên (Read-only). Điểm danh vào ca/tan ca do Quản lý (Manager) phụ trách. Nhân viên không được tự check-in / check-out.
+                <strong>Lưu ý:</strong> Chế độ xem dành riêng cho nhân viên. Employee chỉ được xem dữ liệu chấm công của chính mình.
             </div>
         </div>
 
-        <!-- Filter Bar -->
         <section class="panel" style="margin-bottom: 20px;">
             <div class="filter-bar" style="margin-bottom: 0; background: none; border: none; padding: 0;">
                 <div class="filter-group" style="min-width: 240px;">
-                    <label for="employeeSelect">Chọn Nhân viên:</label>
+                    <label for="employeeSelect">Nhân viên:</label>
                     <select id="employeeSelect"></select>
                 </div>
                 <div class="filter-group">
@@ -81,12 +68,11 @@
                     </select>
                 </div>
                 <div class="filter-actions">
-                    <button class="button" id="btnFilter">Xem Bảng Công</button>
+                    <button class="button" id="btnFilter">Xem bảng công</button>
                 </div>
             </div>
         </section>
 
-        <!-- Summary Grid -->
         <section class="summary-grid" style="grid-template-columns: repeat(6, minmax(130px, 1fr));">
             <div class="summary-card">
                 <div class="summary-label">Số ngày đi làm</div>
@@ -116,7 +102,6 @@
 
         <div id="message" class="message" style="margin: 0 28px 16px;"></div>
 
-        <!-- Attendance Detail Table -->
         <section class="panel">
             <table>
                 <thead>

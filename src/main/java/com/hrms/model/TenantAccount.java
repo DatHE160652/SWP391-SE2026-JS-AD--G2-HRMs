@@ -6,15 +6,17 @@ public final class TenantAccount {
     private final String workspaceCode;
     private final String companyName;
     private final String roleCode;
+    private final Integer employeeId;
     private final boolean mustChangePassword;
 
     public TenantAccount(User user, Integer companyId, String workspaceCode,
-                         String companyName, String roleCode, boolean mustChangePassword) {
+                         String companyName, String roleCode, Integer employeeId, boolean mustChangePassword) {
         this.user = user;
         this.companyId = companyId;
         this.workspaceCode = workspaceCode;
         this.companyName = companyName;
         this.roleCode = roleCode;
+        this.employeeId = employeeId;
         this.mustChangePassword = mustChangePassword;
     }
 
@@ -23,5 +25,6 @@ public final class TenantAccount {
     public String getWorkspaceCode() { return workspaceCode; }
     public String getCompanyName() { return companyName; }
     public String getRoleCode() { return roleCode; }
+    public Integer getEmployeeId() { return employeeId; }
     public boolean isMustChangePassword() { return mustChangePassword; }
 }

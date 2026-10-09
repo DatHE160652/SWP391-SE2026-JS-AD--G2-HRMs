@@ -14,16 +14,10 @@
         <a class="nav-link" href="../employee/employee-list.html">Quản lý Nhân sự</a>
         <a class="nav-link" href="../department/department-list.html">Quản lý Phòng ban</a>
         <a class="nav-link active" href="position-list.html">Quản lý Chức danh</a>
-        <div class="plan-card"><strong>Gói Pro SME</strong><br>UC08 Manage Positions</div>
+        <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
     </aside>
 
     <main class="content">
-        <div class="topbar">
-            <div class="search-box">Position Form</div>
-            <div class="today">UC08</div>
-            <div class="user">HR Director / Admin</div>
-        </div>
-
         <div class="page-header">
             <div>
                 <h1 id="positionFormTitle" class="page-title">Add Position</h1>
@@ -37,6 +31,10 @@
         <form id="positionForm" class="panel">
             <input type="hidden" name="positionId">
             <div class="form-grid">
+                <div>
+                    <label>Department</label>
+                    <select name="departmentId" required></select>
+                </div>
                 <div>
                     <label>Position Title</label>
                     <input name="positionTitle" required>

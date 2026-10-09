@@ -2,6 +2,9 @@ package com.hrms.controller;
 
 import com.hrms.model.EmployeeDocument;
 import com.hrms.service.DocumentService;
+import com.hrms.service.EmployeeHistoryService;
+import com.hrms.service.security.TenantPrincipal;
+import com.hrms.util.SecuritySupport;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -13,18 +16,34 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.URLEncoder;
 import java.sql.SQLException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 public class DocumentServlet extends HttpServlet {
     private final DocumentService documentService = new DocumentService();
+    private final EmployeeHistoryService employeeHistoryService = new EmployeeHistoryService();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         try {
+            if ("/documents/me/download".equals(request.getServletPath())) {
+                downloadOwnDocument(request, response);
+                return;
+            }
+
             if ("/documents/download".equals(request.getServletPath())) {
                 downloadDocument(request, response);
+                return;
+            }
+
+            if ("/documents/me".equals(request.getServletPath())) {
+                TenantPrincipal principal = requireEmployeePrincipal(request);
+                List<EmployeeDocument> documents = documentService.getDocumentsByEmployee(principal.getEmployeeId());
+                writeJson(response, HttpServletResponse.SC_OK,
+                        "{\"success\":true,\"data\":" + toJsonArray(documents) + "}");
                 return;
             }
 
@@ -43,16 +62,53 @@ public class DocumentServlet extends HttpServlet {
             boolean success;
             String message;
             if ("/documents/delete".equals(request.getServletPath())) {
-                success = documentService.deleteDocument(parseRequiredInt(request.getParameter("documentId")));
+                EmployeeDocument document = documentService.downloadDocument(parseRequiredInt(request.getParameter("documentId")));
+                success = documentService.deleteDocument(document.getDocumentId());
+                if (success) {
+                    TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+                    logDocumentChange(principal, document.getEmployeeId(), "DELETE_DOCUMENT",
+                            documentSummary(document), "-", request);
+                }
                 message = success ? "Document deleted successfully." : "No document record was changed.";
-            } else {
+            } else if ("/documents/me/delete".equals(request.getServletPath())) {
+                TenantPrincipal principal = requireEmployeePrincipal(request);
+                EmployeeDocument document = documentService.downloadDocument(parseRequiredInt(request.getParameter("documentId")));
+                ensureOwnDocument(principal, document);
+                success = documentService.deleteDocument(document.getDocumentId());
+                if (success) {
+                    logDocumentChange(principal, document.getEmployeeId(), "DELETE_DOCUMENT",
+                            documentSummary(document), "-", request);
+                }
+                message = success ? "Document deleted successfully." : "No document record was changed.";
+            } else if ("/documents/me/upload".equals(request.getServletPath())) {
+                TenantPrincipal principal = requireEmployeePrincipal(request);
                 Part filePart = request.getPart("file");
                 success = documentService.uploadDocument(
-                        parseRequiredInt(request.getParameter("employeeId")),
+                        principal.getEmployeeId(),
+                        request.getParameter("documentName"),
+                        request.getParameter("documentType"),
+                        filePart,
+                        getServletContext(),
+                        principal.getUserId());
+                if (success) {
+                    logDocumentChange(principal, principal.getEmployeeId(), "UPLOAD_DOCUMENT",
+                            "-", request.getParameter("documentName"), request);
+                }
+                message = success ? "Document uploaded successfully." : "Document upload failed.";
+            } else {
+                TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+                int employeeId = parseRequiredInt(request.getParameter("employeeId"));
+                Part filePart = request.getPart("file");
+                success = documentService.uploadDocument(
+                        employeeId,
                         request.getParameter("documentName"),
                         request.getParameter("documentType"),
                         filePart,
                         getServletContext());
+                if (success) {
+                    logDocumentChange(principal, employeeId, "UPLOAD_DOCUMENT",
+                            "-", request.getParameter("documentName"), request);
+                }
                 message = success ? "Document uploaded successfully." : "Document upload failed.";
             }
 
@@ -63,21 +119,78 @@ public class DocumentServlet extends HttpServlet {
         }
     }
 
+    private void downloadOwnDocument(HttpServletRequest request, HttpServletResponse response)
+            throws SQLException, IOException {
+        TenantPrincipal principal = requireEmployeePrincipal(request);
+        EmployeeDocument document = documentService.downloadDocument(parseRequiredInt(request.getParameter("id")));
+        ensureOwnDocument(principal, document);
+        streamDocument(document, request, response);
+    }
+
     private void downloadDocument(HttpServletRequest request, HttpServletResponse response)
             throws SQLException, IOException {
         EmployeeDocument document = documentService.downloadDocument(parseRequiredInt(request.getParameter("id")));
+        streamDocument(document, request, response);
+    }
+
+    private void streamDocument(EmployeeDocument document, HttpServletRequest request, HttpServletResponse response)
+            throws IOException {
         File file = documentService.resolveDownloadFile(document, getServletContext());
 
         String contentType = getServletContext().getMimeType(file.getName());
         response.setContentType(contentType == null ? "application/octet-stream" : contentType);
         String disposition = "true".equalsIgnoreCase(request.getParameter("inline")) ? "inline" : "attachment";
-        response.setHeader("Content-Disposition", disposition + "; filename=\"" + document.getFileName() + "\"");
+        response.setHeader("Content-Disposition", buildContentDisposition(disposition, document.getFileName()));
+        response.setHeader("X-Content-Type-Options", "nosniff");
         response.setContentLengthLong(file.length());
 
         try (FileInputStream inputStream = new FileInputStream(file);
              OutputStream outputStream = response.getOutputStream()) {
             inputStream.transferTo(outputStream);
         }
+    }
+
+    private String buildContentDisposition(String disposition, String fileName) {
+        String safeFileName = fileName == null || fileName.isBlank() ? "document" : fileName;
+        String asciiFileName = safeFileName.replace("\\", "_").replace("\"", "_");
+        String encodedFileName = URLEncoder.encode(safeFileName, StandardCharsets.UTF_8).replace("+", "%20");
+        return disposition + "; filename=\"" + asciiFileName + "\"; filename*=UTF-8''" + encodedFileName;
+    }
+
+    private TenantPrincipal requireEmployeePrincipal(HttpServletRequest request) {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (principal == null || principal.getEmployeeId() == null) {
+            throw new IllegalArgumentException("Employee session is required.");
+        }
+        return principal;
+    }
+
+    private void ensureOwnDocument(TenantPrincipal principal, EmployeeDocument document) {
+        if (principal.getEmployeeId() == null || document.getEmployeeId() != principal.getEmployeeId()) {
+            throw new IllegalArgumentException("Document not found");
+        }
+    }
+
+    private void logDocumentChange(TenantPrincipal principal, int employeeId, String action,
+                                   String oldValue, String newValue, HttpServletRequest request) throws SQLException {
+        employeeHistoryService.logEmployeeChange(
+                principal == null ? null : principal.getCompanyId(),
+                principal == null ? null : principal.getUserId(),
+                employeeId,
+                action,
+                oldValue,
+                newValue,
+                request.getRemoteAddr());
+    }
+
+    private String documentSummary(EmployeeDocument document) {
+        return "Document: " + nullToDash(document.getDocumentName())
+                + "; Type: " + nullToDash(document.getDocumentType())
+                + "; File: " + nullToDash(document.getFileName());
+    }
+
+    private String nullToDash(String value) {
+        return value == null || value.isBlank() ? "-" : value;
     }
 
     private String toJsonArray(List<EmployeeDocument> documents) {

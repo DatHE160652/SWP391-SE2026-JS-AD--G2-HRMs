@@ -635,7 +635,8 @@ function exportReportCsv() {
    ========================================================================= */
 async function loadMeta() {
     try {
-        const payload = await AttendanceApi.get('/attendance/meta');
+        const scope = document.body.dataset.personalScope === 'self' ? '?scope=self' : '';
+        const payload = await AttendanceApi.get(`/attendance/meta${scope}`);
         return payload;
     } catch (e) {
         console.warn('Could not load metadata:', e);

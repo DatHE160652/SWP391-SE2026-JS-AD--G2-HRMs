@@ -62,6 +62,9 @@ async function uploadDocument(form, employeeId) {
         showDocumentMessage(payload.message);
         form.reset();
         form.employeeId.value = employeeId;
+        if (typeof loadEmployeeHistory === 'function') {
+            await loadEmployeeHistory(employeeId, '#historyRows');
+        }
     } catch (error) {
         showDocumentMessage(error.message, 'error');
     }
@@ -75,7 +78,11 @@ async function deleteDocument(documentId) {
     try {
         const payload = await DocumentApi.post('/documents/delete', { documentId });
         showDocumentMessage(payload.message);
-        await loadDocuments(getEmployeeIdFromUrl(document.body.dataset.page === 'detail' ? 'id' : 'employeeId'));
+        const employeeId = getEmployeeIdFromUrl(document.body.dataset.page === 'detail' ? 'id' : 'employeeId');
+        await loadDocuments(employeeId);
+        if (typeof loadEmployeeHistory === 'function') {
+            await loadEmployeeHistory(employeeId, '#historyRows');
+        }
     } catch (error) {
         showDocumentMessage(error.message, 'error');
     }
@@ -98,8 +105,8 @@ function renderDocumentRows(documents) {
             <td>${safeDocumentValue(document.uploadedDate)}</td>
             <td>${safeDocumentValue(document.uploadedBy)}</td>
             <td class="actions">
-                <a href="${documentApiUrl(`/documents/download?id=${document.documentId}&inline=true`)}" target="_blank">View</a>
-                <a href="${documentApiUrl(`/documents/download?id=${document.documentId}`)}">Download</a>
+                <a href="${documentApiUrl(`/documents/download?id=${document.documentId}&inline=true`)}" target="_blank" rel="noopener">View</a>
+                <a href="${documentApiUrl(`/documents/download?id=${document.documentId}`)}" download="${safeDocumentValue(document.fileName || document.documentName || 'document')}">Download</a>
                 <button class="danger" onclick="deleteDocument(${document.documentId})">Delete</button>
             </td>
         </tr>

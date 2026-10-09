@@ -49,7 +49,14 @@ public class TenantAuthService {
         return new TenantPrincipal(
                 account.getUser().getUserId(), account.getCompanyId(), account.getWorkspaceCode(),
                 account.getCompanyName(), account.getUser().getDisplayName(), account.getUser().getEmail(),
-                account.getRoleCode(), account.isMustChangePassword());
+                account.getRoleCode(), account.getEmployeeId(), account.isMustChangePassword());
+    }
+
+    public boolean changePassword(Integer userId, String passwordHash) throws SQLException {
+        if (userId == null || passwordHash == null || passwordHash.isBlank()) {
+            return false;
+        }
+        return userDAO.updateTenantPassword(userId, passwordHash);
     }
 
     private String normalizeWorkspace(String value) {

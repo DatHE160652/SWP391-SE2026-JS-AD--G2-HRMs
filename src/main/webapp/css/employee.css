@@ -110,6 +110,20 @@ a {
     font-size: 13px;
 }
 
+.logout-link {
+    margin-top: auto;
+    color: var(--danger);
+}
+
+.logout-link:hover {
+    color: #fff;
+    background: var(--danger);
+}
+
+.plan-card + .logout-link {
+    margin-top: 12px;
+}
+
 .topbar {
     position: sticky;
     top: 0;
@@ -339,6 +353,31 @@ input[type="file"] {
     margin-top: 18px;
 }
 
+.radio-row {
+    display: flex;
+    gap: 18px;
+    align-items: center;
+    min-height: 44px;
+}
+
+.radio-row label {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    margin: 0;
+    color: #344054;
+    font-weight: 500;
+}
+
+.radio-row input {
+    width: auto;
+    min-height: 0;
+}
+
+.required {
+    color: #d92d20;
+}
+
 .detail-item {
     padding: 16px;
     border: 1px solid var(--line);
@@ -406,6 +445,39 @@ input[type="file"] {
 
 .document-toolbar h2 {
     margin: 0;
+}
+
+.member-picker {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.member-option {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #f8f9ff;
+}
+
+.member-option input {
+    width: auto;
+    margin-top: 3px;
+}
+
+.member-option strong {
+    display: block;
+}
+
+.member-option span {
+    display: block;
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 12px;
 }
 
 @media (max-width: 900px) {

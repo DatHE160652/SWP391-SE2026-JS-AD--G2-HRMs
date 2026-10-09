@@ -9,11 +9,12 @@ public final class TenantPrincipal {
     private final String displayName;
     private final String email;
     private final String roleCode;
+    private final Integer employeeId;
     private final boolean mustChangePassword;
 
     public TenantPrincipal(Integer userId, Integer companyId, String workspaceCode,
                            String companyName, String displayName, String email,
-                           String roleCode, boolean mustChangePassword) {
+                           String roleCode, Integer employeeId, boolean mustChangePassword) {
         this.userId = userId;
         this.companyId = companyId;
         this.workspaceCode = workspaceCode;
@@ -21,6 +22,7 @@ public final class TenantPrincipal {
         this.displayName = displayName;
         this.email = email;
         this.roleCode = roleCode;
+        this.employeeId = employeeId;
         this.mustChangePassword = mustChangePassword;
     }
 
@@ -31,5 +33,6 @@ public final class TenantPrincipal {
     public String getDisplayName() { return displayName; }
     public String getEmail() { return email; }
     public String getRoleCode() { return roleCode; }
+    public Integer getEmployeeId() { return employeeId; }
     public boolean isMustChangePassword() { return mustChangePassword; }
 }

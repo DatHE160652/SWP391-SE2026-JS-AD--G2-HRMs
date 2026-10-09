@@ -24,6 +24,11 @@ public class DocumentService {
 
     public boolean uploadDocument(int employeeId, String documentName, String documentType, Part filePart,
             ServletContext servletContext) throws SQLException, IOException {
+        return uploadDocument(employeeId, documentName, documentType, filePart, servletContext, null);
+    }
+
+    public boolean uploadDocument(int employeeId, String documentName, String documentType, Part filePart,
+            ServletContext servletContext, Integer uploadedBy) throws SQLException, IOException {
         ensureEmployeeExists(employeeId);
         if (documentName == null || documentName.isBlank()) {
             throw new IllegalArgumentException("Document name is required");
@@ -37,13 +42,14 @@ public class DocumentService {
         document.setDocumentType(documentType == null || documentType.isBlank() ? null : documentType.trim());
         document.setFileName(savedFile.getOriginalFileName());
         document.setFilePath(savedFile.getRelativePath());
+        document.setUploadedBy(uploadedBy);
 
         return documentDAO.insertDocument(document);
     }
 
     public EmployeeDocument downloadDocument(int documentId) throws SQLException {
         EmployeeDocument document = documentDAO.getDocumentById(documentId);
-        if (document == null || !"Active".equals(document.getStatus())) {
+        if (document == null || isDeleted(document)) {
             throw new IllegalArgumentException("Document not found");
         }
         return document;
@@ -65,5 +71,9 @@ public class DocumentService {
         if (employeeDAO.getEmployeeById(employeeId) == null) {
             throw new IllegalArgumentException("Employee not found");
         }
+    }
+
+    private boolean isDeleted(EmployeeDocument document) {
+        return document.getStatus() != null && "Deleted".equalsIgnoreCase(document.getStatus());
     }
 }

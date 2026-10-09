@@ -45,6 +45,7 @@ async function setupDepartmentForm() {
         document.querySelector('#departmentFormTitle').textContent = 'Update Department';
         const payload = await DepartmentApi.get(`/departments/detail?id=${departmentId}`);
         fillDepartmentForm(form, payload.data);
+        await setupDepartmentMembersForm(departmentId);
     }
 
     form.addEventListener('submit', async event => {
@@ -55,6 +56,97 @@ async function setupDepartmentForm() {
             await createDepartment(form);
         }
     });
+}
+
+async function setupDepartmentMembersForm(departmentId) {
+    const panel = document.querySelector('#departmentMembersPanel');
+    const form = document.querySelector('#departmentMembersForm');
+    if (!panel || !form) {
+        return;
+    }
+    panel.classList.remove('hidden');
+    form.departmentId.value = departmentId;
+
+    const payload = await DepartmentApi.get(`/departments/members?departmentId=${departmentId}`);
+    renderDepartmentMemberOptions(form, payload.data || []);
+
+    if (form.dataset.bound !== 'true') {
+        form.dataset.bound = 'true';
+        form.addEventListener('submit', async event => {
+            event.preventDefault();
+            await saveDepartmentMembers(form);
+        });
+    }
+}
+
+function renderDepartmentMemberOptions(form, employees) {
+    const managerSelect = form.managerId;
+    const departmentId = String(form.departmentId.value);
+    const managers = employees.filter(employee =>
+        String(employee.departmentId || '') === departmentId
+        && String(employee.roleCode || '').toUpperCase() === 'MANAGER'
+    );
+    managerSelect.innerHTML = '<option value="">Select Department Manager</option>' + managers.map(employee => `
+        <option value="${employee.employeeId}">${safeDepartmentValue(employee.employeeCode)} - ${safeDepartmentValue(employee.fullName)}</option>
+    `).join('');
+
+    const currentManager = employees.find(employee =>
+        employee.roleCode === 'MANAGER' && employee.selected && (!employee.managerId || employee.managerId === employee.employeeId));
+    if (currentManager) {
+        managerSelect.value = currentManager.employeeId;
+    }
+
+    const picker = document.querySelector('#departmentEmployeeOptions');
+    if (!employees.length) {
+        picker.innerHTML = '<p class="page-subtitle">No employees found.</p>';
+        return;
+    }
+
+    picker.innerHTML = employees.map(employee => {
+        const belongsOtherDepartment = employee.departmentId && String(employee.departmentId) !== departmentId;
+        const disabled = belongsOtherDepartment ? 'disabled' : '';
+        const checked = employee.selected && !belongsOtherDepartment ? 'checked' : '';
+        const note = belongsOtherDepartment ? ` | Đang thuộc phòng #${employee.departmentId}` : '';
+        return `
+        <label class="member-option">
+            <input type="checkbox" name="employeeIds" value="${employee.employeeId}" ${checked} ${disabled}>
+            <span>
+                <strong>${safeDepartmentValue(employee.employeeCode)} - ${safeDepartmentValue(employee.fullName)}</strong>
+                <span>${safeDepartmentValue(employee.positionTitle)} | Role: ${safeDepartmentValue(employee.roleCode)}${note}</span>
+            </span>
+        </label>
+    `;
+    }).join('');
+
+    managerSelect.addEventListener('change', () => {
+        picker.querySelectorAll('input[name="employeeIds"]').forEach(input => {
+            if (input.value === managerSelect.value) {
+                input.checked = false;
+                input.disabled = true;
+            } else {
+                input.disabled = false;
+            }
+        });
+    });
+    managerSelect.dispatchEvent(new Event('change'));
+}
+
+async function saveDepartmentMembers(form) {
+    const employeeIds = Array.from(form.querySelectorAll('input[name="employeeIds"]:checked'))
+        .map(input => input.value)
+        .join(',');
+
+    try {
+        const payload = await DepartmentApi.post('/departments/assign-members', {
+            departmentId: form.departmentId.value,
+            managerId: form.managerId.value,
+            employeeIds
+        });
+        showDepartmentMessage(payload.message);
+        await setupDepartmentMembersForm(form.departmentId.value);
+    } catch (error) {
+        showDepartmentMessage(error.message, 'error');
+    }
 }
 
 async function createDepartment(form) {

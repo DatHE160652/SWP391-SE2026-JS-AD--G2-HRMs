@@ -18,6 +18,7 @@ public final class ApiRoutes {
     public static final String REGISTRATION_REQUEST_DETAILS = SYSTEM_ADMIN_PREFIX + "/registration-request-details";
     public static final String TENANT_WORKSPACE_TEMPLATE = "https://{companydomain}.hrms.com/";
     public static final String TENANT_LOGIN = "/login";
+    public static final String TENANT_LOGOUT = "/logout";
     public static final String CANONICAL_ORIGIN = "https://hrms.com";
 
     // --- Attendance Flow (BF-03) ---

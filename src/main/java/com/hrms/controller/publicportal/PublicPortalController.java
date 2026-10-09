@@ -5,6 +5,8 @@ import com.hrms.service.security.TenantPrincipal;
 import com.hrms.model.publicportal.ConsultationSubmission;
 import com.hrms.model.publicportal.FaqTopic;
 import com.hrms.service.TenantAuthService;
+import com.hrms.service.BCryptPasswordHasher;
+import com.hrms.service.EmployeeHistoryService;
 import com.hrms.service.publicportal.ConsultationRequestService;
 import com.hrms.service.publicportal.FaqService;
 import com.hrms.util.SecuritySupport;
@@ -28,16 +30,19 @@ public class PublicPortalController extends HttpServlet {
     private final ConsultationRequestService consultationService;
     private final FaqService faqService;
     private final TenantAuthService tenantAuthService;
+    private final BCryptPasswordHasher passwordHasher;
+    private final EmployeeHistoryService employeeHistoryService = new EmployeeHistoryService();
 
     public PublicPortalController() {
-        this(new ConsultationRequestService(), new FaqService(), new TenantAuthService());
+        this(new ConsultationRequestService(), new FaqService(), new TenantAuthService(), new BCryptPasswordHasher());
     }
 
     PublicPortalController(ConsultationRequestService consultationService, FaqService faqService,
-                           TenantAuthService tenantAuthService) {
+                           TenantAuthService tenantAuthService, BCryptPasswordHasher passwordHasher) {
         this.consultationService = consultationService;
         this.faqService = faqService;
         this.tenantAuthService = tenantAuthService;
+        this.passwordHasher = passwordHasher;
     }
 
     @Override
@@ -53,6 +58,8 @@ public class PublicPortalController extends HttpServlet {
             case ApiRoutes.PUBLIC_FAQ -> showFaq(request, response);
             case ApiRoutes.PUBLIC_CONSULTATION -> showConsultation(request, response);
             case ApiRoutes.TENANT_LOGIN -> render(request, response, "tenant-login.jsp");
+            case ApiRoutes.TENANT_LOGOUT -> logoutTenant(request, response);
+            case "/change-password" -> showChangePassword(request, response);
             default -> response.sendError(HttpServletResponse.SC_NOT_FOUND);
         }
     }
@@ -69,6 +76,10 @@ public class PublicPortalController extends HttpServlet {
             submitFaqMutation(request, response, path);
         } else if (ApiRoutes.TENANT_LOGIN.equals(path)) {
             submitTenantLogin(request, response);
+        } else if (ApiRoutes.TENANT_LOGOUT.equals(path)) {
+            logoutTenant(request, response);
+        } else if ("/change-password".equals(path)) {
+            submitChangePassword(request, response);
         } else {
             response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
         }
@@ -86,9 +97,14 @@ public class PublicPortalController extends HttpServlet {
                         "Workspace, email hoặc mật khẩu không chính xác.");
                 return;
             }
+            HttpSession session = request.getSession(true);
             request.changeSessionId();
-            request.getSession(true).setAttribute(SecuritySupport.TENANT_PRINCIPAL_ATTRIBUTE, principal);
-            response.sendRedirect(request.getContextPath() + "/employee/employee-list.html");
+            session.setAttribute(SecuritySupport.TENANT_PRINCIPAL_ATTRIBUTE, principal);
+            if (principal.isMustChangePassword()) {
+                response.sendRedirect(request.getContextPath() + "/change-password");
+                return;
+            }
+            response.sendRedirect(request.getContextPath() + tenantLandingPath(principal));
         } catch (SQLException exception) {
             getServletContext().log("Tenant login failed; SQLState=" + exception.getSQLState()
                     + "; errorCode=" + exception.getErrorCode());
@@ -97,6 +113,87 @@ public class PublicPortalController extends HttpServlet {
         } finally {
             password = null;
         }
+    }
+
+    private void logoutTenant(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+        response.sendRedirect(request.getContextPath() + ApiRoutes.TENANT_LOGIN);
+    }
+
+    private void showChangePassword(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (principal == null) {
+            response.sendRedirect(request.getContextPath() + ApiRoutes.TENANT_LOGIN);
+            return;
+        }
+        render(request, response, "change-password.jsp");
+    }
+
+    private void submitChangePassword(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (principal == null || principal.getUserId() == null) {
+            response.sendRedirect(request.getContextPath() + ApiRoutes.TENANT_LOGIN);
+            return;
+        }
+
+        String newPassword = request.getParameter("newPassword");
+        String confirmPassword = request.getParameter("confirmPassword");
+        if (newPassword == null || newPassword.isBlank()) {
+            renderChangePasswordError(request, response, "Mật khẩu mới không được để trống.");
+            return;
+        }
+        if ("1".equals(newPassword)) {
+            renderChangePasswordError(request, response, "Vui lòng chọn mật khẩu khác mật khẩu tạm.");
+            return;
+        }
+        if (!newPassword.equals(confirmPassword)) {
+            renderChangePasswordError(request, response, "Mật khẩu xác nhận không khớp.");
+            return;
+        }
+
+        try {
+            boolean updated = tenantAuthService.changePassword(principal.getUserId(), passwordHasher.hash(newPassword));
+            if (!updated) {
+                renderChangePasswordError(request, response, "Chưa thể đổi mật khẩu. Vui lòng đăng nhập lại.");
+                return;
+            }
+            if (principal.getEmployeeId() != null) {
+                employeeHistoryService.logEmployeeChange(principal.getCompanyId(), principal.getUserId(),
+                        principal.getEmployeeId(), "CHANGE_PASSWORD", "Password updated", "Password updated",
+                        request.getRemoteAddr());
+            }
+            request.getSession(true).setAttribute(SecuritySupport.TENANT_PRINCIPAL_ATTRIBUTE,
+                    new TenantPrincipal(principal.getUserId(), principal.getCompanyId(), principal.getWorkspaceCode(),
+                            principal.getCompanyName(), principal.getDisplayName(), principal.getEmail(),
+                            principal.getRoleCode(), principal.getEmployeeId(), false));
+            response.sendRedirect(request.getContextPath() + tenantLandingPath(principal));
+        } catch (SQLException exception) {
+            getServletContext().log("Tenant password change failed; SQLState=" + exception.getSQLState()
+                    + "; errorCode=" + exception.getErrorCode());
+            renderChangePasswordError(request, response, "Chưa thể đổi mật khẩu. Vui lòng thử lại sau.");
+        }
+    }
+
+    private void renderChangePasswordError(HttpServletRequest request, HttpServletResponse response, String message)
+            throws ServletException, IOException {
+        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        request.setAttribute("changePasswordError", message);
+        render(request, response, "change-password.jsp");
+    }
+
+    private String tenantLandingPath(TenantPrincipal principal) {
+        String role = principal.getRoleCode() == null ? "" : principal.getRoleCode().toUpperCase();
+        return switch (role) {
+            case "COMPANY_ADMIN" -> "/employee/employee-list.html";
+            case "MANAGER" -> "/attendance/manager-attendance";
+            case "EMPLOYEE" -> "/employee/my-profile.html";
+            default -> "/login";
+        };
     }
 
     private void showTenantLoginError(HttpServletRequest request, HttpServletResponse response,

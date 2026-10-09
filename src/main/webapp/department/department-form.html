@@ -14,20 +14,14 @@
         <a class="nav-link" href="../employee/employee-list.html">Quản lý Nhân sự</a>
         <a class="nav-link active" href="department-list.html">Quản lý Phòng ban</a>
         <a class="nav-link" href="../position/position-list.html">Quản lý Chức danh</a>
-        <div class="plan-card"><strong>Gói Pro SME</strong><br>UC07 Manage Departments</div>
+        <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
     </aside>
 
     <main class="content">
-        <div class="topbar">
-            <div class="search-box">Department Form</div>
-            <div class="today">UC07</div>
-            <div class="user">HR Director / Admin</div>
-        </div>
 
         <div class="page-header">
             <div>
                 <h1 id="departmentFormTitle" class="page-title">Add Department</h1>
-                <p class="page-subtitle">Create or update department information.</p>
             </div>
             <a class="button secondary" href="department-list.html">Cancel</a>
         </div>
@@ -51,6 +45,28 @@
                 <a class="button secondary" href="department-list.html">Cancel</a>
             </div>
         </form>
+
+        <section id="departmentMembersPanel" class="panel hidden">
+            <div class="document-toolbar">
+                <div>
+                    <h2>Department Members</h2>
+                    <p class="page-subtitle">Chọn trưởng phòng và nhiều nhân viên cho phòng ban này.</p>
+                </div>
+            </div>
+            <form id="departmentMembersForm">
+                <input type="hidden" name="departmentId">
+                <div class="form-grid">
+                    <div>
+                        <label>Trưởng phòng</label>
+                        <select name="managerId" required></select>
+                    </div>
+                </div>
+                <div id="departmentEmployeeOptions" class="member-picker"></div>
+                <div class="form-actions">
+                    <button type="submit">Save Department Members</button>
+                </div>
+            </form>
+        </section>
     </main>
 </div>
 <script src="../js/department.js"></script>

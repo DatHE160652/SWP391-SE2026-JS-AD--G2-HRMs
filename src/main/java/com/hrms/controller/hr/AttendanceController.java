@@ -9,6 +9,8 @@ import com.hrms.model.Employee;
 import com.hrms.service.AttendanceService;
 import com.hrms.service.DepartmentService;
 import com.hrms.service.EmployeeService;
+import com.hrms.service.security.TenantPrincipal;
+import com.hrms.util.SecuritySupport;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -140,6 +142,10 @@ public class AttendanceController extends HttpServlet {
     private void handleCheckIn(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         int employeeId = parseRequiredInt(request.getParameter("employeeId"), "Employee ID is required");
         LocalDate date = parseOptionalDate(request.getParameter("date"));
+        if (date == null) {
+            date = LocalDate.now();
+        }
+        ensureCanManageAttendance(request, employeeId, date);
         LocalTime time = parseOptionalTime(request.getParameter("time"));
 
         AttendanceDTO result = attendanceService.checkIn(employeeId, date, time);
@@ -153,6 +159,10 @@ public class AttendanceController extends HttpServlet {
     private void handleCheckOut(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         int employeeId = parseRequiredInt(request.getParameter("employeeId"), "Employee ID is required");
         LocalDate date = parseOptionalDate(request.getParameter("date"));
+        if (date == null) {
+            date = LocalDate.now();
+        }
+        ensureCanManageAttendance(request, employeeId, date);
         LocalTime time = parseOptionalTime(request.getParameter("time"));
 
         AttendanceDTO result = attendanceService.checkOut(employeeId, date, time);
@@ -187,6 +197,7 @@ public class AttendanceController extends HttpServlet {
             if (idStr == null || idStr.isBlank()) continue;
             try {
                 int empId = Integer.parseInt(idStr.trim());
+                ensureCanManageAttendance(request, empId, date);
                 List<AttendanceDTO> currentAll = attendanceService.getAllAttendanceByDate(date);
                 AttendanceDTO existing = currentAll.stream()
                         .filter(a -> a.getEmployeeId() == empId)
@@ -233,6 +244,10 @@ public class AttendanceController extends HttpServlet {
      */
     private void handlePersonalAttendance(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         int employeeId = parseRequiredInt(request.getParameter("employeeId"), "Employee ID is required");
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (isRole(principal, "EMPLOYEE") && !matchesPrincipalEmployee(principal, employeeId)) {
+            throw new IllegalArgumentException("You can only view your own attendance.");
+        }
         int month = parseOptionalInt(request.getParameter("month"), LocalDate.now().getMonthValue());
         int year = parseOptionalInt(request.getParameter("year"), LocalDate.now().getYear());
 
@@ -264,6 +279,12 @@ public class AttendanceController extends HttpServlet {
         LocalDate date = parseOptionalDate(request.getParameter("date"));
         if (date == null) {
             date = LocalDate.now();
+        }
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (isRole(principal, "MANAGER") && principal.getEmployeeId() != null) {
+            List<AttendanceDTO> team = attendanceService.getTeamAttendance(principal.getEmployeeId(), date);
+            writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":" + toJsonArray(team) + "}");
+            return;
         }
         List<AttendanceDTO> list = attendanceService.getAllAttendanceByDate(date);
         writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":" + toJsonArray(list) + "}");
@@ -326,6 +347,14 @@ public class AttendanceController extends HttpServlet {
     private void handleMeta(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         List<Employee> employees = employeeService.getAllEmployees();
         List<Department> departments = departmentService.getDepartments();
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+
+        if ("self".equalsIgnoreCase(request.getParameter("scope")) || isRole(principal, "EMPLOYEE")) {
+            Integer employeeId = principal.getEmployeeId();
+            employees = employeeId == null
+                    ? List.of()
+                    : employees.stream().filter(employee -> employee.getEmployeeId() == employeeId).toList();
+        }
 
         StringBuilder json = new StringBuilder("{\"success\":true,\"employees\":[");
         for (int i = 0; i < employees.size(); i++) {
@@ -349,6 +378,27 @@ public class AttendanceController extends HttpServlet {
         json.append("]}");
 
         writeJson(response, HttpServletResponse.SC_OK, json.toString());
+    }
+
+    private void ensureCanManageAttendance(HttpServletRequest request, int employeeId, LocalDate date)
+            throws SQLException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (isRole(principal, "MANAGER")) {
+            Integer managerEmployeeId = principal.getEmployeeId();
+            if (managerEmployeeId == null || attendanceService.getTeamAttendance(managerEmployeeId, date)
+                    .stream().noneMatch(item -> item.getEmployeeId() == employeeId)) {
+                throw new IllegalArgumentException("You can only manage attendance for your direct team.");
+            }
+        }
+    }
+
+    private boolean matchesPrincipalEmployee(TenantPrincipal principal, int employeeId) {
+        return principal != null && principal.getEmployeeId() != null && principal.getEmployeeId() == employeeId;
+    }
+
+    private boolean isRole(TenantPrincipal principal, String roleCode) {
+        return principal != null && principal.getRoleCode() != null
+                && principal.getRoleCode().equalsIgnoreCase(roleCode);
     }
 
     private void writeJson(HttpServletResponse response, int status, String json) throws IOException {

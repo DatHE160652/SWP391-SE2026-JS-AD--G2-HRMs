@@ -14,6 +14,15 @@ const EmployeeApi = {
             body: new URLSearchParams(data)
         });
         return handleResponse(response);
+    },
+
+    async upload(url, formData) {
+        const response = await fetch(withContext(url), {
+            method: 'POST',
+            headers: { Accept: 'application/json' },
+            body: formData
+        });
+        return handleResponse(response);
     }
 };
 
@@ -28,13 +37,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (page === 'form') {
         setupEmployeeForm();
     }
+    if (page === 'my-profile') {
+        setupMyProfile();
+    }
 });
 
 async function loadEmployees() {
     try {
         const payload = await EmployeeApi.get('/employees');
-        renderEmployeeRows(payload.data);
-        renderSummary(payload.data);
+        const employees = payload.data || [];
+        renderEmployeeRows(employees);
+        renderSummary(employees);
     } catch (error) {
         showMessage(error.message, 'error');
     }
@@ -51,6 +64,7 @@ async function getEmployeeDetail() {
         const payload = await EmployeeApi.get(`/employees/detail?id=${employeeId}`);
         renderEmployeeDetail(payload.data);
         await setupOrganizationForm(payload.data);
+        await loadEmployeeHistory(employeeId, '#historyRows');
     } catch (error) {
         showMessage(error.message, 'error');
     }
@@ -64,7 +78,6 @@ async function setupEmployeeForm() {
         document.querySelector('#formTitle').textContent = 'Update Employee';
         const payload = await EmployeeApi.get(`/employees/detail?id=${employeeId}`);
         fillForm(form, payload.data);
-        form.employeeCode.readOnly = true;
     }
 
     form.addEventListener('submit', async event => {
@@ -75,6 +88,173 @@ async function setupEmployeeForm() {
             await createEmployee(form);
         }
     });
+}
+
+async function setupMyProfile() {
+    const form = document.querySelector('#myProfileForm');
+    const navRole = getProfileNavRole();
+    if (navRole) {
+        renderMyProfileSidebar(navRole);
+    }
+    try {
+        const payload = await EmployeeApi.get('/employees/me');
+        renderMyProfileSidebar(navRole || payload.data.roleCode);
+        renderMyProfile(payload.data);
+        setProfileEditMode(false);
+        if (form) {
+            form.addEventListener('submit', async event => {
+                event.preventDefault();
+                await updateMyProfile(form);
+            });
+            document.querySelector('#editProfileButton').addEventListener('click', () => setProfileEditMode(true));
+            document.querySelector('#discardProfileButton').addEventListener('click', async () => {
+                const latest = await EmployeeApi.get('/employees/me');
+                renderMyProfile(latest.data);
+                setProfileEditMode(false);
+            });
+        }
+        setupMyDocumentForm();
+        await loadMyDocuments();
+        await loadMyHistory();
+    } catch (error) {
+        showMessage(error.message, 'error');
+    }
+}
+
+function getProfileNavRole() {
+    const nav = new URLSearchParams(location.search).get('nav');
+    if (nav === 'manager') {
+        return 'MANAGER';
+    }
+    if (nav === 'admin') {
+        return 'COMPANY_ADMIN';
+    }
+    return '';
+}
+
+function renderMyProfileSidebar(roleCode) {
+    const sidebar = document.querySelector('.sidebar');
+    if (!sidebar) {
+        return;
+    }
+    const role = String(roleCode || '').toUpperCase();
+    if (role === 'MANAGER') {
+        sidebar.innerHTML = `
+            <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
+            <div class="nav-label">Phân hệ Chấm công</div>
+            <a class="nav-link active" href="../employee/my-profile.html">Hồ sơ cá nhân</a>
+            <a class="nav-link" href="../attendance/manager-attendance.html">Điểm danh Nhân sự</a>
+            <a class="nav-link" href="../attendance/manager-personal-attendance.html">Chấm công Cá nhân</a>
+            <a class="nav-link" href="../attendance/attendance-report.html">Báo cáo Chấm công</a>
+            <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
+        `;
+        return;
+    }
+    if (role === 'COMPANY_ADMIN') {
+        sidebar.innerHTML = `
+            <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
+            <div class="nav-label">Phân hệ quản trị</div>
+            <a class="nav-link active" href="../employee/my-profile.html">Hồ sơ cá nhân</a>
+            <a class="nav-link" href="../employee/employee-list.html">Quản lý Nhân sự</a>
+            <a class="nav-link" href="../department/department-list.html">Quản lý Phòng ban</a>
+            <a class="nav-link" href="../position/position-list.html">Quản lý Chức danh</a>
+            <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
+        `;
+        return;
+    }
+    sidebar.innerHTML = `
+        <div class="brand">HRMs Cloud<span>Employee Portal</span></div>
+        <div class="nav-label">Chức năng cá nhân</div>
+        <a class="nav-link active" href="../employee/my-profile.html">Hồ sơ cá nhân</a>
+        <a class="nav-link" href="../attendance/employee-attendance.html">Chấm công cá nhân</a>
+        <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
+    `;
+}
+
+async function updateMyProfile(form) {
+    try {
+        const payload = await EmployeeApi.post('/employees/me/update-profile', readForm(form));
+        showMessage(payload.message);
+        const latest = await EmployeeApi.get('/employees/me');
+        renderMyProfile(latest.data);
+        setProfileEditMode(false);
+        await loadMyHistory();
+    } catch (error) {
+        showMessage(error.message, 'error');
+    }
+}
+
+function setupMyDocumentForm() {
+    const form = document.querySelector('#myDocumentForm');
+    if (!form || form.dataset.bound === 'true') {
+        return;
+    }
+    form.dataset.bound = 'true';
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        await uploadMyDocument(form);
+    });
+}
+
+async function loadMyDocuments() {
+    const tbody = document.querySelector('#myDocumentRows');
+    if (!tbody) {
+        return;
+    }
+    try {
+        const payload = await EmployeeApi.get('/documents/me');
+        renderMyDocumentRows(payload.data || []);
+    } catch (error) {
+        showMessage(error.message, 'error');
+    }
+}
+
+async function uploadMyDocument(form) {
+    try {
+        const payload = await EmployeeApi.upload('/documents/me/upload', new FormData(form));
+        showMessage(payload.message);
+        form.reset();
+        await loadMyDocuments();
+        await loadMyHistory();
+    } catch (error) {
+        showMessage(error.message, 'error');
+    }
+}
+
+async function loadMyHistory() {
+    await loadHistory('/employees/me/history', '#profileHistoryRows');
+}
+
+async function loadEmployeeHistory(employeeId, selector) {
+    await loadHistory(`/employees/history?id=${employeeId}`, selector);
+}
+
+async function loadHistory(url, selector) {
+    const tbody = document.querySelector(selector);
+    if (!tbody) {
+        return;
+    }
+    try {
+        const payload = await EmployeeApi.get(url);
+        renderHistoryRows(tbody, payload.data || []);
+    } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="5">${safe(error.message)}</td></tr>`;
+    }
+}
+
+async function deleteMyDocument(documentId) {
+    if (!confirm('Delete this document?')) {
+        return;
+    }
+
+    try {
+        const payload = await EmployeeApi.post('/documents/me/delete', { documentId });
+        showMessage(payload.message);
+        await loadMyDocuments();
+        await loadMyHistory();
+    } catch (error) {
+        showMessage(error.message, 'error');
+    }
 }
 
 async function createEmployee(form) {
@@ -160,8 +340,102 @@ function renderEmployeeDetail(employee) {
         ${detailItem('Account Username', employee.username)}
         ${detailItem('Account Email', employee.accountEmail)}
         ${detailItem('Account Status', employee.accountActive === true ? 'Active' : employee.accountActive === false ? 'Inactive' : null)}
-        ${detailItem('UserId', employee.userId)}
     `;
+}
+
+function renderMyProfile(employee) {
+    document.querySelector('#profileName').textContent =
+        `Employee Details - ${employee.employeeCode || 'N/A'} (${employee.fullName || 'Employee'})`;
+    document.querySelector('#profileCode').textContent = employee.employeeCode || '-';
+    const form = document.querySelector('#myProfileForm');
+    if (form) {
+        form.employeeCode.value = employee.employeeCode || '';
+        form.fullName.value = employee.fullName || '';
+        form.phone.value = employee.phone || '';
+        form.dateOfBirth.value = employee.dateOfBirth || '';
+        form.status.value = employee.status || '';
+        const gender = employee.gender || '';
+        form.querySelectorAll('input[name="gender"]').forEach(input => {
+            input.checked = input.value === gender;
+        });
+    }
+
+    document.querySelector('#employmentTab').innerHTML = `
+        ${detailItem('Employee Code', employee.employeeCode)}
+        ${detailItem('Full Name', employee.fullName)}
+        ${detailItem('Start Date', employee.startDate)}
+        ${detailItem('Employment Status', employee.status)}
+    `;
+    document.querySelector('#salaryTab').innerHTML = `
+        ${detailItem('Base Salary', formatMoney(employee.baseSalary))}
+        ${detailItem('Salary Currency', 'VND')}
+        ${detailItem('Payroll Status', employee.status)}
+    `;
+    document.querySelector('#accountTab').innerHTML = `
+        ${detailItem('Account Username', employee.username)}
+        ${detailItem('Account Email', employee.accountEmail)}
+        ${detailItem('Account Status', employee.accountActive === true ? 'Active' : employee.accountActive === false ? 'Inactive' : null)}
+    `;
+}
+
+function setProfileEditMode(editing) {
+    const form = document.querySelector('#myProfileForm');
+    if (!form) {
+        return;
+    }
+    ['fullName', 'phone', 'dateOfBirth'].forEach(name => {
+        if (form[name]) {
+            form[name].readOnly = !editing;
+        }
+    });
+    form.querySelectorAll('input[name="gender"]').forEach(input => {
+        input.disabled = !editing;
+    });
+    document.querySelector('#editProfileButton').classList.toggle('hidden', editing);
+    document.querySelector('#submitProfileButton').classList.toggle('hidden', !editing);
+    document.querySelector('#discardProfileButton').classList.toggle('hidden', !editing);
+}
+
+function renderMyDocumentRows(documents) {
+    const tbody = document.querySelector('#myDocumentRows');
+    if (!tbody) {
+        return;
+    }
+    if (!documents.length) {
+        tbody.innerHTML = '<tr><td colspan="5">No documents found.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = documents.map(document => `
+        <tr>
+            <td>${safe(document.documentName)}</td>
+            <td>${safe(document.documentType)}</td>
+            <td>${safe(document.uploadedDate)}</td>
+            <td>${safe(document.uploadedBy)}</td>
+            <td class="actions">
+                <a href="${withContext(`/documents/me/download?id=${document.documentId}&inline=true`)}" target="_blank" rel="noopener">View</a>
+                <a href="${withContext(`/documents/me/download?id=${document.documentId}`)}" download="${safe(document.fileName || document.documentName || 'document')}">Download</a>
+                <button class="danger" onclick="deleteMyDocument(${document.documentId})">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function renderHistoryRows(tbody, history) {
+    if (!history.length) {
+        tbody.innerHTML = '<tr><td colspan="5">No history found.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = history.map(item => `
+        <tr>
+            <td>${safe(item.createdAt)}</td>
+            <td>${safe(item.action)}</td>
+            <td>${safe(item.changedBy)}</td>
+            <td>${safe(item.oldValue)}</td>
+            <td>${safe(item.newValue)}</td>
+        </tr>
+    `).join('');
 }
 
 async function setupOrganizationForm(employee) {
@@ -173,12 +447,14 @@ async function setupOrganizationForm(employee) {
     form.employeeId.value = employee.employeeId;
     document.querySelector('#organizationEmployeeName').value = employee.fullName || '';
 
-    const [organizationPayload, departmentPayload, positionPayload, employeePayload] = await Promise.all([
+    const [organizationPayload, departmentPayload, positionPayload] = await Promise.all([
         EmployeeApi.get(`/employees/organization?id=${employee.employeeId}`),
         EmployeeApi.get('/departments'),
-        EmployeeApi.get('/positions'),
-        EmployeeApi.get('/employees')
+        EmployeeApi.get('/positions')
     ]);
+    form.dataset.employeeId = employee.employeeId;
+    form.dataset.positions = JSON.stringify(positionPayload.data || []);
+    form.dataset.managerId = organizationPayload.data.managerId || '';
 
     renderSelect(
         form.departmentId,
@@ -188,15 +464,15 @@ async function setupOrganizationForm(employee) {
         'Select Department',
         organizationPayload.data.departmentId
     );
-    renderSelect(
-        form.positionId,
-        positionPayload.data,
-        'positionId',
-        'positionTitle',
-        'Select Position',
-        organizationPayload.data.positionId
-    );
-    renderManagerSelect(form.managerId, employeePayload.data, employee.employeeId, organizationPayload.data.managerId);
+    renderPositionSelect(form, organizationPayload.data.positionId);
+    form.positionId.required = false;
+    form.positionId.removeAttribute('required');
+    form.positionId.addEventListener('change', () => updateOrganizationMode(form));
+    form.departmentId.addEventListener('change', async () => {
+        renderPositionSelect(form, '');
+        await updateOrganizationMode(form);
+    });
+    await updateOrganizationMode(form);
 
     form.addEventListener('submit', async event => {
         event.preventDefault();
@@ -206,7 +482,12 @@ async function setupOrganizationForm(employee) {
 
 async function saveOrganization(form) {
     const data = readForm(form);
-    if (data.employeeId === data.managerId) {
+    const leaderMode = isSelectedLeaderPosition(form);
+    if (!data.departmentId) {
+        showMessage('Department is required.', 'error');
+        return;
+    }
+    if (!leaderMode && data.employeeId === data.managerId) {
         showMessage('Employee cannot be assigned as their own manager.', 'error');
         return;
     }
@@ -220,14 +501,127 @@ async function saveOrganization(form) {
             employeeId: data.employeeId,
             positionId: data.positionId
         });
-        await EmployeeApi.post('/employees/assign-manager', {
-            employeeId: data.employeeId,
-            managerId: data.managerId
-        });
+        if (leaderMode) {
+            const employeeIds = Array.from(document.querySelectorAll('#leaderEmployeeOptions input[name="leaderEmployeeIds"]:checked'))
+                .map(input => input.value)
+                .join(',');
+            await EmployeeApi.post('/departments/assign-members', {
+                departmentId: data.departmentId,
+                managerId: data.employeeId,
+                employeeIds
+            });
+            await updateOrganizationMode(form);
+        } else if (data.managerId) {
+            await EmployeeApi.post('/employees/assign-manager', {
+                employeeId: data.employeeId,
+                managerId: data.managerId
+            });
+        }
         showMessage('Organization information updated successfully.');
+        await loadEmployeeHistory(data.employeeId, '#historyRows');
     } catch (error) {
         showMessage(error.message, 'error');
     }
+}
+
+async function updateOrganizationMode(form) {
+    const leaderMode = isSelectedLeaderPosition(form);
+    const panel = document.querySelector('#leaderEmployeesPanel');
+    const label = document.querySelector('#managerFieldLabel');
+    form.managerId.closest('div').classList.toggle('hidden', leaderMode);
+    form.managerId.required = !leaderMode;
+    panel.classList.toggle('hidden', !leaderMode);
+    label.textContent = leaderMode ? 'Employee' : 'Manager';
+    form.positionId.disabled = !form.departmentId.value;
+    if (!form.departmentId.value) {
+        document.querySelector('#leaderEmployeeOptions').innerHTML = '';
+        document.querySelector('#leaderEmployeeRows').innerHTML = '<tr><td colspan="4">Select department first.</td></tr>';
+        form.managerId.innerHTML = '<option value="">Select Manager</option>';
+        return;
+    }
+    if (leaderMode) {
+        await loadLeaderEmployeeOptions(form);
+    } else {
+        await loadDepartmentManagers(form);
+    }
+}
+
+async function loadDepartmentManagers(form) {
+    const select = form.managerId;
+    if (!form.departmentId.value) {
+        select.innerHTML = '<option value="">Select Manager</option>';
+        return;
+    }
+    const payload = await EmployeeApi.get(`/departments/members?departmentId=${form.departmentId.value}`);
+    const currentEmployeeId = String(form.dataset.employeeId);
+    const managers = (payload.data || []).filter(employee =>
+        String(employee.employeeId) !== currentEmployeeId
+        && String(employee.departmentId || '') === String(form.departmentId.value)
+        && String(employee.roleCode || '').toUpperCase() === 'MANAGER'
+    );
+    renderManagerSelect(select, managers, currentEmployeeId, form.dataset.managerId);
+}
+
+function isSelectedLeaderPosition(form) {
+    const positions = JSON.parse(form.dataset.positions || '[]');
+    const selected = positions.find(position => String(position.positionId) === String(form.positionId.value));
+    if (!selected) {
+        return false;
+    }
+    const title = String(selected ? selected.positionTitle : '').toLowerCase();
+    return title.includes('leader') || title.includes('manager') || title.includes('trưởng') || title.includes('quan ly') || title.includes('quản lý');
+}
+
+async function loadLeaderEmployeeOptions(form) {
+    const payload = await EmployeeApi.get(`/departments/members?departmentId=${form.departmentId.value}`);
+    const currentEmployeeId = String(form.dataset.employeeId);
+    const employees = (payload.data || []).filter(employee =>
+        String(employee.employeeId) !== currentEmployeeId
+        && (!employee.departmentId || String(employee.departmentId) === String(form.departmentId.value))
+    );
+    const picker = document.querySelector('#leaderEmployeeOptions');
+    picker.innerHTML = employees.map(employee => {
+        const checked = String(employee.managerId || '') === currentEmployeeId ? 'checked' : '';
+        return `
+            <label class="member-option">
+                <input type="checkbox" name="leaderEmployeeIds" value="${employee.employeeId}" ${checked}>
+                <span>
+                    <strong>${safe(employee.employeeCode)} - ${safe(employee.fullName)}</strong>
+                    <span>${safe(employee.positionTitle)} | Role: ${safe(employee.roleCode)}</span>
+                </span>
+            </label>
+        `;
+    }).join('');
+    renderLeaderEmployeeRows(employees.filter(employee => String(employee.managerId || '') === currentEmployeeId));
+}
+
+function renderPositionSelect(form, selectedValue) {
+    const selectedDepartmentId = String(form.departmentId.value || '');
+    const positions = selectedDepartmentId
+        ? JSON.parse(form.dataset.positions || '[]').filter(position =>
+            String(position.departmentId || '') === selectedDepartmentId
+        )
+        : [];
+    renderSelect(form.positionId, positions, 'positionId', 'positionTitle', 'Select Position', selectedValue);
+    form.positionId.disabled = !form.departmentId.value;
+    form.positionId.required = false;
+    form.positionId.removeAttribute('required');
+}
+
+function renderLeaderEmployeeRows(employees) {
+    const tbody = document.querySelector('#leaderEmployeeRows');
+    if (!employees.length) {
+        tbody.innerHTML = '<tr><td colspan="4">No managed employees found.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = employees.map(employee => `
+        <tr>
+            <td>${safe(employee.employeeCode)}</td>
+            <td>${safe(employee.fullName)}</td>
+            <td>${safe(employee.positionTitle)}</td>
+            <td>${safe(employee.roleCode)}</td>
+        </tr>
+    `).join('');
 }
 
 function renderSelect(select, items, valueKey, labelKey, placeholder, selectedValue) {
@@ -239,11 +633,13 @@ function renderSelect(select, items, valueKey, labelKey, placeholder, selectedVa
 
 function renderManagerSelect(select, employees, currentEmployeeId, selectedValue) {
     select.innerHTML = '<option value="">Select Manager</option>' + employees.map(employee => {
-        const disabled = employee.employeeId === currentEmployeeId ? ' disabled' : '';
         const label = `${safe(employee.employeeCode)} - ${safe(employee.fullName)}`;
-        return `<option value="${employee.employeeId}"${disabled}>${label}</option>`;
+        return `<option value="${employee.employeeId}">${label}</option>`;
     }).join('');
     select.value = selectedValue || '';
+    if (select.value !== String(selectedValue || '')) {
+        select.value = '';
+    }
 }
 
 function detailItem(label, value) {
@@ -264,7 +660,8 @@ function readForm(form) {
 
 function withContext(url) {
     const first = location.pathname.split('/').filter(Boolean)[0] || '';
-    const contextPath = first === 'employee' ? '' : `/${first}`;
+    const rootFolders = ['employee', 'document'];
+    const contextPath = rootFolders.includes(first) ? '' : `/${first}`;
     return `${contextPath}${url}`;
 }
 
@@ -278,12 +675,15 @@ async function handleResponse(response) {
 
 function showMessage(message, type = 'success') {
     const element = document.querySelector('#message');
+    if (!element) {
+        return;
+    }
     element.textContent = message;
     element.className = `message show ${type}`;
 }
 
 function formatMoney(value) {
-    return Number(value || 0).toLocaleString('vi-VN') + ' đ';
+    return Number(value || 0).toLocaleString('vi-VN') + ' VND';
 }
 
 function safe(value) {
