@@ -234,7 +234,7 @@
 
     <servlet>
         <servlet-name>RegistrationRequestController</servlet-name>
-        <servlet-class>com.hrms.controller.admin.RegistrationRequestController</servlet-class>
+        <servlet-class>com.hrms.controller.sysadmin.RegistrationRequestController</servlet-class>
     </servlet>
     <servlet-mapping>
         <servlet-name>RegistrationRequestController</servlet-name>
