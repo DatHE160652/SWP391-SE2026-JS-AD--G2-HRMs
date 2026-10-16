@@ -215,6 +215,35 @@
     </servlet-mapping>
 
     <servlet>
+        <servlet-name>LeaveController</servlet-name>
+        <servlet-class>com.hrms.controller.hr.LeaveController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>LeaveController</servlet-name>
+        <url-pattern>/leave/types</url-pattern>
+        <url-pattern>/leave/my-balances</url-pattern>
+        <url-pattern>/leave/my-requests</url-pattern>
+        <url-pattern>/leave/submit</url-pattern>
+        <url-pattern>/leave/pending-approvals</url-pattern>
+        <url-pattern>/leave/all-requests</url-pattern>
+        <url-pattern>/leave/calendar</url-pattern>
+        <url-pattern>/leave/report</url-pattern>
+        <url-pattern>/leave/api/types</url-pattern>
+        <url-pattern>/leave/api/my-balances</url-pattern>
+        <url-pattern>/leave/api/my-requests</url-pattern>
+        <url-pattern>/leave/api/submit</url-pattern>
+        <url-pattern>/leave/api/cancel</url-pattern>
+        <url-pattern>/leave/api/pending-approvals</url-pattern>
+        <url-pattern>/leave/api/approve</url-pattern>
+        <url-pattern>/leave/api/reject</url-pattern>
+        <url-pattern>/leave/api/all-requests</url-pattern>
+        <url-pattern>/leave/api/calendar-events</url-pattern>
+        <url-pattern>/leave/api/report</url-pattern>
+        <url-pattern>/leave/export-excel</url-pattern>
+        <url-pattern>/leave/api/calculate-days</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
         <servlet-name>SystemAdminLoginController</servlet-name>
         <servlet-class>com.hrms.controller.auth.SystemAdminLoginController</servlet-class>
     </servlet>
