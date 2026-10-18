@@ -194,6 +194,7 @@ public class PublicPortalController extends HttpServlet {
         String role = principal.getRoleCode() == null ? "" : principal.getRoleCode().toUpperCase();
         return switch (role) {
             case "COMPANY_ADMIN" -> "/employee/employee-list";
+            case "HR" -> "/employee/profile-update-periods";
             case "MANAGER" -> "/attendance/manager-attendance";
             case "EMPLOYEE" -> "/employee/my-profile";
             default -> "/login";

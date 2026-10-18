@@ -175,7 +175,16 @@ async function setupMyProfile() {
                 event.preventDefault();
                 await updateMyProfile(form);
             });
-            document.querySelector('#editProfileButton').addEventListener('click', () => setProfileEditMode(true));
+            document.querySelector('#editProfileButton').addEventListener('click', async () => {
+                try {
+                    const latest = await EmployeeApi.get('/employees/me');
+                    renderMyProfile(latest.data);
+                    setProfileEditMode(true);
+                } catch (error) {
+                    showMessage(error.message, 'error');
+                    setProfileEditMode(false);
+                }
+            });
             document.querySelector('#discardProfileButton').addEventListener('click', async () => {
                 const latest = await EmployeeApi.get('/employees/me');
                 renderMyProfile(latest.data);
@@ -225,6 +234,7 @@ function renderMyProfileSidebar(roleCode) {
             <div class="nav-label">Phân hệ quản trị</div>
             <a class="nav-link active" href="../employee/my-profile">Hồ sơ cá nhân</a>
             <a class="nav-link" href="../employee/employee-list">Quản lý Nhân sự</a>
+            <a class="nav-link" href="../employee/profile-update-periods">Đợt cập nhật hồ sơ</a>
             <a class="nav-link" href="../department/department-list">Quản lý Phòng ban</a>
             <a class="nav-link" href="../position/position-list">Quản lý Chức danh</a>
             <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
@@ -242,7 +252,10 @@ function renderMyProfileSidebar(roleCode) {
 
 async function updateMyProfile(form) {
     try {
-        const payload = await EmployeeApi.post('/employees/me/update-profile', readForm(form));
+        const payload = await EmployeeApi.post('/employees/me/update-profile', {
+            phone: form.phone.value,
+            csrfToken: form.csrfToken.value
+        });
         showMessage(payload.message);
         const latest = await EmployeeApi.get('/employees/me');
         renderMyProfile(latest.data);
@@ -250,6 +263,11 @@ async function updateMyProfile(form) {
         await loadMyHistory();
     } catch (error) {
         showEmployeeFormError(form, error);
+        if (error.status === 403) {
+            form.dataset.canUpdatePhone = 'false';
+            setProfileEditMode(false);
+            document.querySelector('#profileUpdateStatus').textContent = error.message;
+        }
     }
 }
 
@@ -415,6 +433,9 @@ function renderMyProfile(employee) {
     document.querySelector('#profileCode').textContent = employee.employeeCode || '-';
     const form = document.querySelector('#myProfileForm');
     if (form) {
+        form.dataset.canUpdatePhone = String(employee.canUpdatePhone === true);
+        form.dataset.updateDeadline = employee.profileUpdatePeriod ? employee.profileUpdatePeriod.endsAt : '';
+        form.csrfToken.value = employee.csrfToken || '';
         form.employeeCode.value = employee.employeeCode || '';
         form.fullName.value = employee.fullName || '';
         form.phone.value = employee.phone || '';
@@ -424,6 +445,12 @@ function renderMyProfile(employee) {
         form.querySelectorAll('input[name="gender"]').forEach(input => {
             input.checked = input.value === gender;
         });
+        const period = employee.profileUpdatePeriod;
+        document.querySelector('#profileUpdateStatus').textContent = employee.canUpdatePhone && period
+            ? `Đợt "${period.title}" đang mở đến ${new Date(period.endsAt).toLocaleString('vi-VN')}. Bạn chỉ được cập nhật số điện thoại.`
+            : 'Không có đợt cập nhật hồ sơ đang mở. Số điện thoại hiện không thể chỉnh sửa.';
+        setProfileEditMode(false);
+        scheduleProfileUpdateExpiry(form);
     }
 
     document.querySelector('#employmentTab').innerHTML = `
@@ -448,17 +475,39 @@ function setProfileEditMode(editing) {
     if (!form) {
         return;
     }
-    ['fullName', 'phone', 'dateOfBirth'].forEach(name => {
+    const available = form.dataset.canUpdatePhone === 'true'
+        && Date.parse(form.dataset.updateDeadline) > Date.now();
+    const phoneEditing = editing && available;
+    ['fullName', 'dateOfBirth'].forEach(name => {
         if (form[name]) {
-            form[name].readOnly = !editing;
+            form[name].readOnly = true;
         }
     });
     form.querySelectorAll('input[name="gender"]').forEach(input => {
-        input.disabled = !editing;
+        input.disabled = true;
     });
-    document.querySelector('#editProfileButton').classList.toggle('hidden', editing);
-    document.querySelector('#submitProfileButton').classList.toggle('hidden', !editing);
-    document.querySelector('#discardProfileButton').classList.toggle('hidden', !editing);
+    form.phone.readOnly = !phoneEditing;
+    document.querySelector('#editProfileButton').disabled = !available;
+    document.querySelector('#editProfileButton').classList.toggle('hidden', phoneEditing || !available);
+    document.querySelector('#submitProfileButton').classList.toggle('hidden', !phoneEditing);
+    document.querySelector('#discardProfileButton').classList.toggle('hidden', !phoneEditing);
+}
+
+let profileUpdateExpiryTimer;
+
+function scheduleProfileUpdateExpiry(form) {
+    clearTimeout(profileUpdateExpiryTimer);
+    if (form.dataset.canUpdatePhone !== 'true') {
+        return;
+    }
+    const remaining = Date.parse(form.dataset.updateDeadline) - Date.now();
+    if (!Number.isFinite(remaining) || remaining <= 0) {
+        form.dataset.canUpdatePhone = 'false';
+        setProfileEditMode(false);
+        document.querySelector('#profileUpdateStatus').textContent = 'Đợt cập nhật đã kết thúc. Số điện thoại đã được khóa.';
+        return;
+    }
+    profileUpdateExpiryTimer = setTimeout(() => scheduleProfileUpdateExpiry(form), Math.min(remaining + 1, 2147483647));
 }
 
 function renderMyDocumentRows(documents) {
@@ -734,6 +783,7 @@ async function handleResponse(response) {
     const payload = await response.json();
     if (!response.ok || payload.success === false) {
         const error = new Error(payload.message || 'Request failed.');
+        error.status = response.status;
         error.fieldErrors = payload.fieldErrors;
         throw error;
     }

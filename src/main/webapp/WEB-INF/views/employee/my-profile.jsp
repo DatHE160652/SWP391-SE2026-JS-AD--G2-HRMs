@@ -40,30 +40,32 @@
 
             <div id="profileTab" class="tab-panel">
                 <form id="myProfileForm">
+                    <input type="hidden" name="csrfToken">
+                    <p id="profileUpdateStatus" role="status">Đang kiểm tra đợt cập nhật hồ sơ...</p>
                     <div class="form-grid">
                         <div>
                             <label>Employee Code</label>
                             <input name="employeeCode" readonly>
                         </div>
                         <div>
-                            <label>Full Name <span class="required">*</span></label>
-                            <input name="fullName" required>
+                            <label>Full Name</label>
+                            <input name="fullName" readonly>
                         </div>
                         <div>
                             <label>Gender</label>
                             <div class="radio-row">
-                                <label><input type="radio" name="gender" value="Male" required> Male</label>
-                                <label><input type="radio" name="gender" value="Female"> Female</label>
-                                <label><input type="radio" name="gender" value="Other"> Other</label>
+                                <label><input type="radio" name="gender" value="Male" disabled> Male</label>
+                                <label><input type="radio" name="gender" value="Female" disabled> Female</label>
+                                <label><input type="radio" name="gender" value="Other" disabled> Other</label>
                             </div>
                         </div>
                         <div>
                             <label>Date of Birth</label>
-                            <input name="dateOfBirth" type="date" required>
+                            <input name="dateOfBirth" type="date" readonly>
                         </div>
                         <div>
                             <label>Phone</label>
-                            <input name="phone" required>
+                            <input name="phone" type="tel" maxlength="10" pattern="0[0-9]{9}" required readonly>
                         </div>
                         <div>
                             <label>Employment Status</label>
@@ -71,7 +73,7 @@
                         </div>
                     </div>
                     <div class="form-actions">
-                        <button type="button" id="editProfileButton">Cập nhật thông tin</button>
+                        <button type="button" id="editProfileButton" class="hidden" disabled>Cập nhật số điện thoại</button>
                         <button type="submit" id="submitProfileButton" class="hidden">Submit</button>
                         <button type="button" class="secondary hidden" id="discardProfileButton">Discard</button>
                     </div>

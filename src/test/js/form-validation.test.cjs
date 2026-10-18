@@ -6,6 +6,7 @@ const { JSDOM } = require('jsdom');
 
 const script = fs.readFileSync(path.resolve(__dirname, '../../main/webapp/js/form-validation.js'), 'utf8');
 const stylesheet = fs.readFileSync(path.resolve(__dirname, '../../main/webapp/css/form-validation.css'), 'utf8');
+const employeeScript = fs.readFileSync(path.resolve(__dirname, '../../main/webapp/js/employee.js'), 'utf8');
 
 function page(markup) {
     const dom = new JSDOM(`<html><head><style>${stylesheet}</style></head><body>${markup}</body></html>`, {
@@ -115,5 +116,88 @@ test('native validation popups are prevented and dynamic forms are supported', (
     form.elements.namedItem('title').dispatchEvent(invalid);
     assert.equal(invalid.defaultPrevented, true);
     assert.ok(form.querySelector('.field-error').textContent);
+    window.close();
+});
+
+function profilePage() {
+    const window = page('<div id="message"></div><div id="profileName"></div><div id="profileCode"></div>'
+        + '<form id="myProfileForm"><input name="csrfToken" type="hidden"><p id="profileUpdateStatus"></p>'
+        + '<input name="employeeCode" readonly><input name="fullName" readonly><input name="phone" readonly>'
+        + '<input name="dateOfBirth" readonly><input name="status" readonly><input type="radio" name="gender" value="Male" disabled>'
+        + '<button id="editProfileButton" type="button"></button><button id="submitProfileButton"></button>'
+        + '<button id="discardProfileButton" type="button"></button></form>'
+        + '<div id="employmentTab"></div><div id="salaryTab"></div><div id="accountTab"></div>');
+    const form = window.document.getElementById('myProfileForm');
+    Array.from(form.elements).filter(field => field.name).forEach(field => {
+        Object.defineProperty(form, field.name, { value: field, configurable: true });
+    });
+    window.eval(employeeScript);
+    return window;
+}
+
+function profileData(available) {
+    return { employeeId: 1, employeeCode: 'EMP-001', fullName: 'Protected Name', phone: '0901234567',
+        dateOfBirth: '2000-01-01', gender: 'Male', status: 'Active', csrfToken: 'test-token',
+        canUpdatePhone: available, profileUpdatePeriod: available
+            ? { periodId: 1, title: 'Phone update', endsAt: new Date(Date.now() + 60000).toISOString() } : null };
+}
+
+test('profile stays locked without an open period even if edit is invoked directly', () => {
+    const window = profilePage();
+    window.renderMyProfile(profileData(false));
+    window.setProfileEditMode(true);
+    const form = window.document.getElementById('myProfileForm');
+    assert.equal(form.phone.readOnly, true);
+    assert.equal(form.fullName.readOnly, true);
+    assert.equal(form.dateOfBirth.readOnly, true);
+    assert.equal(window.document.getElementById('editProfileButton').disabled, true);
+    window.close();
+});
+
+test('an open period unlocks only phone and expiry locks it again', () => {
+    const window = profilePage();
+    window.renderMyProfile(profileData(true));
+    window.setProfileEditMode(true);
+    const form = window.document.getElementById('myProfileForm');
+    assert.equal(form.phone.readOnly, false);
+    assert.equal(form.fullName.readOnly, true);
+    assert.equal(form.dateOfBirth.readOnly, true);
+    assert.equal(form.querySelector('[name="gender"]').disabled, true);
+    form.dataset.updateDeadline = new Date(Date.now() - 1000).toISOString();
+    window.scheduleProfileUpdateExpiry(form);
+    assert.equal(form.phone.readOnly, true);
+    assert.equal(window.document.getElementById('submitProfileButton').classList.contains('hidden'), true);
+    window.close();
+});
+
+test('profile save submits only phone and CSRF even if protected inputs are tampered with', async () => {
+    const window = profilePage();
+    window.renderMyProfile(profileData(true));
+    const requests = [];
+    window.fetch = async (url, options) => {
+        if (options.method === 'POST') {
+            requests.push(Object.fromEntries(options.body.entries()));
+        }
+        return { ok: true, status: 200, json: async () => ({ success: true, message: 'Saved', data: profileData(true) }) };
+    };
+    const form = window.document.getElementById('myProfileForm');
+    form.fullName.value = 'Tampered';
+    form.phone.value = '0902000001';
+    await window.updateMyProfile(form);
+    assert.deepEqual(requests, [{ phone: '0902000001', csrfToken: 'test-token' }]);
+    window.close();
+});
+
+test('a period closed by the administrator locks the profile after server rejection', async () => {
+    const window = profilePage();
+    window.renderMyProfile(profileData(true));
+    window.setProfileEditMode(true);
+    window.fetch = async () => ({ ok: false, status: 403,
+        json: async () => ({ success: false, message: 'Period closed' }) });
+    const form = window.document.getElementById('myProfileForm');
+    await window.updateMyProfile(form);
+    assert.equal(form.phone.readOnly, true);
+    assert.equal(window.document.getElementById('editProfileButton').disabled, true);
+    assert.equal(window.document.getElementById('profileUpdateStatus').textContent, 'Period closed');
     window.close();
 });

@@ -75,6 +75,18 @@
     </filter-mapping>
 
     <servlet>
+        <servlet-name>ProfileUpdatePeriodServlet</servlet-name>
+        <servlet-class>com.hrms.controller.ProfileUpdatePeriodServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>ProfileUpdatePeriodServlet</servlet-name>
+        <url-pattern>/employee/profile-update-periods</url-pattern>
+        <url-pattern>/employees/profile-update-periods</url-pattern>
+        <url-pattern>/employees/profile-update-periods/create</url-pattern>
+        <url-pattern>/employees/profile-update-periods/close</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
         <servlet-name>EmployeeServlet</servlet-name>
         <servlet-class>com.hrms.controller.EmployeeServlet</servlet-class>
     </servlet>

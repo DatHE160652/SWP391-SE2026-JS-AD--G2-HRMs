@@ -62,6 +62,12 @@ $env:NODE_PATH = Join-Path (Get-Location) 'target/validation-test-runtime/node_m
 node --test src/test/js/form-validation.test.cjs
 ```
 
+## Profile Update Periods
+
+Run `database/scripts/profile-update-periods.sql` for an existing database. Company Admin opens the management page from the employee list; HR lands on `/employee/profile-update-periods` after login. They can create company-wide periods with start/end times or close them early. Overlapping periods that have not been closed are rejected. Times are stored in UTC and displayed in the browser's local timezone.
+
+Employee and Manager self-service profiles are read-only unless their company has a currently open period. During that period they can update only their own phone number (10 digits beginning with 0); names, gender, birth dates, employee codes and identity numbers remain protected. The API validates the session, role, ownership, company, CSRF token and active period on every save. Phone changes and their audit entries share a transaction. An open period allows repeated phone corrections until it ends or is closed.
+
 ## Collaborators
 
 - [Nguyen Hoang Bach](https://github.com/HoangBach0)

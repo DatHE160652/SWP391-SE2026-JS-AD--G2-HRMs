@@ -15,13 +15,18 @@ import java.util.List;
 public class AuditLogDAO {
     public void insert(AuditLog log) throws SQLException {
         ensureTableExists();
+        try (Connection connection = DBConnection.getConnection()) {
+            insert(connection, log);
+        }
+    }
+
+    public void insert(Connection connection, AuditLog log) throws SQLException {
         String sql = """
                 INSERT INTO AuditLogs (CompanyId, UserId, Action, TableName, RecordId, OldValues, NewValues, IpAddress)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
-        try (Connection connection = DBConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
             setNullableInt(statement, 1, log.getCompanyId());
             setNullableInt(statement, 2, log.getUserId());
             statement.setString(3, log.getAction());

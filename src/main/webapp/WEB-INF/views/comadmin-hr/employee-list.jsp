@@ -24,7 +24,10 @@
             <div>
                 <h1 class="page-title">Danh bạ Nhân sự</h1>
             </div>
-            <a class="button" href="employee-form">+ Add Employee</a>
+            <div class="form-actions">
+                <a class="button secondary" href="profile-update-periods">Đợt cập nhật hồ sơ</a>
+                <a class="button" href="employee-form">+ Add Employee</a>
+            </div>
         </div>
 
         <section class="summary-grid">

@@ -13,7 +13,7 @@ public final class ValidationSupport {
         return "{\"success\":false,\"message\":" + quote(exception.getMessage()) + fields + "}";
     }
 
-    private static String quote(String value) {
+    public static String quote(String value) {
         if (value == null) {
             return "null";
         }

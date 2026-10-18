@@ -17,7 +17,7 @@ import java.util.Set;
 
 public class TenantAuthorizationFilter implements Filter {
     private static final Set<String> ADMIN_ROLES = Set.of("COMPANY_ADMIN");
-    private static final Set<String> TENANT_ROLES = Set.of("COMPANY_ADMIN", "MANAGER", "EMPLOYEE");
+    private static final Set<String> TENANT_ROLES = Set.of("COMPANY_ADMIN", "HR", "MANAGER", "EMPLOYEE");
 
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
@@ -69,6 +69,13 @@ public class TenantAuthorizationFilter implements Filter {
 
         String path = request.getServletPath();
         String method = request.getMethod();
+
+        if ("HR".equals(role)) {
+            return isGet(method) && (path.equals("/employee/profile-update-periods")
+                    || path.equals("/employees/profile-update-periods"))
+                    || isPost(method) && (path.equals("/employees/profile-update-periods/create")
+                    || path.equals("/employees/profile-update-periods/close"));
+        }
 
         if ("MANAGER".equals(role)) {
             return isManagerAllowed(path, method);

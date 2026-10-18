@@ -1,11 +1,13 @@
 package com.hrms.controller;
 
 import com.hrms.model.Employee;
+import com.hrms.model.ProfileUpdatePeriod;
 import com.hrms.dao.AuditLogDAO;
 import com.hrms.service.EmployeeHistoryService;
 import com.hrms.service.security.TenantPrincipal;
 import com.hrms.service.EmployeeService;
 import com.hrms.service.FieldValidationException;
+import com.hrms.service.ProfileUpdateService;
 import com.hrms.util.SecuritySupport;
 
 import jakarta.servlet.ServletException;
@@ -17,14 +19,25 @@ import java.io.IOException;
 import java.sql.Date;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Set;
 
 public class EmployeeServlet extends HttpServlet {
     private final EmployeeService employeeService = new EmployeeService();
     private final EmployeeHistoryService employeeHistoryService = new EmployeeHistoryService();
+    private final ProfileUpdateService profileUpdateService;
+
+    public EmployeeServlet() {
+        this(new ProfileUpdateService());
+    }
+
+    EmployeeServlet(ProfileUpdateService profileUpdateService) {
+        this.profileUpdateService = profileUpdateService;
+    }
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        SecuritySupport.applyNoStore(response::setHeader);
         try {
             if ("/employees/me".equals(request.getServletPath())) {
                 TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
@@ -38,7 +51,9 @@ public class EmployeeServlet extends HttpServlet {
                     return;
                 }
                 writeJson(response, HttpServletResponse.SC_OK,
-                        "{\"success\":true,\"data\":" + toJson(employee, principal.getRoleCode()) + "}");
+                        "{\"success\":true,\"data\":" + toJson(employee, principal.getRoleCode(),
+                                profileUpdateService.getAvailablePeriod(principal),
+                                SecuritySupport.ensurePublicCsrfToken(request.getSession(true))) + "}");
                 return;
             }
 
@@ -80,6 +95,7 @@ public class EmployeeServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        SecuritySupport.applyNoStore(response::setHeader);
         try {
             boolean success;
             String message;
@@ -92,23 +108,15 @@ public class EmployeeServlet extends HttpServlet {
                     writeJson(response, HttpServletResponse.SC_UNAUTHORIZED, error("Employee session is required."));
                     return;
                 }
-                Employee employee = employeeService.getEmployeeById(principal.getEmployeeId());
-                if (employee == null) {
-                    writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Employee not found."));
-                    return;
+                if (!SecuritySupport.hasValidPublicCsrfToken(request)) {
+                    throw new SecurityException("Phiên thao tác không hợp lệ. Vui lòng tải lại trang.");
                 }
-                String oldValue = profileSnapshot(employee);
-                employee.setFullName(trimToNull(request.getParameter("fullName")));
-                employee.setPhone(trimToNull(request.getParameter("phone")));
-                employee.setGender(trimToNull(request.getParameter("gender")));
-                employee.setDateOfBirth(parseDate(request.getParameter("dateOfBirth")));
-                success = employeeService.updateEmployee(employee);
-                if (success) {
-                    employeeHistoryService.logEmployeeChange(principal.getCompanyId(), principal.getUserId(),
-                            employee.getEmployeeId(), "UPDATE_PROFILE", oldValue, profileSnapshot(employee),
-                            request.getRemoteAddr());
+                if (!Set.of("phone", "csrfToken").containsAll(request.getParameterMap().keySet())) {
+                    throw new FieldValidationException("phone", "Bạn chỉ được cập nhật số điện thoại trong đợt đang mở.");
                 }
-                message = success ? "Personal profile updated successfully." : "No employee record was changed.";
+                profileUpdateService.updatePhone(principal, request.getParameter("phone"), request.getRemoteAddr());
+                success = true;
+                message = "Đã cập nhật số điện thoại.";
             } else if ("/employees/update".equals(request.getServletPath())) {
                 TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
                 Employee updatedEmployee = readEmployee(request);
@@ -151,6 +159,8 @@ public class EmployeeServlet extends HttpServlet {
 
             writeJson(response, HttpServletResponse.SC_OK,
                     "{\"success\":" + success + ",\"message\":" + quote(message) + "}");
+        } catch (SecurityException exception) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error(exception.getMessage()));
         } catch (FieldValidationException exception) {
             writeJson(response, HttpServletResponse.SC_BAD_REQUEST,
                     "{\"success\":false,\"message\":" + quote(exception.getMessage())
@@ -209,10 +219,13 @@ public class EmployeeServlet extends HttpServlet {
                 + "}";
     }
 
-    private String toJson(Employee employee, String roleCode) {
+    private String toJson(Employee employee, String roleCode, ProfileUpdatePeriod period, String csrfToken) {
         String json = toJson(employee);
         return json.substring(0, json.length() - 1)
                 + ",\"roleCode\":" + quote(roleCode)
+                + ",\"canUpdatePhone\":" + (period != null)
+                + ",\"profileUpdatePeriod\":" + ProfileUpdatePeriodServlet.toJson(period)
+                + ",\"csrfToken\":" + quote(csrfToken)
                 + "}";
     }
 
