@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tạo đơn xin nghỉ phép - HRMs Cloud</title>
@@ -39,6 +40,7 @@
 
         <section class="panel" style="max-width: 760px; margin: 0 auto 30px;">
             <form id="leaveSubmitForm">
+                <div id="submitMessage" role="alert" style="display:none"></div>
                 <div class="form-grid">
                     <div class="form-group-full">
                         <label class="form-label" for="leaveTypeId">Loại nghỉ phép <span style="color:#b42318;">*</span></label>
@@ -85,7 +87,7 @@
     </main>
 </div>
 
-<script src="../js/leave.js"></script>
+<script src="../js/leave.js?v=<%= application.getResource("/js/leave.js").openConnection().getLastModified() %>"></script>
 <script>
     document.addEventListener("DOMContentLoaded", () => {
         LeaveApp.initSubmitForm();

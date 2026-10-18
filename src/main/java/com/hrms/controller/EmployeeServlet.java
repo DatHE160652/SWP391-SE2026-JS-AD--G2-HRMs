@@ -5,6 +5,7 @@ import com.hrms.dao.AuditLogDAO;
 import com.hrms.service.EmployeeHistoryService;
 import com.hrms.service.security.TenantPrincipal;
 import com.hrms.service.EmployeeService;
+import com.hrms.service.FieldValidationException;
 import com.hrms.util.SecuritySupport;
 
 import jakarta.servlet.ServletException;
@@ -150,6 +151,11 @@ public class EmployeeServlet extends HttpServlet {
 
             writeJson(response, HttpServletResponse.SC_OK,
                     "{\"success\":" + success + ",\"message\":" + quote(message) + "}");
+        } catch (FieldValidationException exception) {
+            writeJson(response, HttpServletResponse.SC_BAD_REQUEST,
+                    "{\"success\":false,\"message\":" + quote(exception.getMessage())
+                            + ",\"fieldErrors\":{" + quote(exception.getField()) + ":"
+                            + quote(exception.getMessage()) + "}}");
         } catch (SQLException | IllegalArgumentException e) {
             writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error(e.getMessage()));
         }
@@ -278,7 +284,11 @@ public class EmployeeServlet extends HttpServlet {
     }
 
     private Date parseDate(String value) {
-        return value == null || value.isBlank() ? null : Date.valueOf(value);
+        try {
+            return value == null || value.isBlank() ? null : Date.valueOf(value);
+        } catch (IllegalArgumentException exception) {
+            throw new FieldValidationException("dateOfBirth", "Ngày sinh không hợp lệ.");
+        }
     }
 
     private String trimToNull(String value) {

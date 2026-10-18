@@ -66,7 +66,9 @@ async function uploadDocument(form, employeeId) {
             await loadEmployeeHistory(employeeId, '#historyRows');
         }
     } catch (error) {
-        showDocumentMessage(error.message, 'error');
+        if (!FormValidation.showErrors(form, error)) {
+            showDocumentMessage(error.message, 'error');
+        }
     }
 }
 
@@ -169,7 +171,7 @@ function documentApiUrl(url) {
 async function handleDocumentResponse(response) {
     const payload = await response.json();
     if (!response.ok || payload.success === false) {
-        throw new Error(payload.message || 'Request failed.');
+        throw FormValidation.responseError(payload);
     }
     return payload;
 }

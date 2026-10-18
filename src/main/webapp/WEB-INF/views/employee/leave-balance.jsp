@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Số dư ngày phép - HRMs Cloud</title>
@@ -67,7 +68,7 @@
     </main>
 </div>
 
-<script src="../js/leave.js"></script>
+<script src="../js/leave.js?v=<%= application.getResource("/js/leave.js").openConnection().getLastModified() %>"></script>
 <script>
     document.addEventListener("DOMContentLoaded", () => {
         LeaveApp.initBalancesView();

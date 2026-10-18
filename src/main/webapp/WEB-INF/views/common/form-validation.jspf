@@ -1,0 +1,2 @@
+<link rel="stylesheet" href="${pageContext.request.contextPath}/css/form-validation.css?v=<%= application.getResource("/css/form-validation.css").openConnection().getLastModified() %>">
+<script src="${pageContext.request.contextPath}/js/form-validation.js?v=<%= application.getResource("/js/form-validation.js").openConnection().getLastModified() %>" defer></script>

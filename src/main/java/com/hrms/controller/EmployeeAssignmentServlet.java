@@ -1,5 +1,7 @@
 package com.hrms.controller;
 
+import com.hrms.util.ValidationSupport;
+
 import com.hrms.model.EmployeeAssignment;
 import com.hrms.dao.EmployeeAssignmentDAO.DepartmentMemberOption;
 import com.hrms.service.EmployeeAssignmentService;
@@ -36,7 +38,7 @@ public class EmployeeAssignmentServlet extends HttpServlet {
                     parseRequiredInt(request.getParameter("id")));
             writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":" + toJson(assignment) + "}");
         } catch (SQLException | IllegalArgumentException e) {
-            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error(e.getMessage()));
+            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, ValidationSupport.errorJson(e));
         }
     }
 
@@ -118,7 +120,7 @@ public class EmployeeAssignmentServlet extends HttpServlet {
             writeJson(response, HttpServletResponse.SC_OK,
                     "{\"success\":" + success + ",\"message\":" + quote(message) + "}");
         } catch (SQLException | IllegalArgumentException e) {
-            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error(e.getMessage()));
+            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, ValidationSupport.errorJson(e));
         }
     }
 

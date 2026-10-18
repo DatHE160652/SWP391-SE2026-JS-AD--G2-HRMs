@@ -31,7 +31,7 @@ public class DocumentService {
             ServletContext servletContext, Integer uploadedBy) throws SQLException, IOException {
         ensureEmployeeExists(employeeId);
         if (documentName == null || documentName.isBlank()) {
-            throw new IllegalArgumentException("Document name is required");
+            throw new FieldValidationException("documentName", "Document name is required");
         }
 
         FileUploadUtil.SavedFile savedFile = FileUploadUtil.saveUploadedFile(filePart, employeeId, servletContext);

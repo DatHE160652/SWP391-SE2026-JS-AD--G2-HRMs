@@ -104,18 +104,18 @@ public class LeaveService {
     public LeaveRequest submitLeaveRequest(int companyId, int employeeId, int leaveTypeId,
                                           LocalDate startDate, LocalDate endDate, String reason) throws SQLException {
         if (startDate == null || endDate == null) {
-            throw new IllegalArgumentException("Vui lòng chọn ngày bắt đầu và kết thúc.");
+            throw new FieldValidationException("startDate", "Vui lòng chọn ngày bắt đầu và kết thúc.");
         }
         if (endDate.isBefore(startDate)) {
-            throw new IllegalArgumentException("Ngày kết thúc không được trước ngày bắt đầu.");
+            throw new FieldValidationException("endDate", "Ngày kết thúc không được trước ngày bắt đầu.");
         }
         if (reason == null || reason.trim().isEmpty()) {
-            throw new IllegalArgumentException("Vui lòng nhập lý do xin nghỉ phép.");
+            throw new FieldValidationException("reason", "Vui lòng nhập lý do xin nghỉ phép.");
         }
 
         BigDecimal totalWorkingDays = calculateWorkingDays(startDate, endDate);
         if (totalWorkingDays.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Khoảng thời gian đã chọn không có ngày làm việc nào (rơi vào cuối tuần).");
+            throw new FieldValidationException("endDate", "Khoảng thời gian đã chọn không có ngày làm việc nào (rơi vào cuối tuần).");
         }
 
         int year = startDate.getYear();
@@ -123,7 +123,7 @@ public class LeaveService {
         if (balance == null) {
             LeaveType type = leaveTypeDAO.getLeaveTypeById(leaveTypeId);
             if (type == null) {
-                throw new IllegalArgumentException("Loại nghỉ phép không hợp lệ.");
+                throw new FieldValidationException("leaveTypeId", "Loại nghỉ phép không hợp lệ.");
             }
             try (Connection conn = DBConnection.getConnection()) {
                 BigDecimal initialQuota = BigDecimal.valueOf(
@@ -135,7 +135,7 @@ public class LeaveService {
         }
 
         if (balance.getRemainingDays() == null || totalWorkingDays.compareTo(balance.getRemainingDays()) > 0) {
-            throw new IllegalArgumentException(
+            throw new FieldValidationException("endDate",
                     "Số ngày nghỉ yêu cầu (" + totalWorkingDays + " ngày) vượt quá số dư ngày phép hiện tại ("
                             + (balance.getRemainingDays() != null ? balance.getRemainingDays() : 0) + " ngày)."
             );

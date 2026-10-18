@@ -91,8 +91,12 @@ async function getEmployeeDetail() {
 async function setupEmployeeForm() {
     const employeeId = new URLSearchParams(location.search).get('id');
     const form = document.querySelector('#employeeForm');
+    setupEmployeeFieldValidation(form);
     form.dataset.editing = employeeId ? 'true' : 'false';
-    form.employeeCodeMode.addEventListener('change', () => updateEmployeeCodeInput(form));
+    form.employeeCodeMode.addEventListener('change', () => {
+        updateEmployeeCodeInput(form);
+        setEmployeeFieldError(form, 'employeeCode', '');
+    });
     form.addEventListener('reset', () => {
         setTimeout(() => updateEmployeeCodeInput(form), 0);
     });
@@ -106,12 +110,37 @@ async function setupEmployeeForm() {
 
     form.addEventListener('submit', async event => {
         event.preventDefault();
+        if (!validateEmployeeForm(form)) {
+            return;
+        }
         if (employeeId) {
             await updateEmployee(form);
         } else {
             await createEmployee(form);
         }
     });
+}
+
+function setupEmployeeFieldValidation(form) {
+    FormValidation.init(form);
+}
+
+function setEmployeeFieldError(form, name, message) {
+    FormValidation.setError(form, name, message);
+}
+
+function validateEmployeeField(form, input) {
+    return FormValidation.validateField(input);
+}
+
+function validateEmployeeForm(form) {
+    return FormValidation.validate(form);
+}
+
+function showEmployeeFormError(form, error) {
+    if (!FormValidation.showErrors(form, error)) {
+        showMessage(error.message, 'error');
+    }
 }
 
 function updateEmployeeCodeInput(form) {
@@ -220,7 +249,7 @@ async function updateMyProfile(form) {
         setProfileEditMode(false);
         await loadMyHistory();
     } catch (error) {
-        showMessage(error.message, 'error');
+        showEmployeeFormError(form, error);
     }
 }
 
@@ -257,7 +286,7 @@ async function uploadMyDocument(form) {
         await loadMyDocuments();
         await loadMyHistory();
     } catch (error) {
-        showMessage(error.message, 'error');
+        showEmployeeFormError(form, error);
     }
 }
 
@@ -299,20 +328,19 @@ async function deleteMyDocument(documentId) {
 
 async function createEmployee(form) {
     try {
-        const payload = await EmployeeApi.post('/employees/create', readForm(form));
-        showMessage(payload.message);
-        form.reset();
+        await EmployeeApi.post('/employees/create', readForm(form));
+        location.assign('employee-list');
     } catch (error) {
-        showMessage(error.message, 'error');
+        showEmployeeFormError(form, error);
     }
 }
 
 async function updateEmployee(form) {
     try {
-        const payload = await EmployeeApi.post('/employees/update', readForm(form));
-        showMessage(payload.message);
+        await EmployeeApi.post('/employees/update', readForm(form));
+        location.assign('employee-list');
     } catch (error) {
-        showMessage(error.message, 'error');
+        showEmployeeFormError(form, error);
     }
 }
 
@@ -521,11 +549,11 @@ async function saveOrganization(form) {
     const data = readForm(form);
     const leaderMode = isSelectedLeaderPosition(form);
     if (!data.departmentId) {
-        showMessage('Department is required.', 'error');
+        FormValidation.setError(form, 'departmentId', 'Vui lòng chọn phòng ban.');
         return;
     }
     if (!leaderMode && data.employeeId === data.managerId) {
-        showMessage('Employee cannot be assigned as their own manager.', 'error');
+        FormValidation.setError(form, 'managerId', 'Nhân viên không thể tự quản lý chính mình.');
         return;
     }
 
@@ -557,7 +585,7 @@ async function saveOrganization(form) {
         showMessage('Organization information updated successfully.');
         await loadEmployeeHistory(data.employeeId, '#historyRows');
     } catch (error) {
-        showMessage(error.message, 'error');
+        showEmployeeFormError(form, error);
     }
 }
 
@@ -705,7 +733,9 @@ function withContext(url) {
 async function handleResponse(response) {
     const payload = await response.json();
     if (!response.ok || payload.success === false) {
-        throw new Error(payload.message || 'Request failed.');
+        const error = new Error(payload.message || 'Request failed.');
+        error.fieldErrors = payload.fieldErrors;
+        throw error;
     }
     return payload;
 }

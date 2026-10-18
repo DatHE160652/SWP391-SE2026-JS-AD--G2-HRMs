@@ -1,5 +1,7 @@
 package com.hrms.controller;
 
+import com.hrms.util.ValidationSupport;
+
 import com.hrms.model.Department;
 import com.hrms.service.DepartmentService;
 
@@ -32,7 +34,7 @@ public class DepartmentServlet extends HttpServlet {
             List<Department> departments = departmentService.getDepartments();
             writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":" + toJsonArray(departments) + "}");
         } catch (SQLException | IllegalArgumentException e) {
-            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error(e.getMessage()));
+            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, ValidationSupport.errorJson(e));
         }
     }
 
@@ -56,7 +58,7 @@ public class DepartmentServlet extends HttpServlet {
             writeJson(response, HttpServletResponse.SC_OK,
                     "{\"success\":" + success + ",\"message\":" + quote(message) + "}");
         } catch (SQLException | IllegalArgumentException e) {
-            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error(e.getMessage()));
+            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, ValidationSupport.errorJson(e));
         }
     }
 

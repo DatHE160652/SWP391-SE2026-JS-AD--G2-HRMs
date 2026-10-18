@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cấu hình loại nghỉ phép - HRMs Cloud</title>
@@ -73,6 +74,7 @@
             <button class="modal-close" onclick="LeaveApp.closeModal('modalLeaveType')">&times;</button>
         </div>
         <form id="leaveTypeForm">
+            <div id="typeMessage" role="alert" style="display:none"></div>
             <input type="hidden" id="formLeaveTypeId" name="leaveTypeId">
             <div class="modal-body">
                 <div style="margin-bottom: 14px;">
@@ -102,7 +104,7 @@
     </div>
 </div>
 
-<script src="../js/leave.js"></script>
+<script src="../js/leave.js?v=<%= application.getResource("/js/leave.js").openConnection().getLastModified() %>"></script>
 <script>
     document.addEventListener("DOMContentLoaded", () => {
         LeaveApp.initLeaveTypesView();

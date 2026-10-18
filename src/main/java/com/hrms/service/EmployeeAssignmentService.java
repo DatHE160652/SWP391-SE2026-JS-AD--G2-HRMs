@@ -16,7 +16,7 @@ public class EmployeeAssignmentService {
     public boolean assignDepartment(int employeeId, int departmentId) throws SQLException {
         validateEmployee(employeeId);
         if (!employeeAssignmentDAO.departmentExists(departmentId)) {
-            throw new IllegalArgumentException("Department does not exist.");
+            throw new FieldValidationException("departmentId", "Department does not exist.");
         }
         return employeeAssignmentDAO.assignDepartment(employeeId, departmentId);
     }
@@ -24,15 +24,15 @@ public class EmployeeAssignmentService {
     public boolean assignPosition(int employeeId, int positionId) throws SQLException {
         validateEmployee(employeeId);
         if (!employeeAssignmentDAO.positionExists(positionId)) {
-            throw new IllegalArgumentException("Position does not exist.");
+            throw new FieldValidationException("positionId", "Position does not exist.");
         }
         Position position = positionDAO.getPositionById(positionId);
         EmployeeAssignment assignment = getEmployeeOrganization(employeeId);
         if (assignment.getDepartmentId() == null) {
-            throw new IllegalArgumentException("Please assign a department before selecting a position.");
+            throw new FieldValidationException("departmentId", "Please assign a department before selecting a position.");
         }
         if (position.getDepartmentId() == null || !position.getDepartmentId().equals(assignment.getDepartmentId())) {
-            throw new IllegalArgumentException("Selected position must belong to the employee's department.");
+            throw new FieldValidationException("positionId", "Selected position must belong to the employee's department.");
         }
         boolean assigned = employeeAssignmentDAO.assignPosition(employeeId, positionId);
         if (assigned) {
@@ -52,19 +52,19 @@ public class EmployeeAssignmentService {
 
     public boolean assignDepartmentMembers(int departmentId, int managerId, int[] employeeIds) throws SQLException {
         if (!employeeAssignmentDAO.departmentExists(departmentId)) {
-            throw new IllegalArgumentException("Department does not exist.");
+            throw new FieldValidationException("departmentId", "Department does not exist.");
         }
         validateEmployee(managerId);
         if (!employeeAssignmentDAO.isManagerInDepartment(managerId, departmentId)) {
-            throw new IllegalArgumentException("Department manager must have MANAGER role and belong to this department.");
+            throw new FieldValidationException("managerId", "Department manager must have MANAGER role and belong to this department.");
         }
         for (int employeeId : employeeIds) {
             validateEmployee(employeeId);
             if (employeeId == managerId) {
-                throw new IllegalArgumentException("Manager cannot be selected as their own team member.");
+                throw new FieldValidationException("employeeIds", "Manager cannot be selected as their own team member.");
             }
             if (employeeAssignmentDAO.hasDifferentDepartment(employeeId, departmentId)) {
-                throw new IllegalArgumentException("Employee already belongs to another department. Update that employee's department first.");
+                throw new FieldValidationException("employeeIds", "Employee already belongs to another department. Update that employee's department first.");
             }
         }
         userDAO.updateTenantUserRoleByEmployeeId(managerId, "MANAGER");
@@ -74,7 +74,7 @@ public class EmployeeAssignmentService {
     public java.util.List<EmployeeAssignmentDAO.DepartmentMemberOption> getDepartmentMemberOptions(int departmentId)
             throws SQLException {
         if (!employeeAssignmentDAO.departmentExists(departmentId)) {
-            throw new IllegalArgumentException("Department does not exist.");
+            throw new FieldValidationException("departmentId", "Department does not exist.");
         }
         return employeeAssignmentDAO.getDepartmentMemberOptions(departmentId);
     }
@@ -82,17 +82,17 @@ public class EmployeeAssignmentService {
     public boolean assignManager(int employeeId, int managerId) throws SQLException {
         validateEmployee(employeeId);
         if (employeeId == managerId) {
-            throw new IllegalArgumentException("Employee cannot be assigned as their own manager.");
+            throw new FieldValidationException("managerId", "Employee cannot be assigned as their own manager.");
         }
         if (!employeeAssignmentDAO.employeeExists(managerId)) {
-            throw new IllegalArgumentException("Manager does not exist.");
+            throw new FieldValidationException("managerId", "Manager does not exist.");
         }
         EmployeeAssignment assignment = getEmployeeOrganization(employeeId);
         if (assignment.getDepartmentId() == null) {
-            throw new IllegalArgumentException("Please assign a department before selecting a manager.");
+            throw new FieldValidationException("departmentId", "Please assign a department before selecting a manager.");
         }
         if (!employeeAssignmentDAO.isManagerInDepartment(managerId, assignment.getDepartmentId())) {
-            throw new IllegalArgumentException("Selected manager must have MANAGER role and belong to the same department.");
+            throw new FieldValidationException("managerId", "Selected manager must have MANAGER role and belong to the same department.");
         }
         return employeeAssignmentDAO.assignManager(employeeId, managerId);
     }

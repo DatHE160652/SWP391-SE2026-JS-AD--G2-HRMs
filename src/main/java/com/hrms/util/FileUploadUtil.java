@@ -1,5 +1,7 @@
 package com.hrms.util;
 
+import com.hrms.service.FieldValidationException;
+
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.Part;
 
@@ -72,23 +74,23 @@ public final class FileUploadUtil {
 
     private static void validate(Part filePart) {
         if (filePart == null || filePart.getSize() == 0) {
-            throw new IllegalArgumentException("Please select a document");
+            throw new FieldValidationException("file", "Please select a document");
         }
         if (filePart.getSize() > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("File size must be less than 10MB");
+            throw new FieldValidationException("file", "File size must be less than 10MB");
         }
 
         String fileName = getSubmittedFileName(filePart);
         String extension = getExtension(fileName);
         if (!ALLOWED_EXTENSIONS.contains(extension)) {
-            throw new IllegalArgumentException("File type is not supported");
+            throw new FieldValidationException("file", "File type is not supported");
         }
     }
 
     private static String getSubmittedFileName(Part filePart) {
         String fileName = filePart.getSubmittedFileName();
         if (fileName == null || fileName.isBlank()) {
-            throw new IllegalArgumentException("Please select a document");
+            throw new FieldValidationException("file", "Please select a document");
         }
         return fileName;
     }

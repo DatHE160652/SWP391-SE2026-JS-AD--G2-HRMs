@@ -2,10 +2,11 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Employee Form</title>
-    <link rel="stylesheet" href="../css/employee.css">
+    <link rel="stylesheet" href="../css/employee.css?v=<%= application.getResource("/css/employee.css").openConnection().getLastModified() %>">
 </head>
 <body data-page="form">
 <div class="shell">
@@ -28,7 +29,7 @@
 
         <div id="message" class="message"></div>
 
-        <form id="employeeForm" class="panel">
+        <form id="employeeForm" class="panel" novalidate>
             <input type="hidden" name="employeeId">
             <div class="form-grid">
                 <div id="employeeCodeModeField">

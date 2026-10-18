@@ -1,5 +1,7 @@
 package com.hrms.controller;
 
+import com.hrms.util.ValidationSupport;
+
 import com.hrms.model.EmployeeDocument;
 import com.hrms.service.DocumentService;
 import com.hrms.service.EmployeeHistoryService;
@@ -51,7 +53,7 @@ public class DocumentServlet extends HttpServlet {
             List<EmployeeDocument> documents = documentService.getDocumentsByEmployee(employeeId);
             writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":" + toJsonArray(documents) + "}");
         } catch (SQLException | IllegalArgumentException e) {
-            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error(e.getMessage()));
+            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, ValidationSupport.errorJson(e));
         }
     }
 
@@ -115,7 +117,7 @@ public class DocumentServlet extends HttpServlet {
             writeJson(response, HttpServletResponse.SC_OK,
                     "{\"success\":" + success + ",\"message\":" + quote(message) + "}");
         } catch (SQLException | IllegalArgumentException e) {
-            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error(e.getMessage()));
+            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, ValidationSupport.errorJson(e));
         }
     }
 

@@ -3,6 +3,8 @@ package com.hrms.service.publicportal;
 import com.hrms.dao.publicportal.FaqDAO;
 import com.hrms.model.publicportal.FaqTopic;
 
+import com.hrms.service.FieldValidationException;
+
 import java.sql.SQLException;
 import java.util.List;
 
@@ -23,10 +25,10 @@ public class FaqService {
 
     public void validateText(String value, String field) {
         if (value == null || value.trim().isEmpty()) {
-            throw new IllegalArgumentException(field + " không được để trống.");
+            throw new FieldValidationException("Tiêu đề".equals(field) ? "title" : "content", field + " không được để trống.");
         }
         if (value.trim().length() > 10000) {
-            throw new IllegalArgumentException(field + " không được vượt quá 10.000 ký tự.");
+            throw new FieldValidationException("Tiêu đề".equals(field) ? "title" : "content", field + " không được vượt quá 10.000 ký tự.");
         }
     }
 

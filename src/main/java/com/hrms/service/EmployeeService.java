@@ -33,7 +33,7 @@ public class EmployeeService {
     public boolean createEmployee(Employee employee, int companyId, String employeeCodeMode) throws SQLException {
         boolean generateEmployeeCode = "AUTO".equals(employeeCodeMode);
         if (employeeCodeMode != null && !"MANUAL".equals(employeeCodeMode) && !generateEmployeeCode) {
-            throw new IllegalArgumentException("Employee code mode must be MANUAL or AUTO.");
+            throw new FieldValidationException("employeeCodeMode", "Vui lòng chọn cách cấp mã nhân viên hợp lệ.");
         }
         if (!generateEmployeeCode) {
             employee.setEmployeeCode(validateManualEmployeeCode(employee.getEmployeeCode()));
@@ -49,7 +49,7 @@ public class EmployeeService {
                 CompanyInfo company = getCompany(connection, companyId);
                 String companyPrefix = companyPrefix(company.companyName());
                 if (!generateEmployeeCode && employeeCodeExists(connection, companyId, employee.getEmployeeCode())) {
-                    throw new IllegalArgumentException("Employee code already exists in this company.");
+                    throw new FieldValidationException("employeeCode", "Mã nhân viên đã tồn tại trong công ty.");
                 }
                 String randomDigits = generateUniqueRandomDigits(connection, company.companyId(), companyPrefix,
                         employee.getFullName(), generateEmployeeCode);
@@ -88,11 +88,11 @@ public class EmployeeService {
 
     static String validateManualEmployeeCode(String employeeCode) {
         if (employeeCode == null || employeeCode.isBlank()) {
-            throw new IllegalArgumentException("Employee code is required when entering manually.");
+            throw new FieldValidationException("employeeCode", "Vui lòng nhập mã nhân viên.");
         }
         String trimmedCode = employeeCode.trim();
         if (trimmedCode.length() > 50) {
-            throw new IllegalArgumentException("Employee code must not exceed 50 characters.");
+            throw new FieldValidationException("employeeCode", "Mã nhân viên không được vượt quá 50 ký tự.");
         }
         return trimmedCode;
     }
@@ -112,33 +112,33 @@ public class EmployeeService {
             throw new IllegalArgumentException("Employee id is required.");
         }
         if (employee.getFullName() == null || employee.getFullName().isBlank()) {
-            throw new IllegalArgumentException("Full name is required.");
+            throw new FieldValidationException("fullName", "Vui lòng nhập họ và tên.");
         }
         if (employee.getPhone() == null || employee.getPhone().isBlank()) {
-            throw new IllegalArgumentException("Phone is required.");
+            throw new FieldValidationException("phone", "Vui lòng nhập số điện thoại.");
         }
         if (employee.getGender() == null || employee.getGender().isBlank()) {
-            throw new IllegalArgumentException("Gender is required.");
+            throw new FieldValidationException("gender", "Vui lòng chọn giới tính.");
         }
         if (employee.getDateOfBirth() == null) {
-            throw new IllegalArgumentException("Date of birth is required.");
+            throw new FieldValidationException("dateOfBirth", "Vui lòng nhập ngày sinh.");
         }
         employee.setIdentityNumber(validateIdentityNumber(employee.getIdentityNumber(), creating));
         if (employee.getStatus() == null || employee.getStatus().isBlank()) {
-            throw new IllegalArgumentException("Status is required.");
+            throw new FieldValidationException("status", "Vui lòng chọn trạng thái.");
         }
     }
 
     static String validateIdentityNumber(String identityNumber, boolean required) {
         if (identityNumber == null || identityNumber.isBlank()) {
             if (required) {
-                throw new IllegalArgumentException("Vui lòng nhập mã định danh (CCCD).");
+                throw new FieldValidationException("identityNumber", "Vui lòng nhập mã định danh (CCCD).");
             }
             return null;
         }
         String trimmedNumber = identityNumber.trim();
         if (!trimmedNumber.matches("[0-9]{12}")) {
-            throw new IllegalArgumentException("Mã định danh (CCCD) phải gồm đúng 12 chữ số.");
+            throw new FieldValidationException("identityNumber", "Mã định danh (CCCD) phải gồm đúng 12 chữ số.");
         }
         return trimmedNumber;
     }
@@ -146,7 +146,7 @@ public class EmployeeService {
     private void validateUniquePhone(Employee employee) throws SQLException {
         Integer excludeEmployeeId = employee.getEmployeeId() > 0 ? employee.getEmployeeId() : null;
         if (employeeDAO.phoneExists(employee.getPhone().trim(), excludeEmployeeId)) {
-            throw new IllegalArgumentException("Phone number already exists.");
+            throw new FieldValidationException("phone", "Số điện thoại đã tồn tại.");
         }
     }
 

@@ -32,8 +32,9 @@ public class EmployeeServiceTest {
     public void rejectsIdentityNumbersOutsideCccdFormat() {
         for (String value : new String[]{"00123456789", "0012345678901", "00123456789A",
                 "001234 67890", "００１２３４５６７８９０", "00123456789-"}) {
-            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+            FieldValidationException exception = assertThrows(FieldValidationException.class,
                     () -> EmployeeService.validateIdentityNumber(value, true));
+            assertEquals("identityNumber", exception.getField());
             assertEquals("Mã định danh (CCCD) phải gồm đúng 12 chữ số.", exception.getMessage());
         }
     }
@@ -57,7 +58,7 @@ public class EmployeeServiceTest {
     public void requiresCodeWhenModeIsOmitted() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> service.createEmployee(new Employee(), 1, null));
-        assertEquals("Employee code is required when entering manually.", exception.getMessage());
+        assertEquals("Vui lòng nhập mã nhân viên.", exception.getMessage());
     }
 
     @Test
@@ -74,7 +75,7 @@ public class EmployeeServiceTest {
     public void automaticModeDoesNotRequireManualCode() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> service.createEmployee(new Employee(), 1, "AUTO"));
-        assertEquals("Full name is required.", exception.getMessage());
+        assertEquals("Vui lòng nhập họ và tên.", exception.getMessage());
     }
 
     @Test
@@ -83,6 +84,6 @@ public class EmployeeServiceTest {
         employee.setEmployeeCode("existing-001");
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> service.createEmployee(employee, 1, "OTHER"));
-        assertEquals("Employee code mode must be MANUAL or AUTO.", exception.getMessage());
+        assertEquals("Vui lòng chọn cách cấp mã nhân viên hợp lệ.", exception.getMessage());
     }
 }

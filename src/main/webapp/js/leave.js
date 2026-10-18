@@ -91,6 +91,7 @@ const LeaveApp = (() => {
             const tId = typeSelect.value;
 
             if (!sVal || !eVal) {
+                FormValidation.setError(form, 'endDate', '');
                 banner.style.display = "none";
                 balanceNotice.textContent = "";
                 return;
@@ -101,6 +102,7 @@ const LeaveApp = (() => {
             banner.style.display = "flex";
 
             if (days <= 0) {
+                FormValidation.setError(form, 'endDate', 'Khoảng thời gian đã chọn không có ngày làm việc.');
                 banner.className = "calc-banner error";
                 banner.querySelector(".calc-text").textContent = "Khoảng thời gian đã chọn không có ngày làm việc (rơi vào T7, CN).";
                 btnSubmit.disabled = true;
@@ -108,16 +110,19 @@ const LeaveApp = (() => {
             }
 
             banner.className = "calc-banner";
+            FormValidation.setError(form, 'endDate', '');
             banner.querySelector(".calc-text").innerHTML = `Số ngày làm việc tính toán: <strong>${days} ngày</strong> (đã trừ Thứ 7, Chủ Nhật)`;
 
             if (tId && cachedBalances[tId]) {
                 const rem = parseFloat(cachedBalances[tId].remainingDays || 0);
                 if (days > rem) {
+                    FormValidation.setError(form, 'endDate', `Số ngày nghỉ vượt quá số dư hiện tại (${rem} ngày).`);
                     banner.className = "calc-banner error";
                     balanceNotice.innerHTML = `<span style="color:#b42318;font-weight:700;">Vượt quá số dư hiện tại (${rem} ngày còn lại)!</span>`;
                     btnSubmit.disabled = true;
                     return;
                 } else {
+                    FormValidation.setError(form, 'endDate', '');
                     balanceNotice.innerHTML = `<span style="color:#027a48;">Đủ hạn mức (${rem - days} ngày còn lại sau khi trừ).</span>`;
                     btnSubmit.disabled = false;
                 }
@@ -154,7 +159,9 @@ const LeaveApp = (() => {
                         alert(data.message || "Nộp đơn xin nghỉ phép thành công!");
                         window.location.href = "my-requests";
                     } else {
-                        alert(data.message || "Có lỗi xảy ra khi nộp đơn.");
+                        if (!FormValidation.showErrors(form, data)) {
+                            showMessage('submitMessage', data.message || 'Không thể nộp đơn.', true);
+                        }
                         btnSubmit.disabled = false;
                         btnSubmit.textContent = "Nộp đơn xin nghỉ";
                     }
@@ -514,7 +521,9 @@ const LeaveApp = (() => {
                             form.reset();
                             loadTypes();
                         } else {
-                            alert(data.message || "Có lỗi xảy ra.");
+                            if (!FormValidation.showErrors(form, data)) {
+                                showMessage('typeMessage', data.message || 'Không thể lưu loại nghỉ phép.', true);
+                            }
                         }
                     })
                     .catch(err => alert("Lỗi kết nối: " + err));
@@ -856,9 +865,11 @@ const LeaveApp = (() => {
         const btn = document.getElementById("btnConfirmReject");
 
         if (!comment || comment.trim().length === 0) {
-            alert("Vui lòng nhập lý do từ chối đơn xin nghỉ phép.");
+            FormValidation.setError(document, 'rejectComment', 'Vui lòng nhập lý do từ chối đơn xin nghỉ phép.');
+            document.getElementById('rejectComment').focus();
             return;
         }
+        FormValidation.setError(document, 'rejectComment', '');
 
         btn.disabled = true;
         btn.textContent = "Đang xử lý...";
@@ -878,7 +889,9 @@ const LeaveApp = (() => {
                     if (window.LeaveAppReloadPending) window.LeaveAppReloadPending();
                     if (window.LeaveAppReloadAll) window.LeaveAppReloadAll();
                 } else {
-                    alert(data.message || "Lỗi khi từ chối đơn.");
+                    if (!FormValidation.showErrors(document, data)) {
+                        alert(data.message || "Lỗi khi từ chối đơn.");
+                    }
                 }
             })
             .catch(err => {

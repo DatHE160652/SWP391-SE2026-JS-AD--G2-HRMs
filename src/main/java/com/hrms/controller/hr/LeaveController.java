@@ -1,5 +1,9 @@
 package com.hrms.controller.hr;
 
+import com.hrms.util.ValidationSupport;
+
+import com.hrms.service.FieldValidationException;
+
 import com.hrms.api.ApiRoutes;
 import com.hrms.dao.LeaveReportDTO;
 import com.hrms.model.LeaveBalance;
@@ -87,7 +91,7 @@ public class LeaveController extends HttpServlet {
         } catch (SQLException e) {
             writeJson(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, error("Database error: " + e.getMessage()));
         } catch (IllegalArgumentException e) {
-            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error(e.getMessage()));
+            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, ValidationSupport.errorJson(e));
         } catch (Exception e) {
             writeJson(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, error("Server error: " + e.getMessage()));
         }
@@ -110,7 +114,7 @@ public class LeaveController extends HttpServlet {
         } catch (SQLException e) {
             writeJson(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, error("Database error: " + e.getMessage()));
         } catch (IllegalArgumentException e) {
-            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error(e.getMessage()));
+            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, ValidationSupport.errorJson(e));
         } catch (Exception e) {
             writeJson(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, error("Server error: " + e.getMessage()));
         }
@@ -197,7 +201,7 @@ public class LeaveController extends HttpServlet {
         Integer leaveTypeId = parseNullableInt(request.getParameter("leaveTypeId"));
 
         if (typeName == null || typeName.isBlank()) {
-            throw new IllegalArgumentException("Vui lòng nhập tên loại nghỉ phép.");
+            throw new FieldValidationException("typeName", "Vui lòng nhập tên loại nghỉ phép.");
         }
 
         if (leaveTypeId != null && leaveTypeId > 0) {
@@ -211,11 +215,11 @@ public class LeaveController extends HttpServlet {
             writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"message\":\"Cập nhật chính sách thành công!\"}");
         } else {
             if (typeCode == null || typeCode.isBlank()) {
-                throw new IllegalArgumentException("Vui lòng nhập mã loại nghỉ phép (VD: ANNUAL, SICK).");
+                throw new FieldValidationException("typeCode", "Vui lòng nhập mã loại nghỉ phép (VD: ANNUAL, SICK).");
             }
             LeaveType existing = leaveService.getLeaveTypeDAO().getLeaveTypeByCode(principal.getCompanyId(), typeCode.trim().toUpperCase());
             if (existing != null) {
-                throw new IllegalArgumentException("Mã loại nghỉ phép '" + typeCode.trim().toUpperCase() + "' đã tồn tại.");
+                throw new FieldValidationException("typeCode", "Mã loại nghỉ phép '" + typeCode.trim().toUpperCase() + "' đã tồn tại.");
             }
             LeaveType lt = new LeaveType();
             lt.setCompanyId(principal.getCompanyId());
@@ -352,7 +356,7 @@ public class LeaveController extends HttpServlet {
         int leaveRequestId = parseRequiredInt(request.getParameter("leaveRequestId"), "Thiếu ID đơn nghỉ phép.");
         String comment = request.getParameter("comment");
         if (comment == null || comment.trim().isBlank()) {
-            throw new IllegalArgumentException("Vui lòng nhập lý do từ chối đơn nghỉ phép.");
+            throw new FieldValidationException("rejectComment", "Vui lòng nhập lý do từ chối đơn nghỉ phép.");
         }
 
         leaveService.rejectLeaveRequest(leaveRequestId, principal.getUserId(), comment.trim());

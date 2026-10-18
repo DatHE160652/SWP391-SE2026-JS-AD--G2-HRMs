@@ -1,5 +1,7 @@
 package com.hrms.controller;
 
+import com.hrms.util.ValidationSupport;
+
 import com.hrms.model.Position;
 import com.hrms.service.PositionService;
 
@@ -32,7 +34,7 @@ public class PositionServlet extends HttpServlet {
             List<Position> positions = positionService.getPositions();
             writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":" + toJsonArray(positions) + "}");
         } catch (SQLException | IllegalArgumentException e) {
-            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error(e.getMessage()));
+            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, ValidationSupport.errorJson(e));
         }
     }
 
@@ -56,7 +58,7 @@ public class PositionServlet extends HttpServlet {
             writeJson(response, HttpServletResponse.SC_OK,
                     "{\"success\":" + success + ",\"message\":" + quote(message) + "}");
         } catch (SQLException | IllegalArgumentException e) {
-            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error(e.getMessage()));
+            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, ValidationSupport.errorJson(e));
         }
     }
 

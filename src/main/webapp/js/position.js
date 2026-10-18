@@ -60,20 +60,23 @@ async function setupPositionForm() {
 
 async function createPosition(form) {
     try {
-        const payload = await PositionApi.post('/positions/create', readPositionForm(form));
-        showPositionMessage(payload.message);
-        form.reset();
+        await PositionApi.post('/positions/create', readPositionForm(form));
+        location.assign('position-list');
     } catch (error) {
-        showPositionMessage(error.message, 'error');
+        if (!FormValidation.showErrors(form, error)) {
+            showPositionMessage(error.message, 'error');
+        }
     }
 }
 
 async function updatePosition(form) {
     try {
-        const payload = await PositionApi.post('/positions/update', readPositionForm(form));
-        showPositionMessage(payload.message);
+        await PositionApi.post('/positions/update', readPositionForm(form));
+        location.assign('position-list');
     } catch (error) {
-        showPositionMessage(error.message, 'error');
+        if (!FormValidation.showErrors(form, error)) {
+            showPositionMessage(error.message, 'error');
+        }
     }
 }
 
@@ -141,7 +144,7 @@ function positionApiUrl(url) {
 async function handlePositionResponse(response) {
     const payload = await response.json();
     if (!response.ok || payload.success === false) {
-        throw new Error(payload.message || 'Request failed.');
+        throw FormValidation.responseError(payload);
     }
     return payload;
 }

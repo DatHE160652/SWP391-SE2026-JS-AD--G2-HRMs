@@ -2,7 +2,8 @@
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <!DOCTYPE html>
 <html lang="vi">
-    <head>
+<head>
+    <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>
@@ -86,7 +87,7 @@
                             <c:out value="${emailWarning}"/>
                         </div>
                     </c:if>
-                    <c:if test="${not empty formError}">
+                    <c:if test="${not empty formError and empty fieldErrors}">
                         <div class="alert alert-error" role="alert">
                             <c:out value="${formError}"/>
                         </div>
@@ -197,7 +198,7 @@
             </section>
         </main>
         <%@ include file="public-footer.jspf" %>
-        <script src="${pageContext.request.contextPath}/js/public-portal.js" defer>
+        <script src="${pageContext.request.contextPath}/js/public-portal.js?v=<%= application.getResource("/js/public-portal.js").openConnection().getLastModified() %>" defer>
         </script>
     </body>
 </html>

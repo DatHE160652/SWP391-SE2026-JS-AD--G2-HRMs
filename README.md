@@ -30,7 +30,7 @@ This project was developed to apply practical knowledge of Java web development,
 - Employee profile, department, position, manager, and employment-status management.
 - Employee creation defaults to manually entered company codes (up to 50 characters, unique within the company), with an optional automatic code generator. Existing employee codes are preserved when editing; account generation works with either mode.
 - Newly generated employee accounts use the employee's validated identity number as their initial password, stored as a BCrypt hash. Existing account passwords are unaffected.
-- Employee profiles store a Vietnamese CCCD identity number as text (exactly 12 ASCII digits, required for new employees). For existing databases, back up `HRMsDB` and run `database/scripts/employee-identity-number.sql` before restarting the app. This migration removes `Employees.StartDate` and `Employees.BaseSalary`; existing employees have a null identity number until it is supplied. Subscription/leave dates and payslip salaries remain unchanged.
+- Employee profiles store a Vietnamese CCCD identity number as text (exactly 12 ASCII digits, required for new employees). The form shows validation errors under each input. For existing databases, back up `HRMsDB` and run `database/scripts/employee-identity-number.sql` before restarting the app. This migration removes `Employees.StartDate` and `Employees.BaseSalary`; existing employees have a null identity number until it is supplied. Subscription/leave dates and payslip salaries remain unchanged.
 - Employee check-in/check-out, attendance history, and attendance reports.
 - Leave request submission, approval or rejection, leave-balance updates, and leave history.
 - Payroll period management, bonuses, deductions, net-salary calculation, and payslip generation.
@@ -49,6 +49,18 @@ This project was developed to apply practical knowledge of Java web development,
 | JUnit | Unit testing for Java components. |
 | Draw.io | System, workflow, and database diagram design. |
 | Git | Version control and team collaboration. |
+
+## Form Validation
+
+All JSP pages include `WEB-INF/views/common/form-validation.jspf`. The shared validator displays red, italic field messages, disables native browser validation popups, and blocks invalid submissions before existing form handlers run. Server-side field validation uses `FieldValidationException` and `ValidationSupport.errorJson` to return `fieldErrors`; other service failures keep their existing general messages.
+
+Run the DOM regression tests in PowerShell:
+
+```powershell
+npm.cmd install --prefix target/validation-test-runtime --no-save --package-lock=false --ignore-scripts jsdom
+$env:NODE_PATH = Join-Path (Get-Location) 'target/validation-test-runtime/node_modules'
+node --test src/test/js/form-validation.test.cjs
+```
 
 ## Collaborators
 

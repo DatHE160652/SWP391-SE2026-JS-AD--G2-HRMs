@@ -3,6 +3,7 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Đổi mật khẩu | HRMs Cloud</title>
@@ -16,17 +17,19 @@
             <h1 id="change-password-title">Đổi mật khẩu</h1>
             <p>Tài khoản đang dùng mật khẩu tạm. Vui lòng đặt mật khẩu mới để tiếp tục.</p>
         </div>
-        <c:if test="${not empty changePasswordError}">
+        <c:if test="${not empty changePasswordError and empty changePasswordField}">
             <div class="alert alert-warning" role="alert"><c:out value="${changePasswordError}"/></div>
         </c:if>
         <form method="post" action="${pageContext.request.contextPath}/change-password" class="tenant-login-form">
             <div class="form-field">
                 <label for="newPassword">Mật khẩu mới <span>*</span></label>
                 <input id="newPassword" name="newPassword" type="password" required autocomplete="new-password">
+                <c:if test="${changePasswordField == 'newPassword'}"><small class="field-error"><c:out value="${changePasswordError}"/></small></c:if>
             </div>
             <div class="form-field">
                 <label for="confirmPassword">Xác nhận mật khẩu <span>*</span></label>
                 <input id="confirmPassword" name="confirmPassword" type="password" required autocomplete="new-password">
+                <c:if test="${changePasswordField == 'confirmPassword'}"><small class="field-error"><c:out value="${changePasswordError}"/></small></c:if>
             </div>
             <button class="button button-primary button-wide" type="submit">Cập nhật mật khẩu</button>
         </form>

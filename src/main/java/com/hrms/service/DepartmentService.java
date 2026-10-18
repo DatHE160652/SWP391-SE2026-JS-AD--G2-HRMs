@@ -44,14 +44,14 @@ public class DepartmentService {
 
     private void validate(Department department, Integer excludeDepartmentId) throws SQLException {
         if (department.getDepartmentCode() == null || department.getDepartmentCode().isBlank()) {
-            throw new IllegalArgumentException("Department code is required.");
+            throw new FieldValidationException("departmentCode", "Department code is required.");
         }
         if (department.getDepartmentName() == null || department.getDepartmentName().isBlank()) {
-            throw new IllegalArgumentException("Department name is required.");
+            throw new FieldValidationException("departmentName", "Department name is required.");
         }
         if (departmentDAO.departmentCodeExists(department.getCompanyId(), department.getDepartmentCode(),
                 excludeDepartmentId)) {
-            throw new IllegalArgumentException("Department code already exists.");
+            throw new FieldValidationException("departmentCode", "Department code already exists.");
         }
     }
 

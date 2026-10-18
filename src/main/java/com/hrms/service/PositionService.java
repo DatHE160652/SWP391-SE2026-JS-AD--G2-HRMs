@@ -48,17 +48,17 @@ public class PositionService {
 
     private void validate(Position position, Integer excludePositionId) throws SQLException {
         if (position.getDepartmentId() == null || position.getDepartmentId() <= 0) {
-            throw new IllegalArgumentException("Department is required.");
+            throw new FieldValidationException("departmentId", "Department is required.");
         }
         if (!positionDAO.departmentExists(position.getCompanyId(), position.getDepartmentId())) {
-            throw new IllegalArgumentException("Department does not exist.");
+            throw new FieldValidationException("departmentId", "Department does not exist.");
         }
         if (position.getPositionTitle() == null || position.getPositionTitle().isBlank()) {
-            throw new IllegalArgumentException("Position title is required.");
+            throw new FieldValidationException("positionTitle", "Position title is required.");
         }
         if (positionDAO.positionTitleExists(position.getCompanyId(), position.getDepartmentId(),
                 position.getPositionTitle(), excludePositionId)) {
-            throw new IllegalArgumentException("Position title already exists in this department.");
+            throw new FieldValidationException("positionTitle", "Position title already exists in this department.");
         }
     }
 

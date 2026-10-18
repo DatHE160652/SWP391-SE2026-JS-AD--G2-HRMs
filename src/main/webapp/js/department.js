@@ -145,26 +145,31 @@ async function saveDepartmentMembers(form) {
         showDepartmentMessage(payload.message);
         await setupDepartmentMembersForm(form.departmentId.value);
     } catch (error) {
-        showDepartmentMessage(error.message, 'error');
+        if (!FormValidation.showErrors(form, error)) {
+            showDepartmentMessage(error.message, 'error');
+        }
     }
 }
 
 async function createDepartment(form) {
     try {
-        const payload = await DepartmentApi.post('/departments/create', readDepartmentForm(form));
-        showDepartmentMessage(payload.message);
-        form.reset();
+        await DepartmentApi.post('/departments/create', readDepartmentForm(form));
+        location.assign('department-list');
     } catch (error) {
-        showDepartmentMessage(error.message, 'error');
+        if (!FormValidation.showErrors(form, error)) {
+            showDepartmentMessage(error.message, 'error');
+        }
     }
 }
 
 async function updateDepartment(form) {
     try {
-        const payload = await DepartmentApi.post('/departments/update', readDepartmentForm(form));
-        showDepartmentMessage(payload.message);
+        await DepartmentApi.post('/departments/update', readDepartmentForm(form));
+        location.assign('department-list');
     } catch (error) {
-        showDepartmentMessage(error.message, 'error');
+        if (!FormValidation.showErrors(form, error)) {
+            showDepartmentMessage(error.message, 'error');
+        }
     }
 }
 
@@ -223,7 +228,7 @@ function departmentApiUrl(url) {
 async function handleDepartmentResponse(response) {
     const payload = await response.json();
     if (!response.ok || payload.success === false) {
-        throw new Error(payload.message || 'Request failed.');
+        throw FormValidation.responseError(payload);
     }
     return payload;
 }

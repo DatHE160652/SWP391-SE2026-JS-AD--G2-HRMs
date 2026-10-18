@@ -53,7 +53,7 @@ async function loadPersonalAttendance() {
     const year = document.getElementById('yearSelect').value;
 
     if (!employeeId) {
-        showMessage('Vui lòng chọn nhân viên để xem bảng công.', 'error');
+        FormValidation.setError(document, 'employeeSelect', 'Vui lòng chọn nhân viên để xem bảng công.');
         return;
     }
 

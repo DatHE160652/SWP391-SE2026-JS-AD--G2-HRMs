@@ -7,6 +7,7 @@ import com.hrms.model.publicportal.FaqTopic;
 import com.hrms.service.TenantAuthService;
 import com.hrms.service.BCryptPasswordHasher;
 import com.hrms.service.EmployeeHistoryService;
+import com.hrms.service.FieldValidationException;
 import com.hrms.service.publicportal.ConsultationRequestService;
 import com.hrms.service.publicportal.FaqService;
 import com.hrms.util.SecuritySupport;
@@ -144,14 +145,17 @@ public class PublicPortalController extends HttpServlet {
         String newPassword = request.getParameter("newPassword");
         String confirmPassword = request.getParameter("confirmPassword");
         if (newPassword == null || newPassword.isBlank()) {
+            request.setAttribute("changePasswordField", "newPassword");
             renderChangePasswordError(request, response, "Mật khẩu mới không được để trống.");
             return;
         }
         if ("1".equals(newPassword)) {
+            request.setAttribute("changePasswordField", "newPassword");
             renderChangePasswordError(request, response, "Vui lòng chọn mật khẩu khác mật khẩu tạm.");
             return;
         }
         if (!newPassword.equals(confirmPassword)) {
+            request.setAttribute("changePasswordField", "confirmPassword");
             renderChangePasswordError(request, response, "Mật khẩu xác nhận không khớp.");
             return;
         }
@@ -233,7 +237,9 @@ public class PublicPortalController extends HttpServlet {
             renderConsultationError(request, response, "Vui lòng kiểm tra lại thông tin.", exception.getValidation().getErrors());
         } catch (ConsultationRequestService.DuplicateConsultationException exception) {
             renderConsultationError(request, response,
-                    "Email hoặc tên công ty đã có yêu cầu đang được xử lý. Vui lòng không gửi lại biểu mẫu.", Map.of());
+                    "Email hoặc tên công ty đã có yêu cầu đang được xử lý. Vui lòng không gửi lại biểu mẫu.",
+                    Map.of("email", "Email hoặc tên công ty đã có yêu cầu đang được xử lý.",
+                            "companyName", "Email hoặc tên công ty đã có yêu cầu đang được xử lý."));
         } catch (SQLException exception) {
             getServletContext().log("Public consultation persistence failed; SQLState=" + exception.getSQLState()
                     + "; errorCode=" + exception.getErrorCode());
@@ -278,6 +284,14 @@ public class PublicPortalController extends HttpServlet {
                 faqService.createComment(userId, parsePositiveId(request.getParameter("topicId")), request.getParameter("content"));
             }
             response.sendRedirect(request.getContextPath() + ApiRoutes.PUBLIC_FAQ);
+        } catch (FieldValidationException exception) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            request.setAttribute("faqErrorField", exception.getField());
+            request.setAttribute("faqErrorMessage", exception.getMessage());
+            request.setAttribute("faqErrorTopicId", request.getParameter("topicId"));
+            request.setAttribute("faqTitle", request.getParameter("title"));
+            request.setAttribute("faqContent", request.getParameter("content"));
+            showFaq(request, response);
         } catch (IllegalArgumentException exception) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, exception.getMessage());
         } catch (SQLException exception) {
