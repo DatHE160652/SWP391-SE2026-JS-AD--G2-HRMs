@@ -146,8 +146,8 @@ public class LeaveIntegrationTest {
 
                     // Seed Employee
                     try (java.sql.PreparedStatement psE = conn.prepareStatement(
-                            "INSERT INTO Employees (CompanyId, UserId, DepartmentId, PositionId, EmployeeCode, FullName, StartDate, BaseSalary, Status) " +
-                            "VALUES (?, ?, ?, ?, 'EMP-TEST-001', N'Nguyễn Văn Kiểm Thử', '2026-01-01', 15000000, 'Active')",
+                            "INSERT INTO Employees (CompanyId, UserId, DepartmentId, PositionId, EmployeeCode, FullName, IdentityNumber, Status) " +
+                            "VALUES (?, ?, ?, ?, 'EMP-TEST-001', N'Nguyễn Văn Kiểm Thử', '001234567890', 'Active')",
                             java.sql.Statement.RETURN_GENERATED_KEYS)) {
                         psE.setInt(1, companyId);
                         psE.setInt(2, approverUserId);

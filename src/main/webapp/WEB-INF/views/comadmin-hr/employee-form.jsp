@@ -66,12 +66,9 @@
                     <input name="dateOfBirth" type="date" required>
                 </div>
                 <div>
-                    <label>Start Date</label>
-                    <input name="startDate" type="date" required>
-                </div>
-                <div>
-                    <label>Base Salary</label>
-                    <input name="baseSalary" type="number" min="0" step="0.01" value="0" required>
+                    <label for="identityNumber">Mã định danh (CCCD)</label>
+                    <input id="identityNumber" name="identityNumber" maxlength="12" pattern="[0-9]{12}"
+                           inputmode="numeric" placeholder="Nhập 12 chữ số CCCD" required>
                 </div>
                 <div>
                     <label>Status</label>

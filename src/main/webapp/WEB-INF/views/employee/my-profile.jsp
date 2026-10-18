@@ -129,6 +129,6 @@
         </section>
     </main>
 </div>
-<script src="../js/employee.js"></script>
+<script src="../js/employee.js?v=<%= application.getResource("/js/employee.js").openConnection().getLastModified() %>"></script>
 </body>
 </html>

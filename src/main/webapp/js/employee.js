@@ -333,7 +333,7 @@ async function deleteEmployee(employeeId) {
 function renderEmployeeRows(employees) {
     const tbody = document.querySelector('#employeeRows');
     if (!employees.length) {
-        tbody.innerHTML = '<tr><td colspan="8">No employees found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7">No employees found.</td></tr>';
         return;
     }
 
@@ -343,8 +343,7 @@ function renderEmployeeRows(employees) {
             <td>${safe(employee.fullName)}</td>
             <td>${safe(employee.phone)}</td>
             <td>${safe(employee.gender)}</td>
-            <td>${safe(employee.startDate)}</td>
-            <td>${formatMoney(employee.baseSalary)}</td>
+            <td>${safe(employee.identityNumber)}</td>
             <td><span class="badge ${safe(employee.status)}">${safe(employee.status)}</span></td>
             <td class="actions">
                 <a href="employee-detail?id=${employee.employeeId}">View</a>
@@ -371,8 +370,7 @@ function renderEmployeeDetail(employee) {
         ${detailItem('Phone', employee.phone)}
         ${detailItem('Gender', employee.gender)}
         ${detailItem('Date Of Birth', employee.dateOfBirth)}
-        ${detailItem('Start Date', employee.startDate)}
-        ${detailItem('Base Salary', formatMoney(employee.baseSalary))}
+        ${detailItem('Mã định danh', employee.identityNumber)}
         ${detailItem('Status', employee.status)}
     `;
 
@@ -403,11 +401,10 @@ function renderMyProfile(employee) {
     document.querySelector('#employmentTab').innerHTML = `
         ${detailItem('Employee Code', employee.employeeCode)}
         ${detailItem('Full Name', employee.fullName)}
-        ${detailItem('Start Date', employee.startDate)}
+        ${detailItem('Mã định danh', employee.identityNumber)}
         ${detailItem('Employment Status', employee.status)}
     `;
     document.querySelector('#salaryTab').innerHTML = `
-        ${detailItem('Base Salary', formatMoney(employee.baseSalary))}
         ${detailItem('Salary Currency', 'VND')}
         ${detailItem('Payroll Status', employee.status)}
     `;

@@ -17,7 +17,7 @@ public class EmployeeDAO {
     public List<Employee> getAllEmployees() throws SQLException {
         String sql = """
                 SELECT e.EmployeeId, e.EmployeeCode, e.FullName, e.Phone, e.Gender,
-                       e.DateOfBirth, e.StartDate, e.BaseSalary, e.Status,
+                       e.DateOfBirth, e.IdentityNumber, e.Status,
                        u.UserId, u.Username, u.Email AS AccountEmail, u.IsActive AS AccountActive
                 FROM Employees e
                 LEFT JOIN Users u ON e.UserId = u.UserId
@@ -38,7 +38,7 @@ public class EmployeeDAO {
     public Employee getEmployeeById(int employeeId) throws SQLException {
         String sql = """
                 SELECT e.EmployeeId, e.EmployeeCode, e.FullName, e.Phone, e.Gender,
-                       e.DateOfBirth, e.StartDate, e.BaseSalary, e.Status,
+                       e.DateOfBirth, e.IdentityNumber, e.Status,
                        u.UserId, u.Username, u.Email AS AccountEmail, u.IsActive AS AccountActive
                 FROM Employees e
                 LEFT JOIN Users u ON e.UserId = u.UserId
@@ -58,9 +58,9 @@ public class EmployeeDAO {
         String sql = """
                 INSERT INTO Employees (
                     CompanyId, EmployeeCode, FullName, Phone, Gender,
-                    DateOfBirth, StartDate, BaseSalary, Status
+                    DateOfBirth, IdentityNumber, Status
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
         try (PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -70,9 +70,8 @@ public class EmployeeDAO {
             statement.setString(4, employee.getPhone());
             statement.setString(5, employee.getGender());
             setNullableDate(statement, 6, employee.getDateOfBirth());
-            setNullableDate(statement, 7, employee.getStartDate());
-            statement.setBigDecimal(8, employee.getBaseSalary());
-            statement.setString(9, employee.getStatus());
+            statement.setString(7, employee.getIdentityNumber());
+            statement.setString(8, employee.getStatus());
 
             int affectedRows = statement.executeUpdate();
             if (affectedRows == 0) {
@@ -106,8 +105,7 @@ public class EmployeeDAO {
                     Phone = ?,
                     Gender = ?,
                     DateOfBirth = ?,
-                    StartDate = ?,
-                    BaseSalary = ?,
+                    IdentityNumber = ?,
                     Status = ?,
                     UpdatedAt = SYSUTCDATETIME()
                 WHERE EmployeeId = ?
@@ -119,10 +117,9 @@ public class EmployeeDAO {
             statement.setString(2, employee.getPhone());
             statement.setString(3, employee.getGender());
             setNullableDate(statement, 4, employee.getDateOfBirth());
-            setNullableDate(statement, 5, employee.getStartDate());
-            statement.setBigDecimal(6, employee.getBaseSalary());
-            statement.setString(7, employee.getStatus());
-            statement.setInt(8, employee.getEmployeeId());
+            statement.setString(5, employee.getIdentityNumber());
+            statement.setString(6, employee.getStatus());
+            statement.setInt(7, employee.getEmployeeId());
             return statement.executeUpdate() > 0;
         }
     }
@@ -169,8 +166,7 @@ public class EmployeeDAO {
         employee.setPhone(resultSet.getString("Phone"));
         employee.setGender(resultSet.getString("Gender"));
         employee.setDateOfBirth(resultSet.getDate("DateOfBirth"));
-        employee.setStartDate(resultSet.getDate("StartDate"));
-        employee.setBaseSalary(resultSet.getBigDecimal("BaseSalary"));
+        employee.setIdentityNumber(resultSet.getString("IdentityNumber"));
         employee.setStatus(resultSet.getString("Status"));
         int userId = resultSet.getInt("UserId");
         employee.setUserId(resultSet.wasNull() ? null : userId);

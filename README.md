@@ -29,6 +29,7 @@ This project was developed to apply practical knowledge of Java web development,
 - Role-based access for System Admin, Company Admin/HR, Manager, and Employee.
 - Employee profile, department, position, manager, and employment-status management.
 - Employee creation defaults to manually entered company codes (up to 50 characters, unique within the company), with an optional automatic code generator. Existing employee codes are preserved when editing; account generation works with either mode.
+- Employee profiles store a Vietnamese CCCD identity number as text (exactly 12 ASCII digits, required for new employees). For existing databases, back up `HRMsDB` and run `database/scripts/employee-identity-number.sql` before restarting the app. This migration removes `Employees.StartDate` and `Employees.BaseSalary`; existing employees have a null identity number until it is supplied. Subscription/leave dates and payslip salaries remain unchanged.
 - Employee check-in/check-out, attendance history, and attendance reports.
 - Leave request submission, approval or rejection, leave-balance updates, and leave history.
 - Payroll period management, bonuses, deductions, net-salary calculation, and payslip generation.

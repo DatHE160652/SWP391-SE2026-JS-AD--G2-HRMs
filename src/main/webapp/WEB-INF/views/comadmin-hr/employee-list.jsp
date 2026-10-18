@@ -51,8 +51,7 @@
                     <th>Full Name</th>
                     <th>Phone</th>
                     <th>Gender</th>
-                    <th>Start Date</th>
-                    <th>Base Salary</th>
+                    <th>Mã định danh</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
@@ -62,6 +61,6 @@
         </section>
     </main>
 </div>
-<script src="../js/employee.js"></script>
+<script src="../js/employee.js?v=<%= application.getResource("/js/employee.js").openConnection().getLastModified() %>"></script>
 </body>
 </html>

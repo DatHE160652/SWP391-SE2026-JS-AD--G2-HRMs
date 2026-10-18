@@ -13,7 +13,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.SQLException;
 import java.util.List;
@@ -164,8 +163,7 @@ public class EmployeeServlet extends HttpServlet {
         employee.setPhone(trimToNull(request.getParameter("phone")));
         employee.setGender(trimToNull(request.getParameter("gender")));
         employee.setDateOfBirth(parseDate(request.getParameter("dateOfBirth")));
-        employee.setStartDate(parseDate(request.getParameter("startDate")));
-        employee.setBaseSalary(parseBigDecimal(request.getParameter("baseSalary")));
+        employee.setIdentityNumber(trimToNull(request.getParameter("identityNumber")));
         employee.setStatus(trimToNull(request.getParameter("status")));
         return employee;
     }
@@ -196,8 +194,7 @@ public class EmployeeServlet extends HttpServlet {
                 + "\"phone\":" + quote(employee.getPhone()) + ","
                 + "\"gender\":" + quote(employee.getGender()) + ","
                 + "\"dateOfBirth\":" + quoteDate(employee.getDateOfBirth()) + ","
-                + "\"startDate\":" + quoteDate(employee.getStartDate()) + ","
-                + "\"baseSalary\":" + employee.getBaseSalary() + ","
+                + "\"identityNumber\":" + quote(employee.getIdentityNumber()) + ","
                 + "\"status\":" + quote(employee.getStatus()) + ","
                 + "\"userId\":" + nullableInteger(employee.getUserId()) + ","
                 + "\"username\":" + quote(employee.getUsername()) + ","
@@ -282,10 +279,6 @@ public class EmployeeServlet extends HttpServlet {
 
     private Date parseDate(String value) {
         return value == null || value.isBlank() ? null : Date.valueOf(value);
-    }
-
-    private BigDecimal parseBigDecimal(String value) {
-        return value == null || value.isBlank() ? BigDecimal.ZERO : new BigDecimal(value);
     }
 
     private String trimToNull(String value) {

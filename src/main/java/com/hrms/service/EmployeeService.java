@@ -125,15 +125,24 @@ public class EmployeeService {
         if (employee.getDateOfBirth() == null) {
             throw new IllegalArgumentException("Date of birth is required.");
         }
-        if (employee.getStartDate() == null) {
-            throw new IllegalArgumentException("Start date is required.");
-        }
-        if (employee.getBaseSalary() == null) {
-            throw new IllegalArgumentException("Base salary is required.");
-        }
+        employee.setIdentityNumber(validateIdentityNumber(employee.getIdentityNumber(), creating));
         if (employee.getStatus() == null || employee.getStatus().isBlank()) {
             throw new IllegalArgumentException("Status is required.");
         }
+    }
+
+    static String validateIdentityNumber(String identityNumber, boolean required) {
+        if (identityNumber == null || identityNumber.isBlank()) {
+            if (required) {
+                throw new IllegalArgumentException("Vui lòng nhập mã định danh (CCCD).");
+            }
+            return null;
+        }
+        String trimmedNumber = identityNumber.trim();
+        if (!trimmedNumber.matches("[0-9]{12}")) {
+            throw new IllegalArgumentException("Mã định danh (CCCD) phải gồm đúng 12 chữ số.");
+        }
+        return trimmedNumber;
     }
 
     private void validateUniquePhone(Employee employee) throws SQLException {
