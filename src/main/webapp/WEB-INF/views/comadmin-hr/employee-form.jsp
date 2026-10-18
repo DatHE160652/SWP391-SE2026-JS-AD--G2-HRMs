@@ -31,6 +31,19 @@
         <form id="employeeForm" class="panel">
             <input type="hidden" name="employeeId">
             <div class="form-grid">
+                <div id="employeeCodeModeField">
+                    <label for="employeeCodeMode">Cách cấp mã nhân viên</label>
+                    <select id="employeeCodeMode" name="employeeCodeMode">
+                        <option value="MANUAL">Nhập mã thủ công</option>
+                        <option value="AUTO">Tự động tạo mã</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="employeeCode">Employee Code</label>
+                    <input id="employeeCode" name="employeeCode" maxlength="50" required
+                           aria-describedby="employeeCodeHint">
+                    <small id="employeeCodeHint">Nhập mã đang dùng tại công ty, không bắt buộc định dạng.</small>
+                </div>
                 <div>
                     <label>Full Name</label>
                     <input name="fullName" required>
@@ -75,6 +88,6 @@
         </form>
     </main>
 </div>
-<script src="../js/employee.js"></script>
+<script src="../js/employee.js?v=<%= application.getResource("/js/employee.js").openConnection().getLastModified() %>"></script>
 </body>
 </html>

@@ -91,6 +91,12 @@ async function getEmployeeDetail() {
 async function setupEmployeeForm() {
     const employeeId = new URLSearchParams(location.search).get('id');
     const form = document.querySelector('#employeeForm');
+    form.dataset.editing = employeeId ? 'true' : 'false';
+    form.employeeCodeMode.addEventListener('change', () => updateEmployeeCodeInput(form));
+    form.addEventListener('reset', () => {
+        setTimeout(() => updateEmployeeCodeInput(form), 0);
+    });
+    updateEmployeeCodeInput(form);
 
     if (employeeId) {
         document.querySelector('#formTitle').textContent = 'Update Employee';
@@ -106,6 +112,22 @@ async function setupEmployeeForm() {
             await createEmployee(form);
         }
     });
+}
+
+function updateEmployeeCodeInput(form) {
+    const editing = form.dataset.editing === 'true';
+    const automatic = !editing && form.employeeCodeMode.value === 'AUTO';
+    document.querySelector('#employeeCodeModeField').classList.toggle('hidden', editing);
+    form.employeeCodeMode.disabled = editing;
+    form.employeeCode.disabled = automatic;
+    form.employeeCode.readOnly = editing;
+    form.employeeCode.required = !editing && !automatic;
+    form.employeeCode.placeholder = automatic ? 'Mã sẽ được tạo khi lưu nhân viên' : '';
+    document.querySelector('#employeeCodeHint').textContent = editing
+        ? 'Mã nhân viên hiện tại được giữ nguyên.'
+        : automatic
+            ? 'Hệ thống tự động tạo mã nhân viên duy nhất khi lưu.'
+            : 'Nhập mã đang dùng tại công ty, không bắt buộc định dạng.';
 }
 
 async function setupMyProfile() {

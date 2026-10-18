@@ -28,6 +28,7 @@ This project was developed to apply practical knowledge of Java web development,
 - Multi-tenant company workspace provisioning with domain availability validation.
 - Role-based access for System Admin, Company Admin/HR, Manager, and Employee.
 - Employee profile, department, position, manager, and employment-status management.
+- Employee creation defaults to manually entered company codes (up to 50 characters, unique within the company), with an optional automatic code generator. Existing employee codes are preserved when editing; account generation works with either mode.
 - Employee check-in/check-out, attendance history, and attendance reports.
 - Leave request submission, approval or rejection, leave-balance updates, and leave history.
 - Payroll period management, bonuses, deductions, net-salary calculation, and payslip generation.

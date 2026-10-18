@@ -127,8 +127,13 @@ public class EmployeeServlet extends HttpServlet {
                 message = success ? "Employee updated successfully." : "No employee record was changed.";
             } else {
                 TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+                if (principal == null || principal.getCompanyId() == null) {
+                    writeJson(response, HttpServletResponse.SC_UNAUTHORIZED, error("Company session is required."));
+                    return;
+                }
                 Employee employee = readEmployee(request);
-                success = employeeService.createEmployee(employee);
+                success = employeeService.createEmployee(employee, principal.getCompanyId(),
+                        request.getParameter("employeeCodeMode"));
                 if (success) {
                     employeeHistoryService.logEmployeeChange(
                             principal == null ? null : principal.getCompanyId(),
@@ -154,6 +159,7 @@ public class EmployeeServlet extends HttpServlet {
     private Employee readEmployee(HttpServletRequest request) {
         Employee employee = new Employee();
         employee.setEmployeeId(parseOptionalInt(request.getParameter("employeeId")));
+        employee.setEmployeeCode(trimToNull(request.getParameter("employeeCode")));
         employee.setFullName(trimToNull(request.getParameter("fullName")));
         employee.setPhone(trimToNull(request.getParameter("phone")));
         employee.setGender(trimToNull(request.getParameter("gender")));

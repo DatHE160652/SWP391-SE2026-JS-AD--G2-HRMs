@@ -32,7 +32,14 @@ public class EmployeeService {
         return employeeDAO.getEmployeeById(employeeId);
     }
 
-    public boolean createEmployee(Employee employee) throws SQLException {
+    public boolean createEmployee(Employee employee, int companyId, String employeeCodeMode) throws SQLException {
+        boolean generateEmployeeCode = "AUTO".equals(employeeCodeMode);
+        if (employeeCodeMode != null && !"MANUAL".equals(employeeCodeMode) && !generateEmployeeCode) {
+            throw new IllegalArgumentException("Employee code mode must be MANUAL or AUTO.");
+        }
+        if (!generateEmployeeCode) {
+            employee.setEmployeeCode(validateManualEmployeeCode(employee.getEmployeeCode()));
+        }
         validate(employee, true);
         validateUniquePhone(employee);
 
@@ -41,11 +48,16 @@ public class EmployeeService {
             connection.setAutoCommit(false);
 
             try {
-                CompanyInfo company = getOrCreateDefaultCompany(connection);
+                CompanyInfo company = getCompany(connection, companyId);
                 String companyPrefix = companyPrefix(company.companyName());
+                if (!generateEmployeeCode && employeeCodeExists(connection, companyId, employee.getEmployeeCode())) {
+                    throw new IllegalArgumentException("Employee code already exists in this company.");
+                }
                 String randomDigits = generateUniqueRandomDigits(connection, company.companyId(), companyPrefix,
-                        employee.getFullName());
-                employee.setEmployeeCode(companyPrefix.toUpperCase(Locale.ROOT) + randomDigits);
+                        employee.getFullName(), generateEmployeeCode);
+                if (generateEmployeeCode) {
+                    employee.setEmployeeCode(companyPrefix.toUpperCase(Locale.ROOT) + randomDigits);
+                }
 
                 int employeeId = employeeDAO.insertEmployee(connection, employee, company.companyId());
                 employee.setEmployeeId(employeeId);
@@ -74,6 +86,17 @@ public class EmployeeService {
                 connection.setAutoCommit(true);
             }
         }
+    }
+
+    static String validateManualEmployeeCode(String employeeCode) {
+        if (employeeCode == null || employeeCode.isBlank()) {
+            throw new IllegalArgumentException("Employee code is required when entering manually.");
+        }
+        String trimmedCode = employeeCode.trim();
+        if (trimmedCode.length() > 50) {
+            throw new IllegalArgumentException("Employee code must not exceed 50 characters.");
+        }
+        return trimmedCode;
     }
 
     public boolean updateEmployee(Employee employee) throws SQLException {
@@ -150,13 +173,15 @@ public class EmployeeService {
         return givenName + familyInitial + middleInitial + randomDigits;
     }
 
-    private String generateUniqueRandomDigits(Connection connection, int companyId, String companyPrefix, String fullName)
+    private String generateUniqueRandomDigits(Connection connection, int companyId, String companyPrefix, String fullName,
+                                             boolean generateEmployeeCode)
             throws SQLException {
         for (int attempt = 0; attempt < 30; attempt++) {
             String digits = String.format("%06d", random.nextInt(1_000_000));
             String employeeCode = companyPrefix.toUpperCase(Locale.ROOT) + digits;
             String email = buildAccountLocalPart(fullName, digits) + "@" + companyPrefix + ".hrms";
-            if (!employeeCodeExists(connection, companyId, employeeCode) && !userDAO.emailExists(connection, email)) {
+            if ((!generateEmployeeCode || !employeeCodeExists(connection, companyId, employeeCode))
+                    && !userDAO.emailExists(connection, email)) {
                 return digits;
             }
         }
@@ -193,37 +218,19 @@ public class EmployeeService {
                 .toLowerCase(Locale.ROOT);
     }
 
-    private CompanyInfo getOrCreateDefaultCompany(Connection connection) throws SQLException {
-        String selectSql = "SELECT TOP 1 CompanyId, CompanyName FROM Companies ORDER BY CompanyId";
+    private CompanyInfo getCompany(Connection connection, int companyId) throws SQLException {
+        String selectSql = "SELECT CompanyId, CompanyName FROM Companies WHERE CompanyId = ?";
 
-        try (Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(selectSql)) {
-            if (resultSet.next()) {
-                return new CompanyInfo(resultSet.getInt("CompanyId"), resultSet.getString("CompanyName"));
-            }
-        }
-
-        String insertSql = """
-                INSERT INTO Companies (WorkspaceCode, CompanyName, CompanyNameNormalized, Region, ContactEmail)
-                VALUES (?, ?, ?, ?, ?)
-                """;
-
-        try (PreparedStatement statement = connection.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
-            statement.setString(1, "demo");
-            statement.setString(2, "Demo Company");
-            statement.setString(3, "demo company");
-            statement.setString(4, "NORTH");
-            statement.setString(5, "admin@hrms.local");
-            statement.executeUpdate();
-
-            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
-                if (generatedKeys.next()) {
-                    return new CompanyInfo(generatedKeys.getInt(1), "Demo Company");
+        try (PreparedStatement statement = connection.prepareStatement(selectSql)) {
+            statement.setInt(1, companyId);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return new CompanyInfo(resultSet.getInt("CompanyId"), resultSet.getString("CompanyName"));
                 }
             }
         }
 
-        throw new SQLException("Default company could not be created.");
+        throw new IllegalArgumentException("Company not found.");
     }
 
     private void ensureEmployeeCreationSchema(Connection connection) throws SQLException {
