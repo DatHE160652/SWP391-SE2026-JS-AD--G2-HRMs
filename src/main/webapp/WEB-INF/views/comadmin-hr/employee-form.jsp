@@ -69,6 +69,7 @@
                     <label for="identityNumber">Mã định danh (CCCD)</label>
                     <input id="identityNumber" name="identityNumber" maxlength="12" pattern="[0-9]{12}"
                            inputmode="numeric" placeholder="Nhập 12 chữ số CCCD" required>
+                    <small>Khi tạo nhân viên mới, mật khẩu ban đầu của tài khoản là mã định danh này.</small>
                 </div>
                 <div>
                     <label>Status</label>

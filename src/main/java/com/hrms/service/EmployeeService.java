@@ -17,8 +17,6 @@ import java.util.List;
 import java.util.Locale;
 
 public class EmployeeService {
-    private static final String DEFAULT_EMPLOYEE_PASSWORD = "1";
-
     private final EmployeeDAO employeeDAO = new EmployeeDAO();
     private final UserDAO userDAO = new UserDAO();
     private final BCryptPasswordHasher passwordHasher = new BCryptPasswordHasher();
@@ -69,7 +67,7 @@ public class EmployeeService {
                 user.setUsername(generateAvailableUsername(connection, accountLocalPart));
                 user.setDisplayName(employee.getFullName());
                 user.setEmail(email);
-                user.setPasswordHash(passwordHasher.hash(DEFAULT_EMPLOYEE_PASSWORD));
+                user.setPasswordHash(passwordHasher.hash(employee.getIdentityNumber()));
 
                 int userId = userDAO.createEmployeeAccount(connection, user);
                 boolean linked = employeeDAO.updateEmployeeUserId(connection, employeeId, userId);
