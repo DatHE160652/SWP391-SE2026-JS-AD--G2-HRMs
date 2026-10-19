@@ -102,7 +102,7 @@ CREATE TABLE Subscriptions (
 
 -- ========================================================================
 -- PHẦN 2: PHÂN QUYỀN (RBAC) VÀ BẢO MẬT TÀI KHOẢN NGƯỜI DÙNG
--- Tương thích các giải thuật băm mật khẩu an toàn (BCrypt, Argon2id)
+-- Mật khẩu lưu trực tiếp trong Users.Password (chỉ dùng cho đồ án local/demo)
 -- ========================================================================
 
 -- ------------------------------------------------------------------------
@@ -122,13 +122,12 @@ CREATE TABLE Users (
     UserId INT IDENTITY(1,1) PRIMARY KEY,
     CompanyId INT NULL,                              -- NULL đối với System Admin cấp platform
     RoleId INT NOT NULL,
-    Username VARCHAR(100) NOT NULL UNIQUE,           -- Tên tài khoản
-    Email VARCHAR(150) NOT NULL,                     -- Backend validate, trim và lowercase trước khi lưu
-    EmailNormalized AS (LOWER(LTRIM(RTRIM(Email))) COLLATE Latin1_General_100_CI_AS) PERSISTED,
+    Username VARCHAR(100) NOT NULL UNIQUE,           -- Định danh nội bộ legacy; không dùng để đăng nhập
+    Email VARCHAR(150) COLLATE Latin1_General_100_CI_AS NOT NULL, -- Định danh đăng nhập duy nhất; backend trim/lowercase
     DisplayName NVARCHAR(150) NOT NULL,
     AvatarUrl NVARCHAR(500) NULL,
-    -- Chỉ lưu salted hash (BCrypt/Argon2id); không lưu plaintext ở bảng/log/email attempt.
-    PasswordHash VARCHAR(255) NOT NULL,
+    -- CẢNH BÁO: mật khẩu lưu dạng plaintext, chỉ dùng cho local/demo; không dùng production.
+    Password NVARCHAR(255) NOT NULL,
     MustChangePassword BIT NOT NULL DEFAULT 1,
     ActivatedAt DATETIME2 NULL,                      -- NULL: chưa hoàn tất kích hoạt
     PasswordChangedAt DATETIME2 NULL,
@@ -142,7 +141,7 @@ CREATE TABLE Users (
     UpdatedAt DATETIME2 NULL,
     CONSTRAINT FK_Users_Companies FOREIGN KEY (CompanyId) REFERENCES Companies(CompanyId),
     CONSTRAINT FK_Users_Roles FOREIGN KEY (RoleId) REFERENCES Roles(RoleId),
-    CONSTRAINT CK_Users_Email CHECK (LEN(LTRIM(RTRIM(Email))) > 0),
+    CONSTRAINT CK_Users_Email CHECK (LEN(Email) > 0 AND DATALENGTH(Email) = DATALENGTH(LTRIM(RTRIM(Email)))),
     CONSTRAINT CK_Users_DisplayName CHECK (LEN(LTRIM(RTRIM(DisplayName))) > 0),
     CONSTRAINT CK_Users_Activation CHECK (
         (ActivatedAt IS NULL AND MustChangePassword = 1)
@@ -162,11 +161,10 @@ CREATE TABLE RegistrationRequests (
     RegistrationRequestId INT IDENTITY(1,1) PRIMARY KEY,
     -- Đúng 5 trường nhập trên form; các cột còn lại là dữ liệu hệ thống.
     FullName NVARCHAR(150) NOT NULL,
-    Email VARCHAR(150) NOT NULL,
+    Email VARCHAR(150) COLLATE Latin1_General_100_CI_AS NOT NULL,
     Phone VARCHAR(10) COLLATE Latin1_General_100_BIN2 NOT NULL,
     CompanyName NVARCHAR(200) NOT NULL,
     Region VARCHAR(10) NOT NULL CHECK (Region IN ('NORTH', 'CENTRAL', 'SOUTH')),
-    EmailNormalized AS (LOWER(LTRIM(RTRIM(Email))) COLLATE Latin1_General_100_CI_AS) PERSISTED,
     CompanyNameNormalized NVARCHAR(200) COLLATE Latin1_General_100_CI_AS NOT NULL,
     Status VARCHAR(20) NOT NULL DEFAULT 'NEW'
         CHECK (Status IN ('NEW', 'UNDER_REVIEW', 'CONVERTING', 'CONVERTED', 'DELETED')),
@@ -183,7 +181,7 @@ CREATE TABLE RegistrationRequests (
     CONSTRAINT FK_RegistrationRequests_DeletedBy FOREIGN KEY (DeletedByUserId) REFERENCES Users(UserId),
     CONSTRAINT FK_RegistrationRequests_ConvertedBy FOREIGN KEY (ConvertedByUserId) REFERENCES Users(UserId),
     CONSTRAINT CK_RegistrationRequests_FullName CHECK (LEN(LTRIM(RTRIM(FullName))) > 0),
-    CONSTRAINT CK_RegistrationRequests_Email CHECK (LEN(LTRIM(RTRIM(Email))) > 0),
+    CONSTRAINT CK_RegistrationRequests_Email CHECK (LEN(Email) > 0 AND DATALENGTH(Email) = DATALENGTH(LTRIM(RTRIM(Email)))),
     CONSTRAINT CK_RegistrationRequests_CompanyName CHECK (LEN(LTRIM(RTRIM(CompanyName))) > 0),
     CONSTRAINT CK_RegistrationRequests_NormalizedName CHECK (LEN(LTRIM(RTRIM(CompanyNameNormalized))) > 0),
     CONSTRAINT CK_RegistrationRequests_Phone CHECK (
@@ -240,8 +238,8 @@ CREATE TABLE EmailAttempts (
     )
 );
 -- ACCEPTED: nhà cung cấp nhận yêu cầu, KHÔNG khẳng định đã đến hộp thư.
--- UNKNOWN: timeout/crash, không xác định kết quả; không retry mật khẩu cũ từ hash.
--- Credential chỉ tồn tại trong bộ nhớ khi gửi sau commit; UC11 sinh mật khẩu mới.
+-- UNKNOWN: timeout/crash, không xác định kết quả; không retry mật khẩu cũ.
+-- Credential được lưu trực tiếp trong Users.Password cho đồ án local/demo; UC11 sinh mật khẩu mới.
 
 -- ------------------------------------------------------------------------
 -- WF1: FAQ công khai; tạo chủ đề/bình luận yêu cầu đăng nhập ở backend
@@ -534,7 +532,7 @@ GO
 -- ========================================================================
 
 -- 1. Truy vấn phân quyền và tổ chức
-CREATE UNIQUE INDEX UX_Users_EmailNormalized ON Users(EmailNormalized);
+CREATE UNIQUE INDEX UX_Users_Email ON Users(Email);
 CREATE INDEX IX_Users_CompanyId ON Users(CompanyId);
 CREATE INDEX IX_Employees_CompanyId ON Employees(CompanyId);
 CREATE INDEX IX_Employees_ManagerId ON Employees(ManagerId);
@@ -555,7 +553,7 @@ CREATE INDEX IX_Payslips_Period ON Payslips(PayrollPeriodId);
 -- Hai index riêng chặn trùng email HOẶC tên giữa cả ba trạng thái đang xử lý.
 -- CHECK Status giới hạn năm giá trị; loại CONVERTED/DELETED còn NEW/UNDER_REVIEW/CONVERTING.
 CREATE UNIQUE INDEX UX_RegistrationRequests_PendingEmail
-    ON RegistrationRequests(EmailNormalized)
+    ON RegistrationRequests(Email)
     WHERE Status <> 'CONVERTED' AND Status <> 'DELETED';
 CREATE UNIQUE INDEX UX_RegistrationRequests_PendingCompanyName
     ON RegistrationRequests(CompanyNameNormalized)

@@ -21,7 +21,6 @@ public class EmployeeService {
 
     private final EmployeeDAO employeeDAO = new EmployeeDAO();
     private final UserDAO userDAO = new UserDAO();
-    private final BCryptPasswordHasher passwordHasher = new BCryptPasswordHasher();
     private final SecureRandom random = new SecureRandom();
 
     public List<Employee> getAllEmployees() throws SQLException {
@@ -57,7 +56,7 @@ public class EmployeeService {
                 user.setUsername(generateAvailableUsername(connection, accountLocalPart));
                 user.setDisplayName(employee.getFullName());
                 user.setEmail(email);
-                user.setPasswordHash(passwordHasher.hash(DEFAULT_EMPLOYEE_PASSWORD));
+                user.setPassword(DEFAULT_EMPLOYEE_PASSWORD);
 
                 int userId = userDAO.createEmployeeAccount(connection, user);
                 boolean linked = employeeDAO.updateEmployeeUserId(connection, employeeId, userId);
