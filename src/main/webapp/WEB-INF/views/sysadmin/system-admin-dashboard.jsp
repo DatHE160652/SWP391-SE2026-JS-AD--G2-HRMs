@@ -13,7 +13,7 @@
 <main class="admin-main" id="main-content">
     <div class="page-heading">
         <h1>System Admin Overview</h1>
-        <a class="button button-primary" href="${pageContext.request.contextPath}/systemadmin/registration-request?status=PENDING"><svg class="icon" aria-hidden="true"><use href="${icons}#shield"/></svg>Xem yêu cầu cần xử lý (<c:out value="${stats.pendingCount}"/>)</a>
+        <div class="dashboard-actions"><a class="button" href="${pageContext.request.contextPath}/systemadmin/company"><svg class="icon" aria-hidden="true"><use href="${icons}#building"/></svg>Xem danh sách Company</a><a class="button button-primary" href="${pageContext.request.contextPath}/systemadmin/registration-request?status=PENDING"><svg class="icon" aria-hidden="true"><use href="${icons}#shield"/></svg>Xem yêu cầu cần xử lý (<c:out value="${stats.pendingCount}"/>)</a></div>
     </div>
     <section class="stat-grid" aria-label="Tổng quan nền tảng">
         <article class="stat-card"><div class="stat-heading"><h2>Tổng doanh nghiệp<br>(Tenants)</h2><span class="stat-icon"><svg class="icon" aria-hidden="true"><use href="${icons}#building"/></svg></span></div><strong class="stat-value"><c:out value="${stats.companyCount}"/></strong><p class="stat-note">Doanh nghiệp trên nền tảng</p></article>
