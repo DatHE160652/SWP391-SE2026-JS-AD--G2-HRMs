@@ -85,8 +85,7 @@
                                                 Đăng bởi
                                                 <c:out value="${topic.authorName}"/>
                                                 ·
-                                                <c:out value="${topic.createdAtDisplay}"/>
-                                            </p>
+                                                <c:out value="${topic.createdAtDisplay}"/>                                            </p>
                                             <div class="comments">
                                                 <c:choose>
                                                     <c:when test="${empty topic.comments}">
@@ -103,8 +102,7 @@
                                                                 <span>
                                                                     <c:out value="${comment.authorName}"/>
                                                                     ·
-                                                                    <c:out value="${comment.createdAtDisplay}"/>
-                                                                </span>
+                                                                    <c:out value="${comment.createdAtDisplay}"/>                                                                </span>
                                                             </div>
                                                         </c:forEach>
                                                     </c:otherwise>

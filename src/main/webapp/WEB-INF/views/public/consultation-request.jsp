@@ -81,11 +81,6 @@
                             </span>
                         </div>
                     </c:if>
-                    <c:if test="${not empty emailWarning}">
-                        <div class="alert alert-warning" role="status">
-                            <c:out value="${emailWarning}"/>
-                        </div>
-                    </c:if>
                     <c:if test="${not empty formError}">
                         <div class="alert alert-error" role="alert">
                             <c:out value="${formError}"/>
@@ -99,8 +94,7 @@
                                     *
                                 </span>
                             </label>
-                            <input id="fullName" name="fullName" type="text" maxlength="150" required value="<c:out value='${formFullName}'/>
-                            " placeholder="Ví dụ: Nguyễn Văn An">
+                            <input id="fullName" name="fullName" type="text" maxlength="150" required value="<c:out value='${formFullName}'/>" placeholder="Ví dụ: Nguyễn Văn An">
                             <c:if test="${not empty fieldErrors.fullName}">
                                 <p class="field-error">
                                     <c:out value="${fieldErrors.fullName}"/>
@@ -114,8 +108,7 @@
                                     *
                                 </span>
                             </label>
-                            <input id="email" name="email" type="email" maxlength="150" required value="<c:out value='${formEmail}'/>
-                            " placeholder="an.nguyen@company.vn">
+                            <input id="email" name="email" type="email" maxlength="150" required value="<c:out value='${formEmail}'/>" placeholder="an.nguyen@company.vn">
                             <c:if test="${not empty fieldErrors.email}">
                                 <p class="field-error">
                                     <c:out value="${fieldErrors.email}"/>
@@ -129,8 +122,7 @@
                                     *
                                 </span>
                             </label>
-                            <input id="phone" name="phone" type="tel" maxlength="10" pattern="^0[0-9]{9}$" required value="<c:out value='${formPhone}'/>
-                            " placeholder="09xxxxxxxx">
+                            <input id="phone" name="phone" type="tel" maxlength="10" pattern="^0[0-9]{9}$" required value="<c:out value='${formPhone}'/>" placeholder="09xxxxxxxx">
                             <c:if test="${not empty fieldErrors.phone}">
                                 <p class="field-error">
                                     <c:out value="${fieldErrors.phone}"/>
@@ -144,8 +136,7 @@
                                     *
                                 </span>
                             </label>
-                            <input id="companyName" name="companyName" type="text" maxlength="200" required value="<c:out value='${formCompanyName}'/>
-                            " placeholder="Ví dụ: Công ty Cổ phần Công nghệ Anpha">
+                            <input id="companyName" name="companyName" type="text" maxlength="200" required value="<c:out value='${formCompanyName}'/>" placeholder="Ví dụ: Công ty Cổ phần Công nghệ Anpha">
                             <c:if test="${not empty fieldErrors.companyName}">
                                 <p class="field-error">
                                     <c:out value="${fieldErrors.companyName}"/>
@@ -161,7 +152,7 @@
                             </label>
                             <select id="region" name="region" required>
                                 <option value="">
-                                    Chọn khu vực đặt trụ sở / chi nhánh
+                                    Chọn khu vực
                                 </option>
                                 <option value="NORTH" ${formRegion == 'NORTH' ? 'selected' : ''}>
                                     Khu vực miền Bắc

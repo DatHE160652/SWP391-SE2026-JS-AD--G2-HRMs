@@ -37,7 +37,7 @@
                 </div>
                 <div class="hero-card">
                     <span class="hero-card-label">
-                        CẤU HÌNH THAM CHIẾU
+                        GÓI CHUẨN DOANH NGHIỆP
                     </span>
                     <strong>
                         59.000
