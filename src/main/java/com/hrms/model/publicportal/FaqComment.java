@@ -23,6 +23,6 @@ public class FaqComment {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public String getCreatedAtDisplay() {
-        return createdAt == null ? "" : createdAt.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+        return createdAt == null ? "" : com.hrms.util.TimeSupport.formatUtc(createdAt);
     }
 }

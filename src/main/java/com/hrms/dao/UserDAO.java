@@ -26,7 +26,7 @@ public class UserDAO {
 
     public int createEmployeeAccount(Connection connection, User user) throws SQLException {
         String sql = """
-                INSERT INTO Users (CompanyId, RoleId, Username, Email, DisplayName, PasswordHash, IsActive, IsLocked)
+                INSERT INTO Users (CompanyId, RoleId, Username, Email, DisplayName, Password, IsActive, IsLocked)
                 VALUES (?, ?, ?, ?, ?, ?, 1, 0)
                 """;
         try (PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -35,7 +35,7 @@ public class UserDAO {
             statement.setString(3, user.getUsername());
             statement.setString(4, user.getEmail());
             statement.setString(5, user.getDisplayName() != null && !user.getDisplayName().isBlank() ? user.getDisplayName() : user.getUsername());
-            statement.setString(6, user.getPasswordHash());
+            statement.setString(6, user.getPassword());
             if (statement.executeUpdate() == 0) throw new SQLException("Creating employee account failed.");
             try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
                 if (generatedKeys.next()) return generatedKeys.getInt(1);
@@ -54,7 +54,7 @@ public class UserDAO {
     }
 
     public boolean emailExists(Connection connection, String email) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement("SELECT COUNT(*) FROM Users WHERE EmailNormalized = LOWER(LTRIM(RTRIM(?)))")) {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT COUNT(*) FROM Users WHERE Email = LOWER(LTRIM(RTRIM(?)))")) {
             statement.setString(1, email);
             try (ResultSet resultSet = statement.executeQuery()) {
                 return resultSet.next() && resultSet.getInt(1) > 0;
@@ -62,24 +62,29 @@ public class UserDAO {
         }
     }
 
-    public boolean updateTenantPassword(int userId, String passwordHash) throws SQLException {
+    public boolean updateTenantPassword(User user, String password) throws SQLException {
         String sql = """
-                UPDATE Users
-                SET PasswordHash = ?,
-                    MustChangePassword = 0,
-                    ActivatedAt = COALESCE(ActivatedAt, SYSUTCDATETIME()),
-                    PasswordChangedAt = SYSUTCDATETIME(),
-                    UpdatedAt = SYSUTCDATETIME()
-                WHERE UserId = ?
-                  AND CompanyId IS NOT NULL
-                  AND IsActive = 1
-                  AND IsLocked = 0
+                UPDATE u
+                SET Password = ?, MustChangePassword = 0,
+                    ActivatedAt = COALESCE(u.ActivatedAt, SYSUTCDATETIME()),
+                    PasswordChangedAt = SYSUTCDATETIME(), UpdatedAt = SYSUTCDATETIME()
+                FROM Users u
+                INNER JOIN Roles r ON r.RoleId = u.RoleId
+                INNER JOIN Companies c ON c.CompanyId = u.CompanyId
+                INNER JOIN Subscriptions s ON s.CompanyId = c.CompanyId
+                WHERE u.UserId = ? AND u.CompanyId = ? AND u.RowVersion = ?
+                  AND r.RoleCode IN ('COMPANY_ADMIN', 'MANAGER', 'EMPLOYEE')
+                  AND c.IsActive = 1 AND s.Status = N'ACTIVE'
+                  AND u.IsActive = 1 AND u.IsLocked = 0
+                  AND (u.LockedUntil IS NULL OR u.LockedUntil <= SYSUTCDATETIME())
                 """;
         try (Connection connection = DBConnection.getConnection()) {
             applyAuthWriteOptions(connection);
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.setString(1, passwordHash);
-                statement.setInt(2, userId);
+                statement.setString(1, password);
+                statement.setInt(2, user.getUserId());
+                statement.setInt(3, user.getCompanyId());
+                statement.setBytes(4, user.getRowVersion());
                 return statement.executeUpdate() == 1;
             }
         }
@@ -105,22 +110,21 @@ public class UserDAO {
         }
     }
 
-    public User findSystemAdminByIdentifier(String identifier) throws SQLException {
-        if (identifier == null || identifier.isBlank()) return null;
-        String normalizedIdentifier = identifier.trim();
+    public User findSystemAdminByEmail(String email) throws SQLException {
+        if (email == null || email.isBlank()) return null;
+        String normalizedEmail = email.trim().toLowerCase(java.util.Locale.ROOT);
         String sql = """
                 SELECT TOP (2) u.UserId, u.CompanyId, u.RoleId, r.RoleCode,
-                       u.Username, u.Email, u.DisplayName, u.PasswordHash,
+                       u.Username, u.Email, u.DisplayName, u.Password,
                        u.IsActive, u.IsLocked, u.FailedLoginAttempts,
                        u.LockedUntil, u.LastLoginAt, u.CreatedAt, u.UpdatedAt, u.RowVersion
                 FROM Users u INNER JOIN Roles r ON r.RoleId = u.RoleId
                 WHERE u.CompanyId IS NULL AND r.RoleCode = 'SYSTEM_ADMIN'
-                  AND (u.Username = ? OR u.EmailNormalized = LOWER(LTRIM(RTRIM(?))))
+                  AND u.Email = LOWER(LTRIM(RTRIM(?)))
                 """;
         try (Connection connection = DBConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, normalizedIdentifier);
-            statement.setString(2, normalizedIdentifier);
+            statement.setString(1, normalizedEmail);
             try (ResultSet resultSet = statement.executeQuery()) {
                 if (!resultSet.next()) return null;
                 User user = mapUser(resultSet);
@@ -133,7 +137,7 @@ public class UserDAO {
         if (workspaceCode == null || workspaceCode.isBlank() || email == null || email.isBlank()) return null;
         String sql = """
                 SELECT TOP (2) u.UserId, u.CompanyId, u.RoleId, r.RoleCode,
-                       u.Username, u.Email, u.DisplayName, u.PasswordHash,
+                       u.Username, u.Email, u.DisplayName, u.Password,
                        u.MustChangePassword, u.ActivatedAt, u.PasswordChangedAt,
                        u.IsActive, u.IsLocked, u.FailedLoginAttempts,
                        u.LockedUntil, u.LastLoginAt, u.CreatedAt, u.UpdatedAt, u.RowVersion,
@@ -144,7 +148,7 @@ public class UserDAO {
                 INNER JOIN Subscriptions s ON s.CompanyId = c.CompanyId
                 LEFT JOIN Employees e ON e.UserId = u.UserId
                 WHERE c.WorkspaceCode = ?
-                  AND u.EmailNormalized = LOWER(LTRIM(RTRIM(?)))
+                  AND u.Email = LOWER(LTRIM(RTRIM(?)))
                   AND c.IsActive = 1 AND s.Status = N'ACTIVE'
                   AND u.IsActive = 1 AND u.IsLocked = 0
                   AND (u.LockedUntil IS NULL OR u.LockedUntil <= SYSUTCDATETIME())
@@ -241,7 +245,7 @@ public class UserDAO {
                         WHEN u.FailedLoginAttempts + 1 >= ? THEN DATEADD(MINUTE, ?, @Now) ELSE NULL END,
                     UpdatedAt = @Now
                 FROM Users u INNER JOIN Roles r ON r.RoleId = u.RoleId
-                WHERE u.UserId = ? AND u.PasswordHash COLLATE Latin1_General_100_BIN2 = ?
+                WHERE u.UserId = ? AND u.Password COLLATE Latin1_General_100_BIN2 = ?
                   AND u.IsActive = 1 AND u.IsLocked = 0
                 """;
         try (Connection connection = DBConnection.getConnection()) {
@@ -249,7 +253,7 @@ public class UserDAO {
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setInt(1, maxAttempts); statement.setInt(2, maxAttempts);
                 statement.setInt(3, lockMinutes); statement.setInt(4, user.getUserId());
-                statement.setString(5, user.getPasswordHash());
+                statement.setString(5, user.getPassword());
                 statement.executeUpdate();
             }
         }
@@ -288,7 +292,7 @@ public class UserDAO {
         user.setUsername(resultSet.getString("Username"));
         user.setEmail(resultSet.getString("Email"));
         user.setDisplayName(resultSet.getString("DisplayName"));
-        user.setPasswordHash(resultSet.getString("PasswordHash"));
+        user.setPassword(resultSet.getString("Password"));
         user.setActive(resultSet.getBoolean("IsActive"));
         user.setLocked(resultSet.getBoolean("IsLocked"));
         user.setFailedLoginAttempts(resultSet.getInt("FailedLoginAttempts"));

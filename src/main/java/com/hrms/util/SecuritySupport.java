@@ -16,6 +16,7 @@ public final class SecuritySupport {
     public static final String CSRF_ATTRIBUTE = "systemAdminCsrfToken";
     public static final String PUBLIC_CSRF_ATTRIBUTE = "publicFaqCsrfToken";
     public static final String TENANT_PRINCIPAL_ATTRIBUTE = "tenantPrincipal";
+    public static final String TENANT_CSRF_ATTRIBUTE = "tenantPasswordCsrfToken";
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -47,6 +48,14 @@ public final class SecuritySupport {
         HttpSession session = request.getSession(false);
         Object value = session == null ? null : session.getAttribute(PRINCIPAL_ATTRIBUTE);
         return value instanceof SystemAdminPrincipal principal ? principal : null;
+    }
+
+    public static String ensureTenantCsrfToken(HttpSession session) {
+        return ensureToken(session, TENANT_CSRF_ATTRIBUTE);
+    }
+
+    public static boolean hasValidTenantCsrfToken(HttpServletRequest request) {
+        return hasValidToken(request, TENANT_CSRF_ATTRIBUTE);
     }
 
     public static boolean isTenantUser(HttpServletRequest request) {

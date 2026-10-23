@@ -10,6 +10,22 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    document.querySelectorAll('[data-dialog-open]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const dialog = document.getElementById(button.dataset.dialogOpen);
+            if (!dialog) return;
+            dialog.showModal();
+        });
+    });
+    document.querySelectorAll('[data-dialog-close]').forEach(function (button) {
+        button.addEventListener('click', function () { button.closest('dialog').close(); });
+    });
+    document.querySelectorAll('.action-dialog form').forEach(function (form) {
+        form.addEventListener('submit', function () {
+            form.querySelectorAll('button').forEach(function (button) { button.disabled = true; });
+        });
+    });
+
     const toggle = document.querySelector('[data-menu-toggle]');
     const sidebar = document.getElementById('admin-navigation');
     const backdrop = document.querySelector('.sidebar-backdrop');

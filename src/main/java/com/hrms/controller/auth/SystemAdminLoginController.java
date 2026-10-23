@@ -49,16 +49,16 @@ public class SystemAdminLoginController extends HttpServlet {
             return;
         }
 
-        String identifier = trimToNull(request.getParameter("identifier"));
+        String email = trimToNull(request.getParameter("email"));
         String password = request.getParameter("password");
-        if (identifier == null || password == null || password.isEmpty()) {
+        if (email == null || password == null || password.isEmpty()) {
             showError(request, response, HttpServletResponse.SC_BAD_REQUEST,
-                    "Vui lòng nhập tên đăng nhập/email và mật khẩu.");
+                    "Vui lòng nhập email và mật khẩu.");
             return;
         }
 
         try {
-            SystemAdminPrincipal principal = authService.authenticate(identifier, password);
+            SystemAdminPrincipal principal = authService.authenticate(email, password);
             if (principal == null) {
                 showError(request, response, HttpServletResponse.SC_UNAUTHORIZED,
                         "Thông tin đăng nhập không hợp lệ.");

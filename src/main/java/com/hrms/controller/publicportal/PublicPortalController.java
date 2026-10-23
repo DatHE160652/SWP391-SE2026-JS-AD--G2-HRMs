@@ -5,7 +5,6 @@ import com.hrms.service.security.TenantPrincipal;
 import com.hrms.model.publicportal.ConsultationSubmission;
 import com.hrms.model.publicportal.FaqTopic;
 import com.hrms.service.TenantAuthService;
-import com.hrms.service.BCryptPasswordHasher;
 import com.hrms.service.EmployeeHistoryService;
 import com.hrms.service.publicportal.ConsultationRequestService;
 import com.hrms.service.publicportal.FaqService;
@@ -30,19 +29,17 @@ public class PublicPortalController extends HttpServlet {
     private final ConsultationRequestService consultationService;
     private final FaqService faqService;
     private final TenantAuthService tenantAuthService;
-    private final BCryptPasswordHasher passwordHasher;
     private final EmployeeHistoryService employeeHistoryService = new EmployeeHistoryService();
 
     public PublicPortalController() {
-        this(new ConsultationRequestService(), new FaqService(), new TenantAuthService(), new BCryptPasswordHasher());
+        this(new ConsultationRequestService(), new FaqService(), new TenantAuthService());
     }
 
     PublicPortalController(ConsultationRequestService consultationService, FaqService faqService,
-                           TenantAuthService tenantAuthService, BCryptPasswordHasher passwordHasher) {
+                           TenantAuthService tenantAuthService) {
         this.consultationService = consultationService;
         this.faqService = faqService;
         this.tenantAuthService = tenantAuthService;
-        this.passwordHasher = passwordHasher;
     }
 
     @Override
@@ -130,6 +127,7 @@ public class PublicPortalController extends HttpServlet {
             response.sendRedirect(request.getContextPath() + ApiRoutes.TENANT_LOGIN);
             return;
         }
+        SecuritySupport.ensureTenantCsrfToken(request.getSession(true));
         render(request, response, "change-password.jsp");
     }
 
@@ -141,14 +139,14 @@ public class PublicPortalController extends HttpServlet {
             return;
         }
 
+        if (!SecuritySupport.hasValidTenantCsrfToken(request)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Phiên đổi mật khẩu không hợp lệ. Vui lòng tải lại trang.");
+            return;
+        }
         String newPassword = request.getParameter("newPassword");
         String confirmPassword = request.getParameter("confirmPassword");
         if (newPassword == null || newPassword.isBlank()) {
             renderChangePasswordError(request, response, "Mật khẩu mới không được để trống.");
-            return;
-        }
-        if ("1".equals(newPassword)) {
-            renderChangePasswordError(request, response, "Vui lòng chọn mật khẩu khác mật khẩu tạm.");
             return;
         }
         if (!newPassword.equals(confirmPassword)) {
@@ -157,7 +155,7 @@ public class PublicPortalController extends HttpServlet {
         }
 
         try {
-            boolean updated = tenantAuthService.changePassword(principal.getUserId(), passwordHasher.hash(newPassword));
+            boolean updated = tenantAuthService.changePassword(principal, newPassword, newPassword);
             if (!updated) {
                 renderChangePasswordError(request, response, "Chưa thể đổi mật khẩu. Vui lòng đăng nhập lại.");
                 return;
@@ -172,6 +170,8 @@ public class PublicPortalController extends HttpServlet {
                             principal.getCompanyName(), principal.getDisplayName(), principal.getEmail(),
                             principal.getRoleCode(), principal.getEmployeeId(), false));
             response.sendRedirect(request.getContextPath() + tenantLandingPath(principal));
+        } catch (IllegalArgumentException exception) {
+            renderChangePasswordError(request, response, exception.getMessage());
         } catch (SQLException exception) {
             getServletContext().log("Tenant password change failed; SQLState=" + exception.getSQLState()
                     + "; errorCode=" + exception.getErrorCode());
@@ -233,7 +233,7 @@ public class PublicPortalController extends HttpServlet {
             renderConsultationError(request, response, "Vui lòng kiểm tra lại thông tin.", exception.getValidation().getErrors());
         } catch (ConsultationRequestService.DuplicateConsultationException exception) {
             renderConsultationError(request, response,
-                    "Email hoặc tên công ty đã có yêu cầu đang được xử lý. Vui lòng không gửi lại biểu mẫu.", Map.of());
+                    "Email hoặc tên công ty đã có hồ sơ đăng ký/tài khoản, kể cả hồ sơ đã bị từ chối. Vui lòng liên hệ sale để tiếp tục trao đổi.", Map.of());
         } catch (SQLException exception) {
             getServletContext().log("Public consultation persistence failed; SQLState=" + exception.getSQLState()
                     + "; errorCode=" + exception.getErrorCode());

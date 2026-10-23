@@ -16,6 +16,9 @@
             <svg class="icon" aria-hidden="true"><use href="${icons}#requests"/></svg><span>Registration Requests</span>
             <c:if test="${pendingCount > 0}"><span class="nav-count" aria-label="${pendingCount} yêu cầu cần xử lý"><c:out value="${pendingCount}"/></span></c:if>
         </a>
+        <a aria-label="Doanh nghiệp" class="nav-link ${activeNav == 'companies' ? 'active' : ''}" aria-current="${activeNav == 'companies' ? 'page' : 'false'}" href="${pageContext.request.contextPath}/systemadmin/company">
+            <svg class="icon" aria-hidden="true"><use href="${icons}#building"/></svg><span>Business Management</span>
+        </a>
     </nav>
     <div class="sidebar-footer">
         <div class="user-card">
@@ -35,10 +38,11 @@
     <button class="icon-button" type="button" data-menu-toggle aria-controls="admin-navigation" aria-expanded="false" aria-label="Mở menu">
         <svg class="icon" aria-hidden="true"><use href="${icons}#menu"/></svg>
     </button>
-    <form class="header-search" method="get" action="${pageContext.request.contextPath}/systemadmin/registration-request" role="search">
-        <label class="sr-only" for="global-search">Tìm yêu cầu đăng ký</label>
+    <c:set var="companyNavigation" value="${activeNav == 'companies'}"/>
+    <form class="header-search" method="get" action="${pageContext.request.contextPath}${companyNavigation ? '/systemadmin/company' : '/systemadmin/registration-request'}" role="search">
+        <label class="sr-only" for="global-search"><c:choose><c:when test="${companyNavigation}">Tìm Company</c:when><c:otherwise>Tìm yêu cầu đăng ký</c:otherwise></c:choose></label>
         <svg class="icon" aria-hidden="true"><use href="${icons}#search"/></svg>
-        <input id="global-search" name="q" type="search" maxlength="150" placeholder="Tìm doanh nghiệp, email, mã yêu cầu..." value="<c:out value='${filter.q}'/>">
+        <input id="global-search" name="q" type="search" maxlength="150" placeholder="${companyNavigation ? 'Tìm doanh nghiệp, workspace, email admin...' : 'Tìm doanh nghiệp, email, mã yêu cầu...'}" value="<c:out value='${filter.q}'/>">
         <button class="search-shortcut" type="submit" aria-label="Tìm kiếm">↵</button>
     </form>
     <span class="portal-badge"><svg class="icon" aria-hidden="true"><use href="${icons}#shield"/></svg>System Admin Portal</span>

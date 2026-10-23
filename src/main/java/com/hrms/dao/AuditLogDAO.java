@@ -34,6 +34,24 @@ public class AuditLogDAO {
         }
     }
 
+    public void insert(Connection connection, AuditLog log) throws SQLException {
+        String sql = """
+                INSERT INTO AuditLogs (CompanyId, UserId, Action, TableName, RecordId, OldValues, NewValues, IpAddress)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            setNullableInt(statement, 1, log.getCompanyId());
+            setNullableInt(statement, 2, log.getUserId());
+            statement.setString(3, log.getAction());
+            statement.setString(4, log.getTableName());
+            statement.setString(5, log.getRecordId());
+            statement.setString(6, log.getOldValues());
+            statement.setString(7, log.getNewValues());
+            statement.setString(8, log.getIpAddress());
+            statement.executeUpdate();
+        }
+    }
+
     public List<HistoryEntry> getEmployeeHistory(int employeeId) throws SQLException {
         ensureTableExists();
         String sql = """

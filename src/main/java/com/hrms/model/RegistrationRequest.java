@@ -13,6 +13,15 @@ public class RegistrationRequest {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    // Conversion details (populated only when status = CONVERTED)
+    private String workspaceCode;
+    private LocalDateTime convertedAt;
+    private String convertedByName;
+    private String companyAdminEmail;
+    private LocalDateTime companyAdminActivatedAt;
+    private String activationEmailStatus;
+    private LocalDateTime activationEmailCompletedAt;
+
     public Integer getRegistrationRequestId() { return registrationRequestId; }
     public void setRegistrationRequestId(Integer value) { registrationRequestId = value; }
     public String getFullName() { return fullName; }
@@ -51,10 +60,52 @@ public class RegistrationRequest {
     }
 
     public String getCreatedAtDisplay() {
-        return createdAt == null ? "—" : createdAt.format(
-                java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+        return com.hrms.util.TimeSupport.formatUtc(createdAt);
     }
 
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime value) { updatedAt = value; }
+
+    public String getWorkspaceCode() { return workspaceCode; }
+    public void setWorkspaceCode(String value) { workspaceCode = value; }
+    public LocalDateTime getConvertedAt() { return convertedAt; }
+    public void setConvertedAt(LocalDateTime value) { convertedAt = value; }
+    public String getConvertedByName() { return convertedByName; }
+    public void setConvertedByName(String value) { convertedByName = value; }
+    public String getCompanyAdminEmail() { return companyAdminEmail; }
+    public void setCompanyAdminEmail(String value) { companyAdminEmail = value; }
+    public LocalDateTime getCompanyAdminActivatedAt() { return companyAdminActivatedAt; }
+    public void setCompanyAdminActivatedAt(LocalDateTime value) { companyAdminActivatedAt = value; }
+    public String getActivationEmailStatus() { return activationEmailStatus; }
+    public void setActivationEmailStatus(String value) { activationEmailStatus = value; }
+
+    public String getConvertedAtDisplay() {
+        return com.hrms.util.TimeSupport.formatUtc(convertedAt);
+    }
+
+    public String getActivationEmailStatusLabel() {
+        if (activationEmailStatus == null) return "Chưa có lần gửi được ghi nhận";
+        return switch (activationEmailStatus) {
+            case "ACCEPTED" -> "Nhà cung cấp đã tiếp nhận";
+            case "FAILED" -> "Gửi thất bại";
+            case "UNKNOWN" -> "Không xác định";
+            case "PENDING" -> "Đang xử lý";
+            default -> activationEmailStatus;
+        };
+    }
+
+    public LocalDateTime getActivationEmailCompletedAt() { return activationEmailCompletedAt; }
+    public void setActivationEmailCompletedAt(LocalDateTime value) { activationEmailCompletedAt = value; }
+
+    public String getActivationEmailCompletedAtDisplay() {
+        return com.hrms.util.TimeSupport.formatUtc(activationEmailCompletedAt);
+    }
+
+    public String getCompanyAdminActivatedAtDisplay() {
+        return com.hrms.util.TimeSupport.formatUtc(companyAdminActivatedAt);
+    }
+
+    public boolean isCompanyAdminActivated() {
+        return companyAdminActivatedAt != null;
+    }
 }

@@ -1,5 +1,6 @@
 package com.hrms.filter;
 
+import com.hrms.dao.UserDAO;
 import com.hrms.service.security.TenantPrincipal;
 import com.hrms.util.SecuritySupport;
 
@@ -18,6 +19,15 @@ import java.util.Set;
 public class TenantAuthorizationFilter implements Filter {
     private static final Set<String> ADMIN_ROLES = Set.of("COMPANY_ADMIN");
     private static final Set<String> TENANT_ROLES = Set.of("COMPANY_ADMIN", "MANAGER", "EMPLOYEE");
+    private final UserDAO userDAO;
+
+    public TenantAuthorizationFilter() {
+        this(new UserDAO());
+    }
+
+    TenantAuthorizationFilter(UserDAO userDAO) {
+        this.userDAO = userDAO;
+    }
 
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
@@ -41,6 +51,17 @@ public class TenantAuthorizationFilter implements Filter {
         TenantPrincipal principal = SecuritySupport.getTenantPrincipal(httpRequest);
         if (principal == null || !TENANT_ROLES.contains(role(principal))) {
             rejectUnauthenticated(httpRequest, httpResponse);
+            return;
+        }
+        try {
+            if (!userDAO.isTenantUserAuthorized(principal.getUserId())) {
+                invalidateTenantSession(httpRequest);
+                rejectUnauthenticated(httpRequest, httpResponse);
+                return;
+            }
+        } catch (java.sql.SQLException exception) {
+            httpResponse.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "Không thể xác thực quyền truy cập workspace.");
             return;
         }
 
@@ -175,6 +196,10 @@ public class TenantAuthorizationFilter implements Filter {
                 || path.startsWith("/positions/")
                 || path.equals("/documents")
                 || path.startsWith("/documents/");
+    }
+
+    private void invalidateTenantSession(HttpServletRequest request) {
+        if (request.getSession(false) != null) request.getSession(false).invalidate();
     }
 
     private void rejectUnauthenticated(HttpServletRequest request, HttpServletResponse response) throws IOException {
