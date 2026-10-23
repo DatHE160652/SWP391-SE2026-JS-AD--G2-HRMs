@@ -241,6 +241,20 @@
         <url-pattern>/systemadmin/dashboard</url-pattern>
         <url-pattern>/systemadmin/registration-request</url-pattern>
         <url-pattern>/systemadmin/registration-request-details</url-pattern>
+        <url-pattern>/systemadmin/registration-request/confirm</url-pattern>
+        <url-pattern>/systemadmin/registration-request/delete</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>CompanyAdministrationController</servlet-name>
+        <servlet-class>com.hrms.controller.sysadmin.CompanyAdministrationController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>CompanyAdministrationController</servlet-name>
+        <url-pattern>/systemadmin/company</url-pattern>
+        <url-pattern>/systemadmin/company-details</url-pattern>
+        <url-pattern>/systemadmin/company/suspend</url-pattern>
+        <url-pattern>/systemadmin/company/activate</url-pattern>
     </servlet-mapping>
 
     <session-config>
