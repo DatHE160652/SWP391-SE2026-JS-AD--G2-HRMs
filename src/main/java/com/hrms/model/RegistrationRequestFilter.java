@@ -4,7 +4,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.Set;
 
-/** Validated, read-only list filters. Dates are UTC calendar dates. */
+/** Validated, read-only list filters. Dates are Vietnam calendar dates. */
 public final class RegistrationRequestFilter {
     private final String q;
     private final String status;
@@ -29,7 +29,7 @@ public final class RegistrationRequestFilter {
         if (!this.date.isEmpty()) {
             try {
                 LocalDate parsed = LocalDate.parse(this.date);
-                if (parsed.getYear() < 1 || parsed.getYear() >= 9999) throw new IllegalArgumentException();
+                if (parsed.isBefore(LocalDate.of(1, 1, 2)) || parsed.getYear() >= 9999) throw new IllegalArgumentException();
             } catch (DateTimeParseException | IllegalArgumentException exception) {
                 throw new IllegalArgumentException("Ngày lọc không hợp lệ.");
             }

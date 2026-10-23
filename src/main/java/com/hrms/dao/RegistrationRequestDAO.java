@@ -1,5 +1,6 @@
 package com.hrms.dao;
 
+import com.hrms.model.AuditLog;
 import com.hrms.model.RegistrationRequest;
 import com.hrms.model.RegistrationRequestFilter;
 import com.hrms.model.RegistrationRequestPage;
@@ -20,12 +21,27 @@ import java.util.List;
 public class RegistrationRequestDAO {
     private static final String SELECT_COLUMNS = "RegistrationRequestId, FullName, Email, Phone, "
             + "CompanyName, Region, Status, CreatedAt, UpdatedAt";
+    private final ConnectionProvider connections;
+
+    public RegistrationRequestDAO() {
+        this(DBConnection::getConnection);
+    }
+
+    RegistrationRequestDAO(ConnectionProvider connections) {
+        this.connections = connections;
+    }
+
+    @FunctionalInterface
+    interface ConnectionProvider {
+        Connection open() throws SQLException;
+    }
+
 
     public List<RegistrationRequest> findVisibleRequests() throws SQLException {
         String sql = "SELECT " + SELECT_COLUMNS
                 + " FROM RegistrationRequests WHERE Status <> 'DELETED'"
                 + " ORDER BY CreatedAt DESC, RegistrationRequestId DESC";
-        try (Connection connection = DBConnection.getConnection();
+        try (Connection connection = connections.open();
              PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
             List<RegistrationRequest> requests = new ArrayList<>();
@@ -38,7 +54,7 @@ public class RegistrationRequestDAO {
         String sql = "SELECT TOP (5) " + SELECT_COLUMNS
                 + " FROM RegistrationRequests WHERE Status IN ('NEW', 'UNDER_REVIEW')"
                 + " ORDER BY CreatedAt DESC, RegistrationRequestId DESC";
-        try (Connection connection = DBConnection.getConnection();
+        try (Connection connection = connections.open();
              PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
             List<RegistrationRequest> requests = new ArrayList<>();
@@ -48,14 +64,34 @@ public class RegistrationRequestDAO {
     }
 
     public RegistrationRequest findVisibleById(int requestId) throws SQLException {
-        String sql = "SELECT " + SELECT_COLUMNS
-                + " FROM RegistrationRequests"
-                + " WHERE RegistrationRequestId = ? AND Status <> 'DELETED'";
-        try (Connection connection = DBConnection.getConnection();
+        String sql = """
+                SELECT rr.RegistrationRequestId, rr.FullName, rr.Email, rr.Phone,
+                       rr.CompanyName, rr.Region, rr.Status, rr.CreatedAt, rr.UpdatedAt,
+                       rr.ConvertedAt, c.WorkspaceCode,
+                       converter.DisplayName AS ConvertedByName,
+                       ca.Email AS CompanyAdminEmail,
+                       ca.ActivatedAt AS CompanyAdminActivatedAt,
+                       latestEmail.Status AS ActivationEmailStatus,
+                       latestEmail.CompletedAt AS ActivationEmailCompletedAt
+                FROM RegistrationRequests rr
+                LEFT JOIN Companies c ON c.CompanyId = rr.ConvertedCompanyId
+                LEFT JOIN Users converter ON converter.UserId = rr.ConvertedByUserId
+                LEFT JOIN Users ca ON ca.CompanyId = rr.ConvertedCompanyId
+                  AND ca.RoleId = (SELECT RoleId FROM Roles WHERE RoleCode = 'COMPANY_ADMIN')
+                OUTER APPLY (
+                    SELECT TOP (1) ea.Status, ea.CompletedAt
+                    FROM EmailAttempts ea
+                    WHERE ea.RegistrationRequestId = rr.RegistrationRequestId
+                      AND ea.EmailType IN ('ACCOUNT_ACTIVATION', 'ACTIVATION_RESEND')
+                    ORDER BY ea.CreatedAt DESC, ea.EmailAttemptId DESC
+                ) latestEmail
+                WHERE rr.RegistrationRequestId = ? AND rr.Status <> 'DELETED'
+                """;
+        try (Connection connection = connections.open();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, requestId);
             try (ResultSet resultSet = statement.executeQuery()) {
-                return resultSet.next() ? map(resultSet) : null;
+                return resultSet.next() ? mapWithConversion(resultSet) : null;
             }
         }
     }
@@ -65,7 +101,7 @@ public class RegistrationRequestDAO {
      * The mail provider is deliberately not called while this transaction is open.
      */
     public InsertResult insertNew(RegistrationRequest request) throws SQLException {
-        try (Connection connection = DBConnection.getConnection()) {
+        try (Connection connection = connections.open()) {
             applyWriteOptions(connection);
             connection.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
             connection.setAutoCommit(false);
@@ -124,8 +160,6 @@ public class RegistrationRequestDAO {
                 try { connection.rollback(); } catch (SQLException ignored) { }
                 if (isDuplicateKey(exception)) return null;
                 throw exception;
-            } finally {
-                connection.setAutoCommit(true);
             }
         }
     }
@@ -139,7 +173,7 @@ public class RegistrationRequestDAO {
                 SET Status = ?, AttemptedAt = SYSUTCDATETIME(), CompletedAt = SYSUTCDATETIME(), ErrorCode = ?
                 WHERE EmailAttemptId = ? AND Status = 'PENDING'
                 """;
-        try (Connection connection = DBConnection.getConnection();
+        try (Connection connection = connections.open();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, status);
             statement.setString(2, cleanErrorCode(errorCode));
@@ -158,7 +192,7 @@ public class RegistrationRequestDAO {
                       + "(SELECT COUNT_BIG(*) FROM Users WHERE CompanyId IS NOT NULL) AS TenantUserCount "
                     : "CAST(0 AS BIGINT) AS CompanyCount, CAST(0 AS BIGINT) AS TenantUserCount ")
                 + "FROM RegistrationRequests WHERE Status <> 'DELETED'";
-        try (Connection connection = DBConnection.getConnection();
+        try (Connection connection = connections.open();
              PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet result = statement.executeQuery()) {
             result.next();
@@ -170,7 +204,7 @@ public class RegistrationRequestDAO {
 
     public RegistrationRequestPage findPage(RegistrationRequestFilter filter) throws SQLException {
         String predicate = filterPredicate(filter);
-        try (Connection connection = DBConnection.getConnection()) {
+        try (Connection connection = connections.open()) {
             long total;
             try (PreparedStatement count = connection.prepareStatement(
                     "SELECT COUNT_BIG(*) FROM RegistrationRequests" + predicate)) {
@@ -216,11 +250,11 @@ public class RegistrationRequestDAO {
     private boolean duplicateExists(Connection connection, String email, String companyName) throws SQLException {
         String sql = """
                 SELECT TOP (1) 1 FROM RegistrationRequests WITH (UPDLOCK, HOLDLOCK)
-                WHERE Status IN ('NEW', 'UNDER_REVIEW', 'CONVERTING')
-                  AND (EmailNormalized = ? OR CompanyNameNormalized = ?)
+                WHERE Status IN ('NEW', 'UNDER_REVIEW', 'CONVERTING', 'DELETED')
+                  AND (Email = LOWER(LTRIM(RTRIM(?))) OR CompanyNameNormalized = ?)
                 UNION ALL
                 SELECT TOP (1) 1 FROM Users WITH (UPDLOCK, HOLDLOCK)
-                WHERE EmailNormalized = ?
+                WHERE Email = LOWER(LTRIM(RTRIM(?)))
                 UNION ALL
                 SELECT TOP (1) 1 FROM Companies WITH (UPDLOCK, HOLDLOCK)
                 WHERE CompanyNameNormalized = ?
@@ -246,8 +280,8 @@ public class RegistrationRequestDAO {
         if (!filter.getRegion().isEmpty()) statement.setString(index++, filter.getRegion());
         if (!filter.getDate().isEmpty()) {
             java.time.LocalDate date = java.time.LocalDate.parse(filter.getDate());
-            statement.setObject(index++, date.atStartOfDay());
-            statement.setObject(index++, date.plusDays(1).atStartOfDay());
+            statement.setObject(index++, com.hrms.util.TimeSupport.startOfDayUtc(date));
+            statement.setObject(index++, com.hrms.util.TimeSupport.startOfDayUtc(date.plusDays(1)));
         }
         return index;
     }
@@ -263,6 +297,19 @@ public class RegistrationRequestDAO {
         request.setStatus(resultSet.getString("Status"));
         request.setCreatedAt(toLocalDateTime(resultSet.getTimestamp("CreatedAt")));
         request.setUpdatedAt(toLocalDateTime(resultSet.getTimestamp("UpdatedAt")));
+        return request;
+    }
+
+    /** Maps the base columns plus the conversion columns selected only by findVisibleById. */
+    private RegistrationRequest mapWithConversion(ResultSet resultSet) throws SQLException {
+        RegistrationRequest request = map(resultSet);
+        request.setConvertedAt(toLocalDateTime(resultSet.getTimestamp("ConvertedAt")));
+        request.setWorkspaceCode(resultSet.getString("WorkspaceCode"));
+        request.setConvertedByName(resultSet.getString("ConvertedByName"));
+        request.setCompanyAdminEmail(resultSet.getString("CompanyAdminEmail"));
+        request.setCompanyAdminActivatedAt(toLocalDateTime(resultSet.getTimestamp("CompanyAdminActivatedAt")));
+        request.setActivationEmailStatus(resultSet.getString("ActivationEmailStatus"));
+        request.setActivationEmailCompletedAt(toLocalDateTime(resultSet.getTimestamp("ActivationEmailCompletedAt")));
         return request;
     }
 
@@ -286,6 +333,288 @@ public class RegistrationRequestDAO {
         if (errorCode == null || errorCode.isBlank()) return null;
         String cleaned = errorCode.replaceAll("[^A-Za-z0-9_.-]", "_");
         return cleaned.length() > 100 ? cleaned.substring(0, 100) : cleaned;
+    }
+
+    public MutationResult confirmAndProvision(int requestId, int actorId, String password, String ipAddress)
+            throws SQLException {
+        try (Connection connection = connections.open()) {
+            applyWriteOptions(connection);
+            connection.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
+            connection.setAutoCommit(false);
+            boolean completed = false;
+            try {
+                if (!isActiveSystemAdmin(connection, actorId)) {
+                    connection.rollback();
+                    completed = true;
+                    return MutationResult.forbidden();
+                }
+                RegistrationRequest registration = findForUpdate(connection, requestId);
+                if (registration == null) {
+                    connection.rollback();
+                    completed = true;
+                    return MutationResult.notFound();
+                }
+                if (!List.of("NEW", "UNDER_REVIEW").contains(registration.getStatus())) {
+                    connection.rollback();
+                    completed = true;
+                    return MutationResult.conflict();
+                }
+                String claim = "UPDATE RegistrationRequests SET Status='CONVERTING', UpdatedAt=SYSUTCDATETIME() "
+                        + "WHERE RegistrationRequestId=? AND Status IN ('NEW','UNDER_REVIEW')";
+                try (PreparedStatement statement = connection.prepareStatement(claim)) {
+                    statement.setInt(1, requestId);
+                    if (statement.executeUpdate() != 1) {
+                        connection.rollback();
+                        completed = true;
+                        return MutationResult.conflict();
+                    }
+                }
+                if (identityConflict(connection, registration)) {
+                    connection.rollback();
+                    completed = true;
+                    return MutationResult.conflict();
+                }
+
+                CompanyInsert company = insertCompany(connection, registration, requestId);
+                int companyId = company.companyId();
+                int userId = insertCompanyAdmin(connection, registration, companyId, password);
+                int planId = findDefaultPlan(connection);
+                if (planId <= 0) throw new SQLException("Default active subscription plan is missing.");
+                insertSubscription(connection, companyId, planId);
+                String convert = "UPDATE RegistrationRequests SET Status='CONVERTED', ConvertedCompanyId=?, "
+                        + "ConvertedAt=SYSUTCDATETIME(), ConvertedByUserId=?, UpdatedAt=SYSUTCDATETIME() "
+                        + "WHERE RegistrationRequestId=? AND Status='CONVERTING'";
+                try (PreparedStatement statement = connection.prepareStatement(convert)) {
+                    statement.setInt(1, companyId);
+                    statement.setInt(2, actorId);
+                    statement.setInt(3, requestId);
+                    if (statement.executeUpdate() != 1) throw new SQLException("Registration request conversion failed.");
+                }
+                insertAudit(connection, actorId, "CONFIRM_REQUEST", requestId, registration.getStatus(), "CONVERTED", ipAddress);
+                long attemptId = insertActivationAttempt(connection, requestId, userId, actorId, registration.getEmail());
+                MutationResult result = MutationResult.confirmed(registration, companyId, userId, attemptId, company.workspaceCode());
+                connection.commit();
+                completed = true;
+                return result;
+            } catch (SQLException | RuntimeException exception) {
+                try { connection.rollback(); } catch (SQLException ignored) { }
+                completed = true;
+                if (exception instanceof SQLException sqlException && isDuplicateKey(sqlException)) {
+                    return MutationResult.conflict();
+                }
+                throw exception;
+            } finally {
+                if (!completed) {
+                    try { connection.rollback(); } catch (SQLException ignored) { }
+                }
+            }
+        }
+    }
+
+    public MutationResult softDelete(int requestId, int actorId, String ipAddress) throws SQLException {
+        try (Connection connection = connections.open()) {
+            applyWriteOptions(connection);
+            connection.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
+            connection.setAutoCommit(false);
+            boolean completed = false;
+            try {
+                if (!isActiveSystemAdmin(connection, actorId)) {
+                    connection.rollback(); completed = true; return MutationResult.forbidden();
+                }
+                RegistrationRequest registration = findForUpdate(connection, requestId);
+                if (registration == null) {
+                    connection.rollback(); completed = true; return MutationResult.notFound();
+                }
+                if (!List.of("NEW", "UNDER_REVIEW").contains(registration.getStatus())) {
+                    connection.rollback(); completed = true; return MutationResult.conflict();
+                }
+                String sql = "UPDATE RegistrationRequests SET Status='DELETED', DeletedAt=SYSUTCDATETIME(), "
+                        + "DeletedByUserId=?, UpdatedAt=SYSUTCDATETIME() "
+                        + "WHERE RegistrationRequestId=? AND Status IN ('NEW','UNDER_REVIEW')";
+                try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                    statement.setInt(1, actorId); statement.setInt(2, requestId);
+                    if (statement.executeUpdate() != 1) {
+                        connection.rollback(); completed = true; return MutationResult.conflict();
+                    }
+                }
+                insertAudit(connection, actorId, "SOFT_DELETE_REQUEST", requestId,
+                        registration.getStatus(), "DELETED", ipAddress);
+                connection.commit(); completed = true;
+                return MutationResult.deleted(registration);
+            } catch (SQLException | RuntimeException exception) {
+                try { connection.rollback(); } catch (SQLException ignored) { }
+                completed = true;
+                if (exception instanceof SQLException sqlException && isDuplicateKey(sqlException)) {
+                    return MutationResult.conflict();
+                }
+                throw exception;
+            } finally {
+                if (!completed) {
+                    try { connection.rollback(); } catch (SQLException ignored) { }
+                }
+            }
+        }
+    }
+
+    private boolean isActiveSystemAdmin(Connection connection, int actorId) throws SQLException {
+        String sql = "SELECT 1 FROM Users u INNER JOIN Roles r ON r.RoleId=u.RoleId "
+                + "WHERE u.UserId=? AND u.CompanyId IS NULL AND r.RoleCode='SYSTEM_ADMIN' "
+                + "AND u.IsActive=1 AND u.IsLocked=0 AND (u.LockedUntil IS NULL OR u.LockedUntil<=SYSUTCDATETIME())";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, actorId);
+            try (ResultSet result = statement.executeQuery()) { return result.next(); }
+        }
+    }
+
+    private RegistrationRequest findForUpdate(Connection connection, int requestId) throws SQLException {
+        String sql = "SELECT " + SELECT_COLUMNS + " FROM RegistrationRequests WITH (UPDLOCK,HOLDLOCK) "
+                + "WHERE RegistrationRequestId=?";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, requestId);
+            try (ResultSet result = statement.executeQuery()) { return result.next() ? map(result) : null; }
+        }
+    }
+
+    private boolean identityConflict(Connection connection, RegistrationRequest request) throws SQLException {
+        String sql = "SELECT TOP (1) 1 FROM Users WITH (UPDLOCK,HOLDLOCK) WHERE Email=LOWER(LTRIM(RTRIM(?))) "
+                + "UNION ALL SELECT TOP (1) 1 FROM Companies WITH (UPDLOCK,HOLDLOCK) WHERE CompanyNameNormalized=?";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, request.getEmail());
+            statement.setNString(2, normalizedCompany(request.getCompanyName()));
+            try (ResultSet result = statement.executeQuery()) { return result.next(); }
+        }
+    }
+
+    private CompanyInsert insertCompany(Connection connection, RegistrationRequest request, int requestId) throws SQLException {
+        String normalized = normalizedCompany(request.getCompanyName());
+        for (int suffix = 0; suffix < 20; suffix++) {
+            String workspace = createWorkspaceCode(request, suffix);
+            if (workspaceExists(connection, workspace)) continue;
+            String sql = "INSERT INTO Companies (WorkspaceCode,CompanyName,CompanyNameNormalized,Region,ContactEmail,ContactPhone,IsActive) "
+                    + "OUTPUT INSERTED.CompanyId VALUES (?,?,?,?,?,?,1)";
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setString(1, workspace); statement.setNString(2, request.getCompanyName());
+                statement.setNString(3, normalized); statement.setString(4, request.getRegion());
+                statement.setString(5, request.getEmail()); statement.setString(6, request.getPhone());
+                try (ResultSet result = statement.executeQuery()) {
+                    if (result.next()) return new CompanyInsert(result.getInt(1), workspace);
+                }
+            }
+        }
+        throw new SQLException("Unable to allocate unique workspace code.");
+    }
+
+    private record CompanyInsert(int companyId, String workspaceCode) { }
+
+    private boolean workspaceExists(Connection connection, String workspace) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT 1 FROM Companies WITH (UPDLOCK,HOLDLOCK) WHERE WorkspaceCode=?")) {
+            statement.setString(1, workspace);
+            try (ResultSet result = statement.executeQuery()) { return result.next(); }
+        }
+    }
+
+    static String createWorkspaceCode(RegistrationRequest request, int suffix) {
+        String name = java.text.Normalizer.normalize(request.getCompanyName().toLowerCase(java.util.Locale.ROOT),
+                java.text.Normalizer.Form.NFD).replaceAll("\\p{M}+", "").replace('đ', 'd');
+        String slug = name.replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
+        if (slug.isEmpty()) slug = "tenant";
+        String ending = suffix == 0 ? "" : "-" + (suffix + 1);
+        int maxPrefix = 50 - ending.length();
+        slug = slug.substring(0, Math.min(slug.length(), maxPrefix)).replaceAll("-$", "");
+        if (slug.isEmpty()) slug = "t";
+        String code = slug + ending;
+        if (List.of("app", "admin", "www", "api", "system").contains(code)) return "tenant" + ending;
+        return code;
+    }
+
+    private String normalizedCompany(String companyName) {
+        return companyName.trim().replaceAll("\\s+", " ").toLowerCase(java.util.Locale.ROOT);
+    }
+
+    private int insertCompanyAdmin(Connection connection, RegistrationRequest request, int companyId,
+                                   String password) throws SQLException {
+        int roleId;
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT RoleId FROM Roles WHERE RoleCode='COMPANY_ADMIN'")) {
+            try (ResultSet result = statement.executeQuery()) {
+                if (!result.next()) throw new SQLException("COMPANY_ADMIN role is missing.");
+                roleId = result.getInt(1);
+            }
+        }
+        String username = null;
+        for (int suffix = 0; suffix < 20; suffix++) {
+            String candidate = "company-admin-" + companyId + (suffix == 0 ? "" : "-" + suffix);
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "SELECT 1 FROM Users WITH (UPDLOCK,HOLDLOCK) WHERE Username=?")) {
+                statement.setString(1, candidate);
+                try (ResultSet result = statement.executeQuery()) {
+                    if (!result.next()) { username = candidate; break; }
+                }
+            }
+        }
+        if (username == null) throw new SQLException("Unable to allocate unique Company Admin username.");
+        String sql = "INSERT INTO Users (CompanyId,RoleId,Username,Email,DisplayName,Password,MustChangePassword,ActivatedAt,PasswordChangedAt,IsActive,IsLocked) "
+                + "OUTPUT INSERTED.UserId VALUES (?,?,?,?,?,?,1,NULL,NULL,1,0)";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, companyId); statement.setInt(2, roleId);
+            statement.setString(3, username); statement.setString(4, request.getEmail());
+            statement.setNString(5, request.getFullName()); statement.setString(6, password);
+            try (ResultSet result = statement.executeQuery()) {
+                if (result.next()) return result.getInt(1);
+            }
+        }
+        throw new SQLException("Company Admin was not created.");
+    }
+
+    private int findDefaultPlan(Connection connection) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT PlanId FROM Plans WITH (UPDLOCK,HOLDLOCK) WHERE PlanName=N'DEFAULT' AND IsActive=1")) {
+            try (ResultSet result = statement.executeQuery()) { return result.next() ? result.getInt(1) : -1; }
+        }
+    }
+
+    private void insertSubscription(Connection connection, int companyId, int planId) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "INSERT INTO Subscriptions (CompanyId,PlanId,StartDate,Status) VALUES (?, ?, CAST(SYSUTCDATETIME() AT TIME ZONE 'UTC' AT TIME ZONE 'SE Asia Standard Time' AS DATE), N'ACTIVE')")) {
+            statement.setInt(1, companyId); statement.setInt(2, planId); statement.executeUpdate();
+        }
+    }
+
+    private void insertAudit(Connection connection, int actorId, String action, int requestId,
+                             String oldStatus, String newStatus, String ipAddress) throws SQLException {
+        AuditLog log = new AuditLog(); log.setUserId(actorId); log.setAction(action);
+        log.setTableName("RegistrationRequests"); log.setRecordId(String.valueOf(requestId));
+        log.setOldValues("{\"status\":\"" + oldStatus + "\"}");
+        log.setNewValues("{\"status\":\"" + newStatus + "\"}");
+        log.setIpAddress(ipAddress == null || ipAddress.length() > 50 ? null : ipAddress);
+        new AuditLogDAO().insert(connection, log);
+    }
+
+    private long insertActivationAttempt(Connection connection, int requestId, int userId,
+                                         int actorId, String recipient) throws SQLException {
+        String sql = "INSERT INTO EmailAttempts (EmailType,RegistrationRequestId,UserId,RequestedByUserId,RecipientEmail,Status) "
+                + "OUTPUT INSERTED.EmailAttemptId VALUES ('ACCOUNT_ACTIVATION',?,?,?,?, 'PENDING')";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, requestId); statement.setInt(2, userId);
+            statement.setInt(3, actorId); statement.setString(4, recipient);
+            try (ResultSet result = statement.executeQuery()) {
+                if (result.next()) return result.getLong(1);
+            }
+        }
+        throw new SQLException("Activation email attempt was not recorded.");
+    }
+
+    public record MutationResult(String outcome, RegistrationRequest request, int companyId,
+                                 int userId, long emailAttemptId, String workspaceCode) {
+        static MutationResult forbidden() { return new MutationResult("FORBIDDEN", null, 0, 0, 0, null); }
+        static MutationResult notFound() { return new MutationResult("NOT_FOUND", null, 0, 0, 0, null); }
+        static MutationResult conflict() { return new MutationResult("CONFLICT", null, 0, 0, 0, null); }
+        static MutationResult deleted(RegistrationRequest request) { return new MutationResult("DELETED", request, 0, 0, 0, null); }
+        static MutationResult confirmed(RegistrationRequest request, int companyId, int userId,
+                                        long attemptId, String workspace) {
+            return new MutationResult("CONFIRMED", request, companyId, userId, attemptId, workspace);
+        }
     }
 
     public record InsertResult(RegistrationRequest request, long emailAttemptId) { }

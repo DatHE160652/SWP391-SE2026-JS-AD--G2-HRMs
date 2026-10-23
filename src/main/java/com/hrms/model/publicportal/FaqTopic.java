@@ -28,6 +28,6 @@ public class FaqTopic {
     public List<FaqComment> getComments() { return List.copyOf(comments); }
     public void addComment(FaqComment comment) { comments.add(comment); }
     public String getCreatedAtDisplay() {
-        return createdAt == null ? "" : createdAt.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+        return createdAt == null ? "" : com.hrms.util.TimeSupport.formatUtc(createdAt);
     }
 }
