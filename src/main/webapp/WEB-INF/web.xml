@@ -182,7 +182,7 @@
 
     <servlet>
         <servlet-name>AttendanceController</servlet-name>
-        <servlet-class>com.hrms.controller.hr.AttendanceController</servlet-class>
+        <servlet-class>com.hrms.controller.manager.AttendanceController</servlet-class>
     </servlet>
     <servlet-mapping>
         <servlet-name>AttendanceController</servlet-name>

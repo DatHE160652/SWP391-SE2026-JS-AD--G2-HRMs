@@ -254,8 +254,9 @@ public class AttendanceDAO {
 
         List<Object> params = new ArrayList<>();
 
-        if (companyId != null) {
-            sql.append(" AND a.CompanyId = ?");
+        if (companyId != null && companyId > 0) {
+            sql.append(" AND (a.CompanyId = ? OR e.CompanyId = ? OR a.CompanyId = 0 OR a.CompanyId IS NULL)");
+            params.add(companyId);
             params.add(companyId);
         }
         if (departmentId != null && departmentId > 0) {
@@ -325,8 +326,8 @@ public class AttendanceDAO {
         params.add(month);
         params.add(year);
 
-        if (companyId != null) {
-            sql.append(" AND e.CompanyId = ?");
+        if (companyId != null && companyId > 0) {
+            sql.append(" AND (e.CompanyId = ? OR e.CompanyId IS NULL OR e.CompanyId = 0)");
             params.add(companyId);
         }
         if (departmentId != null && departmentId > 0) {
@@ -420,7 +421,10 @@ public class AttendanceDAO {
             ps.setInt(1, employeeId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return rs.getInt("CompanyId");
+                    int cid = rs.getInt("CompanyId");
+                    if (!rs.wasNull() && cid > 0) {
+                        return cid;
+                    }
                 }
             }
         }
