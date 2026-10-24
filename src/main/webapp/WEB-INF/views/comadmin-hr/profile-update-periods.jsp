@@ -6,29 +6,25 @@
     <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Đợt cập nhật hồ sơ</title>
-    <link rel="stylesheet" href="../css/employee.css">
+    <title>Đợt cập nhật ${updatePeriodLabel}</title>
+    <link rel="stylesheet" href="../css/lifecycle.css">
+    <link rel="stylesheet" href="../css/organization.css">
+    <link rel="stylesheet" href="../css/profile-update.css">
 </head>
-<body data-page="profile-update-periods">
-<div class="shell">
-    <aside class="sidebar">
-        <div class="brand">HRMs Cloud<span>Quản trị nhân sự</span></div>
-        <c:if test="${canManageEmployees}"><a class="nav-link" href="employee-list">Quản lý Nhân sự</a></c:if>
-        <a class="nav-link active" href="profile-update-periods">Đợt cập nhật hồ sơ</a>
-        <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
-    </aside>
-    <main class="content">
+<body class="lc" data-page="profile-update-periods" data-period-type="${updatePeriodType}">
+<%@ include file="/WEB-INF/views/common/lifecycle-shell.jspf" %>
+    <main class="lc-main content profile-update-page">
+        <div class="lc-breadcrumb">Quản trị nhân sự &nbsp; / &nbsp; Cập nhật ${updatePeriodLabel}</div>
         <div class="page-header">
             <div>
-                <h1 class="page-title">Đợt cập nhật hồ sơ</h1>
-                <p class="page-subtitle">Employee và Manager chỉ được sửa số điện thoại trong thời gian đợt cập nhật của công ty đang mở.</p>
+                <h1 class="page-title">Đợt cập nhật ${updatePeriodLabel}</h1>
+                <p class="page-subtitle">Quản lý thời gian cập nhật ${updatePeriodLabel} độc lập cho nhân viên trong công ty.</p>
             </div>
-            <button type="button" class="secondary" id="refreshPeriodsButton">Tải lại</button>
         </div>
         <div id="message" class="message" role="status"></div>
         <form id="profileUpdatePeriodForm" class="panel" novalidate>
             <input type="hidden" name="csrfToken">
-            <h2>Tạo yêu cầu cập nhật</h2>
+            <div class="profile-section-heading"><span class="profile-section-icon">＋</span><div><h2>Tạo đợt cập nhật ${updatePeriodLabel}</h2><p>Thiết lập khoảng thời gian cho phép nhân viên cập nhật ${updatePeriodLabel}.</p></div></div>
             <div class="form-grid">
                 <div>
                     <label for="periodTitle">Tên đợt cập nhật</label>
@@ -47,14 +43,13 @@
             <div class="form-actions"><button type="submit" id="createProfilePeriodButton">Tạo đợt cập nhật</button></div>
         </form>
         <section class="panel">
-            <h2>Các đợt cập nhật</h2>
-            <table>
+            <div class="profile-section-heading"><div><h2>Lịch sử các đợt cập nhật</h2><p>Theo dõi trạng thái và quản lý các đợt của công ty.</p></div></div>
+            <div class="lc-table-wrap"><table data-pagination="${updatePeriodType}-update-periods">
                 <thead><tr><th>Tên đợt</th><th>Bắt đầu</th><th>Kết thúc</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
                 <tbody id="profilePeriodRows"></tbody>
-            </table>
+            </table></div>
         </section>
     </main>
-</div>
 <script src="../js/employee.js?v=<%= application.getResource("/js/employee.js").openConnection().getLastModified() %>"></script>
 <script src="../js/profile-update-periods.js?v=<%= application.getResource("/js/profile-update-periods.js").openConnection().getLastModified() %>"></script>
 </body>

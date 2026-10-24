@@ -24,73 +24,119 @@ public final class FileUploadUtil {
 
         String originalFileName = sanitizeFileName(getSubmittedFileName(filePart));
         String extension = getExtension(originalFileName);
-        String baseName = originalFileName.substring(0, originalFileName.length() - extension.length());
-        String savedFileName = baseName + "-" + System.currentTimeMillis() + extension;
-        String relativeDirectory = "/images/employees/" + employeeId;
-        String absoluteDirectory = servletContext.getRealPath(relativeDirectory);
-
-        if (absoluteDirectory == null) {
-            absoluteDirectory = Paths.get(System.getProperty("user.dir"), "src", "main", "webapp", "images", "employees",
-                    String.valueOf(employeeId)).toString();
-            relativeDirectory = absoluteDirectory;
+        java.nio.file.Path root = storageRoot();
+        java.nio.file.Files.createDirectories(root);
+        root = root.toRealPath();
+        if(servletContext!=null && servletContext.getRealPath("/")!=null
+                && root.startsWith(java.nio.file.Path.of(servletContext.getRealPath("/")).toRealPath()))
+            throw new IOException("HRM_DOCUMENT_ROOT must be outside the public web root.");
+        java.nio.file.Path directory = root.resolve(String.valueOf(employeeId));
+        java.nio.file.Files.createDirectories(directory);
+        directory = directory.toRealPath();
+        if (!directory.startsWith(root)) throw new IOException("Thư mục lưu trữ không hợp lệ.");
+        String savedFileName = java.util.UUID.randomUUID() + extension;
+        java.nio.file.Path destination = directory.resolve(savedFileName);
+        try (java.io.InputStream input = filePart.getInputStream()) {
+            byte[] signature = input.readNBytes(8);
+            if (!validSignature(extension, signature)) throw new FieldValidationException("file", "Nội dung tệp không phù hợp với phần mở rộng.");
+            try (java.io.OutputStream output = java.nio.file.Files.newOutputStream(destination, java.nio.file.StandardOpenOption.CREATE_NEW)) {
+                output.write(signature);
+                byte[] buffer = new byte[8192];
+                long total = signature.length;
+                int count;
+                while ((count = input.read(buffer)) != -1) {
+                    total += count;
+                    if (total > MAX_FILE_SIZE) throw new FieldValidationException("file", "Dung lượng tệp tối đa là 10 MB.");
+                    output.write(buffer, 0, count);
+                }
+            }
+            if (".docx".equals(extension)) {
+                try (java.util.zip.ZipFile archive = new java.util.zip.ZipFile(destination.toFile())) {
+                    if (archive.getEntry("[Content_Types].xml") == null || archive.getEntry("word/document.xml") == null)
+                        throw new FieldValidationException("file", "Tệp tài liệu Word không hợp lệ.");
+                }
+            }
+        } catch (IOException | RuntimeException exception) {
+            java.nio.file.Files.deleteIfExists(destination);
+            throw exception;
         }
-
-        File uploadDirectory = new File(absoluteDirectory);
-        if (!uploadDirectory.exists() && !uploadDirectory.mkdirs()) {
-            throw new IOException("Could not create upload directory.");
-        }
-
-        File savedFile = new File(uploadDirectory, savedFileName);
-        filePart.write(savedFile.getAbsolutePath());
-
-        return new SavedFile(originalFileName, relativeDirectory + "/" + savedFileName, savedFile.getAbsolutePath());
+        return new SavedFile(originalFileName, "private:" + employeeId + "/" + savedFileName, destination.toString());
     }
 
     public static File resolveStoredFile(String filePath, ServletContext servletContext) {
-        if (filePath == null || filePath.isBlank()) {
-            return null;
-        }
-
-        if (filePath.startsWith("/")) {
-            String absolutePath = servletContext.getRealPath(filePath);
-            if (absolutePath != null) {
-                File storedFile = new File(absolutePath);
-                if (storedFile.exists()) {
-                    return storedFile;
-                }
+        if (filePath == null || filePath.isBlank()) return null;
+        try {
+            if (filePath.startsWith("private:")) {
+                java.nio.file.Path root = storageRoot().toRealPath();
+                java.nio.file.Path candidate = root.resolve(filePath.substring(8)).normalize();
+                if (!candidate.startsWith(root)) throw new IllegalArgumentException("Đường dẫn tài liệu không hợp lệ.");
+                candidate = candidate.toRealPath();
+                if (!candidate.startsWith(root)) throw new IllegalArgumentException("Đường dẫn tài liệu không hợp lệ.");
+                return candidate.toFile();
             }
+            String legacy = filePath.replaceFirst("^/uploads/employees/", "/images/employees/");
+            if (!legacy.startsWith("/images/employees/")) throw new IllegalArgumentException("Đường dẫn tài liệu cũ không được hỗ trợ.");
+            String webRoot = servletContext.getRealPath("/images/employees");
+            String resolved = servletContext.getRealPath(legacy);
+            if (webRoot == null || resolved == null) return null;
+            java.nio.file.Path root = java.nio.file.Path.of(webRoot).toRealPath();
+            java.nio.file.Path candidate = java.nio.file.Path.of(resolved).toRealPath();
+            if (!candidate.startsWith(root)) throw new IllegalArgumentException("Đường dẫn tài liệu không hợp lệ.");
+            return candidate.toFile();
+        } catch (IOException exception) { return null; }
+    }
 
-            if (filePath.startsWith("/uploads/employees/")) {
-                String migratedPath = filePath.replaceFirst("^/uploads/", "/images/");
-                String migratedAbsolutePath = servletContext.getRealPath(migratedPath);
-                if (migratedAbsolutePath != null) {
-                    return new File(migratedAbsolutePath);
-                }
-            }
-        }
+    private static java.nio.file.Path storageRoot() {
+        String configured = System.getenv("HRM_DOCUMENT_ROOT");
+        if (configured == null || configured.isBlank()) configured = System.getProperty("hrm.documents.root");
+        if (configured == null || configured.isBlank())
+            configured = java.nio.file.Path.of(System.getProperty("user.home"), ".hrms", "documents").toString();
+        return java.nio.file.Path.of(configured).toAbsolutePath().normalize();
+    }
 
-        return new File(filePath);
+    private static boolean validSignature(String extension, byte[] signature) {
+        String hex = java.util.HexFormat.of().formatHex(signature);
+        return switch (extension) {
+            case ".pdf" -> hex.startsWith("255044462d");
+            case ".png" -> hex.startsWith("89504e470d0a1a0a");
+            case ".jpg" -> hex.startsWith("ffd8ff");
+            case ".docx" -> hex.startsWith("504b0304");
+            case ".doc" -> hex.startsWith("d0cf11e0a1b11ae1");
+            default -> false;
+        };
+    }
+
+    public static String contentType(String fileName) {
+        if(fileName==null || fileName.isBlank()) return "application/octet-stream";
+        return switch(getExtension(fileName)) {
+            case ".pdf" -> "application/pdf";
+            case ".png" -> "image/png";
+            case ".jpg" -> "image/jpeg";
+            case ".doc" -> "application/msword";
+            case ".docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            default -> "application/octet-stream";
+        };
     }
 
     private static void validate(Part filePart) {
         if (filePart == null || filePart.getSize() == 0) {
-            throw new FieldValidationException("file", "Please select a document");
+            throw new FieldValidationException("file", "Vui lòng chọn tệp tài liệu.");
         }
         if (filePart.getSize() > MAX_FILE_SIZE) {
-            throw new FieldValidationException("file", "File size must be less than 10MB");
+            throw new FieldValidationException("file", "Dung lượng tệp không được vượt quá 10 MB.");
         }
 
         String fileName = getSubmittedFileName(filePart);
         String extension = getExtension(fileName);
         if (!ALLOWED_EXTENSIONS.contains(extension)) {
-            throw new FieldValidationException("file", "File type is not supported");
+            throw new FieldValidationException("file", "Định dạng tệp không được hỗ trợ.");
         }
     }
 
     private static String getSubmittedFileName(Part filePart) {
         String fileName = filePart.getSubmittedFileName();
         if (fileName == null || fileName.isBlank()) {
-            throw new FieldValidationException("file", "Please select a document");
+            throw new FieldValidationException("file", "Vui lòng chọn tệp tài liệu.");
         }
         return fileName;
     }

@@ -1,17 +1,26 @@
+const updatePeriodApi = document.body.dataset.periodType === 'DOCUMENT' ? '/employees/document-update-periods' : '/employees/profile-update-periods';
+const updatePeriodLabel = document.body.dataset.periodType === 'DOCUMENT' ? 'tài liệu' : 'hồ sơ';
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.querySelector('#profileUpdatePeriodForm');
     setDefaultProfilePeriodDates(form);
     loadProfileUpdatePeriods();
-    document.querySelector('#refreshPeriodsButton').addEventListener('click', loadProfileUpdatePeriods);
     form.addEventListener('submit', async event => {
         event.preventDefault();
+        if (!FormValidation.validate(form)) return;
+        const start = new Date(form.elements.namedItem('startsAt').value);
+        const end = new Date(form.elements.namedItem('endsAt').value);
+        if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start) {
+            FormValidation.setError(form, 'endsAt', 'Thời gian kết thúc phải sau thời gian bắt đầu.');
+            form.elements.namedItem('endsAt').focus();
+            return;
+        }
         const button = document.querySelector('#createProfilePeriodButton');
         button.disabled = true;
         try {
             const data = Object.fromEntries(new FormData(form).entries());
             data.startsAt = new Date(data.startsAt).toISOString();
             data.endsAt = new Date(data.endsAt).toISOString();
-            const payload = await EmployeeApi.post('/employees/profile-update-periods/create', data);
+            const payload = await EmployeeApi.post(updatePeriodApi+'/create', data);
             showMessage(payload.message);
             form.reset();
             setDefaultProfilePeriodDates(form);
@@ -34,7 +43,7 @@ function setDefaultProfilePeriodDates(form) {
 
 async function loadProfileUpdatePeriods() {
     try {
-        const payload = await EmployeeApi.get('/employees/profile-update-periods');
+        const payload = await EmployeeApi.get(updatePeriodApi);
         document.querySelector('#profileUpdatePeriodForm').elements.namedItem('csrfToken').value = payload.csrfToken;
         const rows = document.querySelector('#profilePeriodRows');
         rows.replaceChildren();
@@ -42,7 +51,7 @@ async function loadProfileUpdatePeriods() {
             const row = rows.insertRow();
             const cell = row.insertCell();
             cell.colSpan = 5;
-            cell.textContent = 'Chưa có đợt cập nhật hồ sơ.';
+            cell.textContent = 'Chưa có đợt cập nhật '+updatePeriodLabel+'.';
         }
         payload.data.forEach(period => {
             const row = rows.insertRow();
@@ -53,6 +62,11 @@ async function loadProfileUpdatePeriods() {
                 new Date(period.endsAt).toLocaleString('vi-VN'), state].forEach(value => {
                 row.insertCell().textContent = value;
             });
+            const statusCell = row.cells[3];
+            const badge = document.createElement('span');
+            badge.className = 'lc-badge' + (state === 'Đang mở' ? ' active' : state === 'Chưa bắt đầu' ? ' warning' : '');
+            badge.textContent = state;
+            statusCell.replaceChildren(badge);
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'danger';
@@ -67,13 +81,13 @@ async function loadProfileUpdatePeriods() {
 }
 
 async function closeProfileUpdatePeriod(periodId, button) {
-    if (!confirm('Đóng đợt cập nhật này? Employee và Manager sẽ không thể cập nhật số điện thoại trong đợt này nữa.')) {
+    if (!confirm('Đóng đợt cập nhật '+updatePeriodLabel+' này? Chỉ quyền cập nhật '+updatePeriodLabel+' của đợt này sẽ bị khóa.')) {
         return;
     }
     button.disabled = true;
     try {
         const form = document.querySelector('#profileUpdatePeriodForm');
-        const payload = await EmployeeApi.post('/employees/profile-update-periods/close', {
+        const payload = await EmployeeApi.post(updatePeriodApi+'/close', {
             periodId,
             csrfToken: form.elements.namedItem('csrfToken').value
         });
