@@ -71,10 +71,12 @@ const LeaveApp = (() => {
         // Load employee balances to show available quota
         fetch("../leave/api/my-balances")
             .then(res => res.json())
-            .then(data => {
+            .then(async data => {
                 if (data.success && data.data) {
                     typeSelect.innerHTML = '<option value="">-- Chọn loại nghỉ phép --</option>';
-                    data.data.forEach(b => {
+                    const activeTypes = new Set((await fetch("../leave/api/types").then(response => response.json())).data
+                        .filter(type => type.isActive).map(type => type.leaveTypeId));
+                    data.data.filter(balance => activeTypes.has(balance.leaveTypeId)).forEach(b => {
                         cachedBalances[b.leaveTypeId] = b;
                         const opt = document.createElement("option");
                         opt.value = b.leaveTypeId;
@@ -144,6 +146,7 @@ const LeaveApp = (() => {
         form.addEventListener("submit", e => {
             e.preventDefault();
             const formData = new URLSearchParams(new FormData(form));
+                formData.set("csrfToken", document.querySelector('meta[name="organization-csrf-token"]')?.content || "");
 
             btnSubmit.disabled = true;
             btnSubmit.textContent = "Đang gửi đơn...";
@@ -476,7 +479,8 @@ const LeaveApp = (() => {
                     }
 
                     tableBody.innerHTML = "";
-                    data.data.forEach(t => {
+                    const status = document.getElementById("statusFilter")?.value || '';
+                    data.data.filter(type => !status || type.isActive === (status === 'Active')).forEach(t => {
                         const tr = document.createElement("tr");
                         const paidBadge = t.isPaid
                             ? '<span class="badge badge-paid">Có hưởng lương</span>'
@@ -487,11 +491,11 @@ const LeaveApp = (() => {
                             <td><span style="font-family:monospace;font-weight:700;color:var(--navy,#062579);">${t.typeCode}</span></td>
                             <td><strong>${escapeHtml(t.typeName)}</strong></td>
                             <td style="font-weight:700;">${t.defaultDaysPerYear} ngày</td>
-                            <td>${paidBadge}</td>
+                            <td>${paidBadge}<br>${t.isActive ? 'Active' : 'Inactive'}</td>
                             <td>
                                 <div class="btn-action-group">
                                     <button class="btn-action view" onclick='LeaveApp.editLeaveType(${JSON.stringify(t)})'>Sửa</button>
-                                    <button class="btn-action reject" onclick="LeaveApp.deleteLeaveType(${t.leaveTypeId}, '${escapeHtml(t.typeName)}')">Xóa</button>
+                                    <button class="btn-action reject" onclick="LeaveApp.setLeaveTypeActive(${t.leaveTypeId}, ${!t.isActive})">${t.isActive ? 'Vô hiệu hóa' : 'Kích hoạt lại'}</button>
                                 </div>
                             </td>
                         `;
@@ -530,6 +534,7 @@ const LeaveApp = (() => {
             });
         }
 
+        document.getElementById("statusFilter")?.addEventListener("change", loadTypes);
         loadTypes();
     }
 
@@ -990,23 +995,24 @@ const LeaveApp = (() => {
         openModal("modalLeaveType");
     }
 
-    function deleteLeaveType(id, name) {
-        if (!confirm(`Bạn có chắc chắn muốn xóa chính sách nghỉ phép "${name}" không?`)) {
+    function setLeaveTypeActive(id, active) {
+        if (!confirm(active ? 'Kích hoạt lại loại nghỉ phép này?' : 'Vô hiệu hóa loại nghỉ phép này?')) {
             return;
         }
 
         fetch("../leave/api/types", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({ action: "delete", leaveTypeId: id }).toString()
+            body: new URLSearchParams({ action: active ? "activate" : "deactivate", leaveTypeId: id,
+                csrfToken: document.querySelector('meta[name="organization-csrf-token"]')?.content || "" }).toString()
         })
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message || "Đã xóa thành công!");
+                    alert(data.message || "Đã cập nhật trạng thái!");
                     window.location.reload();
                 } else {
-                    alert(data.message || "Không thể xóa chính sách này.");
+                    alert(data.message || "Không thể cập nhật trạng thái.");
                 }
             })
             .catch(err => alert("Lỗi: " + err));
@@ -1062,6 +1068,6 @@ const LeaveApp = (() => {
         viewCalendarEventDetail,
         editLeaveType,
         openCreateLeaveTypeModal,
-        deleteLeaveType
+        setLeaveTypeActive
     };
 })();

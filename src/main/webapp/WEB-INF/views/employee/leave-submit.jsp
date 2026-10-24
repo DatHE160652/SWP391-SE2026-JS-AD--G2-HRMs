@@ -13,7 +13,7 @@
 <body data-page="leave-submit">
 <div class="shell">
     <aside class="sidebar">
-        <div class="brand">HRMs Cloud<span>Employee Portal</span></div>
+        <div class="brand">HRMs Cloud<span>Cổng nhân viên</span></div>
         <div class="nav-label">Chức năng cá nhân</div>
         <a class="nav-link" href="../employee/my-profile">Hồ sơ cá nhân</a>
         <a class="nav-link" href="../attendance/employee-attendance">Chấm công cá nhân</a>
@@ -74,7 +74,7 @@
 
                     <div class="form-group-full">
                         <label class="form-label" for="reason">Lý do xin nghỉ <span style="color:#b42318;">*</span></label>
-                        <textarea id="reason" name="reason" class="form-control" placeholder="Mô tả lý do xin nghỉ phép..." required></textarea>
+                        <textarea id="reason" name="reason" data-validation-label="lý do nghỉ phép" class="form-control" placeholder="Mô tả lý do xin nghỉ phép..." required></textarea>
                     </div>
                 </div>
 

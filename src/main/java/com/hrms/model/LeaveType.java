@@ -3,6 +3,11 @@ package com.hrms.model;
 import java.time.LocalDateTime;
 
 public class LeaveType {
+    private boolean active = true;
+
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
+
     private Integer leaveTypeId;
     private Integer companyId;
     private String typeCode;

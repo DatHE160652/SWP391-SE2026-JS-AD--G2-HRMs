@@ -54,9 +54,9 @@
                     <select id="statusFilter">
                         <option value="ALL">-- Tất cả trạng thái --</option>
                         <option value="Pending">Pending (Chờ duyệt)</option>
-                        <option value="Approved">Approved (Đã duyệt)</option>
+                        <option value="Approved">Đã duyệt</option>
                         <option value="Rejected">Rejected (Bị từ chối)</option>
-                        <option value="Cancelled">Cancelled (Đã hủy)</option>
+                        <option value="Cancelled">Đã hủy</option>
                     </select>
                 </div>
                 <div class="filter-group" style="min-width: 180px;">

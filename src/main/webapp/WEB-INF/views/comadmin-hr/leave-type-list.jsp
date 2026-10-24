@@ -46,6 +46,13 @@
             </div>
         </div>
 
+        <label for="statusFilter">Trạng thái</label>
+        <select id="statusFilter">
+            <option value="">Tất cả</option>
+            <option value="Active">Đang hoạt động</option>
+            <option value="Inactive">Ngừng hoạt động</option>
+        </select>
+
         <section class="panel">
             <table>
                 <thead>

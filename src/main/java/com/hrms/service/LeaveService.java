@@ -87,6 +87,7 @@ public class LeaveService {
             List<LeaveType> types = leaveTypeDAO.getLeaveTypesByCompany(companyId);
             try (Connection conn = DBConnection.getConnection()) {
                 for (LeaveType type : types) {
+                    if (!type.isActive()) continue;
                     BigDecimal initialQuota = BigDecimal.valueOf(
                             type.getDefaultDaysPerYear() != null ? type.getDefaultDaysPerYear() : 12
                     );
@@ -118,6 +119,10 @@ public class LeaveService {
             throw new FieldValidationException("endDate", "Khoảng thời gian đã chọn không có ngày làm việc nào (rơi vào cuối tuần).");
         }
 
+        LeaveType selectedType = leaveTypeDAO.getLeaveTypeById(leaveTypeId);
+        if (selectedType == null || !Integer.valueOf(companyId).equals(selectedType.getCompanyId()) || !selectedType.isActive()) {
+            throw new FieldValidationException("leaveTypeId", "Vui lòng chọn loại nghỉ phép đang hoạt động trong công ty.");
+        }
         int year = startDate.getYear();
         LeaveBalance balance = leaveBalanceDAO.getBalance(employeeId, leaveTypeId, year);
         if (balance == null) {

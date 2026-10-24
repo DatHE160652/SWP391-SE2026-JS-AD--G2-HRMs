@@ -13,7 +13,7 @@
 <body data-page="leave-my-requests">
 <div class="shell">
     <aside class="sidebar">
-        <div class="brand">HRMs Cloud<span>Employee Portal</span></div>
+        <div class="brand">HRMs Cloud<span>Cổng nhân viên</span></div>
         <div class="nav-label">Chức năng cá nhân</div>
         <a class="nav-link" href="../employee/my-profile">Hồ sơ cá nhân</a>
         <a class="nav-link" href="../attendance/employee-attendance">Chấm công cá nhân</a>
@@ -45,9 +45,9 @@
                     <label for="statusFilter">Trạng thái duyệt:</label>
                     <select id="statusFilter">
                         <option value="ALL">-- Tất cả trạng thái --</option>
-                        <option value="Pending">Chờ duyệt (Pending)</option>
+                        <option value="Pending">Chờ duyệt</option>
                         <option value="Approved">Đã duyệt (Approved)</option>
-                        <option value="Rejected">Bị từ chối (Rejected)</option>
+                        <option value="Rejected">Đã từ chối</option>
                         <option value="Cancelled">Đã hủy (Cancelled)</option>
                     </select>
                 </div>

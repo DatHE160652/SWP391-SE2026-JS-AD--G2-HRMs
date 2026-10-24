@@ -86,7 +86,7 @@ public class LeaveController extends HttpServlet {
                 case ApiRoutes.LEAVE_EXPORT_EXCEL -> handleExportExcel(request, response);
                 case ApiRoutes.LEAVE_API_CALCULATE_DAYS -> handleCalculateWorkingDays(request, response);
 
-                default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Endpoint not found."));
+                default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Không tìm thấy chức năng được yêu cầu."));
             }
         } catch (SQLException e) {
             writeJson(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, error("Database error: " + e.getMessage()));
@@ -109,7 +109,7 @@ public class LeaveController extends HttpServlet {
                 case ApiRoutes.LEAVE_API_APPROVE -> handleApproveRequest(request, response);
                 case ApiRoutes.LEAVE_API_REJECT -> handleRejectRequest(request, response);
                 case ApiRoutes.LEAVE_API_TYPES -> handleSaveLeaveType(request, response);
-                default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Endpoint not found."));
+                default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Không tìm thấy chức năng được yêu cầu."));
             }
         } catch (SQLException e) {
             writeJson(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, error("Database error: " + e.getMessage()));
@@ -134,6 +134,7 @@ public class LeaveController extends HttpServlet {
         }
 
         request.setAttribute("currentUser", principal);
+        request.setAttribute("organizationCsrfToken", SecuritySupport.ensurePublicCsrfToken(request.getSession(true)));
         request.getRequestDispatcher(jspPath).forward(request, response);
     }
 
@@ -167,6 +168,7 @@ public class LeaveController extends HttpServlet {
                     .append("\"typeCode\":").append(quote(t.getTypeCode())).append(",")
                     .append("\"typeName\":").append(quote(t.getTypeName())).append(",")
                     .append("\"defaultDaysPerYear\":").append(t.getDefaultDaysPerYear()).append(",")
+                    .append("\"isActive\":").append(t.isActive()).append(",")
                     .append("\"isPaid\":").append(Boolean.TRUE.equals(t.getPaid()))
                     .append("}");
         }
@@ -182,17 +184,21 @@ public class LeaveController extends HttpServlet {
             return;
         }
 
-        String action = request.getParameter("action");
-        if ("delete".equalsIgnoreCase(action)) {
-            int leaveTypeId = parseRequiredInt(request.getParameter("leaveTypeId"), "Thiếu ID loại nghỉ phép.");
-            boolean deleted = leaveService.getLeaveTypeDAO().deleteLeaveType(leaveTypeId, principal.getCompanyId());
-            if (deleted) {
-                writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"message\":\"Đã xóa loại nghỉ phép.\"}");
-            } else {
-                writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error("Không thể xóa loại nghỉ phép (có thể đang được sử dụng)."));
-            }
+        if (!SecuritySupport.hasValidPublicCsrfToken(request)) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Phiên thao tác không hợp lệ. Vui lòng tải lại trang."));
             return;
         }
+        String action = request.getParameter("action");
+        if ("deactivate".equalsIgnoreCase(action) || "activate".equalsIgnoreCase(action)) {
+            int leaveTypeId = parseRequiredInt(request.getParameter("leaveTypeId"), "Vui lòng chọn loại nghỉ phép.");
+            boolean active = "activate".equalsIgnoreCase(action);
+            if (!leaveService.getLeaveTypeDAO().setLeaveTypeActive(leaveTypeId, principal.getCompanyId(), active)) {
+                throw new IllegalArgumentException("Không tìm thấy loại nghỉ phép trong công ty của bạn.");
+            }
+            writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"message\":\"Leave type status updated.\"}");
+            return;
+        }
+        if (action != null && !action.isBlank()) throw new IllegalArgumentException("Thao tác loại nghỉ phép không được hỗ trợ.");
 
         String typeCode = request.getParameter("typeCode");
         String typeName = request.getParameter("typeName");
