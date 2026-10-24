@@ -119,7 +119,7 @@ public class ConsultationRequestService {
 
     public static final class DuplicateConsultationException extends Exception {
         public DuplicateConsultationException() {
-            super("Email hoặc công ty này đã có yêu cầu đang được xử lý.");
+            super("An active request already exists for this email or company.");
         }
     }
 }

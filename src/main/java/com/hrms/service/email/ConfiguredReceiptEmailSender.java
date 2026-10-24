@@ -18,7 +18,7 @@ public final class ConfiguredReceiptEmailSender implements ReceiptEmailSender {
         String host = setting("HRM_SMTP_HOST", "hrm.smtp.host", "");
         String from = setting("HRM_SMTP_FROM", "hrm.smtp.from", "");
         if (host.isBlank() || from.isBlank()) {
-            throw new EmailDeliveryException("MAIL_NOT_CONFIGURED", "Chưa cấu hình máy chủ gửi thư.");
+            throw new EmailDeliveryException("MAIL_NOT_CONFIGURED", "SMTP is not configured.");
         }
         String username = setting("HRM_SMTP_USER", "hrm.smtp.user", "");
         String password = setting("HRM_SMTP_PASSWORD", "hrm.smtp.password", "");
@@ -52,12 +52,12 @@ public final class ConfiguredReceiptEmailSender implements ReceiptEmailSender {
                 try { transport.close(); } catch (MessagingException ignored) { }
             }
         } catch (AuthenticationFailedException exception) {
-            throw new EmailDeliveryException("MAIL_AUTH_FAILED", "Xác thực máy chủ gửi thư thất bại.");
+            throw new EmailDeliveryException("MAIL_AUTH_FAILED", "SMTP authentication failed.");
         } catch (MessagingException exception) {
             throw new EmailDeliveryException(sending ? "MAIL_PROVIDER_UNAVAILABLE" : "MAIL_SEND_FAILED",
-                    "Máy chủ gửi thư không thể gửi thông báo tiếp nhận.");
+                    "SMTP could not send the receipt.");
         } catch (RuntimeException exception) {
-            throw new EmailDeliveryException("MAIL_CONFIGURATION_INVALID", "Cấu hình máy chủ gửi thư không hợp lệ.");
+            throw new EmailDeliveryException("MAIL_CONFIGURATION_INVALID", "SMTP configuration is invalid.");
         }
     }
 
@@ -65,7 +65,7 @@ public final class ConfiguredReceiptEmailSender implements ReceiptEmailSender {
         return "Xin chào " + request.getFullName() + ",\n\n"
                 + "HRMs Cloud đã tiếp nhận yêu cầu tư vấn của bạn.\n"
                 + "Mã yêu cầu: REQ-" + request.getRegistrationRequestId() + "\n"
-                + "Trạng thái: Mới tiếp nhận\n\n"
+                + "Trạng thái: NEW — Đã tiếp nhận\n\n"
                 + "Đội ngũ HRMs Cloud sẽ liên hệ để tư vấn. Việc gửi yêu cầu chưa tạo tài khoản hoặc workspace.\n"
                 + "Cảm ơn bạn đã quan tâm đến HRMs Cloud.";
     }

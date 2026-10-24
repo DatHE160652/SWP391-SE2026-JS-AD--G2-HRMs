@@ -16,20 +16,6 @@ import java.io.IOException;
 import java.util.Set;
 
 public class TenantAuthorizationFilter implements Filter {
-    private final SessionValidator sessionValidator;
-
-    public TenantAuthorizationFilter() {
-        this(principal -> new com.hrms.dao.UserDAO().isCurrentTenantSessionAuthorized(principal));
-    }
-
-    public TenantAuthorizationFilter(SessionValidator sessionValidator) {
-        this.sessionValidator = sessionValidator;
-    }
-
-    @FunctionalInterface
-    public interface SessionValidator {
-        boolean valid(TenantPrincipal principal) throws java.sql.SQLException;
-    }
     private static final Set<String> ADMIN_ROLES = Set.of("COMPANY_ADMIN");
     private static final Set<String> TENANT_ROLES = Set.of("COMPANY_ADMIN", "HR", "MANAGER", "EMPLOYEE");
 
@@ -47,41 +33,24 @@ public class TenantAuthorizationFilter implements Filter {
         }
 
         String path = httpRequest.getServletPath();
-        if (path.startsWith("/images/employees/") || path.startsWith("/uploads/employees/")) {
-            httpResponse.sendError(404);
-            return;
-        }
         if (!isTenantPath(path)) {
             chain.doFilter(request, response);
             return;
         }
 
-        SecuritySupport.applyNoStore(httpResponse::setHeader);
         TenantPrincipal principal = SecuritySupport.getTenantPrincipal(httpRequest);
-        if (principal == null || principal.getCompanyId() == null || principal.getCompanyId() <= 0
-                || !TENANT_ROLES.contains(role(principal))) {
+        if (principal == null || !TENANT_ROLES.contains(role(principal))) {
             rejectUnauthenticated(httpRequest, httpResponse);
             return;
         }
 
-        if (principal.isMustChangePassword() && !path.equals("/change-password")) {
+        if (principal.isMustChangePassword()) {
             rejectPasswordChangeRequired(httpRequest, httpResponse);
             return;
         }
 
         if (!isAllowed(httpRequest, principal)) {
             rejectForbidden(httpRequest, httpResponse);
-            return;
-        }
-
-        try {
-            if (!sessionValidator.valid(principal)) {
-                httpRequest.getSession(false).invalidate();
-                rejectUnauthenticated(httpRequest, httpResponse);
-                return;
-            }
-        } catch (java.sql.SQLException exception) {
-            httpResponse.sendError(503, "Không xác minh được quyền truy cập tài khoản.");
             return;
         }
 
@@ -93,7 +62,6 @@ public class TenantAuthorizationFilter implements Filter {
     }
 
     private boolean isAllowed(HttpServletRequest request, TenantPrincipal principal) {
-        if (request.getServletPath().equals("/change-password") || request.getServletPath().startsWith("/leave/")) return true;
         String role = role(principal);
         if (ADMIN_ROLES.contains(role)) {
             return true;
@@ -103,28 +71,10 @@ public class TenantAuthorizationFilter implements Filter {
         String method = request.getMethod();
 
         if ("HR".equals(role)) {
-            if (path.startsWith("/lifecycle/") && !path.startsWith("/lifecycle/api/accounts/")) return true;
-            if (isGet(method) && (path.equals("/employee/employee-form") || path.equals("/employee/employee-form.html")
-                    || path.equals("/documents") || path.equals("/documents/download"))) return true;
-            if (isPost(method) && Set.of("/employees/create", "/employees/update", "/employees/deactivate", "/employees/activate",
-                    "/documents/upload", "/documents/deactivate", "/documents/activate").contains(path)) return true;
-            if (isGet(method) && Set.of("/responsibility-level/responsibility-level-list", "/responsibility-level/responsibility-level-form",
-                    "/responsibility-level/responsibility-level-list.html", "/responsibility-level/responsibility-level-form.html",
-                    "/responsibility-levels", "/responsibility-levels/detail").contains(path)) return true;
-            if (isPost(method) && Set.of("/responsibility-levels/create", "/responsibility-levels/update", "/responsibility-levels/deactivate", "/responsibility-levels/activate").contains(path)) return true;
-            if (isGet(method) && Set.of("/employee/employee-list", "/employee/employee-detail",
-                    "/employee/employee-list.html", "/employee/employee-detail.html",
-                    "/position/position-list", "/position/position-form", "/position/position-list.html", "/position/position-form.html",
-                    "/employees", "/employees/detail", "/employees/history", "/employees/career-history", "/employees/organization",
-                    "/employees/direct-reports", "/employees/eligible-managers", "/employees/team-options",
-                    "/departments", "/departments/detail", "/departments/members", "/departments/assignment-options", "/department/department-list", "/department/department-form",
-                    "/positions", "/positions/detail").contains(path)) return true;
-            if (isPost(method) && Set.of("/positions/create", "/positions/update", "/positions/deactivate", "/positions/activate",
-                    "/employees/assign-organization", "/employees/assign-manager", "/employees/manage-team", "/departments/initial-assignment").contains(path)) return true;
             return isGet(method) && (path.equals("/employee/profile-update-periods")
-                    || path.equals("/employees/profile-update-periods") || path.equals("/employee/document-update-periods") || path.equals("/employees/document-update-periods"))
+                    || path.equals("/employees/profile-update-periods"))
                     || isPost(method) && (path.equals("/employees/profile-update-periods/create")
-                    || path.equals("/employees/profile-update-periods/close") || path.equals("/employees/document-update-periods/create") || path.equals("/employees/document-update-periods/close"));
+                    || path.equals("/employees/profile-update-periods/close"));
         }
 
         if ("MANAGER".equals(role)) {
@@ -139,8 +89,6 @@ public class TenantAuthorizationFilter implements Filter {
     }
 
     private boolean isManagerAllowed(String path, String method) {
-        if (isGet(method) && Set.of("/employee/organization","/employee/my-contracts","/employees/me/organization-chart","/employees/me/colleague","/employees/me/contracts").contains(path)) return true;
-        if (isGet(method) && path.equals("/employees/me/team-member")) return true;
         if (isGet(method) && (
                 path.equals("/employee/my-profile")
                         || path.equals("/employee/my-profile.html")
@@ -171,7 +119,7 @@ public class TenantAuthorizationFilter implements Filter {
         if (isPost(method) && (
                 path.equals("/employees/me/update-profile")
                         || path.equals("/documents/me/upload")
-                        || (path.equals("/documents/me/deactivate") || path.equals("/documents/me/activate")))) {
+                        || path.equals("/documents/me/delete"))) {
             return true;
         }
 
@@ -187,7 +135,6 @@ public class TenantAuthorizationFilter implements Filter {
 
     private boolean isEmployeeAllowed(HttpServletRequest request, TenantPrincipal principal,
                                       String path, String method) {
-        if (isGet(method) && Set.of("/employee/organization","/employee/my-contracts","/employees/me/organization-chart","/employees/me/colleague","/employees/me/contracts").contains(path)) return true;
         if (isGet(method) && (
                 path.equals("/employee/my-profile")
                         || path.equals("/employee/my-profile.html")
@@ -207,7 +154,7 @@ public class TenantAuthorizationFilter implements Filter {
 
         if (isPost(method) && (
                 path.equals("/documents/me/upload")
-                        || (path.equals("/documents/me/deactivate") || path.equals("/documents/me/activate")))) {
+                        || path.equals("/documents/me/delete"))) {
             return true;
         }
 
@@ -221,13 +168,7 @@ public class TenantAuthorizationFilter implements Filter {
     }
 
     private boolean isTenantPath(String path) {
-        if (path.equals("/change-password") || path.startsWith("/leave/")) return true;
-        if (path.startsWith("/lifecycle/")) return true;
-        if (path.startsWith("/responsibility-level/") || path.equals("/responsibility-levels") || path.startsWith("/responsibility-levels/")) return true;
         return path.startsWith("/employee/")
-                || path.startsWith("/job-title/")
-                || path.equals("/job-titles")
-                || path.startsWith("/job-titles/")
                 || path.startsWith("/department/")
                 || path.startsWith("/position/")
                 || path.startsWith("/document/")
@@ -258,7 +199,7 @@ public class TenantAuthorizationFilter implements Filter {
                     "{\"success\":false,\"message\":\"You do not have permission to access this resource.\"}");
             return;
         }
-        response.sendError(HttpServletResponse.SC_FORBIDDEN, "Bạn không có quyền truy cập trang này.");
+        response.sendError(HttpServletResponse.SC_FORBIDDEN, "You do not have permission to access this page.");
     }
 
     private void rejectPasswordChangeRequired(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -278,13 +219,9 @@ public class TenantAuthorizationFilter implements Filter {
     }
 
     private boolean expectsJson(HttpServletRequest request) {
-        if (request.getServletPath().startsWith("/lifecycle/api/") || request.getServletPath().startsWith("/leave/api/")) return true;
-        if (request.getServletPath().equals("/responsibility-levels") || request.getServletPath().startsWith("/responsibility-levels/")) return true;
         String accept = request.getHeader("Accept");
         String path = request.getServletPath();
         return accept != null && accept.contains("application/json")
-                || path.equals("/job-titles")
-                || path.startsWith("/job-titles/")
                 || path.equals("/employees")
                 || path.startsWith("/employees/")
                 || path.equals("/departments")

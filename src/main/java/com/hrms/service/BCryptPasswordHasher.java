@@ -8,7 +8,7 @@ public final class BCryptPasswordHasher {
 
     public String hash(String rawPassword) {
         if (rawPassword == null || rawPassword.isBlank()) {
-            throw new IllegalArgumentException("Vui lòng nhập mật khẩu.");
+            throw new IllegalArgumentException("Password is required.");
         }
         return BCrypt.withDefaults().hashToString(COST, rawPassword.toCharArray());
     }
