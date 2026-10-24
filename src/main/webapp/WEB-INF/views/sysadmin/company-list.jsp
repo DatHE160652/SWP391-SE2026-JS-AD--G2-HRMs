@@ -70,7 +70,7 @@
     <section class="company-list-panel" aria-label="Danh sách Company">
         <c:choose>
             <c:when test="${empty companies}">
-                <div class="empty-state"><svg class="icon" aria-hidden="true"><use href="${icons}#building"/></svg><h3><c:choose><c:when test="${empty allCompanies}">Chưa có Company</c:when><c:otherwise>Không có Company phù hợp</c:otherwise></c:choose></h3><p><c:choose><c:when test="${empty allCompanies}">Company sẽ xuất hiện sau khi Registration Request được phê duyệt.</c:when><c:otherwise>Hãy thay đổi trạng thái Subscription hoặc khu vực để xem Company khác.</c:otherwise></c:choose></p></div>
+                <div class="empty-state"><svg class="icon" aria-hidden="true"><use href="${icons}#building"/></svg><h3><c:choose><c:when test="${empty allCompanies}">Chưa có Company</c:when><c:otherwise>Không có Công ty phù hợp</c:otherwise></c:choose></h3><p><c:choose><c:when test="${empty allCompanies}">Công ty sẽ xuất hiện sau khi Registration Request được phê duyệt.</c:when><c:otherwise>Hãy thay đổi trạng thái Subscription hoặc khu vực để xem Công ty khác.</c:otherwise></c:choose></p></div>
             </c:when>
             <c:otherwise>
                 <div class="table-wrap">
