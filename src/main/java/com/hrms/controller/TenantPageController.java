@@ -11,6 +11,8 @@ import java.util.Map;
 public class TenantPageController extends HttpServlet {
     private static final Map<String, String> VIEWS = Map.ofEntries(
             Map.entry("/employee/my-profile", "/WEB-INF/views/employee/my-profile.jsp"),
+            Map.entry("/employee/organization", "/WEB-INF/views/employee/personal-workspace.jsp"),
+            Map.entry("/employee/my-contracts", "/WEB-INF/views/employee/personal-workspace.jsp"),
             Map.entry("/employee/employee-list", "/WEB-INF/views/comadmin-hr/employee-list.jsp"),
             Map.entry("/employee/employee-form", "/WEB-INF/views/comadmin-hr/employee-form.jsp"),
             Map.entry("/employee/employee-detail", "/WEB-INF/views/comadmin-hr/employee-detail.jsp"),
@@ -18,6 +20,8 @@ public class TenantPageController extends HttpServlet {
             Map.entry("/department/department-form", "/WEB-INF/views/comadmin-hr/department-form.jsp"),
             Map.entry("/position/position-list", "/WEB-INF/views/comadmin-hr/position-list.jsp"),
             Map.entry("/position/position-form", "/WEB-INF/views/comadmin-hr/position-form.jsp"),
+            Map.entry("/responsibility-level/responsibility-level-list", "/WEB-INF/views/comadmin-hr/responsibility-level-list.jsp"),
+            Map.entry("/responsibility-level/responsibility-level-form", "/WEB-INF/views/comadmin-hr/responsibility-level-form.jsp"),
             Map.entry("/document/employee-document-list", "/WEB-INF/views/comadmin-hr/employee-document-list.jsp"),
             Map.entry("/document/document-upload", "/WEB-INF/views/comadmin-hr/document-upload.jsp")
     );
@@ -33,12 +37,20 @@ public class TenantPageController extends HttpServlet {
             return;
         }
 
+        if (path.startsWith("/job-title/")) {
+            response.sendRedirect(request.getContextPath() + "/position/position-list");
+            return;
+        }
+
         String view = VIEWS.get(path);
         if (view == null) {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
             return;
         }
 
+        request.setAttribute("organizationCsrfToken",
+                com.hrms.util.SecuritySupport.ensurePublicCsrfToken(request.getSession()));
+        request.setAttribute("personalView","/employee/my-contracts".equals(path)?"contracts":"organization");
         request.getRequestDispatcher(view).forward(request, response);
     }
 }

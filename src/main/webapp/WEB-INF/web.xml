@@ -7,6 +7,16 @@
 
     <display-name>HRMs - HR Management Platform for SMEs</display-name>
 
+    <servlet>
+        <servlet-name>default</servlet-name>
+        <servlet-class>org.apache.catalina.servlets.DefaultServlet</servlet-class>
+        <init-param>
+            <param-name>fileEncoding</param-name>
+            <param-value>UTF-8</param-value>
+        </init-param>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+
     <!--
         Servlet mappings will be added here as controllers are implemented.
         This project intentionally uses web.xml mappings instead of @WebServlet.
@@ -75,37 +85,47 @@
     </filter-mapping>
 
     <servlet>
-        <servlet-name>ProfileUpdatePeriodServlet</servlet-name>
-        <servlet-class>com.hrms.controller.ProfileUpdatePeriodServlet</servlet-class>
+        <servlet-name>ProfileUpdatePeriodController</servlet-name>
+        <servlet-class>com.hrms.controller.ProfileUpdatePeriodController</servlet-class>
     </servlet>
     <servlet-mapping>
-        <servlet-name>ProfileUpdatePeriodServlet</servlet-name>
+        <servlet-name>ProfileUpdatePeriodController</servlet-name>
         <url-pattern>/employee/profile-update-periods</url-pattern>
         <url-pattern>/employees/profile-update-periods</url-pattern>
         <url-pattern>/employees/profile-update-periods/create</url-pattern>
         <url-pattern>/employees/profile-update-periods/close</url-pattern>
+        <url-pattern>/employee/document-update-periods</url-pattern>
+        <url-pattern>/employees/document-update-periods</url-pattern>
+        <url-pattern>/employees/document-update-periods/create</url-pattern>
+        <url-pattern>/employees/document-update-periods/close</url-pattern>
     </servlet-mapping>
 
     <servlet>
-        <servlet-name>EmployeeServlet</servlet-name>
-        <servlet-class>com.hrms.controller.EmployeeServlet</servlet-class>
+        <servlet-name>EmployeeController</servlet-name>
+        <servlet-class>com.hrms.controller.hr.EmployeeController</servlet-class>
     </servlet>
     <servlet-mapping>
-        <servlet-name>EmployeeServlet</servlet-name>
+        <servlet-name>EmployeeController</servlet-name>
         <url-pattern>/employees</url-pattern>
         <url-pattern>/employees/me</url-pattern>
         <url-pattern>/employees/me/history</url-pattern>
+        <url-pattern>/employees/me/team-member</url-pattern>
+        <url-pattern>/employees/me/organization-chart</url-pattern>
+        <url-pattern>/employees/me/colleague</url-pattern>
+        <url-pattern>/employees/me/contracts</url-pattern>
         <url-pattern>/employees/me/update-profile</url-pattern>
         <url-pattern>/employees/detail</url-pattern>
         <url-pattern>/employees/history</url-pattern>
+        <url-pattern>/employees/career-history</url-pattern>
         <url-pattern>/employees/create</url-pattern>
         <url-pattern>/employees/update</url-pattern>
-        <url-pattern>/employees/delete</url-pattern>
+        <url-pattern>/employees/deactivate</url-pattern>
+        <url-pattern>/employees/activate</url-pattern>
     </servlet-mapping>
 
     <servlet>
-        <servlet-name>DocumentServlet</servlet-name>
-        <servlet-class>com.hrms.controller.DocumentServlet</servlet-class>
+        <servlet-name>DocumentController</servlet-name>
+        <servlet-class>com.hrms.controller.DocumentController</servlet-class>
         <multipart-config>
             <max-file-size>10485760</max-file-size>
             <max-request-size>11534336</max-request-size>
@@ -113,15 +133,17 @@
         </multipart-config>
     </servlet>
     <servlet-mapping>
-        <servlet-name>DocumentServlet</servlet-name>
+        <servlet-name>DocumentController</servlet-name>
         <url-pattern>/documents/me</url-pattern>
         <url-pattern>/documents/me/upload</url-pattern>
         <url-pattern>/documents/me/download</url-pattern>
-        <url-pattern>/documents/me/delete</url-pattern>
+        <url-pattern>/documents/me/deactivate</url-pattern>
+        <url-pattern>/documents/me/activate</url-pattern>
         <url-pattern>/documents</url-pattern>
         <url-pattern>/documents/upload</url-pattern>
         <url-pattern>/documents/download</url-pattern>
-        <url-pattern>/documents/delete</url-pattern>
+        <url-pattern>/documents/deactivate</url-pattern>
+        <url-pattern>/documents/activate</url-pattern>
     </servlet-mapping>
 
     <servlet>
@@ -131,6 +153,8 @@
     <servlet-mapping>
         <servlet-name>TenantPageController</servlet-name>
         <url-pattern>/employee/my-profile</url-pattern>
+        <url-pattern>/employee/organization</url-pattern>
+        <url-pattern>/employee/my-contracts</url-pattern>
         <url-pattern>/employee/my-profile.html</url-pattern>
         <url-pattern>/employee/employee-list</url-pattern>
         <url-pattern>/employee/employee-list.html</url-pattern>
@@ -146,6 +170,14 @@
         <url-pattern>/position/position-list.html</url-pattern>
         <url-pattern>/position/position-form</url-pattern>
         <url-pattern>/position/position-form.html</url-pattern>
+        <url-pattern>/job-title/job-title-list</url-pattern>
+        <url-pattern>/job-title/job-title-list.html</url-pattern>
+        <url-pattern>/job-title/job-title-form</url-pattern>
+        <url-pattern>/job-title/job-title-form.html</url-pattern>
+        <url-pattern>/responsibility-level/responsibility-level-list</url-pattern>
+        <url-pattern>/responsibility-level/responsibility-level-list.html</url-pattern>
+        <url-pattern>/responsibility-level/responsibility-level-form</url-pattern>
+        <url-pattern>/responsibility-level/responsibility-level-form.html</url-pattern>
         <url-pattern>/document/employee-document-list</url-pattern>
         <url-pattern>/document/employee-document-list.html</url-pattern>
         <url-pattern>/document/document-upload</url-pattern>
@@ -153,43 +185,80 @@
     </servlet-mapping>
 
     <servlet>
-        <servlet-name>DepartmentServlet</servlet-name>
-        <servlet-class>com.hrms.controller.DepartmentServlet</servlet-class>
+        <servlet-name>DepartmentController</servlet-name>
+        <servlet-class>com.hrms.controller.DepartmentController</servlet-class>
     </servlet>
     <servlet-mapping>
-        <servlet-name>DepartmentServlet</servlet-name>
+        <servlet-name>DepartmentController</servlet-name>
         <url-pattern>/departments</url-pattern>
         <url-pattern>/departments/detail</url-pattern>
         <url-pattern>/departments/create</url-pattern>
         <url-pattern>/departments/update</url-pattern>
-        <url-pattern>/departments/delete</url-pattern>
+        <url-pattern>/departments/deactivate</url-pattern>
+        <url-pattern>/departments/activate</url-pattern>
     </servlet-mapping>
 
     <servlet>
-        <servlet-name>PositionServlet</servlet-name>
-        <servlet-class>com.hrms.controller.PositionServlet</servlet-class>
+        <servlet-name>ResponsibilityLevelController</servlet-name>
+        <servlet-class>com.hrms.controller.ResponsibilityLevelController</servlet-class>
     </servlet>
     <servlet-mapping>
-        <servlet-name>PositionServlet</servlet-name>
+        <servlet-name>ResponsibilityLevelController</servlet-name>
+        <url-pattern>/responsibility-levels</url-pattern>
+        <url-pattern>/responsibility-levels/detail</url-pattern>
+        <url-pattern>/responsibility-levels/create</url-pattern>
+        <url-pattern>/responsibility-levels/update</url-pattern>
+        <url-pattern>/responsibility-levels/deactivate</url-pattern>
+        <url-pattern>/responsibility-levels/activate</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>JobTitleController</servlet-name>
+        <servlet-class>com.hrms.controller.JobTitleController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>JobTitleController</servlet-name>
+        <url-pattern>/job-titles</url-pattern>
+        <url-pattern>/job-titles/detail</url-pattern>
+        <url-pattern>/job-titles/create</url-pattern>
+        <url-pattern>/job-titles/update</url-pattern>
+        <url-pattern>/job-titles/deactivate</url-pattern>
+        <url-pattern>/job-titles/activate</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>PositionController</servlet-name>
+        <servlet-class>com.hrms.controller.PositionController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>PositionController</servlet-name>
         <url-pattern>/positions</url-pattern>
         <url-pattern>/positions/detail</url-pattern>
         <url-pattern>/positions/create</url-pattern>
         <url-pattern>/positions/update</url-pattern>
-        <url-pattern>/positions/delete</url-pattern>
+        <url-pattern>/positions/deactivate</url-pattern>
+        <url-pattern>/positions/activate</url-pattern>
     </servlet-mapping>
 
     <servlet>
-        <servlet-name>EmployeeAssignmentServlet</servlet-name>
-        <servlet-class>com.hrms.controller.EmployeeAssignmentServlet</servlet-class>
+        <servlet-name>EmployeeAssignmentController</servlet-name>
+        <servlet-class>com.hrms.controller.EmployeeAssignmentController</servlet-class>
     </servlet>
     <servlet-mapping>
-        <servlet-name>EmployeeAssignmentServlet</servlet-name>
+        <servlet-name>EmployeeAssignmentController</servlet-name>
         <url-pattern>/employees/organization</url-pattern>
+        <url-pattern>/employees/direct-reports</url-pattern>
+        <url-pattern>/employees/eligible-managers</url-pattern>
+        <url-pattern>/employees/team-options</url-pattern>
+        <url-pattern>/employees/manage-team</url-pattern>
         <url-pattern>/employees/assign-department</url-pattern>
+        <url-pattern>/employees/assign-organization</url-pattern>
         <url-pattern>/employees/assign-position</url-pattern>
         <url-pattern>/employees/assign-manager</url-pattern>
         <url-pattern>/departments/members</url-pattern>
         <url-pattern>/departments/assign-members</url-pattern>
+        <url-pattern>/departments/assignment-options</url-pattern>
+        <url-pattern>/departments/initial-assignment</url-pattern>
     </servlet-mapping>
 
     <servlet>
@@ -283,6 +352,41 @@
         <url-pattern>/systemadmin/registration-request</url-pattern>
         <url-pattern>/systemadmin/registration-request-details</url-pattern>
     </servlet-mapping>
+
+    <servlet>
+        <servlet-name>EmployeeLifecycleController</servlet-name>
+        <servlet-class>com.hrms.controller.hr.EmployeeLifecycleController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>EmployeeLifecycleController</servlet-name>
+        <url-pattern>/lifecycle/contracts</url-pattern>
+        <url-pattern>/lifecycle/accounts</url-pattern>
+        <url-pattern>/lifecycle/organization</url-pattern>
+        <url-pattern>/lifecycle/dashboard</url-pattern>
+        <url-pattern>/lifecycle/api/contracts</url-pattern>
+        <url-pattern>/lifecycle/api/contracts/save</url-pattern>
+        <url-pattern>/lifecycle/api/contracts/transition</url-pattern>
+        <url-pattern>/lifecycle/api/accounts</url-pattern>
+        <url-pattern>/lifecycle/api/accounts/action</url-pattern>
+        <url-pattern>/lifecycle/api/compensation</url-pattern>
+        <url-pattern>/lifecycle/api/allowance</url-pattern>
+        <url-pattern>/lifecycle/api/compensation/save</url-pattern>
+        <url-pattern>/lifecycle/api/organization</url-pattern>
+        <url-pattern>/lifecycle/api/organization-admins</url-pattern>
+        <url-pattern>/lifecycle/api/dashboard</url-pattern>
+        <url-pattern>/lifecycle/api/changes</url-pattern>
+        <url-pattern>/lifecycle/api/changes/request</url-pattern>
+        <url-pattern>/lifecycle/api/changes/transition</url-pattern>
+        <url-pattern>/lifecycle/api/terminate</url-pattern>
+    </servlet-mapping>
+
+    <jsp-config>
+        <jsp-property-group>
+            <url-pattern>*.jsp</url-pattern>
+            <url-pattern>*.jspf</url-pattern>
+            <page-encoding>UTF-8</page-encoding>
+        </jsp-property-group>
+    </jsp-config>
 
     <session-config>
         <session-timeout>30</session-timeout>
