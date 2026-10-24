@@ -1,6 +1,6 @@
 -- Create a local/development tenant and Company Admin.
 -- Run this script in SSMS after the main HRMsDB schema and seed data exist.
--- Temporary password was provided out-of-band; this file stores only its BCrypt hash.
+-- Local/demo only: the initialization password is stored as plaintext.
 -- Intended values: Company = Bach Company, workspace = bach, region = NORTH,
 -- Company Admin = Bach, email = bach@gmail.com, username = bach.
 -- The account is created with MustChangePassword = 1.
@@ -29,8 +29,7 @@ BEGIN TRY
     DECLARE @ContactEmail VARCHAR(150) = 'bach@gmail.com';
     DECLARE @Username VARCHAR(100) = 'bach';
     DECLARE @DisplayName NVARCHAR(150) = N'Bach';
-    DECLARE @PasswordHash VARCHAR(255) =
-        '$2a$12$5a1dZFKk2cOmM0oka7/C2u.bh/Kn0XuByIa6REyEigLVFCSwo/CoO';
+    DECLARE @Password NVARCHAR(255) = N'Bach@123';
     DECLARE @Now DATETIME2 = SYSUTCDATETIME();
     DECLARE @RoleId INT;
     DECLARE @PlanId INT;
@@ -74,7 +73,7 @@ BEGIN TRY
 
     SELECT @UserByEmailId = UserId
     FROM dbo.Users WITH (UPDLOCK, HOLDLOCK)
-    WHERE EmailNormalized = @ContactEmail;
+    WHERE LOWER(LTRIM(RTRIM(Email))) = @ContactEmail;
 
     IF @CompanyId IS NOT NULL AND @CompanyByNameId IS NOT NULL AND @CompanyId <> @CompanyByNameId
         THROW 51003, 'Workspace code and normalized company name belong to different companies. No changes were made.', 1;
@@ -101,7 +100,7 @@ BEGIN TRY
        AND (
             EXISTS (SELECT 1 FROM dbo.Users WHERE UserId = @UserByUsernameId AND CompanyId <> @CompanyId)
             OR EXISTS (SELECT 1 FROM dbo.Users WHERE UserId = @UserByUsernameId AND RoleId <> @RoleId)
-            OR EXISTS (SELECT 1 FROM dbo.Users WHERE UserId = @UserByUsernameId AND EmailNormalized <> @ContactEmail)
+            OR EXISTS (SELECT 1 FROM dbo.Users WHERE UserId = @UserByUsernameId AND LOWER(LTRIM(RTRIM(Email))) <> @ContactEmail)
           )
         THROW 51008, 'User bach already exists with different account data. No changes were made.', 1;
 
@@ -121,9 +120,9 @@ BEGIN TRY
                 FROM dbo.Users u
                 WHERE u.UserId = @UserByUsernameId
                   AND u.Username = @Username
-                  AND u.EmailNormalized = @ContactEmail
+                  AND LOWER(LTRIM(RTRIM(u.Email))) = @ContactEmail
                   AND u.DisplayName = @DisplayName
-                  AND u.PasswordHash = @PasswordHash
+                  AND u.Password = @Password
                   AND u.CompanyId = @CompanyId
                   AND u.RoleId = @RoleId
                   AND u.MustChangePassword = 1
@@ -187,12 +186,12 @@ BEGIN TRY
     SET @SubscriptionId = CONVERT(INT, SCOPE_IDENTITY());
 
     INSERT INTO dbo.Users (
-        CompanyId, RoleId, Username, Email, DisplayName, PasswordHash,
+        CompanyId, RoleId, Username, Email, DisplayName, Password,
         MustChangePassword, ActivatedAt, PasswordChangedAt,
         IsActive, IsLocked, FailedLoginAttempts, LockedUntil
     )
     VALUES (
-        @CompanyId, @RoleId, @Username, @ContactEmail, @DisplayName, @PasswordHash,
+        @CompanyId, @RoleId, @Username, @ContactEmail, @DisplayName, @Password,
         1, NULL, NULL,
         1, 0, 0, NULL
     );

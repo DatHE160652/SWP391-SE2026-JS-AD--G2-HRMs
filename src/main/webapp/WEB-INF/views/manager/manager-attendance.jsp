@@ -16,6 +16,7 @@
         <div class="nav-label">Phân hệ Chấm công</div>
         <a class="nav-link" href="../employee/my-profile?nav=manager">Hồ sơ cá nhân</a>
         <a class="nav-link active" href="manager-attendance">Điểm danh Nhân sự</a>
+        <a class="nav-link" href="manager-attendance?view=list">Danh sách chấm công</a>
         <a class="nav-link" href="manager-personal-attendance">Chấm công Cá nhân</a>
         <a class="nav-link" href="attendance-report">Báo cáo Chấm công</a>
         <a class="nav-link logout-link" href="../logout">Đăng xuất</a>

@@ -19,7 +19,7 @@ BEGIN TRY
     IF NOT EXISTS (
         SELECT 1
         FROM dbo.RegistrationRequests
-        WHERE EmailNormalized = 'minh.anh.demo@hrms.local'
+        WHERE LOWER(LTRIM(RTRIM(Email))) = 'minh.anh.demo@hrms.local'
            OR CompanyNameNormalized = N'công ty tnhh sao bắc'
     )
     BEGIN
@@ -41,7 +41,7 @@ BEGIN TRY
     IF NOT EXISTS (
         SELECT 1
         FROM dbo.RegistrationRequests
-        WHERE EmailNormalized = 'bao.tran.demo@hrms.local'
+        WHERE LOWER(LTRIM(RTRIM(Email))) = 'bao.tran.demo@hrms.local'
            OR CompanyNameNormalized = N'công nghệ mây việt'
     )
     BEGIN
@@ -65,7 +65,7 @@ BEGIN TRY
     SELECT RegistrationRequestId, FullName, Email, Phone, CompanyName,
            Region, Status, CreatedAt, UpdatedAt
     FROM dbo.RegistrationRequests
-    WHERE EmailNormalized IN ('minh.anh.demo@hrms.local', 'bao.tran.demo@hrms.local')
+    WHERE LOWER(LTRIM(RTRIM(Email))) IN ('minh.anh.demo@hrms.local', 'bao.tran.demo@hrms.local')
     ORDER BY RegistrationRequestId;
 END TRY
 BEGIN CATCH

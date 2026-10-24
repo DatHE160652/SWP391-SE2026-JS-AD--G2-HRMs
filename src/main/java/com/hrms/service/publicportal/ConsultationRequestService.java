@@ -119,7 +119,7 @@ public class ConsultationRequestService {
 
     public static final class DuplicateConsultationException extends Exception {
         public DuplicateConsultationException() {
-            super("An active request already exists for this email or company.");
+            super("A registration, account, or company already exists for this email or company name.");
         }
     }
 }

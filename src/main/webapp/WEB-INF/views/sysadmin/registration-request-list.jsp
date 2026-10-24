@@ -12,6 +12,8 @@
 <body class="admin-page">
 <%@ include file="/WEB-INF/views/sysadmin/admin-shell.jspf" %>
 <main class="admin-main" id="main-content">
+    <c:if test="${not empty actionMessage}"><div class="alert alert-success" role="status"><c:out value="${actionMessage}"/></div></c:if>
+    <c:if test="${not empty actionWarning}"><div class="alert alert-warning" role="alert"><c:out value="${actionWarning}"/></div></c:if>
     <nav class="breadcrumb" aria-label="Đường dẫn"><a href="${pageContext.request.contextPath}/systemadmin/dashboard">Quản lý tenant</a><svg class="icon" aria-hidden="true"><use href="${icons}#chevron"/></svg><span>Yêu cầu đăng ký</span></nav>
     <div class="page-heading"><h1>Danh sách yêu cầu đăng ký doanh nghiệp</h1><a class="button" href="${pageContext.request.contextPath}/systemadmin/registration-request"><svg class="icon" aria-hidden="true"><use href="${icons}#refresh"/></svg>Làm mới dữ liệu</a></div>
     <section class="stat-grid stat-grid-compact" aria-label="Thống kê toàn bộ yêu cầu, không áp dụng bộ lọc">
@@ -32,7 +34,7 @@
                 <option value="CONVERTED" ${filter.status == 'CONVERTED' ? 'selected' : ''}>Đã chuyển đổi</option>
             </select></div>
             <div class="filter-field"><label for="request-region">Khu vực</label><select id="request-region" name="region"><option value="">Tất cả khu vực</option><option value="NORTH" ${filter.region == 'NORTH' ? 'selected' : ''}>Miền Bắc</option><option value="CENTRAL" ${filter.region == 'CENTRAL' ? 'selected' : ''}>Miền Trung</option><option value="SOUTH" ${filter.region == 'SOUTH' ? 'selected' : ''}>Miền Nam</option></select></div>
-            <div class="filter-field"><label for="request-date">Ngày tiếp nhận (UTC)</label><input id="request-date" name="date" type="date" value="<c:out value='${filter.date}'/>"></div>
+            <div class="filter-field"><label for="request-date">Ngày tiếp nhận</label><input id="request-date" name="date" type="date" value="<c:out value='${filter.date}'/>"></div>
             <div class="filter-field"><label for="page-size">Số dòng</label><select id="page-size" name="size"><option value="10" ${requestPage.size == 10 ? 'selected' : ''}>10</option><option value="20" ${requestPage.size == 20 ? 'selected' : ''}>20</option><option value="50" ${requestPage.size == 50 ? 'selected' : ''}>50</option></select></div>
             <button class="button button-primary" type="submit">Lọc dữ liệu</button>
         </form>

@@ -52,13 +52,6 @@
             <version>13.2.0.jre11</version>
         </dependency>
 
-        <!-- BCrypt password verification -->
-        <dependency>
-            <groupId>at.favre.lib</groupId>
-            <artifactId>bcrypt</artifactId>
-            <version>0.10.2</version>
-        </dependency>
-
         <!-- SMTP receipt email -->
         <dependency>
             <groupId>org.eclipse.angus</groupId>

@@ -1,8 +1,8 @@
 <%@ page pageEncoding="UTF-8" %>
 <div class="table-wrap" tabindex="0" role="region" aria-label="Bảng yêu cầu đăng ký">
 <table class="request-table">
-    <caption class="sr-only">Yêu cầu đăng ký doanh nghiệp, thời gian hiển thị theo UTC</caption>
-    <thead><tr><th scope="col">Mã yêu cầu</th><th scope="col">Doanh nghiệp SME</th><th scope="col">Đại diện &amp; liên hệ</th><th scope="col">Khu vực</th><th scope="col">Thời gian gửi <span class="cell-block">UTC</span></th><th scope="col">Trạng thái</th><th scope="col">Thao tác</th></tr></thead>
+    <caption class="sr-only">Yêu cầu đăng ký tenant</caption>
+    <thead><tr><th scope="col">Mã yêu cầu</th><th scope="col">Doanh nghiệp SME</th><th scope="col">Đại diện &amp; liên hệ</th><th scope="col">Khu vực</th><th scope="col">Thời gian gửi</th><th scope="col">Trạng thái</th><th scope="col">Thao tác</th></tr></thead>
     <tbody>
     <c:forEach var="item" items="${registrationRequests}">
         <tr>

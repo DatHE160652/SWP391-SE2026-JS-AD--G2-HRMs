@@ -18,10 +18,10 @@
     <c:if test="${not empty errorMessage}"><div class="alert alert-error" role="alert"><c:out value="${errorMessage}"/></div></c:if>
     <form method="post" action="${pageContext.request.contextPath}/systemadmin/login" class="auth-form">
         <input type="hidden" name="csrfToken" value="<c:out value='${sessionScope.systemAdminCsrfToken}'/>">
-        <div class="label-row"><label for="identifier">Tên đăng nhập / Email quản trị</label><span>SysAdmin Role</span></div>
+        <div class="label-row"><label for="email">Email quản trị</label><span>SysAdmin Role</span></div>
         <div class="input-icon">
             <svg class="icon" aria-hidden="true"><use href="${icons}#user"/></svg>
-            <input id="identifier" name="identifier" type="text" autocomplete="username" required value="<c:out value='${param.identifier}'/>" placeholder="admin@example.com">
+            <input id="email" name="email" type="email" autocomplete="username" maxlength="150" required value="<c:out value='${param.email}'/>" placeholder="admin@example.com">
         </div>
         <label for="password">Mật khẩu</label>
         <div class="input-icon password-field">

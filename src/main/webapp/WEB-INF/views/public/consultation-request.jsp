@@ -2,8 +2,7 @@
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <!DOCTYPE html>
 <html lang="vi">
-<head>
-    <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
+    <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>
@@ -39,12 +38,12 @@
                                 Quy mô chuẩn 20 tài khoản
                             </strong>
                             <span>
-                                1 Quản trị viên công ty, tối đa 3 quản lý và các tài khoản tác nghiệp.
+                                1 Company Admin, tối đa 3 Manager và các tài khoản tác nghiệp.
                             </span>
                         </div>
                         <div>
                             <strong>
-                                Workspace theo công ty
+                                Workspace theo Company
                             </strong>
                             <span>
                                 Phân tách quyền truy cập và dữ liệu theo từng doanh nghiệp.
@@ -78,16 +77,11 @@
                                 Đã tiếp nhận yêu cầu.
                             </strong>
                             <span>
-                                Yêu cầu của bạn đã được lưu ở trạng thái mới tiếp nhận. Đội ngũ HRMs Cloud sẽ liên hệ để tư vấn.
+                                Yêu cầu của bạn đã được lưu ở trạng thái NEW. Đội ngũ HRMs Cloud sẽ liên hệ để tư vấn.
                             </span>
                         </div>
                     </c:if>
-                    <c:if test="${not empty emailWarning}">
-                        <div class="alert alert-warning" role="status">
-                            <c:out value="${emailWarning}"/>
-                        </div>
-                    </c:if>
-                    <c:if test="${not empty formError and empty fieldErrors}">
+                    <c:if test="${not empty formError}">
                         <div class="alert alert-error" role="alert">
                             <c:out value="${formError}"/>
                         </div>
@@ -100,8 +94,7 @@
                                     *
                                 </span>
                             </label>
-                            <input id="fullName" name="fullName" type="text" maxlength="150" required value="<c:out value='${formFullName}'/>
-                            " placeholder="Ví dụ: Nguyễn Văn An">
+                            <input id="fullName" name="fullName" type="text" maxlength="150" required value="<c:out value='${formFullName}'/>" placeholder="Ví dụ: Nguyễn Văn An">
                             <c:if test="${not empty fieldErrors.fullName}">
                                 <p class="field-error">
                                     <c:out value="${fieldErrors.fullName}"/>
@@ -115,8 +108,7 @@
                                     *
                                 </span>
                             </label>
-                            <input id="email" name="email" type="email" maxlength="150" required value="<c:out value='${formEmail}'/>
-                            " placeholder="an.nguyen@company.vn">
+                            <input id="email" name="email" type="email" maxlength="150" required value="<c:out value='${formEmail}'/>" placeholder="an.nguyen@company.vn">
                             <c:if test="${not empty fieldErrors.email}">
                                 <p class="field-error">
                                     <c:out value="${fieldErrors.email}"/>
@@ -130,8 +122,7 @@
                                     *
                                 </span>
                             </label>
-                            <input id="phone" name="phone" type="tel" maxlength="10" pattern="^0[0-9]{9}$" required value="<c:out value='${formPhone}'/>
-                            " placeholder="09xxxxxxxx">
+                            <input id="phone" name="phone" type="tel" maxlength="10" pattern="^0[0-9]{9}$" required value="<c:out value='${formPhone}'/>" placeholder="09xxxxxxxx">
                             <c:if test="${not empty fieldErrors.phone}">
                                 <p class="field-error">
                                     <c:out value="${fieldErrors.phone}"/>
@@ -145,8 +136,7 @@
                                     *
                                 </span>
                             </label>
-                            <input id="companyName" name="companyName" type="text" maxlength="200" required value="<c:out value='${formCompanyName}'/>
-                            " placeholder="Ví dụ: Công ty Cổ phần Công nghệ Anpha">
+                            <input id="companyName" name="companyName" type="text" maxlength="200" required value="<c:out value='${formCompanyName}'/>" placeholder="Ví dụ: Công ty Cổ phần Công nghệ Anpha">
                             <c:if test="${not empty fieldErrors.companyName}">
                                 <p class="field-error">
                                     <c:out value="${fieldErrors.companyName}"/>
@@ -162,7 +152,7 @@
                             </label>
                             <select id="region" name="region" required>
                                 <option value="">
-                                    Chọn khu vực đặt trụ sở / chi nhánh
+                                    Chọn khu vực
                                 </option>
                                 <option value="NORTH" ${formRegion == 'NORTH' ? 'selected' : ''}>
                                     Khu vực miền Bắc
@@ -183,9 +173,9 @@
                         <p class="form-note">
                             Sau khi gửi, hồ sơ được lưu ở trạng thái
                             <strong>
-                                Mới tiếp nhận
+                                NEW
                             </strong>
-                            . Quản trị viên hệ thống sẽ xem xét trước khi tạo công ty, tài khoản hoặc gói dịch vụ.
+                            . System Admin sẽ xem xét trước khi tạo Company, User hoặc Subscription.
                         </p>
                         <button class="button button-primary button-wide submit-button" type="submit">
                             Gửi yêu cầu đăng ký tư vấn
@@ -198,7 +188,7 @@
             </section>
         </main>
         <%@ include file="public-footer.jspf" %>
-        <script src="${pageContext.request.contextPath}/js/public-portal.js?v=<%= application.getResource("/js/public-portal.js").openConnection().getLastModified() %>" defer>
+        <script src="${pageContext.request.contextPath}/js/public-portal.js" defer>
         </script>
     </body>
 </html>

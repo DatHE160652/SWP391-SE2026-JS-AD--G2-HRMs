@@ -16,6 +16,12 @@ public final class ApiRoutes {
     public static final String SYSTEM_ADMIN_DASHBOARD = SYSTEM_ADMIN_PREFIX + "/dashboard";
     public static final String REGISTRATION_REQUESTS = SYSTEM_ADMIN_PREFIX + "/registration-request";
     public static final String REGISTRATION_REQUEST_DETAILS = SYSTEM_ADMIN_PREFIX + "/registration-request-details";
+    public static final String REGISTRATION_REQUEST_CONFIRM = REGISTRATION_REQUESTS + "/confirm";
+    public static final String REGISTRATION_REQUEST_DELETE = REGISTRATION_REQUESTS + "/delete";
+    public static final String SYSTEM_ADMIN_COMPANIES = SYSTEM_ADMIN_PREFIX + "/company";
+    public static final String SYSTEM_ADMIN_COMPANY_DETAILS = SYSTEM_ADMIN_PREFIX + "/company-details";
+    public static final String SYSTEM_ADMIN_COMPANY_SUSPEND = SYSTEM_ADMIN_COMPANIES + "/suspend";
+    public static final String SYSTEM_ADMIN_COMPANY_ACTIVATE = SYSTEM_ADMIN_COMPANIES + "/activate";
     public static final String TENANT_WORKSPACE_TEMPLATE = "https://{companydomain}.hrms.com/";
     public static final String TENANT_LOGIN = "/login";
     public static final String TENANT_LOGOUT = "/logout";

@@ -21,6 +21,7 @@
             <div class="alert alert-warning" role="alert"><c:out value="${changePasswordError}"/></div>
         </c:if>
         <form method="post" action="${pageContext.request.contextPath}/change-password" class="tenant-login-form">
+            <input type="hidden" name="csrfToken" value="<c:out value='${sessionScope.tenantPasswordCsrfToken}'/>">
             <div class="form-field">
                 <label for="newPassword">Mật khẩu mới <span>*</span></label>
                 <input id="newPassword" name="newPassword" type="password" required autocomplete="new-password">

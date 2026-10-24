@@ -1,89 +1,69 @@
 package com.hrms.service;
 
 import com.hrms.dao.EmployeeDAO;
-import com.hrms.dao.OrganizationAssignmentDAO;
+import com.hrms.dao.UserDAO;
 import com.hrms.model.Employee;
-import com.hrms.model.EmployeeCompensation;
-import com.hrms.dao.EmployeeLifecycleDAO;
-import com.hrms.dao.EmployeeAssignmentDAO;
-import com.hrms.dao.OrganizationTransaction;
+import com.hrms.model.User;
 import com.hrms.util.DBConnection;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
+import java.text.Normalizer;
+import java.security.SecureRandom;
 import java.util.List;
+import java.util.Locale;
 
 public class EmployeeService {
+    private static final String DEFAULT_EMPLOYEE_PASSWORD = "1";
+
     private final EmployeeDAO employeeDAO = new EmployeeDAO();
+    private final UserDAO userDAO = new UserDAO();
+    private final SecureRandom random = new SecureRandom();
 
     public List<Employee> getAllEmployees() throws SQLException {
         return employeeDAO.getAllEmployees();
-    }
-
-    public List<Employee> getAllEmployees(int companyId) throws SQLException {
-        return employeeDAO.getAllEmployees(companyId);
     }
 
     public Employee getEmployeeById(int employeeId) throws SQLException {
         return employeeDAO.getEmployeeById(employeeId);
     }
 
-    public Employee getEmployeeById(int companyId, int employeeId) throws SQLException {
-        return employeeDAO.getEmployeeById(companyId, employeeId);
-    }
-
-    public boolean createEmployee(Employee employee, int companyId, String employeeCodeMode) throws SQLException {
-        return createEmployee(employee, companyId, employeeCodeMode, null, null);
-    }
-
-    public boolean createEmployee(Employee employee, int companyId, String employeeCodeMode,
-                                  EmployeeCompensation compensation, Integer actorId) throws SQLException {
-        return createEmployee(employee, companyId, employeeCodeMode, compensation, actorId, true);
-    }
-
-    public boolean createEmployeeProfile(Employee employee, int companyId, String employeeCodeMode, Integer actorId) throws SQLException {
-        if (employee.getDepartmentId() != null && employee.getPositionId() == null)
-            throw new FieldValidationException("positionId", "Chọn chức danh thuộc phòng ban, hoặc để trống cả hai để phân công sau.");
-        return createEmployee(employee, companyId, employeeCodeMode, null, actorId, false);
-    }
-
-    private boolean createEmployee(Employee employee, int companyId, String employeeCodeMode,
-            EmployeeCompensation compensation, Integer actorId, boolean assignInitialManager) throws SQLException {
-        if (!assignInitialManager) employee.setManagerId(null);
-        if (employeeCodeMode != null && !"MANUAL".equals(employeeCodeMode)) {
-            throw new FieldValidationException("employeeCodeMode", "Mã nhân viên phải được nhập thủ công; không còn hỗ trợ tự động tạo mã.");
-        }
-        employee.setEmployeeCode(validateManualEmployeeCode(employee.getEmployeeCode()));
-        employee.setCompanyId(companyId);
+    public boolean createEmployee(Employee employee) throws SQLException {
         validate(employee, true);
         validateUniquePhone(employee);
-        validatePersonal(employee);
-        if (actorId == null) throw new SecurityException("Cần xác định người thực hiện để ghi nhật ký tạo nhân viên.");
-        EmployeeLifecycleDAO.validateCompensation(compensation);
 
         try (Connection connection = DBConnection.getConnection()) {
+            ensureEmployeeCreationSchema(connection);
             connection.setAutoCommit(false);
 
             try {
-                OrganizationTransaction.lockCompany(connection, companyId);
-                new EmployeeLifecycleDAO().requireActor(connection, companyId, actorId);
-                new EmployeeLifecycleDAO().validateEmail(connection, employee);
-                new OrganizationAssignmentDAO().validateSelection(connection, companyId, employee.getDepartmentId(), employee.getPositionId());
-                if (employeeCodeExists(connection, companyId, employee.getEmployeeCode())) {
-                    throw new FieldValidationException("employeeCode", "Mã nhân viên đã tồn tại trong công ty.");
-                }
-                int employeeId = employeeDAO.insertEmployee(connection, employee, companyId);
+                CompanyInfo company = getOrCreateDefaultCompany(connection);
+                String companyPrefix = companyPrefix(company.companyName());
+                String randomDigits = generateUniqueRandomDigits(connection, company.companyId(), companyPrefix,
+                        employee.getFullName());
+                employee.setEmployeeCode(companyPrefix.toUpperCase(Locale.ROOT) + randomDigits);
+
+                int employeeId = employeeDAO.insertEmployee(connection, employee, company.companyId());
                 employee.setEmployeeId(employeeId);
-                new OrganizationAssignmentDAO().assignOrganization(connection, companyId, employeeId, employee.getDepartmentId(), employee.getPositionId());
-                EmployeeLifecycleDAO lifecycle = new EmployeeLifecycleDAO();
-                Integer managerId = assignInitialManager ? lifecycle.resolveInitialManager(connection, employee) : null;
-                new EmployeeAssignmentDAO().validateManagerAssignment(connection, companyId, employeeId, managerId, employee.getDepartmentId());
-                new EmployeeAssignmentDAO().updateManager(connection, companyId, employeeId, managerId);
-                employee.setManagerId(managerId);
-                if (compensation != null && compensation.provided()) lifecycle.insertCompensation(connection, employee, compensation, actorId);
-                OrganizationTransaction.audit(connection, companyId, actorId, employeeId, "CREATE_EMPLOYEE", null, employee.getEmployeeCode());
+                String accountLocalPart = buildAccountLocalPart(employee.getFullName(), randomDigits);
+                String email = accountLocalPart + "@" + companyPrefix + ".hrms";
+
+                User user = new User();
+                user.setCompanyId(company.companyId());
+                user.setUsername(generateAvailableUsername(connection, accountLocalPart));
+                user.setDisplayName(employee.getFullName());
+                user.setEmail(email);
+                user.setPassword(DEFAULT_EMPLOYEE_PASSWORD);
+
+                int userId = userDAO.createEmployeeAccount(connection, user);
+                boolean linked = employeeDAO.updateEmployeeUserId(connection, employeeId, userId);
+                if (!linked) {
+                    throw new SQLException("Linking generated user account to employee failed.");
+                }
+
                 connection.commit();
                 return true;
             } catch (SQLException | RuntimeException e) {
@@ -95,110 +75,91 @@ public class EmployeeService {
         }
     }
 
-    static String validateManualEmployeeCode(String employeeCode) {
-        if (employeeCode == null || employeeCode.isBlank()) {
-            throw new FieldValidationException("employeeCode", "Vui lòng nhập mã nhân viên.");
-        }
-        String trimmedCode = employeeCode.trim();
-        if (trimmedCode.length() > 50) {
-            throw new FieldValidationException("employeeCode", "Mã nhân viên không được vượt quá 50 ký tự.");
-        }
-        return trimmedCode;
-    }
-
     public boolean updateEmployee(Employee employee) throws SQLException {
-        return updateEmployee(employee, null);
-    }
-
-    public boolean updateEmployee(Employee employee, Integer actorId) throws SQLException {
         validate(employee, false);
-        validatePersonal(employee);
         validateUniquePhone(employee);
-        Employee existing = employee.getCompanyId() == null ? null : getEmployeeById(employee.getCompanyId(), employee.getEmployeeId());
-        if (existing == null || employee.getCompanyId() == null || !employee.getCompanyId().equals(existing.getCompanyId())) {
-            throw new IllegalArgumentException("Không tìm thấy nhân viên trong công ty của bạn.");
-        }
-        if (!java.util.Objects.equals(existing.getStatus(), employee.getStatus()))
-            throw new FieldValidationException("status", "Vui lòng dùng thao tác kích hoạt hoặc ngừng làm việc để đổi trạng thái nhân viên.");
-        if (!java.util.Objects.equals(existing.getEmployeeCode(), employee.getEmployeeCode()))
-            throw new FieldValidationException("employeeCode", "Không được đổi mã nhân viên khi chỉnh sửa hồ sơ.");
-        try (Connection connection = DBConnection.getConnection()) {
-            connection.setAutoCommit(false);
-            try {
-                if (actorId == null) throw new SecurityException("Cần xác định người thực hiện để ghi nhật ký cập nhật nhân viên.");
-                OrganizationTransaction.lockCompany(connection, employee.getCompanyId());
-                new EmployeeLifecycleDAO().requireActor(connection, employee.getCompanyId(), actorId);
-                new EmployeeLifecycleDAO().validateEmail(connection, employee);
-                new OrganizationAssignmentDAO().assignOrganization(connection, employee.getCompanyId(), employee.getEmployeeId(),
-                        employee.getDepartmentId(), employee.getPositionId());
-                boolean updated = employeeDAO.updateEmployee(connection, employee);
-                if (!updated) throw new SQLException("Không cập nhật được hồ sơ nhân viên.");
-                OrganizationTransaction.audit(connection, employee.getCompanyId(), actorId, employee.getEmployeeId(), "UPDATE_EMPLOYEE",
-                        existing.getFullName(), employee.getFullName());
-                connection.commit();
-                return true;
-            } catch (SQLException | RuntimeException exception) {
-                connection.rollback();
-                throw exception;
-            } finally { connection.setAutoCommit(true); }
-        }
+        return employeeDAO.updateEmployee(employee);
     }
 
-    public boolean activateEmployee(int companyId, int employeeId, Integer actorId) throws SQLException {
-        return OrganizationTransaction.execute(companyId,connection -> {
-            new EmployeeLifecycleDAO().requireActor(connection,companyId,actorId);
-            var employee=new EmployeeLifecycleDAO().employee(connection,companyId,employeeId);
-            if ("Active".equals(employee.get("Status"))) throw new IllegalArgumentException("Nhân viên đã ở trạng thái đang hoạt động.");
-            new EmployeeLifecycleDAO().execute(connection,"UPDATE Employees SET Status='Active',EndDate=NULL,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND EmployeeId=?",companyId,employeeId);
-            OrganizationTransaction.audit(connection,companyId,actorId,employeeId,"ACTIVATE_EMPLOYEE",String.valueOf(employee.get("Status")),"Active; portal access remains separately controlled");
-            return true;
-        });
+    public boolean deleteEmployee(int employeeId) throws SQLException {
+        return employeeDAO.deleteEmployee(employeeId);
     }
 
     private void validate(Employee employee, boolean creating) {
         if (!creating && employee.getEmployeeId() <= 0) {
-            throw new IllegalArgumentException("Vui lòng chọn nhân viên.");
+            throw new IllegalArgumentException("Employee id is required.");
         }
         if (employee.getFullName() == null || employee.getFullName().isBlank()) {
-            throw new FieldValidationException("fullName", "Vui lòng nhập họ và tên.");
+            throw new IllegalArgumentException("Full name is required.");
         }
         if (employee.getPhone() == null || employee.getPhone().isBlank()) {
-            throw new FieldValidationException("phone", "Vui lòng nhập số điện thoại.");
+            throw new IllegalArgumentException("Phone is required.");
         }
         if (employee.getGender() == null || employee.getGender().isBlank()) {
-            throw new FieldValidationException("gender", "Vui lòng chọn giới tính.");
+            throw new IllegalArgumentException("Gender is required.");
         }
         if (employee.getDateOfBirth() == null) {
-            throw new FieldValidationException("dateOfBirth", "Vui lòng nhập ngày sinh.");
+            throw new IllegalArgumentException("Date of birth is required.");
         }
-        if (!java.util.Set.of("Active", "Inactive").contains(employee.getStatus() == null ? "" : employee.getStatus())) {
-            throw new FieldValidationException("status", "Vui lòng chọn đang hoạt động hoặc ngừng hoạt động.");
+        if (employee.getStartDate() == null) {
+            throw new IllegalArgumentException("Start date is required.");
         }
-        employee.setIdentityNumber(validateIdentityNumber(employee.getIdentityNumber(), creating));
+        if (employee.getBaseSalary() == null) {
+            throw new IllegalArgumentException("Base salary is required.");
+        }
         if (employee.getStatus() == null || employee.getStatus().isBlank()) {
-            throw new FieldValidationException("status", "Vui lòng chọn trạng thái.");
+            throw new IllegalArgumentException("Status is required.");
         }
-    }
-
-    static String validateIdentityNumber(String identityNumber, boolean required) {
-        if (identityNumber == null || identityNumber.isBlank()) {
-            if (required) {
-                throw new FieldValidationException("identityNumber", "Vui lòng nhập mã định danh (CCCD).");
-            }
-            return null;
-        }
-        String trimmedNumber = identityNumber.trim();
-        if (!trimmedNumber.matches("[0-9]{12}")) {
-            throw new FieldValidationException("identityNumber", "Mã định danh (CCCD) phải gồm đúng 12 chữ số.");
-        }
-        return trimmedNumber;
     }
 
     private void validateUniquePhone(Employee employee) throws SQLException {
         Integer excludeEmployeeId = employee.getEmployeeId() > 0 ? employee.getEmployeeId() : null;
         if (employeeDAO.phoneExists(employee.getPhone().trim(), excludeEmployeeId)) {
-            throw new FieldValidationException("phone", "Số điện thoại đã tồn tại.");
+            throw new IllegalArgumentException("Phone number already exists.");
         }
+    }
+
+    private String generateAvailableUsername(Connection connection, String fullName) throws SQLException {
+        String baseUsername = toUsernameBase(fullName);
+        String username = baseUsername;
+        int suffix = 1;
+
+        while (userDAO.usernameExists(connection, username)) {
+            username = baseUsername + String.format("%02d", suffix);
+            suffix++;
+        }
+
+        return username;
+    }
+
+    private String toUsernameBase(String fullName) {
+        String normalized = Normalizer.normalize(fullName, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]", "");
+
+        return normalized.isBlank() ? "employee" : normalized;
+    }
+
+    private String buildAccountLocalPart(String fullName, String randomDigits) {
+        String[] parts = normalizedWords(fullName);
+        String givenName = parts.length == 0 ? "employee" : parts[parts.length - 1];
+        String familyInitial = parts.length >= 1 ? parts[0].substring(0, 1) : "x";
+        String middleInitial = parts.length >= 3 ? parts[1].substring(0, 1) : "x";
+        return givenName + familyInitial + middleInitial + randomDigits;
+    }
+
+    private String generateUniqueRandomDigits(Connection connection, int companyId, String companyPrefix, String fullName)
+            throws SQLException {
+        for (int attempt = 0; attempt < 30; attempt++) {
+            String digits = String.format("%06d", random.nextInt(1_000_000));
+            String employeeCode = companyPrefix.toUpperCase(Locale.ROOT) + digits;
+            String email = buildAccountLocalPart(fullName, digits) + "@" + companyPrefix + ".hrms";
+            if (!employeeCodeExists(connection, companyId, employeeCode) && !userDAO.emailExists(connection, email)) {
+                return digits;
+            }
+        }
+        throw new SQLException("Could not generate a unique employee code. Please try again.");
     }
 
     private boolean employeeCodeExists(Connection connection, int companyId, String employeeCode) throws SQLException {
@@ -212,28 +173,87 @@ public class EmployeeService {
         }
     }
 
-    static void validatePersonal(Employee employee) {
-        checkLength("fullName", employee.getFullName(), 150);
-        checkLength("phone", employee.getPhone(), 30);
-        checkLength("identityIssuedPlace", employee.getIdentityIssuedPlace(), 200);
-        checkLength("permanentAddress", employee.getPermanentAddress(), 500);
-        checkLength("hometown", employee.getHometown(), 200);
-        checkLength("major", employee.getMajor(), 200);
-        if (employee.getDateOfBirth() != null && employee.getDateOfBirth().toLocalDate().isAfter(java.time.LocalDate.now()))
-            throw new FieldValidationException("dateOfBirth", "Ngày sinh không được ở tương lai.");
-        if (employee.getIdentityIssuedDate() != null && (employee.getIdentityIssuedDate().toLocalDate().isAfter(java.time.LocalDate.now())
-                || employee.getDateOfBirth() != null && employee.getIdentityIssuedDate().before(employee.getDateOfBirth())))
-            throw new FieldValidationException("identityIssuedDate", "Ngày cấp căn cước phải sau ngày sinh và không được ở tương lai.");
-        if (!java.util.Set.of("Male", "Female", "Other").contains(employee.getGender() == null ? "" : employee.getGender()))
-            throw new FieldValidationException("gender", "Vui lòng chọn giới tính hợp lệ.");
-        if (employee.getEmail() != null && (employee.getEmail().length() > 150 || !employee.getEmail().matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")))
-            throw new FieldValidationException("email", "Vui lòng nhập địa chỉ email hợp lệ.");
-        if (employee.getIntendedContractType() != null && !java.util.Set.of("PROBATION", "FIXED_TERM", "INDEFINITE").contains(employee.getIntendedContractType()))
-            throw new FieldValidationException("intendedContractType", "Vui lòng chọn loại hợp đồng dự kiến hợp lệ.");
+    private String companyPrefix(String companyName) {
+        String normalized = normalizeAscii(companyName).replaceAll("[^a-z0-9]", "");
+        if (normalized.length() >= 3) {
+            return normalized.substring(0, 3);
+        }
+        return (normalized + "xxx").substring(0, 3);
     }
 
-    private static void checkLength(String field, String value, int maximum) {
-        if (value != null && value.length() > maximum) throw new FieldValidationException(field, "Độ dài tối đa là " + maximum + ".");
+    private String[] normalizedWords(String value) {
+        String normalized = normalizeAscii(value).replaceAll("[^a-z0-9 ]", " ").trim();
+        return normalized.isBlank() ? new String[0] : normalized.split("\\s+");
     }
 
+    private String normalizeAscii(String value) {
+        return Normalizer.normalize(value == null ? "" : value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT);
+    }
+
+    private CompanyInfo getOrCreateDefaultCompany(Connection connection) throws SQLException {
+        String selectSql = "SELECT TOP 1 CompanyId, CompanyName FROM Companies ORDER BY CompanyId";
+
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(selectSql)) {
+            if (resultSet.next()) {
+                return new CompanyInfo(resultSet.getInt("CompanyId"), resultSet.getString("CompanyName"));
+            }
+        }
+
+        String insertSql = """
+                INSERT INTO Companies (WorkspaceCode, CompanyName, CompanyNameNormalized, Region, ContactEmail)
+                VALUES (?, ?, ?, ?, ?)
+                """;
+
+        try (PreparedStatement statement = connection.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
+            statement.setString(1, "demo");
+            statement.setString(2, "Demo Company");
+            statement.setString(3, "demo company");
+            statement.setString(4, "NORTH");
+            statement.setString(5, "admin@hrms.local");
+            statement.executeUpdate();
+
+            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    return new CompanyInfo(generatedKeys.getInt(1), "Demo Company");
+                }
+            }
+        }
+
+        throw new SQLException("Default company could not be created.");
+    }
+
+    private void ensureEmployeeCreationSchema(Connection connection) throws SQLException {
+        makeColumnNullableIfNeeded(connection, "Employees", "UserId");
+        makeColumnNullableIfNeeded(connection, "Employees", "DepartmentId");
+        makeColumnNullableIfNeeded(connection, "Employees", "PositionId");
+    }
+
+    private void makeColumnNullableIfNeeded(Connection connection, String tableName, String columnName)
+            throws SQLException {
+        String metadataSql = """
+                SELECT IS_NULLABLE, DATA_TYPE
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_NAME = ? AND COLUMN_NAME = ?
+                """;
+
+        try (PreparedStatement statement = connection.prepareStatement(metadataSql)) {
+            statement.setString(1, tableName);
+            statement.setString(2, columnName);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next() || "YES".equalsIgnoreCase(resultSet.getString("IS_NULLABLE"))) {
+                    return;
+                }
+            }
+        }
+
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("ALTER TABLE " + tableName + " ALTER COLUMN " + columnName + " INT NULL");
+        }
+    }
+
+    private record CompanyInfo(int companyId, String companyName) {
+    }
 }

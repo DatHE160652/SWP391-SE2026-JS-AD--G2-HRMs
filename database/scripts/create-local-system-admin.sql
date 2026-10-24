@@ -1,6 +1,6 @@
 -- Tao System Admin cho moi truong LOCAL/DEVELOPMENT, khong dung cho production.
--- Chay sau SWP2.sql tren database ung dung. Khong luu plaintext password trong file.
--- Mat khau duoc cung cap rieng trong hoi thoai; hash BCrypt cost 12 da duoc xac minh.
+-- Chay sau SWP2.sql tren database ung dung.
+-- Chi dung local/demo: mat khau khoi tao duoc luu dang plaintext trong Users.Password.
 -- Khong reset, mo khoa hay thay doi tai khoan da ton tai khi chay lai.
 USE HRMsDB;
 GO
@@ -28,19 +28,19 @@ BEGIN TRY
     IF EXISTS (
         SELECT 1 FROM dbo.Users WITH (UPDLOCK, HOLDLOCK)
         WHERE Username = 'sysadmin'
-           OR EmailNormalized = 'sysadmin@hrms.local'
+           OR LOWER(LTRIM(RTRIM(Email))) = 'sysadmin@hrms.local'
     )
         THROW 50002, 'Username/email already exists. No account or password was changed.', 1;
 
     DECLARE @Now DATETIME2 = SYSUTCDATETIME();
     INSERT INTO dbo.Users (
-        CompanyId, RoleId, Username, Email, DisplayName, PasswordHash,
+        CompanyId, RoleId, Username, Email, DisplayName, Password,
         MustChangePassword, ActivatedAt, PasswordChangedAt,
         IsActive, IsLocked, FailedLoginAttempts, LockedUntil
     )
     VALUES (
         NULL, @RoleId, 'sysadmin', 'sysadmin@hrms.local', N'System Admin',
-        '$2a$12$X5Q9Em1J.RtWKUHrMGCCHO9Gz/l36vrvrkmOvGPeU6AoPE38z/a7W',
+        N'12345',
         0, @Now, @Now, 1, 0, 0, NULL
     );
 

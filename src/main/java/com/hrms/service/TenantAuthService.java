@@ -3,7 +3,7 @@ package com.hrms.service;
 import com.hrms.service.security.TenantPrincipal;
 import com.hrms.dao.UserDAO;
 import com.hrms.model.TenantAccount;
-import com.hrms.service.BCryptPasswordVerifier;
+import com.hrms.util.EmailSupport;
 
 import java.sql.SQLException;
 import java.util.Locale;
@@ -16,27 +16,25 @@ public class TenantAuthService {
     private static final int LOCK_MINUTES = 15;
 
     private final UserDAO userDAO;
-    private final BCryptPasswordVerifier passwordVerifier;
 
     public TenantAuthService() {
-        this(new UserDAO(), new BCryptPasswordVerifier());
+        this(new UserDAO());
     }
 
-    public TenantAuthService(UserDAO userDAO, BCryptPasswordVerifier passwordVerifier) {
+    public TenantAuthService(UserDAO userDAO) {
         this.userDAO = userDAO;
-        this.passwordVerifier = passwordVerifier;
     }
 
     public TenantPrincipal authenticate(String workspaceCode, String email, String rawPassword)
             throws SQLException {
         String workspace = normalizeWorkspace(workspaceCode);
-        String normalizedEmail = normalizeEmail(email);
+        String normalizedEmail = EmailSupport.normalize(email);
         if (workspace == null || normalizedEmail == null || rawPassword == null || rawPassword.isEmpty()) {
             return null;
         }
 
         TenantAccount account = userDAO.findTenantAccount(workspace, normalizedEmail);
-        if (account == null || !passwordVerifier.matches(rawPassword, account.getUser().getPasswordHash())) {
+        if (account == null || !rawPassword.equals(account.getUser().getPassword())) {
             if (account != null) {
                 userDAO.recordTenantLoginFailure(account.getUser(), MAX_FAILED_ATTEMPTS, LOCK_MINUTES);
             }
@@ -53,21 +51,21 @@ public class TenantAuthService {
                 com.hrms.util.SecuritySupport.credentialVersion(account.getUser().getPasswordHash()));
     }
 
-    public boolean changePassword(Integer userId, String passwordHash) throws SQLException {
-        if (userId == null || passwordHash == null || passwordHash.isBlank()) {
-            return false;
+    public boolean changePassword(TenantPrincipal principal, String newPassword, String password) throws SQLException {
+        if (principal == null || principal.getUserId() == null || newPassword == null
+                || newPassword.isBlank() || password == null) return false;
+        TenantAccount account = userDAO.findTenantAccount(principal.getWorkspaceCode(), principal.getEmail());
+        if (account == null || !principal.getUserId().equals(account.getUser().getUserId())
+                || !principal.getCompanyId().equals(account.getCompanyId())) return false;
+        if (newPassword.equals(account.getUser().getPassword())) {
+            throw new IllegalArgumentException("Mật khẩu mới phải khác mật khẩu hiện tại.");
         }
-        return userDAO.updateTenantPassword(userId, passwordHash);
+        return userDAO.updateTenantPassword(account.getUser(), password);
     }
 
     private String normalizeWorkspace(String value) {
         if (value == null) return null;
         String normalized = value.trim().toLowerCase(Locale.ROOT);
         return WORKSPACE.matcher(normalized).matches() ? normalized : null;
-    }
-
-    private String normalizeEmail(String value) {
-        if (value == null || value.isBlank()) return null;
-        return value.trim().toLowerCase(Locale.ROOT);
     }
 }

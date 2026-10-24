@@ -3,6 +3,7 @@ package com.hrms.service;
 import com.hrms.service.security.SystemAdminPrincipal;
 import com.hrms.dao.UserDAO;
 import com.hrms.model.User;
+import com.hrms.util.EmailSupport;
 
 import java.sql.SQLException;
 import java.time.Clock;
@@ -13,32 +14,31 @@ public class SystemAdminAuthService {
     private static final int MAX_FAILED_ATTEMPTS = 5;
     private static final int LOCK_MINUTES = 15;
     private final UserDAO userDAO;
-    private final BCryptPasswordVerifier passwordVerifier;
     private final Clock clock;
 
     public SystemAdminAuthService() {
-        this(new UserDAO(), new BCryptPasswordVerifier(), Clock.systemUTC());
+        this(new UserDAO(), Clock.systemUTC());
     }
 
-    public SystemAdminAuthService(UserDAO userDAO, BCryptPasswordVerifier passwordVerifier) {
-        this(userDAO, passwordVerifier, Clock.systemUTC());
+    public SystemAdminAuthService(UserDAO userDAO) {
+        this(userDAO, Clock.systemUTC());
     }
 
-    SystemAdminAuthService(UserDAO userDAO, BCryptPasswordVerifier passwordVerifier, Clock clock) {
+    SystemAdminAuthService(UserDAO userDAO, Clock clock) {
         this.userDAO = userDAO;
-        this.passwordVerifier = passwordVerifier;
         this.clock = clock;
     }
 
-    public SystemAdminPrincipal authenticate(String identifier, String rawPassword) throws SQLException {
-        if (identifier == null || identifier.isBlank() || rawPassword == null || rawPassword.isEmpty()) {
+    public SystemAdminPrincipal authenticate(String email, String rawPassword) throws SQLException {
+        String normalizedEmail = EmailSupport.normalize(email);
+        if (normalizedEmail == null || rawPassword == null || rawPassword.isEmpty()) {
             return null;
         }
-        User user = userDAO.findSystemAdminByIdentifier(identifier.trim());
+        User user = userDAO.findSystemAdminByEmail(normalizedEmail);
         if (!isEligible(user)) {
             return null;
         }
-        if (!passwordVerifier.matches(rawPassword, user.getPasswordHash())) {
+        if (!rawPassword.equals(user.getPassword())) {
             userDAO.recordSystemAdminLoginFailure(user, MAX_FAILED_ATTEMPTS, LOCK_MINUTES);
             return null;
         }

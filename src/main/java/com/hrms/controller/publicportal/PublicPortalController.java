@@ -5,9 +5,7 @@ import com.hrms.service.security.TenantPrincipal;
 import com.hrms.model.publicportal.ConsultationSubmission;
 import com.hrms.model.publicportal.FaqTopic;
 import com.hrms.service.TenantAuthService;
-import com.hrms.service.BCryptPasswordHasher;
 import com.hrms.service.EmployeeHistoryService;
-import com.hrms.service.FieldValidationException;
 import com.hrms.service.publicportal.ConsultationRequestService;
 import com.hrms.service.publicportal.FaqService;
 import com.hrms.util.SecuritySupport;
@@ -31,19 +29,17 @@ public class PublicPortalController extends HttpServlet {
     private final ConsultationRequestService consultationService;
     private final FaqService faqService;
     private final TenantAuthService tenantAuthService;
-    private final BCryptPasswordHasher passwordHasher;
     private final EmployeeHistoryService employeeHistoryService = new EmployeeHistoryService();
 
     public PublicPortalController() {
-        this(new ConsultationRequestService(), new FaqService(), new TenantAuthService(), new BCryptPasswordHasher());
+        this(new ConsultationRequestService(), new FaqService(), new TenantAuthService());
     }
 
     PublicPortalController(ConsultationRequestService consultationService, FaqService faqService,
-                           TenantAuthService tenantAuthService, BCryptPasswordHasher passwordHasher) {
+                           TenantAuthService tenantAuthService) {
         this.consultationService = consultationService;
         this.faqService = faqService;
         this.tenantAuthService = tenantAuthService;
-        this.passwordHasher = passwordHasher;
     }
 
     @Override
@@ -91,8 +87,6 @@ public class PublicPortalController extends HttpServlet {
         String workspace = request.getParameter("tenantDomain");
         String email = request.getParameter("tenantEmail");
         String password = request.getParameter("tenantPassword");
-        HttpSession previousSession = request.getSession(false);
-        if (previousSession != null) previousSession.removeAttribute(SecuritySupport.TENANT_PRINCIPAL_ATTRIBUTE);
         try {
             TenantPrincipal principal = tenantAuthService.authenticate(workspace, email, password);
             if (principal == null) {
@@ -102,8 +96,6 @@ public class PublicPortalController extends HttpServlet {
             }
             HttpSession session = request.getSession(true);
             request.changeSessionId();
-            session.removeAttribute(SecuritySupport.PUBLIC_CSRF_ATTRIBUTE);
-            SecuritySupport.ensurePublicCsrfToken(session);
             session.setAttribute(SecuritySupport.TENANT_PRINCIPAL_ATTRIBUTE, principal);
             if (principal.isMustChangePassword()) {
                 response.sendRedirect(request.getContextPath() + "/change-password");
@@ -135,6 +127,7 @@ public class PublicPortalController extends HttpServlet {
             response.sendRedirect(request.getContextPath() + ApiRoutes.TENANT_LOGIN);
             return;
         }
+        SecuritySupport.ensureTenantCsrfToken(request.getSession(true));
         render(request, response, "change-password.jsp");
     }
 
@@ -146,27 +139,23 @@ public class PublicPortalController extends HttpServlet {
             return;
         }
 
+        if (!SecuritySupport.hasValidTenantCsrfToken(request)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Phiên đổi mật khẩu không hợp lệ. Vui lòng tải lại trang.");
+            return;
+        }
         String newPassword = request.getParameter("newPassword");
         String confirmPassword = request.getParameter("confirmPassword");
         if (newPassword == null || newPassword.isBlank()) {
-            request.setAttribute("changePasswordField", "newPassword");
             renderChangePasswordError(request, response, "Mật khẩu mới không được để trống.");
             return;
         }
-        if ("1".equals(newPassword)) {
-            request.setAttribute("changePasswordField", "newPassword");
-            renderChangePasswordError(request, response, "Vui lòng chọn mật khẩu khác mật khẩu tạm.");
-            return;
-        }
         if (!newPassword.equals(confirmPassword)) {
-            request.setAttribute("changePasswordField", "confirmPassword");
             renderChangePasswordError(request, response, "Mật khẩu xác nhận không khớp.");
             return;
         }
 
         try {
-            String newPasswordHash=passwordHasher.hash(newPassword);
-            boolean updated = tenantAuthService.changePassword(principal.getUserId(), newPasswordHash);
+            boolean updated = tenantAuthService.changePassword(principal, newPassword, newPassword);
             if (!updated) {
                 renderChangePasswordError(request, response, "Chưa thể đổi mật khẩu. Vui lòng đăng nhập lại.");
                 return;
@@ -179,9 +168,10 @@ public class PublicPortalController extends HttpServlet {
             request.getSession(true).setAttribute(SecuritySupport.TENANT_PRINCIPAL_ATTRIBUTE,
                     new TenantPrincipal(principal.getUserId(), principal.getCompanyId(), principal.getWorkspaceCode(),
                             principal.getCompanyName(), principal.getDisplayName(), principal.getEmail(),
-                            principal.getRoleCode(), principal.getEmployeeId(), false,SecuritySupport.credentialVersion(newPasswordHash)));
-            request.changeSessionId();
+                            principal.getRoleCode(), principal.getEmployeeId(), false));
             response.sendRedirect(request.getContextPath() + tenantLandingPath(principal));
+        } catch (IllegalArgumentException exception) {
+            renderChangePasswordError(request, response, exception.getMessage());
         } catch (SQLException exception) {
             getServletContext().log("Tenant password change failed; SQLState=" + exception.getSQLState()
                     + "; errorCode=" + exception.getErrorCode());
@@ -199,7 +189,7 @@ public class PublicPortalController extends HttpServlet {
     private String tenantLandingPath(TenantPrincipal principal) {
         String role = principal.getRoleCode() == null ? "" : principal.getRoleCode().toUpperCase();
         return switch (role) {
-            case "COMPANY_ADMIN", "HR" -> "/lifecycle/dashboard";
+            case "COMPANY_ADMIN" -> "/employee/employee-list";
             case "MANAGER" -> "/attendance/manager-attendance";
             case "EMPLOYEE" -> "/employee/my-profile";
             default -> "/login";
@@ -243,9 +233,7 @@ public class PublicPortalController extends HttpServlet {
             renderConsultationError(request, response, "Vui lòng kiểm tra lại thông tin.", exception.getValidation().getErrors());
         } catch (ConsultationRequestService.DuplicateConsultationException exception) {
             renderConsultationError(request, response,
-                    "Email hoặc tên công ty đã có yêu cầu đang được xử lý. Vui lòng không gửi lại biểu mẫu.",
-                    Map.of("email", "Email hoặc tên công ty đã có yêu cầu đang được xử lý.",
-                            "companyName", "Email hoặc tên công ty đã có yêu cầu đang được xử lý."));
+                    "Email hoặc tên công ty đã có hồ sơ đăng ký/tài khoản, kể cả hồ sơ đã bị từ chối. Vui lòng liên hệ sale để tiếp tục trao đổi.", Map.of());
         } catch (SQLException exception) {
             getServletContext().log("Public consultation persistence failed; SQLState=" + exception.getSQLState()
                     + "; errorCode=" + exception.getErrorCode());
@@ -290,14 +278,6 @@ public class PublicPortalController extends HttpServlet {
                 faqService.createComment(userId, parsePositiveId(request.getParameter("topicId")), request.getParameter("content"));
             }
             response.sendRedirect(request.getContextPath() + ApiRoutes.PUBLIC_FAQ);
-        } catch (FieldValidationException exception) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            request.setAttribute("faqErrorField", exception.getField());
-            request.setAttribute("faqErrorMessage", exception.getMessage());
-            request.setAttribute("faqErrorTopicId", request.getParameter("topicId"));
-            request.setAttribute("faqTitle", request.getParameter("title"));
-            request.setAttribute("faqContent", request.getParameter("content"));
-            showFaq(request, response);
         } catch (IllegalArgumentException exception) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, exception.getMessage());
         } catch (SQLException exception) {
