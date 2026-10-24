@@ -39,12 +39,12 @@
                                 Quy mô chuẩn 20 tài khoản
                             </strong>
                             <span>
-                                1 Company Admin, tối đa 3 Manager và các tài khoản tác nghiệp.
+                                1 Quản trị viên công ty, tối đa 3 quản lý và các tài khoản tác nghiệp.
                             </span>
                         </div>
                         <div>
                             <strong>
-                                Workspace theo Company
+                                Workspace theo công ty
                             </strong>
                             <span>
                                 Phân tách quyền truy cập và dữ liệu theo từng doanh nghiệp.
@@ -78,7 +78,7 @@
                                 Đã tiếp nhận yêu cầu.
                             </strong>
                             <span>
-                                Yêu cầu của bạn đã được lưu ở trạng thái NEW. Đội ngũ HRMs Cloud sẽ liên hệ để tư vấn.
+                                Yêu cầu của bạn đã được lưu ở trạng thái mới tiếp nhận. Đội ngũ HRMs Cloud sẽ liên hệ để tư vấn.
                             </span>
                         </div>
                     </c:if>
@@ -183,9 +183,9 @@
                         <p class="form-note">
                             Sau khi gửi, hồ sơ được lưu ở trạng thái
                             <strong>
-                                NEW
+                                Mới tiếp nhận
                             </strong>
-                            . System Admin sẽ xem xét trước khi tạo Company, User hoặc Subscription.
+                            . Quản trị viên hệ thống sẽ xem xét trước khi tạo công ty, tài khoản hoặc gói dịch vụ.
                         </p>
                         <button class="button button-primary button-wide submit-button" type="submit">
                             Gửi yêu cầu đăng ký tư vấn

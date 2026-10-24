@@ -35,7 +35,7 @@
                                 Hồ sơ nhân sự số
                             </h2>
                             <p>
-                                Quản lý thông tin nhân viên, tài liệu, phòng ban và chức danh tập trung. Dữ liệu được chuẩn hóa để HR dễ tra cứu và cập nhật.
+                                Quản lý thông tin nhân viên, tài liệu, phòng ban và chức danh tập trung. Dữ liệu được chuẩn hóa để nhân sự dễ tra cứu và cập nhật.
                             </p>
                             <ul class="check-list">
                                 <li>
@@ -107,7 +107,7 @@
                                 Cổng tự phục vụ nhân viên
                             </h2>
                             <p>
-                                Đưa những thông tin và thao tác thường ngày đến gần nhân viên hơn, đồng thời giảm tải cho HR.
+                                Đưa những thông tin và thao tác thường ngày đến gần nhân viên hơn, đồng thời giảm tải cho nhân sự.
                             </p>
                             <ul class="check-list">
                                 <li>
@@ -134,7 +134,7 @@
                             Kiểm soát dữ liệu theo đúng ranh giới doanh nghiệp
                         </h2>
                         <p>
-                            Company Admin quản lý workspace của mình; System Admin quản trị nền tảng nhưng không truy cập dữ liệu HR chi tiết của tenant.
+                            Quản trị viên công ty quản lý workspace của mình; Quản trị viên hệ thống quản trị nền tảng nhưng không truy cập dữ liệu nhân sự chi tiết của tenant.
                         </p>
                     </div>
                     <a class="button button-primary" href="${pageContext.request.contextPath}/consultation-request">

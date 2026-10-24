@@ -6,19 +6,19 @@
     <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Registration Requests | HRMs.Admin</title>
+    <title>Yêu cầu đăng ký | HRMs.Admin</title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/system-admin.css">
 </head>
 <body class="admin-page">
 <%@ include file="/WEB-INF/views/sysadmin/admin-shell.jspf" %>
 <main class="admin-main" id="main-content">
     <nav class="breadcrumb" aria-label="Đường dẫn"><a href="${pageContext.request.contextPath}/systemadmin/dashboard">Quản lý tenant</a><svg class="icon" aria-hidden="true"><use href="${icons}#chevron"/></svg><span>Yêu cầu đăng ký</span></nav>
-    <div class="page-heading"><h1>Danh sách yêu cầu đăng ký tenant</h1><a class="button" href="${pageContext.request.contextPath}/systemadmin/registration-request"><svg class="icon" aria-hidden="true"><use href="${icons}#refresh"/></svg>Làm mới dữ liệu</a></div>
+    <div class="page-heading"><h1>Danh sách yêu cầu đăng ký doanh nghiệp</h1><a class="button" href="${pageContext.request.contextPath}/systemadmin/registration-request"><svg class="icon" aria-hidden="true"><use href="${icons}#refresh"/></svg>Làm mới dữ liệu</a></div>
     <section class="stat-grid stat-grid-compact" aria-label="Thống kê toàn bộ yêu cầu, không áp dụng bộ lọc">
-        <article class="stat-card"><span class="stat-icon"><svg class="icon" aria-hidden="true"><use href="${icons}#clock"/></svg></span><div><h2>Mới tiếp nhận</h2><strong class="stat-value"><c:out value="${stats.newCount}"/></strong><span class="stat-note">NEW</span></div></article>
-        <article class="stat-card"><span class="stat-icon stat-icon-amber"><svg class="icon" aria-hidden="true"><use href="${icons}#search"/></svg></span><div><h2>Đang xem xét</h2><strong class="stat-value"><c:out value="${stats.reviewCount}"/></strong><span class="stat-note">UNDER_REVIEW</span></div></article>
-        <article class="stat-card"><span class="stat-icon"><svg class="icon" aria-hidden="true"><use href="${icons}#refresh"/></svg></span><div><h2>Đang khởi tạo</h2><strong class="stat-value"><c:out value="${stats.convertingCount}"/></strong><span class="stat-note">CONVERTING</span></div></article>
-        <article class="stat-card"><span class="stat-icon stat-icon-teal"><svg class="icon" aria-hidden="true"><use href="${icons}#shield"/></svg></span><div><h2>Đã chuyển đổi</h2><strong class="stat-value"><c:out value="${stats.convertedCount}"/></strong><span class="stat-note">CONVERTED</span></div></article>
+        <article class="stat-card"><span class="stat-icon"><svg class="icon" aria-hidden="true"><use href="${icons}#clock"/></svg></span><div><h2>Mới tiếp nhận</h2><strong class="stat-value"><c:out value="${stats.newCount}"/></strong><span class="stat-note">Mới tiếp nhận</span></div></article>
+        <article class="stat-card"><span class="stat-icon stat-icon-amber"><svg class="icon" aria-hidden="true"><use href="${icons}#search"/></svg></span><div><h2>Đang xem xét</h2><strong class="stat-value"><c:out value="${stats.reviewCount}"/></strong><span class="stat-note">Đang xem xét</span></div></article>
+        <article class="stat-card"><span class="stat-icon"><svg class="icon" aria-hidden="true"><use href="${icons}#refresh"/></svg></span><div><h2>Đang khởi tạo</h2><strong class="stat-value"><c:out value="${stats.convertingCount}"/></strong><span class="stat-note">Đang khởi tạo</span></div></article>
+        <article class="stat-card"><span class="stat-icon stat-icon-teal"><svg class="icon" aria-hidden="true"><use href="${icons}#shield"/></svg></span><div><h2>Đã chuyển đổi</h2><strong class="stat-value"><c:out value="${stats.convertedCount}"/></strong><span class="stat-note">Đã khởi tạo</span></div></article>
     </section>
     <section class="panel filter-panel" aria-label="Bộ lọc yêu cầu">
         <form method="get" action="${pageContext.request.contextPath}/systemadmin/registration-request" class="filter-form">

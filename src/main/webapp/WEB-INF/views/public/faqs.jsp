@@ -136,7 +136,7 @@
                                                 </c:when>
                                                 <c:otherwise>
                                                     <div class="login-notice">
-                                                        Muốn tạo chủ đề hoặc bình luận? Hãy đăng nhập vào Tenant Portal.
+                                                        Muốn tạo chủ đề hoặc bình luận? Hãy đăng nhập vào cổng tenant.
                                                     </div>
                                                 </c:otherwise>
                                             </c:choose>
@@ -169,7 +169,7 @@
                                 </li>
                             </ul>
                             <a class="button button-outline button-wide" href="${pageContext.request.contextPath}/login">
-                                Đăng nhập Tenant
+                                Đăng nhập tenant
                             </a>
                         </div>
                     </aside>

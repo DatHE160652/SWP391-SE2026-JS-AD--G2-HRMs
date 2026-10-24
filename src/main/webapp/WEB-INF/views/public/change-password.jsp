@@ -13,7 +13,7 @@
 <main class="tenant-login-main">
     <section class="tenant-login-card" aria-labelledby="change-password-title">
         <div class="tenant-login-heading">
-            <span class="eyebrow">TENANT WORKSPACE</span>
+            <span class="eyebrow">WORKSPACE</span>
             <h1 id="change-password-title">Đổi mật khẩu</h1>
             <p>Tài khoản đang dùng mật khẩu tạm. Vui lòng đặt mật khẩu mới để tiếp tục.</p>
         </div>

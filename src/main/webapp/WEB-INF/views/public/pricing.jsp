@@ -31,7 +31,7 @@
                             GÓI CHUẨN DOANH NGHIỆP
                         </span>
                         <h2>
-                            HRMs Cloud Standard
+                            HRMs Cloud · Gói tiêu chuẩn
                         </h2>
                         <div class="price">
                             59.000
@@ -43,7 +43,7 @@
                             / công ty / tháng
                         </div>
                         <p class="pricing-intro">
-                            Cấu hình tham chiếu cố định, không yêu cầu chọn plan khi gửi yêu cầu tư vấn.
+                            Cấu hình tham chiếu cố định, không yêu cầu chọn gói dịch vụ khi gửi yêu cầu tư vấn.
                         </p>
                         <a class="button button-primary button-wide" href="${pageContext.request.contextPath}/consultation-request">
                             Đăng ký tư vấn
@@ -58,16 +58,16 @@
                                 Đầy đủ e-HRM, chấm công, tính lương và ESS
                             </li>
                             <li>
-                                Tối đa 20 tài khoản trong một Company
+                                Tối đa 20 tài khoản trong một công ty
                             </li>
                             <li>
-                                1 Company Admin và tối đa 3 Manager
+                                1 Quản trị viên công ty và tối đa 3 quản lý
                             </li>
                             <li>
-                                Workspace và dữ liệu được phân tách theo Company
+                                Workspace và dữ liệu được phân tách theo công ty
                             </li>
                             <li>
-                                Hỗ trợ quy trình kích hoạt sau khi System Admin xác nhận
+                                Hỗ trợ quy trình kích hoạt sau khi Quản trị viên hệ thống xác nhận
                             </li>
                         </ul>
                         <div class="pricing-note">
@@ -75,7 +75,7 @@
                                 Lưu ý
                             </strong>
                             <p>
-                                Gửi form tư vấn chỉ tạo Registration Request. Hệ thống chưa tạo Company tại bước này.
+                                Gửi biểu mẫu tư vấn chỉ tạo yêu cầu đăng ký. Hệ thống chưa tạo công ty tại bước này.
                             </p>
                         </div>
                     </div>

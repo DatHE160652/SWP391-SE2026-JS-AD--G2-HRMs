@@ -99,7 +99,7 @@ public class FaqDAO {
                 if (keys.next()) return keys.getInt(1);
             }
         }
-        throw new SQLException("FAQ topic was not created.");
+        throw new SQLException("Không tạo được chủ đề hỏi đáp.");
     }
 
     public long createComment(int authorUserId, int topicId, String content) throws SQLException {
@@ -116,7 +116,7 @@ public class FaqDAO {
                 }
             }
         }
-        throw new SQLException("FAQ comment was not created.");
+        throw new SQLException("Không tạo được bình luận hỏi đáp.");
     }
 
     private LocalDateTime toLocalDateTime(Timestamp value) {
