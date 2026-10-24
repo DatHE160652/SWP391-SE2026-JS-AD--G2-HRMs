@@ -36,11 +36,11 @@ public class UserDAO {
             statement.setString(4, user.getEmail());
             statement.setString(5, user.getDisplayName() != null && !user.getDisplayName().isBlank() ? user.getDisplayName() : user.getUsername());
             statement.setString(6, user.getPasswordHash());
-            if (statement.executeUpdate() == 0) throw new SQLException("Creating employee account failed.");
+            if (statement.executeUpdate() == 0) throw new SQLException("Không tạo được tài khoản nhân viên.");
             try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
                 if (generatedKeys.next()) return generatedKeys.getInt(1);
             }
-            throw new SQLException("Creating employee account failed, no generated UserId returned.");
+            throw new SQLException("Không tạo được tài khoản nhân viên: chưa nhận được mã tài khoản.");
         }
     }
 
@@ -142,13 +142,14 @@ public class UserDAO {
                 INNER JOIN Roles r ON r.RoleId = u.RoleId
                 INNER JOIN Companies c ON c.CompanyId = u.CompanyId
                 INNER JOIN Subscriptions s ON s.CompanyId = c.CompanyId
-                LEFT JOIN Employees e ON e.UserId = u.UserId
+                LEFT JOIN Employees e ON e.CompanyId=u.CompanyId AND e.UserId = u.UserId
                 WHERE c.WorkspaceCode = ?
                   AND u.EmailNormalized = LOWER(LTRIM(RTRIM(?)))
                   AND c.IsActive = 1 AND s.Status = N'ACTIVE'
                   AND u.IsActive = 1 AND u.IsLocked = 0
+                  AND (e.EmployeeId IS NULL OR e.Status = 'Active')
                   AND (u.LockedUntil IS NULL OR u.LockedUntil <= SYSUTCDATETIME())
-                """;
+                """ + " AND " + ContractAccessPolicy.ALLOWED;
         try (Connection connection = DBConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, workspaceCode.trim());
@@ -173,11 +174,12 @@ public class UserDAO {
                 INNER JOIN Companies c ON c.CompanyId = u.CompanyId
                 INNER JOIN Subscriptions s ON s.CompanyId = c.CompanyId
                 WHERE u.UserId = ? AND u.CompanyId IS NOT NULL
-                  AND r.RoleCode IN ('COMPANY_ADMIN', 'MANAGER', 'EMPLOYEE')
+                  AND NOT EXISTS (SELECT 1 FROM Employees e WHERE e.CompanyId=u.CompanyId AND e.UserId=u.UserId AND e.Status<>'Active')
+                  AND r.RoleCode IN ('COMPANY_ADMIN', 'HR', 'MANAGER', 'EMPLOYEE')
                   AND c.IsActive = 1 AND s.Status = N'ACTIVE'
                   AND u.IsActive = 1 AND u.IsLocked = 0
                   AND (u.LockedUntil IS NULL OR u.LockedUntil <= SYSUTCDATETIME())
-                """;
+                """ + " AND " + ContractAccessPolicy.ALLOWED;
         try (Connection connection = DBConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, userId);
@@ -200,6 +202,27 @@ public class UserDAO {
         }
     }
 
+    public boolean isCurrentTenantSessionAuthorized(com.hrms.service.security.TenantPrincipal principal) throws SQLException {
+        if (principal == null || principal.getCompanyId() == null || principal.getCompanyId() <= 0
+                || principal.getWorkspaceCode() == null || !isTenantUserAuthorized(principal.getUserId())) return false;
+        try (Connection connection = DBConnection.getConnection(); PreparedStatement statement = connection.prepareStatement("""
+                SELECT u.PasswordHash FROM Users u JOIN Roles r ON r.RoleId=u.RoleId
+                JOIN Companies c ON c.CompanyId=u.CompanyId
+                WHERE u.UserId=? AND u.CompanyId=? AND r.RoleCode=? AND u.MustChangePassword=? AND c.WorkspaceCode=?
+                """)) {
+            statement.setInt(1, principal.getUserId());
+            statement.setInt(2, principal.getCompanyId());
+            statement.setString(3, principal.getRoleCode());
+            statement.setBoolean(4, principal.isMustChangePassword());
+            statement.setString(5, principal.getWorkspaceCode());
+            try (ResultSet rows = statement.executeQuery()) {
+                return rows.next() && principal.getCredentialVersion() != null
+                        && java.security.MessageDigest.isEqual(principal.getCredentialVersion().getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                        com.hrms.util.SecuritySupport.credentialVersion(rows.getString("PasswordHash")).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            }
+        }
+    }
+
     public boolean recordTenantLoginSuccess(User user) throws SQLException {
         String sql = """
                 DECLARE @Now DATETIME2 = SYSUTCDATETIME();
@@ -210,7 +233,7 @@ public class UserDAO {
                 WHERE u.UserId = ? AND u.RowVersion = ? AND c.IsActive = 1 AND s.Status = N'ACTIVE'
                   AND u.IsActive = 1 AND u.IsLocked = 0
                   AND (u.LockedUntil IS NULL OR u.LockedUntil <= @Now)
-                """;
+                """ + " AND " + ContractAccessPolicy.ALLOWED;
         try (Connection connection = DBConnection.getConnection()) {
             applyAuthWriteOptions(connection);
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -339,6 +362,6 @@ public class UserDAO {
                 if (generatedKeys.next()) return generatedKeys.getInt(1);
             }
         }
-        throw new SQLException("Role EMPLOYEE was not found and could not be created.");
+        throw new SQLException("Không tìm thấy và không tạo được vai trò nhân viên.");
     }
 }

@@ -49,7 +49,8 @@ public class TenantAuthService {
         return new TenantPrincipal(
                 account.getUser().getUserId(), account.getCompanyId(), account.getWorkspaceCode(),
                 account.getCompanyName(), account.getUser().getDisplayName(), account.getUser().getEmail(),
-                account.getRoleCode(), account.getEmployeeId(), account.isMustChangePassword());
+                account.getRoleCode(), account.getEmployeeId(), account.isMustChangePassword(),
+                com.hrms.util.SecuritySupport.credentialVersion(account.getUser().getPasswordHash()));
     }
 
     public boolean changePassword(Integer userId, String passwordHash) throws SQLException {
