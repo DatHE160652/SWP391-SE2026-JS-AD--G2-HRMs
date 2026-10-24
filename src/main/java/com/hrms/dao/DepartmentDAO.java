@@ -14,7 +14,7 @@ import java.util.List;
 public class DepartmentDAO {
     public List<Department> getAllDepartments(int companyId) throws SQLException {
         String sql = """
-                SELECT DepartmentId, CompanyId, DepartmentCode, DepartmentName, CreatedAt
+                SELECT DepartmentId, CompanyId, DepartmentCode, DepartmentName, IsActive, CreatedAt
                 FROM Departments
                 WHERE CompanyId = ?
                 ORDER BY DepartmentId DESC
@@ -33,16 +33,17 @@ public class DepartmentDAO {
         }
     }
 
-    public Department getDepartmentById(int id) throws SQLException {
+    public Department getDepartmentById(int companyId, int id) throws SQLException {
         String sql = """
-                SELECT DepartmentId, CompanyId, DepartmentCode, DepartmentName, CreatedAt
+                SELECT DepartmentId, CompanyId, DepartmentCode, DepartmentName, IsActive, CreatedAt
                 FROM Departments
-                WHERE DepartmentId = ?
+                WHERE DepartmentId = ? AND CompanyId = ?
                 """;
 
         try (Connection connection = DBConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, id);
+            statement.setInt(2, companyId);
             try (ResultSet resultSet = statement.executeQuery()) {
                 return resultSet.next() ? mapDepartment(resultSet) : null;
             }
@@ -65,7 +66,7 @@ public class DepartmentDAO {
         String sql = """
                 UPDATE Departments
                 SET DepartmentCode = ?, DepartmentName = ?
-                WHERE DepartmentId = ?
+                WHERE DepartmentId = ? AND CompanyId = ?
                 """;
 
         try (Connection connection = DBConnection.getConnection();
@@ -73,18 +74,21 @@ public class DepartmentDAO {
             statement.setString(1, department.getDepartmentCode());
             statement.setString(2, department.getDepartmentName());
             statement.setInt(3, department.getDepartmentId());
+            statement.setInt(4, department.getCompanyId());
             return statement.executeUpdate() > 0;
         }
     }
 
-    public boolean deleteDepartment(int id) throws SQLException {
-        String sql = "DELETE FROM Departments WHERE DepartmentId = ?";
-
-        try (Connection connection = DBConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, id);
-            return statement.executeUpdate() > 0;
-        }
+    public boolean setDepartmentActive(int companyId, int id, boolean active) throws SQLException {
+        return OrganizationTransaction.execute(companyId, connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "UPDATE Departments SET IsActive=? WHERE CompanyId=? AND DepartmentId=?")) {
+                statement.setBoolean(1, active);
+                statement.setInt(2, companyId);
+                statement.setInt(3, id);
+                return statement.executeUpdate() == 1;
+            }
+        });
     }
 
     public boolean departmentCodeExists(int companyId, String departmentCode, Integer excludeDepartmentId)
@@ -113,12 +117,21 @@ public class DepartmentDAO {
         }
     }
 
+    public boolean companyExists(int companyId) throws SQLException {
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement("SELECT 1 FROM Companies WHERE CompanyId=? AND IsActive=1")) {
+            statement.setInt(1, companyId);
+            try (ResultSet rows = statement.executeQuery()) { return rows.next(); }
+        }
+    }
+
     private Department mapDepartment(ResultSet resultSet) throws SQLException {
         Department department = new Department();
         department.setDepartmentId(resultSet.getInt("DepartmentId"));
         department.setCompanyId(resultSet.getInt("CompanyId"));
         department.setDepartmentCode(resultSet.getString("DepartmentCode"));
         department.setDepartmentName(resultSet.getString("DepartmentName"));
+        department.setActive(resultSet.getBoolean("IsActive"));
         Timestamp createdAt = resultSet.getTimestamp("CreatedAt");
         department.setCreatedAt(createdAt == null ? null : createdAt.toLocalDateTime());
         return department;

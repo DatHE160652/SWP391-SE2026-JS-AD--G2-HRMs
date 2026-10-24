@@ -5,53 +5,57 @@
     <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Position Management</title>
-    <link rel="stylesheet" href="../css/employee.css">
+    <title>Quản lý Chức danh</title>
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/lifecycle.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/organization.css">
 </head>
-<body data-page="position-list">
-<div class="shell">
-    <aside class="sidebar">
-        <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
-        <div class="nav-label">Phân hệ quản trị</div>
-        <a class="nav-link" href="../employee/employee-list">Quản lý Nhân sự</a>
-        <a class="nav-link" href="../department/department-list">Quản lý Phòng ban</a>
-        <a class="nav-link active" href="position-list">Quản lý Chức danh</a>
-        <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
-    </aside>
-
-    <main class="content">
+<body class="lc" data-page="position-list">
+<%@ include file="/WEB-INF/views/common/lifecycle-shell.jspf" %>
+    <main class="lc-main content">
+        <div class="lc-breadcrumb">Quản trị nhân sự / Cơ cấu tổ chức</div>
         <div class="page-header">
             <div>
                 <h1 class="page-title">Quản lý Chức danh</h1>
             </div>
-            <a class="button" href="position-form">+ Add Position</a>
+            <a class="button" href="position-form">+ Thêm chức danh</a>
         </div>
 
         <section class="summary-grid">
             <div class="summary-card">
-                <div class="summary-label">Total Positions</div>
+                <div class="summary-label">Tổng chức danh</div>
                 <div id="totalPositions" class="summary-number">0</div>
             </div>
         </section>
 
         <div id="message" class="message"></div>
 
+        <label for="statusFilter">Trạng thái</label>
+        <select id="statusFilter">
+            <option value="">Tất cả</option>
+            <option value="Active">Đang hoạt động</option>
+            <option value="Inactive">Ngừng hoạt động</option>
+        </select>
+
         <section class="panel">
-            <table>
+            <label for="departmentFilter">Phòng ban</label>
+            <select id="departmentFilter"></select>
+            <label for="levelFilter">Cấp trách nhiệm</label><select id="levelFilter"></select>
+            <table data-pagination="positions">
                 <thead>
                 <tr>
-                    <th>Position Title</th>
-                    <th>Department</th>
-                    <th>Description</th>
-                    <th>Created At</th>
-                    <th>Actions</th>
+                    <th>Tên chức danh</th>
+                    <th>Phòng ban</th>
+                    <th>Cấp trách nhiệm</th>
+                    <th>Phụ cấp áp dụng</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
                 </tr>
                 </thead>
                 <tbody id="positionRows"></tbody>
             </table>
         </section>
     </main>
-</div>
 <script src="../js/position.js?v=<%= application.getResource("/js/position.js").openConnection().getLastModified() %>"></script>
+<script src="${pageContext.request.contextPath}/js/organization-shell.js" defer></script>
 </body>
 </html>

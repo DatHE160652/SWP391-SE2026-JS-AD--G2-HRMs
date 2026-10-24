@@ -5,27 +5,20 @@
     <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Position Form</title>
-    <link rel="stylesheet" href="../css/employee.css">
+    <title>Thông tin chức danh</title>
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/lifecycle.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/organization.css">
 </head>
-<body data-page="position-form">
-<div class="shell">
-    <aside class="sidebar">
-        <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
-        <div class="nav-label">Phân hệ quản trị</div>
-        <a class="nav-link" href="../employee/employee-list">Quản lý Nhân sự</a>
-        <a class="nav-link" href="../department/department-list">Quản lý Phòng ban</a>
-        <a class="nav-link active" href="position-list">Quản lý Chức danh</a>
-        <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
-    </aside>
-
-    <main class="content">
+<body class="lc" data-page="position-form">
+<%@ include file="/WEB-INF/views/common/lifecycle-shell.jspf" %>
+    <main class="lc-main content">
+        <div class="lc-breadcrumb">Quản trị nhân sự / Cơ cấu tổ chức</div>
         <div class="page-header">
             <div>
-                <h1 id="positionFormTitle" class="page-title">Add Position</h1>
-                <p class="page-subtitle">Create or update position information.</p>
+                <h1 id="positionFormTitle" class="page-title">Thêm chức danh</h1>
+                <p class="page-subtitle">Mỗi chức danh thuộc một phòng ban và một cấp trách nhiệm. Chức danh đã sử dụng không được đổi phòng ban hoặc cấp; hãy tạo chức danh mới và điều chuyển có ngày hiệu lực.</p>
             </div>
-            <a class="button secondary" href="position-list">Cancel</a>
+            <a class="button secondary" href="position-list">Hủy</a>
         </div>
 
         <div id="message" class="message"></div>
@@ -34,25 +27,45 @@
             <input type="hidden" name="positionId">
             <div class="form-grid">
                 <div>
-                    <label>Department</label>
+                    <label>Phòng ban</label>
                     <select name="departmentId" required></select>
                 </div>
                 <div>
-                    <label>Position Title</label>
-                    <input name="positionTitle" required>
+                    <label>Tên chức danh</label>
+                    <input name="positionTitle" maxlength="150" required>
                 </div>
                 <div>
-                    <label>Description</label>
-                    <textarea name="description" rows="3"></textarea>
+                    <label>Mô tả</label>
+                    <textarea name="description" rows="3" maxlength="255"></textarea>
+                </div>
+                <div>
+                    <label>Cấp trách nhiệm</label>
+                    <select name="responsibilityLevelId" required></select>
+                    <a href="../responsibility-level/responsibility-level-list">Quản lý cấp trách nhiệm</a>
+                    <small id="responsibilityAllowance"></small>
+                </div>
+                <div>
+                    <label>Chức danh quản lý trực tiếp</label>
+                    <select name="reportsToPositionId"><option value="">Chưa cấu hình</option></select>
+                    <small>Liên kết chức danh nhân viên với chức danh quản lý đúng team trong cùng phòng ban. Không suy đoán team từ tên chức danh.</small>
+                </div>
+                <div>
+                    <label>Trạng thái</label>
+                    <select name="isActive"><option value="true">Đang hoạt động</option><option value="false">Ngừng hoạt động</option></select>
+                </div>
+                <div>
+                    <label for="canManageEmployees">Cho phép quản lý nhân viên</label>
+                    <input id="canManageEmployees" name="canManageEmployees" type="checkbox" value="true">
+                    <small>Cấp trách nhiệm Employee không được phép quản lý nhân viên. Các cấp khác cần được bật quyền này để làm quản lý trực tiếp.</small>
                 </div>
             </div>
             <div class="form-actions">
-                <button type="submit">Save</button>
-                <a class="button secondary" href="position-list">Cancel</a>
+                <button type="submit">Lưu</button>
+                <a class="button secondary" href="position-list">Hủy</a>
             </div>
         </form>
     </main>
-</div>
 <script src="../js/position.js?v=<%= application.getResource("/js/position.js").openConnection().getLastModified() %>"></script>
+<script src="${pageContext.request.contextPath}/js/organization-shell.js" defer></script>
 </body>
 </html>
