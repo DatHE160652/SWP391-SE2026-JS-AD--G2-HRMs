@@ -1,6 +1,8 @@
 package com.hrms.service;
 
 import com.hrms.dao.AuditLogDAO;
+import com.hrms.dao.EmployeeCareerHistoryDAO;
+import com.hrms.model.EmployeeCareerEvent;
 import com.hrms.model.AuditLog;
 
 import java.sql.SQLException;
@@ -25,5 +27,9 @@ public class EmployeeHistoryService {
 
     public List<AuditLogDAO.HistoryEntry> getEmployeeHistory(int employeeId) throws SQLException {
         return auditLogDAO.getEmployeeHistory(employeeId);
+    }
+
+    public List<EmployeeCareerEvent> getCareerHistory(int companyId,int employeeId) throws SQLException {
+        return new EmployeeCareerHistoryDAO().getHistory(companyId,employeeId);
     }
 }

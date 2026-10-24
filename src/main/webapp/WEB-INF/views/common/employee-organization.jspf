@@ -1,0 +1,48 @@
+<%@ page pageEncoding="UTF-8" %>
+                <form id="organizationForm" data-read-only="true" novalidate>
+                    <fieldset id="assignmentFields" disabled>
+                    <h2>Phân công tổ chức</h2>
+                    <input type="hidden" name="employeeId">
+                    <div class="form-grid">
+                        <div>
+                            <label>Nhân viên</label>
+                            <input id="organizationEmployeeName" readonly>
+                        </div>
+                        <div>
+                            <label>Phòng ban</label>
+                            <input id="organizationDepartmentName" readonly>
+                        </div>
+                        <div>
+                            <label>Chức danh</label>
+                            <input id="organizationPositionTitle" readonly>
+                        </div>
+                        <div>
+                            <label for="directManager">Quản lý trực tiếp</label>
+                            <input id="directManager" readonly>
+                        </div>
+                    </div>
+                    </fieldset>
+                </form>
+                <section id="directReportsPanel" class="ea-reports">
+                    <h2>Cấp dưới trực tiếp (<span id="directReportsCount">0</span>)</h2>
+                    <p id="directReportsWarning" role="alert"></p>
+                    <button id="manageTeamButton" type="button">Quản lý thành viên nhóm</button>
+                    <table data-pagination="direct-reports" style="margin-top: 18px;">
+                        <thead><tr><th>Mã nhân viên</th><th>Họ tên</th><th>Phòng ban</th><th>Chức danh</th><th>Thao tác</th></tr></thead>
+                        <tbody id="directReportRows"></tbody>
+                    </table>
+                </section>
+                <dialog id="manageTeamDialog" class="lc-modal ea-team-dialog" aria-labelledby="teamDialogTitle">
+                    <form id="manageTeamForm" novalidate>
+                        <h2 id="teamDialogTitle">Quản lý thành viên nhóm</h2>
+                        <p id="teamManagerName"></p>
+                        <p id="teamMessage" role="alert"></p>
+                        <div id="teamMemberOptions" class="member-picker"></div>
+                        <label for="teamChangeReason">Lý do phân công nhân viên chưa có Manager</label>
+                        <input id="teamChangeReason" name="reason" maxlength="500">
+                        <div class="form-actions">
+                            <button type="submit">Lưu thành viên nhóm</button>
+                            <button id="closeTeamDialog" type="button" class="secondary">Đóng</button>
+                        </div>
+                    </form>
+                </dialog>

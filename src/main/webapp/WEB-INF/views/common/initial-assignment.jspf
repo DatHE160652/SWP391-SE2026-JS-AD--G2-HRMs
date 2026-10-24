@@ -1,0 +1,25 @@
+<%@ page pageEncoding="UTF-8" %>
+<dialog id="initialAssignmentDialog" class="lc-modal" aria-labelledby="initialAssignmentTitle">
+    <form id="initialAssignmentForm">
+        <div class="lc-modal-header"><h2 id="initialAssignmentTitle">Phân công nhân viên</h2><button type="button" class="lc-close" data-initial-close aria-label="Đóng phân công">×</button></div>
+        <div class="lc-form-section">
+            <p id="initialAssignmentDepartment" class="lc-muted"></p>
+            <div id="initialAssignmentError" class="lc-alert" role="alert"></div>
+            <input type="hidden" name="departmentId">
+            <div class="lc-form-grid">
+                <label class="full">Chức danh trong phòng ban *<select name="positionId" required></select></label>
+                <div class="full"><label>Vai trò tài khoản theo chức danh</label><span id="initialAssignmentRole" class="lc-badge">Chưa chọn chức danh</span></div>
+                <fieldset class="full ia-employees"><legend>Nhân viên chưa phân công *</legend>
+                    <p id="initialAssignmentSelectionHint" class="lc-form-hint" aria-live="polite">Chọn chức danh trước để chọn nhân viên.</p>
+                    <div id="initialAssignmentEmployees" class="ia-picker"></div>
+                </fieldset>
+                <label id="initialAssignmentManagerField" class="full" hidden>Quản lý trực tiếp<select name="managerId" disabled><option value="">Chưa chọn quản lý</option></select><span id="initialAssignmentManagerHint" class="lc-form-hint" aria-live="polite"></span></label>
+            </div>
+            <p id="initialAssignmentEmpty" class="lc-muted" hidden></p>
+            <a id="initialAssignmentPositionLink" class="button secondary small">Thêm chức danh cho phòng ban →</a>
+        </div>
+        <div class="lc-modal-footer"><button type="button" class="secondary" data-initial-close>Đóng</button><button type="submit" id="initialAssignmentSave">Lưu phân công</button></div>
+    </form>
+</dialog>
+<link rel="stylesheet" href="${pageContext.request.contextPath}/css/initial-assignment.css?v=<%= application.getResource("/css/initial-assignment.css").openConnection().getLastModified() %>">
+<script src="${pageContext.request.contextPath}/js/initial-assignment.js?v=<%= application.getResource("/js/initial-assignment.js").openConnection().getLastModified() %>" defer></script>
