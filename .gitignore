@@ -16,3 +16,5 @@ dist/
 # Local database/config files
 .env
 application-local.properties
+db.properties
+test/
