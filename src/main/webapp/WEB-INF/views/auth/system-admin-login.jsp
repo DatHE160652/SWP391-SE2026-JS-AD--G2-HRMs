@@ -3,6 +3,7 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Đăng nhập | HRMs.Admin</title>
@@ -31,6 +32,6 @@
         <button class="button button-primary button-wide" type="submit"><svg class="icon" aria-hidden="true"><use href="${icons}#login"/></svg>Đăng nhập Quản trị Hệ thống</button>
     </form>
 </main>
-<script src="${pageContext.request.contextPath}/js/system-admin.js" defer></script>
+<script src="${pageContext.request.contextPath}/js/system-admin.js?v=<%= application.getResource("/js/system-admin.js").openConnection().getLastModified() %>" defer></script>
 </body>
 </html>

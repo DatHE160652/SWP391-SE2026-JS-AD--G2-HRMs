@@ -3,22 +3,23 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Đăng nhập Tenant | HRMs Cloud</title>
+    <title>Đăng nhập công ty | HRMs Cloud</title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/public-portal.css">
 </head>
 <body class="tenant-login-page">
 <main class="tenant-login-main">
     <section class="tenant-login-card" aria-labelledby="tenant-login-title">
         <div class="tenant-login-heading">
-            <span class="eyebrow">TENANT WORKSPACE</span>
+            <span class="eyebrow">WORKSPACE</span>
             <h1 id="tenant-login-title">Đăng nhập</h1>
             <p>Nhập thông tin workspace và tài khoản tenant của doanh nghiệp.</p>
         </div>
         <div class="login-info">
             <strong>Đăng nhập lần đầu bằng mật khẩu tạm?</strong>
-            <span>Company Admin và nhân sự sẽ được yêu cầu đổi mật khẩu sau khi xác thực thành công.</span>
+            <span>Quản trị viên công ty và nhân sự sẽ được yêu cầu đổi mật khẩu sau khi xác thực thành công.</span>
         </div>
         <c:if test="${not empty loginError}">
             <div class="alert alert-warning" role="alert"><c:out value="${loginError}"/></div>
@@ -40,7 +41,7 @@
                 <label for="tenantPassword">Mật khẩu <span>*</span></label>
                 <input id="tenantPassword" name="tenantPassword" type="password" required placeholder="••••••••">
             </div>
-            <button class="button button-primary button-wide" type="submit">Đăng nhập vào Workspace</button>
+            <button class="button button-primary button-wide" type="submit">Đăng nhập vào workspace</button>
         </form>
         <div class="tenant-login-links">
             <a href="${pageContext.request.contextPath}/consultation-request">Chưa có workspace? Đăng ký tư vấn</a>

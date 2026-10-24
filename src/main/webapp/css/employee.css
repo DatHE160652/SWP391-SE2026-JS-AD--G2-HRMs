@@ -480,6 +480,21 @@ input[type="file"] {
     font-size: 12px;
 }
 
+.field-error {
+    display: block;
+    margin-top: 6px;
+    color: #b42318;
+    font-size: 13px;
+}
+
+.field-error:empty {
+    display: none;
+}
+
+#employeeForm [aria-invalid="true"] {
+    border-color: #b42318;
+}
+
 @media (max-width: 900px) {
     .shell,
     .topbar,

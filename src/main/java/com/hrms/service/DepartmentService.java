@@ -2,89 +2,58 @@ package com.hrms.service;
 
 import com.hrms.dao.DepartmentDAO;
 import com.hrms.model.Department;
-import com.hrms.util.DBConnection;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.List;
 
 public class DepartmentService {
     private final DepartmentDAO departmentDAO = new DepartmentDAO();
 
-    public List<Department> getDepartments() throws SQLException {
-        return departmentDAO.getAllDepartments(getOrCreateDefaultCompanyId());
+    public List<Department> getDepartments(int companyId) throws SQLException {
+        return departmentDAO.getAllDepartments(companyId);
     }
 
-    public Department getDepartmentDetail(int id) throws SQLException {
-        return departmentDAO.getDepartmentById(id);
+    public Department getDepartmentDetail(int companyId, int id) throws SQLException {
+        return departmentDAO.getDepartmentById(companyId, id);
     }
 
-    public boolean createDepartment(Department department) throws SQLException {
-        department.setCompanyId(getOrCreateDefaultCompanyId());
+    public boolean createDepartment(int companyId, Department department) throws SQLException {
+        department.setCompanyId(companyId);
         validate(department, null);
         return departmentDAO.insertDepartment(department);
     }
 
-    public boolean updateDepartment(Department department) throws SQLException {
-        Department existing = departmentDAO.getDepartmentById(department.getDepartmentId());
-        if (existing == null) {
-            throw new IllegalArgumentException("Department not found.");
+    public boolean updateDepartment(int companyId, Department department) throws SQLException {
+        if (getDepartmentDetail(companyId, department.getDepartmentId()) == null) {
+            throw new IllegalArgumentException("Không tìm thấy phòng ban.");
         }
-        department.setCompanyId(existing.getCompanyId());
+        department.setCompanyId(companyId);
         validate(department, department.getDepartmentId());
         return departmentDAO.updateDepartment(department);
     }
 
-    public boolean deleteDepartment(int id) throws SQLException {
-        return departmentDAO.deleteDepartment(id);
+    public boolean setDepartmentActive(int companyId, int id, boolean active) throws SQLException {
+        if (!departmentDAO.setDepartmentActive(companyId, id, active)) {
+            throw new IllegalArgumentException("Không tìm thấy phòng ban trong công ty của bạn.");
+        }
+        return true;
     }
 
-    private void validate(Department department, Integer excludeDepartmentId) throws SQLException {
-        if (department.getDepartmentCode() == null || department.getDepartmentCode().isBlank()) {
-            throw new IllegalArgumentException("Department code is required.");
+    private void validate(Department department, Integer excludeId) throws SQLException {
+        department.setDepartmentCode(required("departmentCode", department.getDepartmentCode(), 50));
+        department.setDepartmentName(required("departmentName", department.getDepartmentName(), 150));
+        if (!departmentDAO.companyExists(department.getCompanyId())) {
+            throw new IllegalArgumentException("Công ty không hợp lệ hoặc đã ngừng hoạt động.");
         }
-        if (department.getDepartmentName() == null || department.getDepartmentName().isBlank()) {
-            throw new IllegalArgumentException("Department name is required.");
-        }
-        if (departmentDAO.departmentCodeExists(department.getCompanyId(), department.getDepartmentCode(),
-                excludeDepartmentId)) {
-            throw new IllegalArgumentException("Department code already exists.");
+        if (departmentDAO.departmentCodeExists(department.getCompanyId(), department.getDepartmentCode(), excludeId)) {
+            throw new FieldValidationException("departmentCode", "Mã phòng ban đã tồn tại trong công ty.");
         }
     }
 
-    private int getOrCreateDefaultCompanyId() throws SQLException {
-        try (Connection connection = DBConnection.getConnection()) {
-            String selectSql = "SELECT TOP 1 CompanyId FROM Companies ORDER BY CompanyId";
-
-            try (Statement statement = connection.createStatement();
-                 ResultSet resultSet = statement.executeQuery(selectSql)) {
-                if (resultSet.next()) {
-                    return resultSet.getInt("CompanyId");
-                }
-            }
-
-            String insertSql = """
-                    INSERT INTO Companies (WorkspaceCode, CompanyName, ContactEmail)
-                    VALUES (?, ?, ?)
-                    """;
-
-            try (PreparedStatement statement = connection.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
-                statement.setString(1, "demo");
-                statement.setString(2, "Demo Company");
-                statement.setString(3, "admin@hrms.local");
-                statement.executeUpdate();
-
-                try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
-                    if (generatedKeys.next()) {
-                        return generatedKeys.getInt(1);
-                    }
-                }
-            }
-        }
-
-        throw new SQLException("Default company could not be created.");
+    static String required(String field, String value, int maximum) {
+        if (value == null || value.isBlank()) throw new FieldValidationException(field, "Thông tin này là bắt buộc.");
+        String trimmed = value.strip();
+        if (trimmed.length() > maximum) throw new FieldValidationException(field, "Độ dài tối đa là " + maximum + " characters.");
+        return trimmed;
     }
 }

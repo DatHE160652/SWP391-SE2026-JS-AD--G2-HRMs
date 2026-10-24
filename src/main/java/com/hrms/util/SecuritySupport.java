@@ -12,6 +12,13 @@ import java.util.Base64;
 
 /** Session and CSRF helpers shared by public, tenant, and System Admin flows. */
 public final class SecuritySupport {
+    public static void requireOrganizationEditor(HttpServletRequest request) {
+        TenantPrincipal principal = getTenantPrincipal(request);
+        if (principal == null || principal.isMustChangePassword()
+                || !principal.isCompanyAdministrator()) {
+            throw new SecurityException("Bạn không có quyền quản lý phân công nhân viên.");
+        }
+    }
     public static final String PRINCIPAL_ATTRIBUTE = "systemAdminPrincipal";
     public static final String CSRF_ATTRIBUTE = "systemAdminCsrfToken";
     public static final String PUBLIC_CSRF_ATTRIBUTE = "publicFaqCsrfToken";
@@ -62,10 +69,26 @@ public final class SecuritySupport {
         return getTenantPrincipal(request) != null;
     }
 
+    public static int requireCompanyId(HttpServletRequest request) {
+        TenantPrincipal principal = getTenantPrincipal(request);
+        if (principal == null || principal.getCompanyId() == null || principal.getCompanyId() <= 0) {
+            throw new SecurityException("Vui lòng đăng nhập vào workspace.");
+        }
+        return principal.getCompanyId();
+    }
+
     public static TenantPrincipal getTenantPrincipal(HttpServletRequest request) {
         HttpSession session = request.getSession(false);
         Object value = session == null ? null : session.getAttribute(TENANT_PRINCIPAL_ATTRIBUTE);
         return value instanceof TenantPrincipal principal ? principal : null;
+    }
+
+    public static String credentialVersion(String passwordHash) {
+        if (passwordHash == null) return null;
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(passwordHash.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException exception) { throw new IllegalStateException(exception); }
     }
 
     public static void applyNoStore(HttpServletResponseAdapter response) {

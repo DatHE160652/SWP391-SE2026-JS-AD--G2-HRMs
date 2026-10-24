@@ -71,10 +71,12 @@ const LeaveApp = (() => {
         // Load employee balances to show available quota
         fetch("../leave/api/my-balances")
             .then(res => res.json())
-            .then(data => {
+            .then(async data => {
                 if (data.success && data.data) {
                     typeSelect.innerHTML = '<option value="">-- Chọn loại nghỉ phép --</option>';
-                    data.data.forEach(b => {
+                    const activeTypes = new Set((await fetch("../leave/api/types").then(response => response.json())).data
+                        .filter(type => type.isActive).map(type => type.leaveTypeId));
+                    data.data.filter(balance => activeTypes.has(balance.leaveTypeId)).forEach(b => {
                         cachedBalances[b.leaveTypeId] = b;
                         const opt = document.createElement("option");
                         opt.value = b.leaveTypeId;
@@ -91,6 +93,7 @@ const LeaveApp = (() => {
             const tId = typeSelect.value;
 
             if (!sVal || !eVal) {
+                FormValidation.setError(form, 'endDate', '');
                 banner.style.display = "none";
                 balanceNotice.textContent = "";
                 return;
@@ -101,6 +104,7 @@ const LeaveApp = (() => {
             banner.style.display = "flex";
 
             if (days <= 0) {
+                FormValidation.setError(form, 'endDate', 'Khoảng thời gian đã chọn không có ngày làm việc.');
                 banner.className = "calc-banner error";
                 banner.querySelector(".calc-text").textContent = "Khoảng thời gian đã chọn không có ngày làm việc (rơi vào T7, CN).";
                 btnSubmit.disabled = true;
@@ -108,16 +112,19 @@ const LeaveApp = (() => {
             }
 
             banner.className = "calc-banner";
+            FormValidation.setError(form, 'endDate', '');
             banner.querySelector(".calc-text").innerHTML = `Số ngày làm việc tính toán: <strong>${days} ngày</strong> (đã trừ Thứ 7, Chủ Nhật)`;
 
             if (tId && cachedBalances[tId]) {
                 const rem = parseFloat(cachedBalances[tId].remainingDays || 0);
                 if (days > rem) {
+                    FormValidation.setError(form, 'endDate', `Số ngày nghỉ vượt quá số dư hiện tại (${rem} ngày).`);
                     banner.className = "calc-banner error";
                     balanceNotice.innerHTML = `<span style="color:#b42318;font-weight:700;">Vượt quá số dư hiện tại (${rem} ngày còn lại)!</span>`;
                     btnSubmit.disabled = true;
                     return;
                 } else {
+                    FormValidation.setError(form, 'endDate', '');
                     balanceNotice.innerHTML = `<span style="color:#027a48;">Đủ hạn mức (${rem - days} ngày còn lại sau khi trừ).</span>`;
                     btnSubmit.disabled = false;
                 }
@@ -139,6 +146,7 @@ const LeaveApp = (() => {
         form.addEventListener("submit", e => {
             e.preventDefault();
             const formData = new URLSearchParams(new FormData(form));
+                formData.set("csrfToken", document.querySelector('meta[name="organization-csrf-token"]')?.content || "");
 
             btnSubmit.disabled = true;
             btnSubmit.textContent = "Đang gửi đơn...";
@@ -154,7 +162,9 @@ const LeaveApp = (() => {
                         alert(data.message || "Nộp đơn xin nghỉ phép thành công!");
                         window.location.href = "my-requests";
                     } else {
-                        alert(data.message || "Có lỗi xảy ra khi nộp đơn.");
+                        if (!FormValidation.showErrors(form, data)) {
+                            showMessage('submitMessage', data.message || 'Không thể nộp đơn.', true);
+                        }
                         btnSubmit.disabled = false;
                         btnSubmit.textContent = "Nộp đơn xin nghỉ";
                     }
@@ -469,7 +479,8 @@ const LeaveApp = (() => {
                     }
 
                     tableBody.innerHTML = "";
-                    data.data.forEach(t => {
+                    const status = document.getElementById("statusFilter")?.value || '';
+                    data.data.filter(type => !status || type.isActive === (status === 'Active')).forEach(t => {
                         const tr = document.createElement("tr");
                         const paidBadge = t.isPaid
                             ? '<span class="badge badge-paid">Có hưởng lương</span>'
@@ -480,11 +491,11 @@ const LeaveApp = (() => {
                             <td><span style="font-family:monospace;font-weight:700;color:var(--navy,#062579);">${t.typeCode}</span></td>
                             <td><strong>${escapeHtml(t.typeName)}</strong></td>
                             <td style="font-weight:700;">${t.defaultDaysPerYear} ngày</td>
-                            <td>${paidBadge}</td>
+                            <td>${paidBadge}<br>${t.isActive ? 'Active' : 'Inactive'}</td>
                             <td>
                                 <div class="btn-action-group">
                                     <button class="btn-action view" onclick='LeaveApp.editLeaveType(${JSON.stringify(t)})'>Sửa</button>
-                                    <button class="btn-action reject" onclick="LeaveApp.deleteLeaveType(${t.leaveTypeId}, '${escapeHtml(t.typeName)}')">Xóa</button>
+                                    <button class="btn-action reject" onclick="LeaveApp.setLeaveTypeActive(${t.leaveTypeId}, ${!t.isActive})">${t.isActive ? 'Vô hiệu hóa' : 'Kích hoạt lại'}</button>
                                 </div>
                             </td>
                         `;
@@ -514,13 +525,16 @@ const LeaveApp = (() => {
                             form.reset();
                             loadTypes();
                         } else {
-                            alert(data.message || "Có lỗi xảy ra.");
+                            if (!FormValidation.showErrors(form, data)) {
+                                showMessage('typeMessage', data.message || 'Không thể lưu loại nghỉ phép.', true);
+                            }
                         }
                     })
                     .catch(err => alert("Lỗi kết nối: " + err));
             });
         }
 
+        document.getElementById("statusFilter")?.addEventListener("change", loadTypes);
         loadTypes();
     }
 
@@ -856,9 +870,11 @@ const LeaveApp = (() => {
         const btn = document.getElementById("btnConfirmReject");
 
         if (!comment || comment.trim().length === 0) {
-            alert("Vui lòng nhập lý do từ chối đơn xin nghỉ phép.");
+            FormValidation.setError(document, 'rejectComment', 'Vui lòng nhập lý do từ chối đơn xin nghỉ phép.');
+            document.getElementById('rejectComment').focus();
             return;
         }
+        FormValidation.setError(document, 'rejectComment', '');
 
         btn.disabled = true;
         btn.textContent = "Đang xử lý...";
@@ -878,7 +894,9 @@ const LeaveApp = (() => {
                     if (window.LeaveAppReloadPending) window.LeaveAppReloadPending();
                     if (window.LeaveAppReloadAll) window.LeaveAppReloadAll();
                 } else {
-                    alert(data.message || "Lỗi khi từ chối đơn.");
+                    if (!FormValidation.showErrors(document, data)) {
+                        alert(data.message || "Lỗi khi từ chối đơn.");
+                    }
                 }
             })
             .catch(err => {
@@ -977,23 +995,24 @@ const LeaveApp = (() => {
         openModal("modalLeaveType");
     }
 
-    function deleteLeaveType(id, name) {
-        if (!confirm(`Bạn có chắc chắn muốn xóa chính sách nghỉ phép "${name}" không?`)) {
+    function setLeaveTypeActive(id, active) {
+        if (!confirm(active ? 'Kích hoạt lại loại nghỉ phép này?' : 'Vô hiệu hóa loại nghỉ phép này?')) {
             return;
         }
 
         fetch("../leave/api/types", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({ action: "delete", leaveTypeId: id }).toString()
+            body: new URLSearchParams({ action: active ? "activate" : "deactivate", leaveTypeId: id,
+                csrfToken: document.querySelector('meta[name="organization-csrf-token"]')?.content || "" }).toString()
         })
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message || "Đã xóa thành công!");
+                    alert(data.message || "Đã cập nhật trạng thái!");
                     window.location.reload();
                 } else {
-                    alert(data.message || "Không thể xóa chính sách này.");
+                    alert(data.message || "Không thể cập nhật trạng thái.");
                 }
             })
             .catch(err => alert("Lỗi: " + err));
@@ -1049,6 +1068,6 @@ const LeaveApp = (() => {
         viewCalendarEventDetail,
         editLeaveType,
         openCreateLeaveTypeModal,
-        deleteLeaveType
+        setLeaveTypeActive
     };
 })();

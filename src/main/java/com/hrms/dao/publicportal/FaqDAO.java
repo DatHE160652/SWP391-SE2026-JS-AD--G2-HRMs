@@ -67,7 +67,7 @@ public class FaqDAO {
                 INNER JOIN Roles r ON r.RoleId = u.RoleId
                 WHERE u.UserId = ? AND u.CompanyId IS NOT NULL
                   AND u.IsActive = 1 AND u.IsLocked = 0
-                  AND r.RoleCode IN ('COMPANY_ADMIN', 'MANAGER', 'EMPLOYEE')
+                  AND r.RoleCode IN ('COMPANY_ADMIN', 'HR', 'MANAGER', 'EMPLOYEE')
                 """;
         try (Connection connection = DBConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -99,7 +99,7 @@ public class FaqDAO {
                 if (keys.next()) return keys.getInt(1);
             }
         }
-        throw new SQLException("FAQ topic was not created.");
+        throw new SQLException("Không tạo được chủ đề hỏi đáp.");
     }
 
     public long createComment(int authorUserId, int topicId, String content) throws SQLException {
@@ -116,7 +116,7 @@ public class FaqDAO {
                 }
             }
         }
-        throw new SQLException("FAQ comment was not created.");
+        throw new SQLException("Không tạo được bình luận hỏi đáp.");
     }
 
     private LocalDateTime toLocalDateTime(Timestamp value) {

@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Duyệt đơn nghỉ phép - HRMs Cloud</title>
@@ -12,7 +13,7 @@
 <body data-page="leave-pending">
 <div class="shell">
     <aside class="sidebar">
-        <div class="brand">HRMs Cloud<span>Manager Portal</span></div>
+        <div class="brand">HRMs Cloud<span>Cổng quản lý</span></div>
         <div class="nav-label">Phân hệ Chấm công</div>
         <a class="nav-link" href="../employee/my-profile?nav=manager">Hồ sơ cá nhân</a>
         <a class="nav-link" href="../attendance/manager-attendance">Điểm danh Nhân sự</a>
@@ -49,7 +50,7 @@
                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
             </svg>
             <div>
-                <strong>Lưu ý quy trình duyệt:</strong> Khi phê duyệt đơn, hệ thống sẽ tự động trừ số ngày nghỉ tương ứng vào quỹ phép của nhân viên và đồng bộ trạng thái <strong>On Leave</strong> vào bảng chấm công cho các ngày làm việc đã duyệt.
+                <strong>Lưu ý quy trình duyệt:</strong> Khi phê duyệt đơn, hệ thống sẽ tự động trừ số ngày nghỉ tương ứng vào quỹ phép của nhân viên và đồng bộ trạng thái <strong>Nghỉ phép</strong> vào bảng chấm công cho các ngày làm việc đã duyệt.
             </div>
         </div>
 
@@ -122,7 +123,7 @@
     </div>
 </div>
 
-<script src="../js/leave.js"></script>
+<script src="../js/leave.js?v=<%= application.getResource("/js/leave.js").openConnection().getLastModified() %>"></script>
 <script>
     document.addEventListener("DOMContentLoaded", () => {
         LeaveApp.initPendingApprovalsView();

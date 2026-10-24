@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Điểm danh Nhân sự - HRMs Cloud</title>
@@ -100,7 +101,7 @@
                         <span class="count-badge" id="countAll">0</span>
                     </button>
                     <button class="role-tab" data-role="MANAGER">
-                        Quản lý (Manager)
+                        Quản lý
                         <span class="count-badge" id="countManager">0</span>
                     </button>
                     <button class="role-tab" data-role="EMPLOYEE">
@@ -126,8 +127,8 @@
                         <span style="font-size:12px; font-weight:700; color:#475467;">Thao tác khi hoàn tất:</span>
                         <select id="batchActionSelect" style="padding:6px 10px; border:1px solid #d5dbeb; border-radius:6px; font-size:13px; background:#fff;">
                             <option value="auto">Tự động (Chưa vào ➔ Vào ca, Đã vào ➔ Tan ca)</option>
-                            <option value="check-in">Chỉ điểm danh Vào ca (Check-in)</option>
-                            <option value="check-out">Chỉ điểm danh Tan ca (Check-out)</option>
+                            <option value="check-in">Chỉ điểm danh Vào ca</option>
+                            <option value="check-out">Chỉ điểm danh Tan ca</option>
                         </select>
                     </div>
                 </div>
@@ -166,6 +167,6 @@
         </section>
     </main>
 </div>
-<script src="../js/attendance.js"></script>
+<script src="../js/attendance.js?v=<%= application.getResource("/js/attendance.js").openConnection().getLastModified() %>"></script>
 </body>
 </html>

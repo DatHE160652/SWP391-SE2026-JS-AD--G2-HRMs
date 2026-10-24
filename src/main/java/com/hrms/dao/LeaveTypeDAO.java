@@ -21,7 +21,7 @@ public class LeaveTypeDAO {
      */
     public List<LeaveType> getLeaveTypesByCompany(int companyId) throws SQLException {
         String sql = """
-                SELECT LeaveTypeId, CompanyId, TypeCode, TypeName, DefaultDaysPerYear, IsPaid, CreatedAt
+                SELECT LeaveTypeId, CompanyId, TypeCode, TypeName, DefaultDaysPerYear, IsPaid, IsActive, CreatedAt
                 FROM LeaveTypes
                 WHERE CompanyId = ?
                 ORDER BY LeaveTypeId ASC
@@ -45,7 +45,7 @@ public class LeaveTypeDAO {
      */
     public LeaveType getLeaveTypeById(int leaveTypeId) throws SQLException {
         String sql = """
-                SELECT LeaveTypeId, CompanyId, TypeCode, TypeName, DefaultDaysPerYear, IsPaid, CreatedAt
+                SELECT LeaveTypeId, CompanyId, TypeCode, TypeName, DefaultDaysPerYear, IsPaid, IsActive, CreatedAt
                 FROM LeaveTypes
                 WHERE LeaveTypeId = ?
                 """;
@@ -67,7 +67,7 @@ public class LeaveTypeDAO {
      */
     public LeaveType getLeaveTypeByCode(int companyId, String typeCode) throws SQLException {
         String sql = """
-                SELECT LeaveTypeId, CompanyId, TypeCode, TypeName, DefaultDaysPerYear, IsPaid, CreatedAt
+                SELECT LeaveTypeId, CompanyId, TypeCode, TypeName, DefaultDaysPerYear, IsPaid, IsActive, CreatedAt
                 FROM LeaveTypes
                 WHERE CompanyId = ? AND TypeCode = ?
                 """;
@@ -134,17 +134,14 @@ public class LeaveTypeDAO {
         }
     }
 
-    /**
-     * Removes a leave type policy if not referenced by active requests.
-     */
-    public boolean deleteLeaveType(int leaveTypeId, int companyId) throws SQLException {
-        String sql = "DELETE FROM LeaveTypes WHERE LeaveTypeId = ? AND CompanyId = ?";
-
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, leaveTypeId);
-            ps.setInt(2, companyId);
-            return ps.executeUpdate() > 0;
+    public boolean setLeaveTypeActive(int leaveTypeId, int companyId, boolean active) throws SQLException {
+        String sql = "UPDATE LeaveTypes SET IsActive=? WHERE LeaveTypeId=? AND CompanyId=?";
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setBoolean(1, active);
+            statement.setInt(2, leaveTypeId);
+            statement.setInt(3, companyId);
+            return statement.executeUpdate() == 1;
         }
     }
 
@@ -154,6 +151,7 @@ public class LeaveTypeDAO {
         type.setCompanyId(rs.getInt("CompanyId"));
         type.setTypeCode(rs.getString("TypeCode"));
         type.setTypeName(rs.getString("TypeName"));
+        type.setActive(rs.getBoolean("IsActive"));
         type.setDefaultDaysPerYear(rs.getInt("DefaultDaysPerYear"));
         type.setPaid(rs.getBoolean("IsPaid"));
         type.setIsPaid(rs.getBoolean("IsPaid"));

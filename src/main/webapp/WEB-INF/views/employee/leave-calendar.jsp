@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lịch nghỉ cá nhân - HRMs Cloud</title>
@@ -12,7 +13,7 @@
 <body data-page="leave-calendar-employee">
 <div class="shell">
     <aside class="sidebar">
-        <div class="brand">HRMs Cloud<span>Employee Portal</span></div>
+        <div class="brand">HRMs Cloud<span>Cổng nhân viên</span></div>
         <div class="nav-label">Chức năng cá nhân</div>
         <a class="nav-link" href="../employee/my-profile">Hồ sơ cá nhân</a>
         <a class="nav-link" href="../attendance/employee-attendance">Chấm công cá nhân</a>
@@ -83,7 +84,7 @@
     </div>
 </div>
 
-<script src="../js/leave.js"></script>
+<script src="../js/leave.js?v=<%= application.getResource("/js/leave.js").openConnection().getLastModified() %>"></script>
 <script>
     document.addEventListener("DOMContentLoaded", () => {
         LeaveApp.initCalendarView(true); // true = employee personal scope only

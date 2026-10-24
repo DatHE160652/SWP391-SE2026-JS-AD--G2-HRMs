@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chấm công cá nhân - HRMs Cloud</title>
@@ -26,7 +27,7 @@
         <div class="page-header">
             <div>
                 <h1 class="page-title">Bảng chấm công cá nhân</h1>
-                <p class="page-subtitle">Manager xem lịch sử chấm công cá nhân theo tháng.</p>
+                <p class="page-subtitle">Quản lý xem lịch sử chấm công cá nhân theo tháng.</p>
             </div>
         </div>
 
@@ -69,7 +70,7 @@
 
         <section class="summary-grid" style="grid-template-columns: repeat(6, minmax(130px, 1fr));">
             <div class="summary-card"><div class="summary-label">Số ngày đi làm</div><div id="totalWorkingDays" class="summary-number">0</div></div>
-            <div class="summary-card"><div class="summary-label">Tổng giờ làm</div><div id="totalHours" class="summary-number text-success" style="font-size: 24px;">0 hrs</div></div>
+            <div class="summary-card"><div class="summary-label">Tổng giờ làm</div><div id="totalHours" class="summary-number text-success" style="font-size: 24px;">0 giờ</div></div>
             <div class="summary-card"><div class="summary-label">Đúng giờ</div><div id="presentDays" class="summary-number text-success">0</div></div>
             <div class="summary-card"><div class="summary-label">Đi muộn</div><div id="lateDays" class="summary-number text-warning">0</div></div>
             <div class="summary-card"><div class="summary-label">Về sớm</div><div id="earlyLeaveDays" class="summary-number" style="color: #3538cd;">0</div></div>
@@ -84,8 +85,8 @@
                 <tr>
                     <th>Ngày</th>
                     <th>Thứ</th>
-                    <th>Giờ vào (Check-in)</th>
-                    <th>Giờ ra (Check-out)</th>
+                    <th>Giờ vào</th>
+                    <th>Giờ ra</th>
                     <th>Tổng giờ</th>
                     <th>Trạng thái</th>
                     <th>Ghi chú</th>
@@ -98,6 +99,6 @@
         </section>
     </main>
 </div>
-<script src="../js/attendance.js"></script>
+<script src="../js/attendance.js?v=<%= application.getResource("/js/attendance.js").openConnection().getLastModified() %>"></script>
 </body>
 </html>

@@ -3,193 +3,195 @@ package com.hrms.dao;
 import com.hrms.model.Position;
 import com.hrms.util.DBConnection;
 
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Timestamp;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class PositionDAO {
-    public List<Position> getAllPositions(int companyId) throws SQLException {
-        ensureDepartmentColumn();
-        String sql = """
-                SELECT p.PositionId, p.CompanyId, p.DepartmentId, d.DepartmentName,
-                       p.PositionTitle, p.Description, p.CreatedAt
-                FROM Positions p
-                LEFT JOIN Departments d ON d.DepartmentId = p.DepartmentId
-                WHERE p.CompanyId = ?
-                ORDER BY p.PositionId DESC
-                """;
+    private static final String SELECT = """
+            SELECT p.*, d.DepartmentName, r.LevelName, r.LevelCode,
+                CAST(CASE WHEN EXISTS(SELECT 1 FROM EmployeePositionAssignments occupied
+                    WHERE occupied.CompanyId=p.CompanyId AND occupied.PositionId=p.PositionId
+                    AND (occupied.EffectiveTo IS NULL OR occupied.EffectiveTo>CONVERT(date,SYSDATETIME()))
+                    AND (occupied.EffectiveTo IS NULL OR occupied.EffectiveTo>occupied.EffectiveFrom))
+                    THEN 1 ELSE 0 END AS bit) AS AssignmentOccupied,
+                (SELECT CASE WHEN COUNT(*)=1 THEN MAX(a.Amount) END
+                    FROM ResponsibilityAllowancePolicies a WHERE a.CompanyId=p.CompanyId
+                    AND a.ResponsibilityLevelId=p.ResponsibilityLevelId AND a.EffectiveFrom<=CONVERT(date,SYSDATETIME())
+                    AND (a.EffectiveTo IS NULL OR a.EffectiveTo>CONVERT(date,SYSDATETIME()))) AS EffectiveAllowance
+            FROM Positions p
+            JOIN Departments d ON d.CompanyId=p.CompanyId AND d.DepartmentId=p.DepartmentId
+            JOIN ResponsibilityLevels r ON r.CompanyId=p.CompanyId AND r.ResponsibilityLevelId=p.ResponsibilityLevelId
+            """;
+    private static final String UNUSED = """
+            NOT EXISTS (SELECT 1 FROM Employees e WHERE e.CompanyId=p.CompanyId AND e.PositionId=p.PositionId)
+            AND NOT EXISTS (SELECT 1 FROM EmployeePositionAssignments a WHERE a.CompanyId=p.CompanyId AND a.PositionId=p.PositionId)
+            AND NOT EXISTS (SELECT 1 FROM EmployeePositionChanges c WHERE c.CompanyId=p.CompanyId
+                AND (c.OldPositionId=p.PositionId OR c.NewPositionId=p.PositionId))
+            """;
 
+    public List<Position> getAllPositions(int companyId) throws SQLException {
+        return getPositions(companyId, null, false);
+    }
+
+    public List<Position> getPositions(int companyId, Integer departmentId, boolean activeOnly) throws SQLException {
+        String sql = SELECT + " WHERE p.CompanyId=? AND (? IS NULL OR p.DepartmentId=?)"
+                + (activeOnly ? " AND d.IsActive=1 AND p.IsActive=1 AND r.IsActive=1" : "")
+                + " ORDER BY p.PositionId DESC";
         try (Connection connection = DBConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, companyId);
-            try (ResultSet resultSet = statement.executeQuery()) {
+            statement.setObject(2, departmentId, Types.INTEGER);
+            statement.setObject(3, departmentId, Types.INTEGER);
+            try (ResultSet rows = statement.executeQuery()) {
                 List<Position> positions = new ArrayList<>();
-                while (resultSet.next()) {
-                    positions.add(mapPosition(resultSet));
-                }
+                while (rows.next()) positions.add(mapPosition(rows));
                 return positions;
             }
         }
     }
 
-    public Position getPositionById(int id) throws SQLException {
-        ensureDepartmentColumn();
-        String sql = """
-                SELECT p.PositionId, p.CompanyId, p.DepartmentId, d.DepartmentName,
-                       p.PositionTitle, p.Description, p.CreatedAt
-                FROM Positions p
-                LEFT JOIN Departments d ON d.DepartmentId = p.DepartmentId
-                WHERE p.PositionId = ?
-                """;
-
+    public Position getPositionById(int companyId, int id) throws SQLException {
         try (Connection connection = DBConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, id);
-            try (ResultSet resultSet = statement.executeQuery()) {
-                return resultSet.next() ? mapPosition(resultSet) : null;
+             PreparedStatement statement = connection.prepareStatement(SELECT + " WHERE p.CompanyId=? AND p.PositionId=?")) {
+            statement.setInt(1, companyId);
+            statement.setInt(2, id);
+            try (ResultSet rows = statement.executeQuery()) {
+                return rows.next() ? mapPosition(rows) : null;
             }
         }
     }
 
     public boolean insertPosition(Position position) throws SQLException {
-        ensureDepartmentColumn();
         String sql = """
-                INSERT INTO Positions (CompanyId, DepartmentId, PositionTitle, Description, CreatedAt)
-                VALUES (?, ?, ?, ?, SYSUTCDATETIME())
+                INSERT INTO Positions (CompanyId,DepartmentId,ResponsibilityLevelId,
+                    PositionTitle,Description,IsActive,CanManageEmployees,PositionAllowance,ReportsToPositionId,CreatedAt)
+                SELECT ?,?,?,?,?,?,?,?,?,SYSUTCDATETIME()
+                WHERE EXISTS (SELECT 1 FROM Companies WHERE CompanyId=? AND IsActive=1)
+                  AND EXISTS (SELECT 1 FROM Departments WITH (HOLDLOCK) WHERE CompanyId=? AND DepartmentId=? AND IsActive=1)
+                  AND EXISTS (SELECT 1 FROM ResponsibilityLevels WITH (HOLDLOCK) WHERE CompanyId=? AND ResponsibilityLevelId=? AND IsActive=1)
                 """;
-
-        try (Connection connection = DBConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, position.getCompanyId());
-            statement.setInt(2, position.getDepartmentId());
-            statement.setString(3, position.getPositionTitle());
-            statement.setString(4, position.getDescription());
-            return statement.executeUpdate() > 0;
-        }
+        return OrganizationTransaction.execute(position.getCompanyId(), connection -> {
+            new ReportingPositionDAO().validatePosition(connection,position);
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setInt(1, position.getCompanyId());
+                statement.setInt(2, position.getDepartmentId());
+                statement.setInt(3, position.getResponsibilityLevelId());
+                statement.setString(4, position.getPositionTitle());
+                statement.setString(5, position.getDescription());
+                statement.setBoolean(6, position.isActive());
+                statement.setBoolean(7, position.isCanManageEmployees());
+                statement.setBigDecimal(8, position.getPositionAllowance());
+                statement.setObject(9, position.getReportsToPositionId(), Types.INTEGER);
+                statement.setInt(10, position.getCompanyId());
+                statement.setInt(11, position.getCompanyId());
+                statement.setInt(12, position.getDepartmentId());
+                statement.setInt(13, position.getCompanyId());
+                statement.setInt(14, position.getResponsibilityLevelId());
+                return statement.executeUpdate() == 1;
+            }
+        });
     }
 
     public boolean updatePosition(Position position) throws SQLException {
-        ensureDepartmentColumn();
         String sql = """
-                UPDATE Positions
-                SET DepartmentId = ?, PositionTitle = ?, Description = ?
-                WHERE PositionId = ?
-                """;
+                UPDATE p SET DepartmentId=?,ResponsibilityLevelId=?,PositionTitle=?,
+                    Description=?,IsActive=?,CanManageEmployees=?,PositionAllowance=?,ReportsToPositionId=?,UpdatedAt=SYSUTCDATETIME()
+                FROM Positions p WITH (UPDLOCK, HOLDLOCK)
+                WHERE p.CompanyId=? AND p.PositionId=?
+                  AND EXISTS (SELECT 1 FROM Departments WITH (HOLDLOCK) WHERE CompanyId=p.CompanyId AND DepartmentId=?
+                    AND (IsActive=1 OR (DepartmentId=p.DepartmentId AND (p.IsActive=1 OR ?=0))))
+                  AND EXISTS (SELECT 1 FROM ResponsibilityLevels WHERE CompanyId=p.CompanyId AND ResponsibilityLevelId=?
+                    AND (IsActive=1 OR ResponsibilityLevelId=p.ResponsibilityLevelId))
+                  AND ((p.DepartmentId=? AND p.ResponsibilityLevelId=?) OR (
+                """ + UNUSED + "))";
+        return OrganizationTransaction.execute(position.getCompanyId(), connection -> {
+            new ReportingPositionDAO().validatePosition(connection,position);
+            if (!position.isActive() || !position.isCanManageEmployees()) {
+                try (PreparedStatement check = connection.prepareStatement("""
+                        SELECT 1 FROM Employees manager JOIN Employees report
+                          ON report.CompanyId=manager.CompanyId AND report.ManagerId=manager.EmployeeId
+                        WHERE manager.CompanyId=? AND manager.PositionId=?
+                        """)) {
+                    check.setInt(1, position.getCompanyId());
+                    check.setInt(2, position.getPositionId());
+                    try (ResultSet rows = check.executeQuery()) {
+                        if (rows.next()) throw new com.hrms.service.FieldValidationException("canManageEmployees",
+                                "Vui lòng phân công lại hoặc gỡ toàn bộ cấp dưới trước khi tắt quyền quản lý hoặc ngừng hoạt động chức danh.");
+                    }
+                }
+            }
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setInt(1, position.getDepartmentId());
+                statement.setInt(2, position.getResponsibilityLevelId());
+                statement.setString(3, position.getPositionTitle());
+                statement.setString(4, position.getDescription());
+                statement.setBoolean(5, position.isActive());
+                statement.setBoolean(6, position.isCanManageEmployees());
+                statement.setBigDecimal(7, position.getPositionAllowance());
+                statement.setObject(8, position.getReportsToPositionId(), Types.INTEGER);
+                statement.setInt(9, position.getCompanyId());
+                statement.setInt(10, position.getPositionId());
+                statement.setInt(11, position.getDepartmentId());
+                statement.setBoolean(12, position.isActive());
+                statement.setInt(13, position.getResponsibilityLevelId());
+                statement.setInt(14, position.getDepartmentId());
+                statement.setInt(15, position.getResponsibilityLevelId());
+                return statement.executeUpdate() == 1;
+            }
+        });
+    }
 
+    public boolean isPositionAssignedToEmployees(int companyId, int id) throws SQLException {
         try (Connection connection = DBConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, position.getDepartmentId());
-            statement.setString(2, position.getPositionTitle());
-            statement.setString(3, position.getDescription());
-            statement.setInt(4, position.getPositionId());
-            return statement.executeUpdate() > 0;
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT 1 FROM Positions p WHERE p.CompanyId=? AND p.PositionId=? AND (" + UNUSED + ")")) {
+            statement.setInt(1, companyId);
+            statement.setInt(2, id);
+            try (ResultSet rows = statement.executeQuery()) {
+                return !rows.next();
+            }
         }
     }
 
-    public boolean deletePosition(int id) throws SQLException {
-        String sql = "DELETE FROM Positions WHERE PositionId = ?";
-
+    public boolean positionTitleExists(int companyId, int departmentId, String title, Integer excludeId) throws SQLException {
         try (Connection connection = DBConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, id);
-            return statement.executeUpdate() > 0;
-        }
-    }
-
-    public boolean positionTitleExists(int companyId, int departmentId, String positionTitle, Integer excludePositionId)
-            throws SQLException {
-        ensureDepartmentColumn();
-        String sql = """
-                SELECT COUNT(*)
-                FROM Positions
-                WHERE CompanyId = ? AND DepartmentId = ? AND PositionTitle = ?
-                  AND (? IS NULL OR PositionId <> ?)
-                """;
-
-        try (Connection connection = DBConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+             PreparedStatement statement = connection.prepareStatement("""
+                     SELECT 1 FROM Positions WHERE CompanyId=? AND DepartmentId=? AND PositionTitle=?
+                         AND (? IS NULL OR PositionId<>?)
+                     """)) {
             statement.setInt(1, companyId);
             statement.setInt(2, departmentId);
-            statement.setString(3, positionTitle);
-            if (excludePositionId == null) {
-                statement.setNull(4, java.sql.Types.INTEGER);
-                statement.setNull(5, java.sql.Types.INTEGER);
-            } else {
-                statement.setInt(4, excludePositionId);
-                statement.setInt(5, excludePositionId);
-            }
-            try (ResultSet resultSet = statement.executeQuery()) {
-                return resultSet.next() && resultSet.getInt(1) > 0;
-            }
+            statement.setString(3, title);
+            statement.setObject(4, excludeId, Types.INTEGER);
+            statement.setObject(5, excludeId, Types.INTEGER);
+            try (ResultSet rows = statement.executeQuery()) { return rows.next(); }
         }
     }
 
-    public boolean departmentExists(int companyId, int departmentId) throws SQLException {
-        String sql = "SELECT COUNT(*) FROM Departments WHERE CompanyId = ? AND DepartmentId = ?";
-        try (Connection connection = DBConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, companyId);
-            statement.setInt(2, departmentId);
-            try (ResultSet resultSet = statement.executeQuery()) {
-                return resultSet.next() && resultSet.getInt(1) > 0;
-            }
-        }
-    }
-
-    public void ensureDepartmentColumn() throws SQLException {
-        try (Connection connection = DBConnection.getConnection()) {
-            DatabaseMetaData metaData = connection.getMetaData();
-            boolean exists;
-            try (ResultSet columns = metaData.getColumns(null, null, "Positions", "DepartmentId")) {
-                exists = columns.next();
-            }
-            if (exists) {
-                backfillDepartmentFromTitle(connection);
-                return;
-            }
-            try (Statement statement = connection.createStatement()) {
-                statement.executeUpdate("ALTER TABLE Positions ADD DepartmentId INT NULL");
-            }
-            backfillDepartmentFromTitle(connection);
-        }
-    }
-
-    private void backfillDepartmentFromTitle(Connection connection) throws SQLException {
-        String sql = """
-                UPDATE p
-                SET DepartmentId = d.DepartmentId
-                FROM Positions p
-                INNER JOIN Departments d ON d.CompanyId = p.CompanyId
-                WHERE p.DepartmentId IS NULL
-                  AND (
-                      LOWER(p.PositionTitle) = LOWER(d.DepartmentCode)
-                      OR LOWER(p.PositionTitle) LIKE LOWER(d.DepartmentCode) + ' %'
-                      OR LOWER(p.PositionTitle) = LOWER(d.DepartmentName)
-                      OR LOWER(p.PositionTitle) LIKE LOWER(d.DepartmentName) + ' %'
-                  )
-                """;
-        try (Statement statement = connection.createStatement()) {
-            statement.executeUpdate(sql);
-        }
-    }
-
-    private Position mapPosition(ResultSet resultSet) throws SQLException {
+    private Position mapPosition(ResultSet rows) throws SQLException {
         Position position = new Position();
-        position.setPositionId(resultSet.getInt("PositionId"));
-        position.setCompanyId(resultSet.getInt("CompanyId"));
-        int departmentId = resultSet.getInt("DepartmentId");
-        position.setDepartmentId(resultSet.wasNull() ? null : departmentId);
-        position.setDepartmentName(resultSet.getString("DepartmentName"));
-        position.setPositionTitle(resultSet.getString("PositionTitle"));
-        position.setDescription(resultSet.getString("Description"));
-        Timestamp createdAt = resultSet.getTimestamp("CreatedAt");
-        position.setCreatedAt(createdAt == null ? null : createdAt.toLocalDateTime());
+        position.setPositionId(rows.getInt("PositionId"));
+        position.setAssignmentOccupied(rows.getBoolean("AssignmentOccupied"));
+        position.setReportsToPositionId((Integer)rows.getObject("ReportsToPositionId"));
+        position.setCompanyId(rows.getInt("CompanyId"));
+        position.setDepartmentId(rows.getInt("DepartmentId"));
+        position.setDepartmentName(rows.getString("DepartmentName"));
+        position.setResponsibilityLevelId(rows.getInt("ResponsibilityLevelId"));
+        position.setResponsibilityLevelName(rows.getString("LevelName"));
+        position.setPositionAllowance(rows.getBigDecimal("PositionAllowance"));
+        position.setEffectiveAllowance(rows.getBigDecimal("EffectiveAllowance"));
+        position.setPositionTitle(rows.getString("PositionTitle"));
+        position.setDescription(rows.getString("Description"));
+        position.setActive(rows.getBoolean("IsActive"));
+        position.setCanManageEmployees(rows.getBoolean("CanManageEmployees")
+                && !"EMPLOYEE".equalsIgnoreCase(rows.getString("LevelCode").trim())
+                && !"EMP".equalsIgnoreCase(rows.getString("LevelCode").trim())
+                && !"EMPLOYEE".equalsIgnoreCase(rows.getString("LevelName").trim()));
+        Timestamp created = rows.getTimestamp("CreatedAt");
+        Timestamp updated = rows.getTimestamp("UpdatedAt");
+        position.setCreatedAt(created == null ? null : created.toLocalDateTime());
+        position.setUpdatedAt(updated == null ? null : updated.toLocalDateTime());
         return position;
     }
 }

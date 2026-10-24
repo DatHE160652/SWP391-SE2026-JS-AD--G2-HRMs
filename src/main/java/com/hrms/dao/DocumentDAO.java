@@ -15,9 +15,9 @@ public class DocumentDAO {
         ensureTableExists();
         String sql = """
                 SELECT DocumentId, EmployeeId, DocumentName, DocumentType, FileName, FilePath,
-                       UploadedBy, UploadedDate, Status
+                       UploadedBy, UploadedDate, Status, MimeType, FileSizeBytes
                 FROM EmployeeDocuments
-                WHERE EmployeeId = ? AND (Status = 'Active' OR Status IS NULL)
+                WHERE EmployeeId = ?
                 ORDER BY UploadedDate DESC
                 """;
 
@@ -38,7 +38,7 @@ public class DocumentDAO {
         ensureTableExists();
         String sql = """
                 SELECT DocumentId, EmployeeId, DocumentName, DocumentType, FileName, FilePath,
-                       UploadedBy, UploadedDate, Status
+                       UploadedBy, UploadedDate, Status, MimeType, FileSizeBytes
                 FROM EmployeeDocuments
                 WHERE DocumentId = ?
                 """;
@@ -53,37 +53,54 @@ public class DocumentDAO {
     }
 
     public boolean insertDocument(EmployeeDocument document) throws SQLException {
+        return insertDocument(document, null, null);
+    }
+
+    public boolean insertDocument(EmployeeDocument document, String mimeType, Long size) throws SQLException {
         ensureTableExists();
+        try (Connection connection=DBConnection.getConnection()) {
+            return insertDocument(connection,document,mimeType,size);
+        }
+    }
+
+    public boolean insertDocument(Connection connection,EmployeeDocument document,String mimeType,Long size) throws SQLException {
         String sql = """
                 INSERT INTO EmployeeDocuments (
-                    EmployeeId, DocumentName, DocumentType, FileName, FilePath, UploadedBy, Status
+                    EmployeeId, DocumentName, DocumentType, FileName, FilePath, UploadedBy, Status, MimeType, FileSizeBytes
                 )
-                VALUES (?, ?, ?, ?, ?, ?, 'Active')
+                VALUES (?, ?, ?, ?, ?, ?, 'Active', ?, ?)
                 """;
 
-        try (Connection connection = DBConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql,java.sql.Statement.RETURN_GENERATED_KEYS)) {
             statement.setInt(1, document.getEmployeeId());
             statement.setString(2, document.getDocumentName());
             statement.setString(3, document.getDocumentType());
             statement.setString(4, document.getFileName());
             statement.setString(5, document.getFilePath());
+            statement.setString(7, mimeType);
+            statement.setObject(8, size, java.sql.Types.BIGINT);
             if (document.getUploadedBy() == null) {
                 statement.setNull(6, java.sql.Types.INTEGER);
             } else {
                 statement.setInt(6, document.getUploadedBy());
             }
-            return statement.executeUpdate() > 0;
+            if(statement.executeUpdate()!=1) return false;
+            try(ResultSet keys=statement.getGeneratedKeys()) {
+                if(!keys.next()) throw new SQLException("Chưa nhận được mã tài liệu.");
+                document.setDocumentId(keys.getInt(1));
+            }
+            return true;
         }
     }
 
-    public boolean deleteDocument(int documentId) throws SQLException {
+    public boolean setDocumentActive(int documentId, boolean active) throws SQLException {
         ensureTableExists();
-        String sql = "UPDATE EmployeeDocuments SET Status = 'Deleted' WHERE DocumentId = ?";
+        String sql = "UPDATE EmployeeDocuments SET Status = ? WHERE DocumentId = ?";
 
         try (Connection connection = DBConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, documentId);
+            statement.setString(1, active ? "Active" : "Inactive");
+            statement.setInt(2, documentId);
             return statement.executeUpdate() > 0;
         }
     }
@@ -100,28 +117,15 @@ public class DocumentDAO {
         document.setUploadedBy(resultSet.wasNull() ? null : uploadedBy);
         document.setUploadedDate(resultSet.getTimestamp("UploadedDate"));
         document.setStatus(resultSet.getString("Status"));
+        document.setMimeType(resultSet.getString("MimeType"));
+        document.setFileSizeBytes((Long)resultSet.getObject("FileSizeBytes"));
         return document;
     }
 
     private void ensureTableExists() throws SQLException {
         String sql = """
-                IF OBJECT_ID('EmployeeDocuments', 'U') IS NULL
-                BEGIN
-                    CREATE TABLE EmployeeDocuments
-                    (
-                        DocumentId INT IDENTITY(1,1) PRIMARY KEY,
-                        EmployeeId INT NOT NULL,
-                        DocumentName NVARCHAR(255) NOT NULL,
-                        DocumentType NVARCHAR(100) NULL,
-                        FileName NVARCHAR(255) NULL,
-                        FilePath NVARCHAR(500) NULL,
-                        UploadedBy INT NULL,
-                        UploadedDate DATETIME NOT NULL DEFAULT GETDATE(),
-                        Status NVARCHAR(30) NOT NULL DEFAULT 'Active',
-                        CONSTRAINT FK_EmployeeDocuments_Employees
-                            FOREIGN KEY(EmployeeId) REFERENCES Employees(EmployeeId)
-                    )
-                END
+                IF OBJECT_ID('dbo.EmployeeDocuments', 'U') IS NULL
+                    THROW 51000, 'EmployeeDocuments is missing. Apply the document migration.', 1;
                 """;
 
         try (Connection connection = DBConnection.getConnection();

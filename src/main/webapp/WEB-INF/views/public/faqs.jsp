@@ -2,7 +2,8 @@
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <!DOCTYPE html>
 <html lang="vi">
-    <head>
+<head>
+    <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>
@@ -43,12 +44,15 @@
                                     <label for="topicTitle">
                                         Tiêu đề
                                     </label>
-                                    <input id="topicTitle" name="title" type="text" maxlength="200" required>
+                                    <input id="topicTitle" name="title" type="text" maxlength="200" required value="<c:out value='${faqTitle}'/>">
+                                    <c:if test="${empty faqErrorTopicId and faqErrorField == 'title'}"><small class="field-error"><c:out value="${faqErrorMessage}"/></small></c:if>
                                     <label for="topicContent">
                                         Nội dung
                                     </label>
                                     <textarea id="topicContent" name="content" maxlength="10000" required>
+                                        <c:if test="${empty faqErrorTopicId}"><c:out value="${faqContent}"/></c:if>
                                     </textarea>
+                                    <c:if test="${empty faqErrorTopicId and faqErrorField == 'content'}"><small class="field-error"><c:out value="${faqErrorMessage}"/></small></c:if>
                                     <button class="button button-primary" type="submit">
                                         Đăng chủ đề
                                     </button>
@@ -120,7 +124,9 @@
                                                             Bình luận
                                                         </label>
                                                         <textarea id="comment-${topic.topicId}" name="content" maxlength="10000" required placeholder="Viết bình luận của bạn">
+                                                            <c:if test="${faqErrorTopicId == topic.topicId}"><c:out value="${faqContent}"/></c:if>
                                                         </textarea>
+                                                        <c:if test="${faqErrorTopicId == topic.topicId and faqErrorField == 'content'}"><small class="field-error"><c:out value="${faqErrorMessage}"/></small></c:if>
                                                         <button class="button button-outline" type="submit">
                                                             Gửi bình luận
                                                         </button>
@@ -128,7 +134,7 @@
                                                 </c:when>
                                                 <c:otherwise>
                                                     <div class="login-notice">
-                                                        Muốn tạo chủ đề hoặc bình luận? Hãy đăng nhập vào Tenant Portal.
+                                                        Muốn tạo chủ đề hoặc bình luận? Hãy đăng nhập vào cổng tenant.
                                                     </div>
                                                 </c:otherwise>
                                             </c:choose>
@@ -161,7 +167,7 @@
                                 </li>
                             </ul>
                             <a class="button button-outline button-wide" href="${pageContext.request.contextPath}/login">
-                                Đăng nhập Tenant
+                                Đăng nhập tenant
                             </a>
                         </div>
                     </aside>
@@ -169,7 +175,7 @@
             </section>
         </main>
         <%@ include file="public-footer.jspf" %>
-        <script src="${pageContext.request.contextPath}/js/public-portal.js" defer>
+        <script src="${pageContext.request.contextPath}/js/public-portal.js?v=<%= application.getResource("/js/public-portal.js").openConnection().getLastModified() %>" defer>
         </script>
     </body>
 </html>

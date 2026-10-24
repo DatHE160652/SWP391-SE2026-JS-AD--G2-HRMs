@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+    document.querySelector('#statusFilter')?.addEventListener('change', () => loadDocuments(getEmployeeIdFromUrl(document.body.dataset.page === 'detail' ? 'id' : 'employeeId')));
     const page = document.body.dataset.page;
     if (page === 'documents') {
         setupDocumentListPage();
@@ -66,17 +67,19 @@ async function uploadDocument(form, employeeId) {
             await loadEmployeeHistory(employeeId, '#historyRows');
         }
     } catch (error) {
-        showDocumentMessage(error.message, 'error');
+        if (!FormValidation.showErrors(form, error)) {
+            showDocumentMessage(error.message, 'error');
+        }
     }
 }
 
-async function deleteDocument(documentId) {
-    if (!confirm('Delete this document?')) {
+async function setDocumentActive(documentId, active) {
+    if (!confirm(active ? 'Kích hoạt lại tài liệu này?' : 'Vô hiệu hóa tài liệu này?')) {
         return;
     }
 
     try {
-        const payload = await DocumentApi.post('/documents/delete', { documentId });
+        const payload = await DocumentApi.post(active ? '/documents/activate' : '/documents/deactivate', { documentId });
         showDocumentMessage(payload.message);
         const employeeId = getEmployeeIdFromUrl(document.body.dataset.page === 'detail' ? 'id' : 'employeeId');
         await loadDocuments(employeeId);
@@ -89,12 +92,14 @@ async function deleteDocument(documentId) {
 }
 
 function renderDocumentRows(documents) {
+    const status = document.querySelector('#statusFilter')?.value || '';
+    documents = documents.filter(item => !status || (item.status === null || item.status === 'Active') === (status === 'Active'));
     const tbody = document.querySelector('#documentRows');
     if (!tbody) {
         return;
     }
     if (!documents.length) {
-        tbody.innerHTML = '<tr><td colspan="5">No documents found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5">Chưa có tài liệu.</td></tr>';
         return;
     }
 
@@ -105,15 +110,21 @@ function renderDocumentRows(documents) {
             <td>${safeDocumentValue(document.uploadedDate)}</td>
             <td>${safeDocumentValue(document.uploadedBy)}</td>
             <td class="actions">
-                <a href="${documentApiUrl(`/documents/download?id=${document.documentId}&inline=true`)}" target="_blank" rel="noopener">View</a>
-                <a href="${documentApiUrl(`/documents/download?id=${document.documentId}`)}" download="${safeDocumentValue(document.fileName || document.documentName || 'document')}">Download</a>
-                <button class="danger" onclick="deleteDocument(${document.documentId})">Delete</button>
+                ${document.status && document.status !== 'Active' ? '' : `
+                <a href="${documentApiUrl(`/documents/download?id=${document.documentId}&inline=true`)}" target="_blank" rel="noopener">Xem</a>
+                <a href="${documentApiUrl(`/documents/download?id=${document.documentId}`)}" download="${safeDocumentValue(document.fileName || document.documentName || 'document')}">Tải xuống</a>
+                `}
+                <span>${safeDocumentValue(globalThis.HrmVietnamese?.label(document.status || 'Active') ?? document.status ?? 'Đang hoạt động')}</span>
+                <button class="danger" onclick="setDocumentActive(${document.documentId}, ${document.status !== null && document.status !== 'Active'})">${document.status === null || document.status === 'Active' ? 'Vô hiệu hóa' : 'Kích hoạt lại'}</button>
             </td>
         </tr>
     `).join('');
 }
 
 function setupDocumentLinks(employeeId) {
+    document.querySelectorAll('#documentEmployeeLink').forEach(link => {
+        link.href = '../employee/employee-list?id=' + encodeURIComponent(employeeId);
+    });
     document.querySelectorAll('#uploadDocumentLink').forEach(link => {
         link.href = `../document/document-upload?employeeId=${employeeId}`;
     });
@@ -125,7 +136,7 @@ function setupDocumentLinks(employeeId) {
 function getEmployeeIdFromUrl(param = 'employeeId') {
     const value = new URLSearchParams(location.search).get(param);
     if (!value) {
-        showDocumentMessage('Employee id is required.', 'error');
+        showDocumentMessage("Vui lòng chọn nhân viên.", 'error');
         return '';
     }
     return value;
@@ -144,7 +155,10 @@ const DocumentApi = {
                 'Accept': 'application/json',
                 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
             },
-            body: new URLSearchParams(data)
+            body: new URLSearchParams({
+                ...data,
+                csrfToken: document.querySelector('meta[name="organization-csrf-token"]')?.content || ''
+            })
         });
         return handleDocumentResponse(response);
     },
@@ -169,7 +183,7 @@ function documentApiUrl(url) {
 async function handleDocumentResponse(response) {
     const payload = await response.json();
     if (!response.ok || payload.success === false) {
-        throw new Error(payload.message || 'Request failed.');
+        throw FormValidation.responseError(payload);
     }
     return payload;
 }
@@ -184,5 +198,5 @@ function showDocumentMessage(message, type = 'success') {
 }
 
 function safeDocumentValue(value) {
-    return value === null || value === undefined || value === '' ? '-' : String(value);
+    return value === null || value === undefined || value === '' ? '-' : String(value).replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
 }

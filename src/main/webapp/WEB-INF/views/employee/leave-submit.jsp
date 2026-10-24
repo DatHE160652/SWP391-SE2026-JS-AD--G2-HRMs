@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tạo đơn xin nghỉ phép - HRMs Cloud</title>
@@ -12,7 +13,7 @@
 <body data-page="leave-submit">
 <div class="shell">
     <aside class="sidebar">
-        <div class="brand">HRMs Cloud<span>Employee Portal</span></div>
+        <div class="brand">HRMs Cloud<span>Cổng nhân viên</span></div>
         <div class="nav-label">Chức năng cá nhân</div>
         <a class="nav-link" href="../employee/my-profile">Hồ sơ cá nhân</a>
         <a class="nav-link" href="../attendance/employee-attendance">Chấm công cá nhân</a>
@@ -39,6 +40,7 @@
 
         <section class="panel" style="max-width: 760px; margin: 0 auto 30px;">
             <form id="leaveSubmitForm">
+                <div id="submitMessage" role="alert" style="display:none"></div>
                 <div class="form-grid">
                     <div class="form-group-full">
                         <label class="form-label" for="leaveTypeId">Loại nghỉ phép <span style="color:#b42318;">*</span></label>
@@ -72,7 +74,7 @@
 
                     <div class="form-group-full">
                         <label class="form-label" for="reason">Lý do xin nghỉ <span style="color:#b42318;">*</span></label>
-                        <textarea id="reason" name="reason" class="form-control" placeholder="Mô tả lý do xin nghỉ phép..." required></textarea>
+                        <textarea id="reason" name="reason" data-validation-label="lý do nghỉ phép" class="form-control" placeholder="Mô tả lý do xin nghỉ phép..." required></textarea>
                     </div>
                 </div>
 
@@ -85,7 +87,7 @@
     </main>
 </div>
 
-<script src="../js/leave.js"></script>
+<script src="../js/leave.js?v=<%= application.getResource("/js/leave.js").openConnection().getLastModified() %>"></script>
 <script>
     document.addEventListener("DOMContentLoaded", () => {
         LeaveApp.initSubmitForm();
