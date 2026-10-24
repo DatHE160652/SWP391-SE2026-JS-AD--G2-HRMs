@@ -238,7 +238,7 @@ function renderMyProfileSidebar(roleCode) {
         `;
         return;
     }
-    if (role === 'COMPANY_ADMIN') {
+    if (['COMPANY_ADMIN', 'HR'].includes(role)) {
         sidebar.innerHTML = `
             <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
             <div class="nav-label">Phân hệ quản trị</div>

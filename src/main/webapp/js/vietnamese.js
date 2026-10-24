@@ -7,7 +7,7 @@
         PENDING:'Chờ duyệt', Pending:'Chờ duyệt', APPROVED:'Đã duyệt', Approved:'Đã duyệt', REJECTED:'Đã từ chối', Rejected:'Đã từ chối',
         APPLIED:'Đã áp dụng', ENDED:'Đã kết thúc', SCHEDULED:'Chờ hiệu lực', CORRECTED:'Đã hiệu chỉnh trong ngày',
         LOCKED:'Đã khóa', REVOKED:'Đã thu hồi', NONE:'Chưa có tài khoản',
-        SYSTEM_ADMIN:'Quản trị viên hệ thống', COMPANY_ADMIN:'Quản trị viên công ty', HR:'Nhân sự', MANAGER:'Quản lý', EMPLOYEE:'Nhân viên',
+        SYSTEM_ADMIN:'Quản trị viên hệ thống', COMPANY_ADMIN:'Company Admin / HR', HR:'Company Admin / HR', MANAGER:'Quản lý', EMPLOYEE:'Nhân viên',
         PROBATION:'Thử việc', FIXED_TERM:'Có thời hạn', INDEFINITE:'Không xác định thời hạn',
         Male:'Nam', Female:'Nữ', Other:'Khác',
         ONBOARDING:'Tạo hồ sơ nhân viên', HIRE:'Phân công ban đầu', BASELINE:'Ghi nhận phân công ban đầu',

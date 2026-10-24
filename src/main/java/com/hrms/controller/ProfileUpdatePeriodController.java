@@ -36,7 +36,7 @@ public class ProfileUpdatePeriodController extends HttpServlet {
             service.requireAdministrator(principal);
             String csrfToken = SecuritySupport.ensurePublicCsrfToken(request.getSession(true));
             if ("/employee/profile-update-periods".equals(request.getServletPath()) || "/employee/document-update-periods".equals(request.getServletPath())) {
-                request.setAttribute("canManageEmployees", "COMPANY_ADMIN".equals(principal.getRoleCode()));
+                request.setAttribute("canManageEmployees", principal.isCompanyAdministrator());
                 request.setAttribute("documentUpdatePeriods",documents(request));
                 request.setAttribute("updatePeriodLabel",documents(request)?"tài liệu":"hồ sơ");
                 request.setAttribute("updatePeriodType",documents(request)?"DOCUMENT":"PROFILE");

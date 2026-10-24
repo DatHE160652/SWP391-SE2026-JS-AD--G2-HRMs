@@ -91,6 +91,8 @@ public class PublicPortalController extends HttpServlet {
         String workspace = request.getParameter("tenantDomain");
         String email = request.getParameter("tenantEmail");
         String password = request.getParameter("tenantPassword");
+        HttpSession previousSession = request.getSession(false);
+        if (previousSession != null) previousSession.removeAttribute(SecuritySupport.TENANT_PRINCIPAL_ATTRIBUTE);
         try {
             TenantPrincipal principal = tenantAuthService.authenticate(workspace, email, password);
             if (principal == null) {
@@ -100,6 +102,8 @@ public class PublicPortalController extends HttpServlet {
             }
             HttpSession session = request.getSession(true);
             request.changeSessionId();
+            session.removeAttribute(SecuritySupport.PUBLIC_CSRF_ATTRIBUTE);
+            SecuritySupport.ensurePublicCsrfToken(session);
             session.setAttribute(SecuritySupport.TENANT_PRINCIPAL_ATTRIBUTE, principal);
             if (principal.isMustChangePassword()) {
                 response.sendRedirect(request.getContextPath() + "/change-password");
@@ -161,7 +165,8 @@ public class PublicPortalController extends HttpServlet {
         }
 
         try {
-            boolean updated = tenantAuthService.changePassword(principal.getUserId(), passwordHasher.hash(newPassword));
+            String newPasswordHash=passwordHasher.hash(newPassword);
+            boolean updated = tenantAuthService.changePassword(principal.getUserId(), newPasswordHash);
             if (!updated) {
                 renderChangePasswordError(request, response, "Chưa thể đổi mật khẩu. Vui lòng đăng nhập lại.");
                 return;
@@ -174,7 +179,8 @@ public class PublicPortalController extends HttpServlet {
             request.getSession(true).setAttribute(SecuritySupport.TENANT_PRINCIPAL_ATTRIBUTE,
                     new TenantPrincipal(principal.getUserId(), principal.getCompanyId(), principal.getWorkspaceCode(),
                             principal.getCompanyName(), principal.getDisplayName(), principal.getEmail(),
-                            principal.getRoleCode(), principal.getEmployeeId(), false));
+                            principal.getRoleCode(), principal.getEmployeeId(), false,SecuritySupport.credentialVersion(newPasswordHash)));
+            request.changeSessionId();
             response.sendRedirect(request.getContextPath() + tenantLandingPath(principal));
         } catch (SQLException exception) {
             getServletContext().log("Tenant password change failed; SQLState=" + exception.getSQLState()
@@ -193,8 +199,7 @@ public class PublicPortalController extends HttpServlet {
     private String tenantLandingPath(TenantPrincipal principal) {
         String role = principal.getRoleCode() == null ? "" : principal.getRoleCode().toUpperCase();
         return switch (role) {
-            case "COMPANY_ADMIN" -> "/employee/employee-list";
-            case "HR" -> "/employee/profile-update-periods";
+            case "COMPANY_ADMIN", "HR" -> "/lifecycle/dashboard";
             case "MANAGER" -> "/attendance/manager-attendance";
             case "EMPLOYEE" -> "/employee/my-profile";
             default -> "/login";

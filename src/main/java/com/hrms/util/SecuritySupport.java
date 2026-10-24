@@ -15,7 +15,7 @@ public final class SecuritySupport {
     public static void requireOrganizationEditor(HttpServletRequest request) {
         TenantPrincipal principal = getTenantPrincipal(request);
         if (principal == null || principal.isMustChangePassword()
-                || !("COMPANY_ADMIN".equalsIgnoreCase(principal.getRoleCode()) || "HR".equalsIgnoreCase(principal.getRoleCode()))) {
+                || !principal.isCompanyAdministrator()) {
             throw new SecurityException("Bạn không có quyền quản lý phân công nhân viên.");
         }
     }

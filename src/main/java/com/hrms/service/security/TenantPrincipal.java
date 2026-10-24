@@ -41,6 +41,9 @@ public final class TenantPrincipal {
     public String getDisplayName() { return displayName; }
     public String getEmail() { return email; }
     public String getRoleCode() { return roleCode; }
+    public boolean isCompanyAdministrator() {
+        return "COMPANY_ADMIN".equalsIgnoreCase(roleCode) || "HR".equalsIgnoreCase(roleCode);
+    }
     public Integer getEmployeeId() { return employeeId; }
     public boolean isMustChangePassword() { return mustChangePassword; }
     public String getCredentialVersion() { return credentialVersion; }

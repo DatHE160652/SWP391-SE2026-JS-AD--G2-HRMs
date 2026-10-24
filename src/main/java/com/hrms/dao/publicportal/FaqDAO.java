@@ -67,7 +67,7 @@ public class FaqDAO {
                 INNER JOIN Roles r ON r.RoleId = u.RoleId
                 WHERE u.UserId = ? AND u.CompanyId IS NOT NULL
                   AND u.IsActive = 1 AND u.IsLocked = 0
-                  AND r.RoleCode IN ('COMPANY_ADMIN', 'MANAGER', 'EMPLOYEE')
+                  AND r.RoleCode IN ('COMPANY_ADMIN', 'HR', 'MANAGER', 'EMPLOYEE')
                 """;
         try (Connection connection = DBConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {

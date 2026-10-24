@@ -33,8 +33,8 @@ public class ProfileUpdateService {
     }
 
     public void requireAdministrator(TenantPrincipal principal) {
-        if (!validSession(principal) || !Set.of("COMPANY_ADMIN", "HR").contains(principal.getRoleCode())) {
-            throw new SecurityException("Chỉ Company Admin hoặc HR được quản lý các đợt cập nhật.");
+        if (!validSession(principal) || !principal.isCompanyAdministrator()) {
+            throw new SecurityException("Chỉ Company Admin / HR được quản lý các đợt cập nhật.");
         }
     }
 

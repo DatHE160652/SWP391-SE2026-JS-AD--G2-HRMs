@@ -78,7 +78,7 @@ public class EmployeeLifecycleService {
 
     public void requireEditor(TenantPrincipal principal) throws SQLException {
         if (principal == null || principal.getCompanyId() == null || principal.isMustChangePassword()
-                || !Set.of("COMPANY_ADMIN", "HR").contains(principal.getRoleCode()))
+                || !principal.isCompanyAdministrator())
             throw new SecurityException("Vui lòng đăng nhập bằng tài khoản nhân sự hoặc quản trị viên công ty.");
         try (Connection connection = DBConnection.getConnection()) {
             requireCurrentActor(connection, principal);
@@ -144,7 +144,7 @@ public class EmployeeLifecycleService {
                             ORDER BY employee.EmployeeId) e
                         WHERE u.CompanyId=? AND u.IsActive=1 AND u.IsLocked=0
                             AND r.RoleCode IN ('COMPANY_ADMIN','HR')
-                        ORDER BY CASE WHEN r.RoleCode='COMPANY_ADMIN' THEN 0 ELSE 1 END,u.DisplayName,u.UserId
+                        ORDER BY u.DisplayName,u.UserId
                         """, companyId);
                 case "organization" -> dao.query(connection, """
                         SELECT e.EmployeeId,e.EmployeeCode,e.FullName,e.Status,a.AssignmentId,a.DepartmentId,a.PositionId,a.ManagerId,
@@ -313,7 +313,7 @@ public class EmployeeLifecycleService {
 
     public String account(TenantPrincipal principal, int employeeId, String action, String email, String roleCode) throws SQLException {
         requireEditor(principal);
-        if (!"COMPANY_ADMIN".equals(principal.getRoleCode())) throw new SecurityException("Chỉ quản trị viên công ty được quản lý tài khoản nhân viên.");
+        if (!principal.isCompanyAdministrator()) throw new SecurityException("Chỉ quản trị viên công ty được quản lý tài khoản nhân viên.");
         if ("role".equals(action)) throw new FieldValidationException("roleCode","Vai trò Employee/Manager được đồng bộ khi phân công phòng ban và chức danh, không phân quyền riêng tại đây.");
         if (!Set.of("create","reset","lock","unlock","revoke","role").contains(action == null ? "" : action)) throw new IllegalArgumentException("Vui lòng chọn thao tác tài khoản hợp lệ.");
         return OrganizationTransaction.execute(principal.getCompanyId(), connection -> {

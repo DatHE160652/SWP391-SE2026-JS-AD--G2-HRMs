@@ -67,7 +67,7 @@ public class ResponsibilityLevelController extends HttpServlet {
         if (active!=null && !"true".equals(active) && !"false".equals(active)) throw new FieldValidationException("isActive","Trạng thái không hợp lệ.");
         level.setActive(!"false".equals(active));
         if (request.getParameter("defaultAllowance")!=null) {
-            if (!"COMPANY_ADMIN".equals(SecuritySupport.getTenantPrincipal(request).getRoleCode()))
+            if (!SecuritySupport.getTenantPrincipal(request).isCompanyAdministrator())
                 throw new SecurityException("Chỉ quản trị viên công ty được cấu hình phụ cấp.");
             try { level.setDefaultAllowance(new java.math.BigDecimal(request.getParameter("defaultAllowance"))); }
             catch (NumberFormatException exception) { throw new FieldValidationException("defaultAllowance","Nhập phụ cấp không âm; dùng 0 nếu không có."); }
