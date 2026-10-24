@@ -47,10 +47,10 @@
                     <label for="statusFilter">Trạng thái:</label>
                     <select id="statusFilter">
                         <option value="ALL">-- Tất cả trạng thái --</option>
-                        <option value="Present">Present (Có mặt)</option>
-                        <option value="Late">Late (Đi muộn)</option>
-                        <option value="Early Leave">Early Leave (Về sớm)</option>
-                        <option value="Absent">Absent (Vắng mặt)</option>
+                        <option value="Present">Có mặt</option>
+                        <option value="Late">Đi muộn</option>
+                        <option value="Early Leave">Về sớm</option>
+                        <option value="Absent">Vắng mặt</option>
                         <option value="On Leave">On Leave (Nghỉ phép)</option>
                     </select>
                 </div>

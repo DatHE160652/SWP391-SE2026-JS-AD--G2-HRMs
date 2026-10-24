@@ -82,7 +82,7 @@
             </div>
             <div class="summary-card">
                 <div class="summary-label">Tổng giờ làm việc tích lũy</div>
-                <div id="reportTotalHours" class="summary-number text-success">0 hrs</div>
+                <div id="reportTotalHours" class="summary-number text-success">0 giờ</div>
             </div>
             <div class="summary-card">
                 <div class="summary-label">Tỉ lệ đúng giờ trung bình</div>

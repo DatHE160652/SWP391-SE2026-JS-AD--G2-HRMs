@@ -1,4 +1,5 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -8,11 +9,14 @@
     <title>Chấm công cá nhân - HRMs Cloud</title>
     <link rel="stylesheet" href="../css/employee.css">
     <link rel="stylesheet" href="../css/attendance.css">
+    <link rel="stylesheet" href="../css/employee-navigation.css?v=<%= application.getResource("/css/employee-navigation.css").openConnection().getLastModified() %>">
 </head>
-<body data-page="employee-attendance">
+<body data-page="employee-attendance" data-profile-role="<c:out value='${sessionScope.tenantPrincipal.roleCode}'/>">
+<c:set var="employeeNavPage" value="attendance"/>
+<%@ include file="/WEB-INF/views/common/employee-navigation.jspf" %>
 <div class="shell">
     <aside class="sidebar">
-        <div class="brand">HRMs Cloud<span>Employee Portal</span></div>
+        <div class="brand">HRMs Cloud<span>Cổng nhân viên</span></div>
         <div class="nav-label">Chức năng cá nhân</div>
         <a class="nav-link" href="../employee/my-profile">Hồ sơ cá nhân</a>
         <a class="nav-link active" href="employee-attendance">Chấm công cá nhân</a>
@@ -25,7 +29,7 @@
         <div class="page-header">
             <div>
                 <h1 class="page-title">Bảng chấm công cá nhân</h1>
-                <p class="page-subtitle">Nhân viên xem lịch sử chấm công theo tháng. Điểm danh vào ca/tan ca do Manager phụ trách.</p>
+                <p class="page-subtitle">Nhân viên xem lịch sử chấm công theo tháng. Điểm danh vào ca/tan ca do quản lý phụ trách.</p>
             </div>
         </div>
 
@@ -34,7 +38,7 @@
                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
             </svg>
             <div>
-                <strong>Lưu ý:</strong> Chế độ xem dành riêng cho nhân viên. Employee chỉ được xem dữ liệu chấm công của chính mình.
+                <strong>Lưu ý:</strong> Chế độ xem dành riêng cho nhân viên. Nhân viên chỉ được xem dữ liệu chấm công của chính mình.
             </div>
         </div>
 
@@ -82,7 +86,7 @@
             </div>
             <div class="summary-card">
                 <div class="summary-label">Tổng giờ làm</div>
-                <div id="totalHours" class="summary-number text-success" style="font-size: 24px;">0 hrs</div>
+                <div id="totalHours" class="summary-number text-success" style="font-size: 24px;">0 giờ</div>
             </div>
             <div class="summary-card">
                 <div class="summary-label">Đúng giờ</div>
@@ -110,8 +114,8 @@
                 <tr>
                     <th>Ngày</th>
                     <th>Thứ</th>
-                    <th>Giờ vào (Check-in)</th>
-                    <th>Giờ ra (Check-out)</th>
+                    <th>Giờ vào</th>
+                    <th>Giờ ra</th>
                     <th>Tổng giờ</th>
                     <th>Trạng thái</th>
                     <th>Ghi chú</th>

@@ -11,7 +11,7 @@ const AttendanceApi = {
                 'Accept': 'application/json',
                 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
             },
-            body: new URLSearchParams(data)
+            body: new URLSearchParams({...data, csrfToken: document.querySelector('meta[name="organization-csrf-token"]')?.content || ''})
         });
         return handleResponse(response);
     }
@@ -70,7 +70,7 @@ async function loadPersonalAttendance() {
 function renderPersonalSummary(summary) {
     if (!summary) return;
     document.getElementById('totalWorkingDays').textContent = summary.totalWorkingDays || 0;
-    document.getElementById('totalHours').textContent = (summary.totalHours || 0) + ' hrs';
+    document.getElementById('totalHours').textContent = (summary.totalHours || 0) + ' giờ';
     document.getElementById('presentDays').textContent = summary.presentDays || 0;
     document.getElementById('lateDays').textContent = summary.lateDays || 0;
     document.getElementById('earlyLeaveDays').textContent = summary.earlyLeaveDays || 0;
@@ -94,8 +94,8 @@ function renderPersonalRows(records) {
                 <td><span class="text-muted">${dayOfWeek}</span></td>
                 <td>${r.checkInTime ? `<strong>${r.checkInTime}</strong>` : '<span class="text-muted">--:--:--</span>'}</td>
                 <td>${r.checkOutTime ? `<strong>${r.checkOutTime}</strong>` : '<span class="text-muted">--:--:--</span>'}</td>
-                <td><strong>${r.totalHours || '0.00'}</strong> hrs</td>
-                <td><span class="badge ${statusClass}">${safe(r.status)}</span></td>
+                <td><strong>${r.totalHours || '0.00'}</strong> giờ</td>
+                <td><span class="badge ${statusClass}">${safe(globalThis.HrmVietnamese?.label(r.status) ?? r.status)}</span></td>
                 <td><span class="text-muted">${safe(r.note)}</span></td>
             </tr>
         `;
@@ -138,8 +138,8 @@ async function initManagerAttendance() {
             
             const labelMap = {
                 'ALL': 'Tất cả nhân sự',
-                'MANAGER': 'Cấp Quản lý (Manager)',
-                'EMPLOYEE': 'Nhân viên (Employee)'
+                'MANAGER': 'Quản lý',
+                'EMPLOYEE': 'Nhân viên'
             };
             const statusLabel = document.getElementById('filterStatusText');
             if (statusLabel) {
@@ -365,7 +365,7 @@ function renderAllAttendanceTable() {
                 <td>${roleBadge}</td>
                 <td>${m.checkInTime ? `<strong style="color:#027a48;">${m.checkInTime}</strong>` : '<span class="text-muted">--:--:--</span>'}</td>
                 <td>${m.checkOutTime ? `<strong style="color:#b54708;">${m.checkOutTime}</strong>` : '<span class="text-muted">--:--:--</span>'}</td>
-                <td><strong>${m.totalHours || '0.00'}</strong> hrs</td>
+                <td><strong>${m.totalHours || '0.00'}</strong> giờ</td>
                 <td>${statusBadge}</td>
                 <td><span class="text-muted" style="font-size:12px;">${safe(m.note)}</span></td>
                 <td style="text-align:center;"><div class="actions" style="justify-content:center;">${actionHtml}</div></td>
@@ -409,8 +409,8 @@ async function performBatchCompleteAttendance() {
 
     const actionTextMap = {
         'auto': 'Tự động (Vào ca / Tan ca)',
-        'check-in': 'Điểm danh Vào ca (Check-in)',
-        'check-out': 'Điểm danh Tan ca (Check-out)'
+        'check-in': "Điểm danh Vào ca",
+        'check-out': "Điểm danh Tan ca"
     };
 
     if (!confirm(`Xác nhận HOÀN TẤT VIỆC CHECK ĐIỂM DANH cho [${checked.length} nhân sự] đã chọn (${actionTextMap[action]}) vào ngày ${date}?`)) {
@@ -527,8 +527,8 @@ function renderCompanyRows(records) {
                 <td>${safe(r.attendanceDate)}</td>
                 <td>${r.checkInTime ? `<strong>${r.checkInTime}</strong>` : '<span class="text-muted">--:--:--</span>'}</td>
                 <td>${r.checkOutTime ? `<strong>${r.checkOutTime}</strong>` : '<span class="text-muted">--:--:--</span>'}</td>
-                <td><strong>${r.totalHours || '0.00'}</strong> hrs</td>
-                <td><span class="badge ${statusClass}">${safe(r.status)}</span></td>
+                <td><strong>${r.totalHours || '0.00'}</strong> giờ</td>
+                <td><span class="badge ${statusClass}">${safe(globalThis.HrmVietnamese?.label(r.status) ?? r.status)}</span></td>
                 <td><span class="text-muted">${safe(r.note)}</span></td>
             </tr>
         `;
@@ -584,7 +584,7 @@ function renderReportStats(reports) {
     const avgRate = totalEmployees > 0 ? (sumRate / totalEmployees).toFixed(1) : 0;
 
     document.getElementById('reportTotalEmployees').textContent = totalEmployees;
-    document.getElementById('reportTotalHours').textContent = totalWorkHours.toFixed(1) + ' hrs';
+    document.getElementById('reportTotalHours').textContent = totalWorkHours.toFixed(1) + ' giờ';
     document.getElementById('reportAvgPunctuality').textContent = avgRate + '%';
 }
 
@@ -603,7 +603,7 @@ function renderReportRows(reports) {
                 <td><strong>${safe(r.fullName)}</strong></td>
                 <td>${safe(r.departmentName)}</td>
                 <td><strong>${r.totalWorkDays}</strong> ngày</td>
-                <td><strong>${r.totalHours}</strong> hrs</td>
+                <td><strong>${r.totalHours}</strong> giờ</td>
                 <td><span class="text-success">${r.presentCount}</span></td>
                 <td><span class="text-warning">${r.lateCount}</span></td>
                 <td><span class="text-muted">${r.earlyLeaveCount}</span></td>
@@ -639,7 +639,7 @@ async function loadMeta() {
         const payload = await AttendanceApi.get(`/attendance/meta${scope}`);
         return payload;
     } catch (e) {
-        console.warn('Could not load metadata:', e);
+        console.warn("Không tải được dữ liệu danh mục:", e);
         return { employees: [], departments: [] };
     }
 }

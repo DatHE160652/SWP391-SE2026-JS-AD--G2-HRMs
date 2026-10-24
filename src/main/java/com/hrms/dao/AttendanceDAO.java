@@ -25,10 +25,10 @@ public class AttendanceDAO {
                        e.EmployeeCode, e.FullName, e.DepartmentId, d.DepartmentName,
                        p.PositionTitle, e.ManagerId, m.FullName AS ManagerName
                 FROM Attendances a
-                JOIN Employees e ON a.EmployeeId = e.EmployeeId
-                LEFT JOIN Departments d ON e.DepartmentId = d.DepartmentId
-                LEFT JOIN Positions p ON e.PositionId = p.PositionId
-                LEFT JOIN Employees m ON e.ManagerId = m.EmployeeId
+                JOIN Employees e ON a.CompanyId=e.CompanyId AND a.EmployeeId = e.EmployeeId
+                LEFT JOIN Departments d ON e.CompanyId=d.CompanyId AND e.DepartmentId = d.DepartmentId
+                LEFT JOIN Positions p ON e.CompanyId=p.CompanyId AND e.PositionId = p.PositionId
+                LEFT JOIN Employees m ON e.CompanyId=m.CompanyId AND e.ManagerId = m.EmployeeId
                 WHERE a.EmployeeId = ? AND a.AttendanceDate = ?
                 """;
 
@@ -110,10 +110,10 @@ public class AttendanceDAO {
                        e.EmployeeCode, e.FullName, e.DepartmentId, d.DepartmentName,
                        p.PositionTitle, e.ManagerId, m.FullName AS ManagerName
                 FROM Attendances a
-                JOIN Employees e ON a.EmployeeId = e.EmployeeId
-                LEFT JOIN Departments d ON e.DepartmentId = d.DepartmentId
-                LEFT JOIN Positions p ON e.PositionId = p.PositionId
-                LEFT JOIN Employees m ON e.ManagerId = m.EmployeeId
+                JOIN Employees e ON a.CompanyId=e.CompanyId AND a.EmployeeId = e.EmployeeId
+                LEFT JOIN Departments d ON e.CompanyId=d.CompanyId AND e.DepartmentId = d.DepartmentId
+                LEFT JOIN Positions p ON e.CompanyId=p.CompanyId AND e.PositionId = p.PositionId
+                LEFT JOIN Employees m ON e.CompanyId=m.CompanyId AND e.ManagerId = m.EmployeeId
                 WHERE a.EmployeeId = ? AND MONTH(a.AttendanceDate) = ? AND YEAR(a.AttendanceDate) = ?
                 ORDER BY a.AttendanceDate ASC
                 """;
@@ -169,6 +169,10 @@ public class AttendanceDAO {
     }
 
     public List<AttendanceDTO> getTeamAttendance(int managerId, LocalDate date) throws SQLException {
+        return getTeamAttendance(getEmployeeCompanyId(managerId), managerId, date);
+    }
+
+    public List<AttendanceDTO> getTeamAttendance(int companyId, int managerId, LocalDate date) throws SQLException {
         String sql = """
                 SELECT a.AttendanceId, e.CompanyId, e.EmployeeId, ? AS AttendanceDate,
                        a.CheckInTime, a.CheckOutTime, ISNULL(a.TotalHours, 0.00) AS TotalHours,
@@ -178,11 +182,11 @@ public class AttendanceDAO {
                        p.PositionTitle, e.ManagerId, m.FullName AS ManagerName,
                        e.Status AS EmployeeStatus
                 FROM Employees e
-                LEFT JOIN Attendances a ON e.EmployeeId = a.EmployeeId AND a.AttendanceDate = ?
-                LEFT JOIN Departments d ON e.DepartmentId = d.DepartmentId
-                LEFT JOIN Positions p ON e.PositionId = p.PositionId
-                LEFT JOIN Employees m ON e.ManagerId = m.EmployeeId
-                WHERE e.ManagerId = ?
+                LEFT JOIN Attendances a ON e.CompanyId=a.CompanyId AND e.EmployeeId = a.EmployeeId AND a.AttendanceDate = ?
+                LEFT JOIN Departments d ON e.CompanyId=d.CompanyId AND e.DepartmentId = d.DepartmentId
+                LEFT JOIN Positions p ON e.CompanyId=p.CompanyId AND e.PositionId = p.PositionId
+                LEFT JOIN Employees m ON e.CompanyId=m.CompanyId AND e.ManagerId = m.EmployeeId
+                WHERE e.ManagerId = ? AND e.CompanyId = ?
                 ORDER BY e.FullName ASC
                 """;
 
@@ -192,6 +196,7 @@ public class AttendanceDAO {
             ps.setDate(1, Date.valueOf(date));
             ps.setDate(2, Date.valueOf(date));
             ps.setInt(3, managerId);
+            ps.setInt(4, companyId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     list.add(mapAttendanceDTO(rs));
@@ -201,7 +206,8 @@ public class AttendanceDAO {
         return list;
     }
 
-    public List<AttendanceDTO> getAllAttendanceByDate(LocalDate date) throws SQLException {
+    public List<AttendanceDTO> getAllAttendanceByDate(int companyId, LocalDate date) throws SQLException {
+        if (companyId <= 0) throw new SecurityException("Vui lòng đăng nhập vào workspace.");
         String sql = """
                 SELECT a.AttendanceId, e.CompanyId, e.EmployeeId, ? AS AttendanceDate,
                        a.CheckInTime, a.CheckOutTime, ISNULL(a.TotalHours, 0.00) AS TotalHours,
@@ -213,12 +219,13 @@ public class AttendanceDAO {
                        ISNULL(r.RoleName, N'Nhân viên') AS RoleName,
                        e.Status AS EmployeeStatus
                 FROM Employees e
-                LEFT JOIN Attendances a ON e.EmployeeId = a.EmployeeId AND a.AttendanceDate = ?
-                LEFT JOIN Departments d ON e.DepartmentId = d.DepartmentId
-                LEFT JOIN Positions p ON e.PositionId = p.PositionId
-                LEFT JOIN Employees m ON e.ManagerId = m.EmployeeId
-                LEFT JOIN Users u ON e.UserId = u.UserId
+                LEFT JOIN Attendances a ON e.CompanyId=a.CompanyId AND e.EmployeeId = a.EmployeeId AND a.AttendanceDate = ?
+                LEFT JOIN Departments d ON e.CompanyId=d.CompanyId AND e.DepartmentId = d.DepartmentId
+                LEFT JOIN Positions p ON e.CompanyId=p.CompanyId AND e.PositionId = p.PositionId
+                LEFT JOIN Employees m ON e.CompanyId=m.CompanyId AND e.ManagerId = m.EmployeeId
+                LEFT JOIN Users u ON e.CompanyId=u.CompanyId AND e.UserId = u.UserId
                 LEFT JOIN Roles r ON u.RoleId = r.RoleId
+                WHERE e.CompanyId=?
                 ORDER BY e.EmployeeId ASC
                 """;
 
@@ -227,6 +234,7 @@ public class AttendanceDAO {
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setDate(1, Date.valueOf(date));
             ps.setDate(2, Date.valueOf(date));
+            ps.setInt(3, companyId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     list.add(mapAttendanceDTO(rs));
@@ -245,10 +253,10 @@ public class AttendanceDAO {
                        e.EmployeeCode, e.FullName, e.DepartmentId, d.DepartmentName,
                        p.PositionTitle, e.ManagerId, m.FullName AS ManagerName
                 FROM Attendances a
-                JOIN Employees e ON a.EmployeeId = e.EmployeeId
-                LEFT JOIN Departments d ON e.DepartmentId = d.DepartmentId
-                LEFT JOIN Positions p ON e.PositionId = p.PositionId
-                LEFT JOIN Employees m ON e.ManagerId = m.EmployeeId
+                JOIN Employees e ON a.CompanyId=e.CompanyId AND a.EmployeeId = e.EmployeeId
+                LEFT JOIN Departments d ON e.CompanyId=d.CompanyId AND e.DepartmentId = d.DepartmentId
+                LEFT JOIN Positions p ON e.CompanyId=p.CompanyId AND e.PositionId = p.PositionId
+                LEFT JOIN Employees m ON e.CompanyId=m.CompanyId AND e.ManagerId = m.EmployeeId
                 WHERE 1=1
                 """);
 
@@ -314,9 +322,9 @@ public class AttendanceDAO {
                     COUNT(CASE WHEN a.Status = 'Absent' THEN 1 END) AS AbsentCount,
                     COUNT(CASE WHEN a.Status = 'On Leave' THEN 1 END) AS OnLeaveCount
                 FROM Employees e
-                LEFT JOIN Departments d ON e.DepartmentId = d.DepartmentId
-                LEFT JOIN Positions p ON e.PositionId = p.PositionId
-                LEFT JOIN Attendances a ON e.EmployeeId = a.EmployeeId 
+                LEFT JOIN Departments d ON e.CompanyId=d.CompanyId AND e.DepartmentId = d.DepartmentId
+                LEFT JOIN Positions p ON e.CompanyId=p.CompanyId AND e.PositionId = p.PositionId
+                LEFT JOIN Attendances a ON e.CompanyId=a.CompanyId AND e.EmployeeId = a.EmployeeId
                      AND MONTH(a.AttendanceDate) = ? AND YEAR(a.AttendanceDate) = ?
                 WHERE 1=1
                 """);
@@ -376,6 +384,11 @@ public class AttendanceDAO {
 
     public List<AttendanceReportDAO> getAttendanceReportForManager(int managerId, Integer departmentId,
                                                                     int month, int year) throws SQLException {
+        return getAttendanceReportForManager(getEmployeeCompanyId(managerId), managerId, departmentId, month, year);
+    }
+
+    public List<AttendanceReportDAO> getAttendanceReportForManager(int companyId, int managerId, Integer departmentId,
+                                                                    int month, int year) throws SQLException {
         StringBuilder sql = new StringBuilder("""
                 SELECT
                     e.EmployeeId, e.EmployeeCode, e.FullName,
@@ -388,17 +401,18 @@ public class AttendanceDAO {
                     COUNT(CASE WHEN a.Status = 'Absent' THEN 1 END) AS AbsentCount,
                     COUNT(CASE WHEN a.Status = 'On Leave' THEN 1 END) AS OnLeaveCount
                 FROM Employees e
-                LEFT JOIN Departments d ON e.DepartmentId = d.DepartmentId
-                LEFT JOIN Positions p ON e.PositionId = p.PositionId
-                LEFT JOIN Attendances a ON e.EmployeeId = a.EmployeeId
+                LEFT JOIN Departments d ON e.CompanyId=d.CompanyId AND e.DepartmentId = d.DepartmentId
+                LEFT JOIN Positions p ON e.CompanyId=p.CompanyId AND e.PositionId = p.PositionId
+                LEFT JOIN Attendances a ON e.CompanyId=a.CompanyId AND e.EmployeeId = a.EmployeeId
                      AND MONTH(a.AttendanceDate) = ? AND YEAR(a.AttendanceDate) = ?
-                WHERE e.ManagerId = ?
+                WHERE e.ManagerId = ? AND e.CompanyId = ?
                 """);
 
         List<Object> params = new ArrayList<>();
         params.add(month);
         params.add(year);
         params.add(managerId);
+        params.add(companyId);
 
         if (departmentId != null && departmentId > 0) {
             sql.append(" AND e.DepartmentId = ?");
@@ -413,6 +427,18 @@ public class AttendanceDAO {
         return mapAttendanceReports(sql.toString(), params);
     }
 
+    public void requireEmployee(int companyId, int employeeId) throws SQLException {
+        if (companyId <= 0) throw new SecurityException("Vui lòng đăng nhập vào workspace.");
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement("SELECT 1 FROM Employees WHERE CompanyId=? AND EmployeeId=?")) {
+            statement.setInt(1, companyId);
+            statement.setInt(2, employeeId);
+            try (ResultSet rows = statement.executeQuery()) {
+                if (!rows.next()) throw new SecurityException("Không tìm thấy nhân viên trong workspace của bạn.");
+            }
+        }
+    }
+
     public int getEmployeeCompanyId(int employeeId) throws SQLException {
         String sql = "SELECT CompanyId FROM Employees WHERE EmployeeId = ?";
         try (Connection conn = DBConnection.getConnection();
@@ -424,7 +450,7 @@ public class AttendanceDAO {
                 }
             }
         }
-        return 1; // default company
+        throw new SecurityException("Không tìm thấy nhân viên trong workspace.");
     }
 
     private List<AttendanceReportDAO> mapAttendanceReports(String sql, List<Object> params) throws SQLException {
