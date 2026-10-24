@@ -1,0 +1,50 @@
+(function (root) {
+    'use strict';
+    const labels = {
+        ASSIGN_ACCOUNT_ROLE:'Đồng bộ vai trò theo chức danh', SUPERSEDE_POSITION_PROPOSAL:'Thay thế đề xuất bằng phân công trực tiếp',
+        ACTIVE:'Đang hoạt động', Active:'Đang hoạt động', INACTIVE:'Ngừng hoạt động', Inactive:'Ngừng hoạt động',
+        DRAFT:'Bản nháp', EXPIRED:'Hết hạn', TERMINATED:'Đã chấm dứt', CANCELLED:'Đã hủy', Cancelled:'Đã hủy',
+        PENDING:'Chờ duyệt', Pending:'Chờ duyệt', APPROVED:'Đã duyệt', Approved:'Đã duyệt', REJECTED:'Đã từ chối', Rejected:'Đã từ chối',
+        APPLIED:'Đã áp dụng', ENDED:'Đã kết thúc', SCHEDULED:'Chờ hiệu lực', CORRECTED:'Đã hiệu chỉnh trong ngày',
+        LOCKED:'Đã khóa', REVOKED:'Đã thu hồi', NONE:'Chưa có tài khoản',
+        SYSTEM_ADMIN:'Quản trị viên hệ thống', COMPANY_ADMIN:'Quản trị viên công ty', HR:'Nhân sự', MANAGER:'Quản lý', EMPLOYEE:'Nhân viên',
+        PROBATION:'Thử việc', FIXED_TERM:'Có thời hạn', INDEFINITE:'Không xác định thời hạn',
+        Male:'Nam', Female:'Nữ', Other:'Khác',
+        ONBOARDING:'Tạo hồ sơ nhân viên', HIRE:'Phân công ban đầu', BASELINE:'Ghi nhận phân công ban đầu',
+        TRANSFER:'Chuyển chức danh / phòng ban', PROMOTION:'Thăng chức', DEMOTION:'Hạ chức', CORRECTION:'Hiệu chỉnh phân công',
+        DEPARTMENT_ASSIGNED:'Phân công phòng ban', DEPARTMENT_TRANSFERRED:'Chuyển phòng ban',
+        MANAGER_ASSIGNED:'Gán quản lý trực tiếp', MANAGER_TRANSFERRED:'Chuyển quản lý trực tiếp', MANAGER_REMOVED:'Gỡ quản lý trực tiếp',
+        MANAGER_CHANGED:'Thay đổi quản lý trực tiếp', MANAGER_CHANGE:'Thay đổi quản lý trực tiếp',
+        TEAM_MEMBER_ASSIGNED:'Thêm thành viên nhóm', TEAM_MEMBER_TRANSFERRED:'Chuyển thành viên nhóm', TEAM_MEMBER_REMOVED:'Gỡ thành viên nhóm',
+        SALARY_ADJUSTMENT:'Ghi nhận / điều chỉnh lương', TERMINATE_EMPLOYEE:'Ngừng làm việc',
+        CREATE_EMPLOYEE:'Tạo hồ sơ nhân viên', UPDATE_EMPLOYEE:'Cập nhật hồ sơ nhân viên',
+        ACTIVATE_EMPLOYEE:'Kích hoạt hồ sơ nhân viên', DEACTIVATE_EMPLOYEE:'Ngừng hoạt động hồ sơ nhân viên',
+        SAVE_CONTRACT:'Lưu hợp đồng nháp', RECORD_SIGNED_CONTRACT:'Ghi nhận hợp đồng đã ký', ACTIVATE_CONTRACT:'Kích hoạt hợp đồng', TERMINATE_CONTRACT:'Chấm dứt hợp đồng',
+        CONTRACT_ACTIVATE:'Kích hoạt hợp đồng', CONTRACT_COMPENSATION_SYNC:'Đồng bộ lương theo hợp đồng',
+        PORTAL_CREATE:'Tạo tài khoản nhân viên', PORTAL_ROLE:'Thay đổi vai trò tài khoản', PORTAL_RESET:'Đặt lại mật khẩu',
+        PORTAL_LOCK:'Khóa tài khoản', PORTAL_UNLOCK:'Mở khóa tài khoản', PORTAL_REVOKE:'Thu hồi quyền truy cập',
+        UPLOAD_DOCUMENT:'Tải tài liệu lên', ACTIVATE_DOCUMENT:'Kích hoạt tài liệu', DEACTIVATE_DOCUMENT:'Lưu trữ tài liệu',
+        UPDATE_SELF_PROFILE:'Cập nhật thông tin cá nhân', CHANGE_PASSWORD:'Đổi mật khẩu', REQUEST_POSITION_CHANGE:'Tạo đề xuất thay đổi chức danh',
+        POSITION_APPROVE:'Duyệt đề xuất chức danh', POSITION_REJECT:'Từ chối đề xuất chức danh', POSITION_APPLY:'Áp dụng thay đổi chức danh',
+        REQUEST_MANAGER_CHANGE:'Tạo đề xuất đổi Manager', MANAGER_CHANGE_APPROVE:'Duyệt đề xuất đổi Manager',
+        MANAGER_CHANGE_REJECT:'Từ chối đề xuất đổi Manager', MANAGER_CHANGE_APPLY:'Áp dụng đề xuất đổi Manager',
+        NEW:'Mới tiếp nhận', UNDER_REVIEW:'Đang xem xét', CONVERTING:'Đang khởi tạo', CONVERTED:'Đã khởi tạo',
+        Present:'Có mặt', Late:'Đi muộn', Absent:'Vắng mặt', 'Early Leave':'Về sớm', 'On Leave':'Nghỉ phép',
+        PENDING_PAYMENT:'Chờ thanh toán', SUSPENDED:'Tạm ngưng', MONTHLY:'Hàng tháng', YEARLY:'Hàng năm',
+        SYSTEM:'Hệ thống', System:'Hệ thống', 'Không ghi nhận':'Không ghi nhận',
+        'Initial compensation':'Khởi tạo lương',
+        'Manager relationship changed':'Thay đổi quản lý trực tiếp',
+        'Active; portal access remains separately controlled':'Đang hoạt động; quyền truy cập tài khoản được quản lý riêng',
+        true:'Có', false:'Không',
+        ContractId:'Mã bản ghi hợp đồng', CompanyId:'Mã công ty', EmployeeId:'Mã bản ghi nhân viên',
+        ContractCode:'Mã hợp đồng', ContractType:'Loại hợp đồng', StartDate:'Ngày bắt đầu', EndDate:'Ngày kết thúc',
+        GrossSalary:'Lương trước khấu trừ', Status:'Trạng thái', SignedDate:'Ngày ghi nhận ký kết',
+        TerminatedDate:'Ngày chấm dứt', TerminationReason:'Lý do chấm dứt', Notes:'Ghi chú',
+        CreatedByUserId:'Mã tài khoản tạo', CreatedAt:'Thời điểm tạo', UpdatedAt:'Thời điểm cập nhật',
+        FullName:'Họ và tên', EmployeeCode:'Mã nhân viên', DisplayStatus:'Trạng thái hiển thị', Expiring:'Sắp hết hạn',
+        Version:'Phiên bản dữ liệu'
+    };
+    const label = value => value == null ? value : Object.prototype.hasOwnProperty.call(labels,String(value)) ? labels[String(value)] : value;
+    root.HrmVietnamese = {label,labels};
+    if (typeof module !== 'undefined') module.exports = {label,labels};
+})(globalThis);

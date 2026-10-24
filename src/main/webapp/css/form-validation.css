@@ -1,4 +1,6 @@
-body .field-error {
+body .field-error,
+body.lc .lc-main .field-error,
+body.lc .lc-modal .field-error {
     display: block;
     margin: 6px 0 0;
     color: #b42318;
@@ -10,7 +12,9 @@ body .field-error {
     white-space: normal;
 }
 
-body .field-error:empty {
+body .field-error:empty,
+body.lc .lc-main .field-error:empty,
+body.lc .lc-modal .field-error:empty {
     display: none;
 }
 

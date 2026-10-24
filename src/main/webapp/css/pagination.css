@@ -1,0 +1,17 @@
+.lc .hrm-pagination{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px 18px;padding:16px 20px;background:#fff;border-top:1px solid #eceef5;color:#7b8194;font-size:12px;min-width:0;box-sizing:border-box}
+.lc .hrm-pagination__meta,.lc .hrm-pagination__controls{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
+.lc .hrm-pagination__size{display:flex;flex-direction:row;align-items:center;gap:8px;font-size:12px;margin:0;white-space:nowrap;color:#7b8194}
+.lc .hrm-pagination__size select{width:64px;min-height:32px;padding:5px 8px;border:1px solid #e5e7f0;border-radius:8px;background:#fff;color:#30364b;font-size:12px;margin:0}
+.lc .hrm-pagination__button{display:inline-flex;justify-content:center;align-items:center;min-width:32px;width:32px;height:32px;min-height:32px;padding:0;border-radius:8px;border:1px solid #e7e9f2;background:#fff;color:#687086;font-size:12px;font-weight:500;box-shadow:0 1px 2px #18223b04;line-height:1;cursor:pointer}
+.lc .hrm-pagination__button:hover:not(:disabled){color:#4f46e5;border-color:#bdb8fa;background:#f4f3ff}
+.lc .hrm-pagination__button.is-current{background:#4f46e5;color:#fff;border-color:#4f46e5;box-shadow:0 3px 8px #4f46e526}
+.lc .hrm-pagination__button:disabled{opacity:.38;cursor:not-allowed}
+.lc .hrm-pagination__button:focus-visible,.lc .hrm-pagination__size select:focus-visible{outline:2px solid #8b83f3;outline-offset:2px}
+.lc .hrm-pagination__ellipsis{padding:0 2px;color:#a0a5b5}
+.lc .hrm-pagination__status,.lc .hrm-pagination__range{white-space:nowrap;font-variant-numeric:tabular-nums}
+.lc .hrm-pagination--compact{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:12px;padding:15px 18px;border-radius:0 0 12px 12px}
+.lc .hrm-pagination--compact .hrm-pagination__meta{justify-content:space-between}
+.lc .hrm-pagination--compact .hrm-pagination__controls{justify-content:center;gap:5px}
+.lc .hrm-pagination--compact .hrm-pagination__status{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.lc [data-pagination] [data-page-hidden],.lc [data-pagination]>[data-page-hidden]{display:none!important}
+@media(max-width:600px){.lc .hrm-pagination{padding:14px 12px;gap:12px}.lc .hrm-pagination:not(.hrm-pagination--compact) .hrm-pagination__meta{width:100%;justify-content:space-between}.lc .hrm-pagination__controls{gap:5px}.lc .hrm-pagination__button{width:30px;min-width:30px;height:30px;min-height:30px}.lc .hrm-pagination--compact{padding:14px 16px}}

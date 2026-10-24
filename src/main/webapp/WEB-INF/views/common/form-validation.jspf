@@ -1,2 +1,7 @@
 <link rel="stylesheet" href="${pageContext.request.contextPath}/css/form-validation.css?v=<%= application.getResource("/css/form-validation.css").openConnection().getLastModified() %>">
 <script src="${pageContext.request.contextPath}/js/form-validation.js?v=<%= application.getResource("/js/form-validation.js").openConnection().getLastModified() %>" defer></script>
+<meta name="organization-csrf-token" content="${organizationCsrfToken}">
+<%@ page pageEncoding="UTF-8" %>
+<link rel="stylesheet" href="${pageContext.request.contextPath}/css/pagination.css?v=<%= application.getResource("/css/pagination.css").openConnection().getLastModified() %>">
+<script src="${pageContext.request.contextPath}/js/pagination.js?v=<%= application.getResource("/js/pagination.js").openConnection().getLastModified() %>" defer></script>
+<script src="${pageContext.request.contextPath}/js/vietnamese.js?v=<%= application.getResource("/js/vietnamese.js").openConnection().getLastModified() %>" defer></script>

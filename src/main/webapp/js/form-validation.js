@@ -11,10 +11,14 @@ window.FormValidation = (() => {
         gender: 'giới tính', status: 'trạng thái', tenantDomain: 'workspace',
         tenantEmail: 'email', tenantPassword: 'mật khẩu', identifier: 'tên đăng nhập / email',
         password: 'mật khẩu', newPassword: 'mật khẩu mới', confirmPassword: 'mật khẩu xác nhận',
-        companyName: 'tên công ty', region: 'khu vực', reason: 'lý do nghỉ phép',
+        companyName: 'tên công ty', region: 'khu vực', reason: 'lý do',
         startDate: 'ngày bắt đầu', endDate: 'ngày kết thúc', leaveTypeId: 'loại nghỉ phép',
         typeCode: 'mã loại nghỉ phép', typeName: 'tên loại nghỉ phép',
-        defaultDaysPerYear: 'số ngày phép', title: 'tiêu đề', content: 'nội dung'
+        defaultDaysPerYear: 'số ngày phép', title: 'tiêu đề', content: 'nội dung',
+        grossSalary: "lương trước khấu trừ", travelAllowance: 'phụ cấp đi lại',
+        positionId: 'chức danh', employeeId: 'nhân viên', contractCode: 'mã hợp đồng',
+        contractType: 'loại hợp đồng', effectiveDate: 'ngày hiệu lực',
+        startsAt: 'thời gian bắt đầu', endsAt: 'thời gian kết thúc'
     };
 
     function fields(root) {
@@ -78,8 +82,10 @@ window.FormValidation = (() => {
         }
         const members = group(field);
         const value = field.value.trim();
-        const label = labels[field.name] || labels[field.id]
-            || (field.labels && field.labels[0] && field.labels[0].textContent.replace(/\*/g, '').trim())
+        const labelNode = field.labels && field.labels[0] && field.labels[0].cloneNode(true);
+        if (labelNode) labelNode.querySelectorAll('.field-error, input, select, textarea').forEach(node => node.remove());
+        const label = field.dataset.validationLabel?.trim() || labels[field.name] || labels[field.id]
+            || (labelNode && labelNode.textContent.replace(/\*/g, '').trim())
             || 'thông tin';
         if (field.validity.badInput) {
             return `${label}: giá trị không hợp lệ.`;
@@ -131,6 +137,10 @@ window.FormValidation = (() => {
         if (field.name === 'endDate' && startDate && startDate.value && value < startDate.value) {
             return 'Ngày kết thúc không được trước ngày bắt đầu.';
         }
+        const startsAt = form && form.elements.namedItem('startsAt');
+        if (field.name === 'endsAt' && startsAt && startsAt.value && value <= startsAt.value) {
+            return 'Thời gian kết thúc phải sau thời gian bắt đầu.';
+        }
         if (field.type === 'file') {
             const extensions = field.accept.split(',').map(extension => extension.trim().toLowerCase()).filter(extension => extension.startsWith('.'));
             for (const file of field.files) {
@@ -151,6 +161,16 @@ window.FormValidation = (() => {
         return !message;
     }
 
+    function focusInvalid(field) {
+        const panel = field.closest('[data-form-panel]');
+        if (panel && panel.hidden && field.form) {
+            const tab = Array.from(field.form.querySelectorAll('[data-form-tab]'))
+                .find(button => button.dataset.formTab === panel.dataset.formPanel);
+            if (tab) tab.click();
+        }
+        field.focus();
+    }
+
     function validate(root) {
         let firstInvalid;
         fields(root).forEach(field => {
@@ -159,7 +179,7 @@ window.FormValidation = (() => {
             }
         });
         if (firstInvalid) {
-            firstInvalid.focus();
+            focusInvalid(firstInvalid);
         }
         return !firstInvalid;
     }
@@ -186,7 +206,7 @@ window.FormValidation = (() => {
             }
         });
         if (firstInvalid) {
-            firstInvalid.focus();
+            focusInvalid(firstInvalid);
         }
         return Boolean(firstInvalid);
     }
@@ -221,6 +241,9 @@ window.FormValidation = (() => {
     document.addEventListener('change', event => {
         if (event.target.matches('input:not([type="hidden"]), select, textarea')) {
             validateField(event.target);
+            const dependent = { startDate: 'endDate', startsAt: 'endsAt', newPassword: 'confirmPassword' }[event.target.name];
+            const target = dependent && event.target.form && event.target.form.elements.namedItem(dependent);
+            if (target && target.value) validateField(target);
         }
     });
     document.addEventListener('DOMContentLoaded', () => document.querySelectorAll('form').forEach(init));
