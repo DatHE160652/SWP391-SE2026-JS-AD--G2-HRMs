@@ -52,7 +52,7 @@ This project was developed to apply practical knowledge of Java web development,
 
 ## Local Database Setup
 
-Copy `src/main/resources/db.properties.example` to `src/main/resources/db.properties` and supply your local SQL Server settings. The credential file is ignored by Git. Environment variables such as `HRM_DB_URL`, `HRM_DB_USER` and `HRM_DB_PASSWORD` override the file.
+Copy `src/main/resources/db.properties.example` to `src/main/resources/db.properties` and supply your local SQL Server settings. The credential file is ignored by Git. Environment variables such as `HRM_DB_URL`, `HRM_DB_USER` and `HRM_DB_PASSWORD` override the file. 
 
 For an existing lifecycle database, back it up, select that database in SQL Server Management Studio, and run `database/scripts/employee-lifecycle-compatibility.sql`. This updates older lifecycle snapshots with the credential column, contract travel allowance, profile/document period type, and manager-change fields and procedure required by the current application. Existing credential values are preserved when the legacy credential column is renamed. Accounts with previously hashed passwords require a password reset before logging in using direct password comparison. This migration requires the lifecycle tables; the base `database/db.sql` alone does not contain them.
 
