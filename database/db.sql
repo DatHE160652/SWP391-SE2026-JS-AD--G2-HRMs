@@ -312,11 +312,8 @@ CREATE TABLE Employees (
     Phone VARCHAR(30) NULL,
     Gender NVARCHAR(20) NULL,
     DateOfBirth DATE NULL,
-    StartDate DATE NOT NULL,
     EndDate DATE NULL,
-    BaseSalary DECIMAL(18,2) NOT NULL DEFAULT 0.00 
-        CHECK (BaseSalary >= 0),                     -- Lương cơ bản dùng cho tính lương
-    Status NVARCHAR(30) NOT NULL DEFAULT 'Active' 
+    Status NVARCHAR(30) NOT NULL DEFAULT 'Active'
         CHECK (Status IN ('Active', 'On Leave', 'Inactive')),
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     UpdatedAt DATETIME2 NULL,
