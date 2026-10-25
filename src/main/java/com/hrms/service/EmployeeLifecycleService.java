@@ -349,7 +349,7 @@ public class EmployeeLifecycleService {
                 user.setUsername(identity.username());
                 user.setEmail(identity.email());
                 user.setDisplayName((String) employee.get("FullName"));
-                user.setPassword(new BCryptPasswordHasher().hash(temporaryPassword));
+                user.setPassword(temporaryPassword);
                 userId = new UserDAO().createEmployeeAccount(connection, user);
                 dao.execute(connection,"UPDATE Users SET MustChangePassword=1,ActivatedAt=NULL,PasswordChangedAt=NULL WHERE CompanyId=? AND UserId=?",principal.getCompanyId(),userId);
                 dao.execute(connection, "UPDATE Employees SET UserId=?,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND EmployeeId=? AND UserId IS NULL", userId, principal.getCompanyId(), employeeId);
@@ -360,7 +360,7 @@ public class EmployeeLifecycleService {
                     case "lock" -> dao.execute(connection, "UPDATE Users SET IsLocked=1,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND UserId=?", principal.getCompanyId(), userId);
                     case "unlock" -> dao.execute(connection, "UPDATE Users SET IsLocked=0,IsActive=1,LockedUntil=NULL,FailedLoginAttempts=0,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND UserId=?", principal.getCompanyId(), userId);
                     case "revoke" -> dao.execute(connection, "UPDATE Users SET IsActive=0,IsLocked=1,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND UserId=?", principal.getCompanyId(), userId);
-                    case "reset" -> dao.execute(connection, "UPDATE Users SET Password=?,MustChangePassword=1,ActivatedAt=NULL,PasswordChangedAt=NULL,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND UserId=?", new BCryptPasswordHasher().hash(temporaryPassword), principal.getCompanyId(), userId);
+                    case "reset" -> dao.execute(connection, "UPDATE Users SET Password=?,MustChangePassword=1,ActivatedAt=NULL,PasswordChangedAt=NULL,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND UserId=?", temporaryPassword, principal.getCompanyId(), userId);
                     default -> throw new IllegalArgumentException("Thao tác tài khoản không hợp lệ.");
                 }
             }

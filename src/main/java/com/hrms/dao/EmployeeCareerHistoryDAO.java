@@ -34,7 +34,7 @@ public class EmployeeCareerHistoryDAO {
     private void readLifecycleEvents(Connection connection,int companyId,int employeeId,List<EmployeeCareerEvent> events) throws SQLException {
         String sql = """
                 SELECT CONCAT('lifecycle-',l.LogId) AS EventId,l.Action AS EventType,l.CreatedAt,
-                    CONVERT(varchar(10),COALESCE(e.EndDate,CONVERT(date,l.CreatedAt)),23) AS EffectiveDate,
+                    CONVERT(varchar(10),CONVERT(date,l.CreatedAt AT TIME ZONE 'UTC' AT TIME ZONE 'SE Asia Standard Time'),23) AS EffectiveDate,
                     l.NewValues AS Description,COALESCE(u.DisplayName,N'Chưa ghi nhận người thực hiện') AS ChangedBy
                 FROM AuditLogs l JOIN Employees e ON e.CompanyId=l.CompanyId AND CONVERT(varchar(100),e.EmployeeId)=l.RecordId
                 LEFT JOIN Users u ON u.CompanyId=l.CompanyId AND u.UserId=l.UserId

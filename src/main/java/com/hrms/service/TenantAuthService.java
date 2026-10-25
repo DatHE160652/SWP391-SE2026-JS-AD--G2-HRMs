@@ -34,7 +34,7 @@ public class TenantAuthService {
         }
 
         TenantAccount account = userDAO.findTenantAccount(workspace, normalizedEmail);
-        if (account == null || !new BCryptPasswordVerifier().matches(rawPassword, account.getUser().getPassword())) {
+        if (account == null || !rawPassword.equals(account.getUser().getPassword())) {
             if (account != null) {
                 userDAO.recordTenantLoginFailure(account.getUser(), MAX_FAILED_ATTEMPTS, LOCK_MINUTES);
             }
@@ -58,10 +58,10 @@ public class TenantAuthService {
         if (account == null || !principal.getUserId().equals(account.getUser().getUserId())
                 || !principal.getCompanyId().equals(account.getCompanyId())
                 || !userDAO.isCurrentTenantSessionAuthorized(principal)) return false;
-        if (new BCryptPasswordVerifier().matches(newPassword, account.getUser().getPassword())) {
+        if (newPassword.equals(account.getUser().getPassword())) {
             throw new IllegalArgumentException("Mật khẩu mới phải khác mật khẩu hiện tại.");
         }
-        return userDAO.updateTenantPassword(account.getUser(), new BCryptPasswordHasher().hash(newPassword));
+        return userDAO.updateTenantPassword(account.getUser(), newPassword);
     }
 
     private String normalizeWorkspace(String value) {

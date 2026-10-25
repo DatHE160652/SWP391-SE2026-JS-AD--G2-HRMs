@@ -7,7 +7,8 @@
     const picker = document.querySelector('#initialAssignmentEmployees');
     const hint = document.querySelector('#initialAssignmentSelectionHint');
     const managerField = document.querySelector('#initialAssignmentManagerField');
-    const managerSelect = form.elements.managerId;
+    const managerInput = form.elements.managerId;
+    const managerName = document.querySelector('#initialAssignmentManagerName');
     const managerHint = document.querySelector('#initialAssignmentManagerHint');
     let revision = 0;
     let positions = [];
@@ -20,8 +21,9 @@
         FormValidation.clear(form);
         error.textContent = '';
         managerField.hidden = true;
-        managerSelect.disabled = true;
-        managerSelect.replaceChildren(new Option('Chưa chọn quản lý', ''));
+        managerInput.disabled = true;
+        managerInput.value = '';
+        managerName.value = 'Chưa có quản lý';
         managerHint.textContent = '';
         const position = positions.find(item => String(item.positionId) === form.elements.positionId.value);
         const roleBadge = document.querySelector('#initialAssignmentRole');
@@ -41,15 +43,15 @@
         if (roleBadge) roleBadge.textContent = single ? 'Manager' : 'Employee';
         if (!single) {
             managerField.hidden = false;
-            managerSelect.disabled = false;
+            managerInput.disabled = false;
             const matching = position.reportsToPositionId == null ? [] : managers.filter(manager=>String(manager.positionId)===String(position.reportsToPositionId));
-            for (const manager of matching) managerSelect.add(new Option(manager.employeeCode + ' · ' + manager.fullName + ' · ' + (manager.positionTitle || ''), manager.employeeId));
             if (matching.length === 1) {
-                managerSelect.value = matching[0].employeeId;
-                managerHint.textContent = 'Gợi ý người đang đảm nhiệm đúng chức danh quản lý đã liên kết. Có thể chọn Chưa chọn quản lý.';
+                managerInput.value = matching[0].employeeId;
+                managerName.value = matching[0].employeeCode + ' · ' + matching[0].fullName + ' · ' + (matching[0].positionTitle || '');
+                managerHint.textContent = 'Tự động xác định theo chức danh quản lý đã liên kết.';
             } else managerHint.textContent = position.reportsToPositionId == null
                 ? 'Chưa liên kết chức danh quản lý. Hãy cấu hình tại Chức danh; hệ thống không tự chọn quản lý khác team.'
-                : matching.length ? 'Chọn người đang đảm nhiệm chức danh quản lý đã liên kết.' : 'Chưa có quản lý đang hoạt động đảm nhiệm chức danh đã liên kết. Có thể phân công quản lý sau.';
+                : matching.length ? 'Có nhiều người đảm nhiệm chức danh quản lý đã liên kết. Cần kiểm tra lại phân công chức danh để xác định quản lý trực tiếp.' : 'Chưa có quản lý đang hoạt động đảm nhiệm chức danh đã liên kết. Có thể phân công quản lý sau.';
         }
         hint.textContent = single ? 'Chức danh cấp Manager: chỉ chọn một nhân viên.' : 'Có thể chọn nhiều nhân viên cho chức danh này.';
         for (const employee of candidates) {
@@ -75,8 +77,9 @@
         form.elements.departmentId.value = departmentId;
         positions = []; levels = []; candidates = []; managers = [];
         managerField.hidden = true;
-        managerSelect.disabled = true;
-        managerSelect.replaceChildren(new Option('Chưa chọn quản lý', ''));
+        managerInput.disabled = true;
+        managerInput.value = '';
+        managerName.value = 'Chưa có quản lý';
         picker.replaceChildren();
         error.textContent = '';
         hint.textContent = 'Chọn chức danh trước để chọn nhân viên.';
@@ -141,14 +144,14 @@
         submitting = true;
         save.disabled = true;
         form.elements.positionId.disabled = true;
-        managerSelect.disabled = true;
+        managerInput.disabled = true;
         picker.querySelectorAll('input').forEach(input => { input.disabled = true; });
         try {
             const payload = await DepartmentApi.post('/departments/initial-assignment', {
                 departmentId: form.elements.departmentId.value,
                 positionId: form.elements.positionId.value,
                 employeeIds: employeeIds.join(','),
-                managerId: managerField.hidden ? '' : managerSelect.value
+                managerId: managerField.hidden ? '' : managerInput.value
             });
             dialog.close();
             showDepartmentMessage(payload.message);
@@ -159,7 +162,7 @@
         } finally {
             submitting = false;
             form.elements.positionId.disabled = false;
-            managerSelect.disabled = managerField.hidden;
+            managerInput.disabled = managerField.hidden;
             picker.querySelectorAll('input').forEach(input => { input.disabled = false; });
             save.disabled = false;
         }

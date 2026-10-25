@@ -13,7 +13,7 @@
                     <p id="initialAssignmentSelectionHint" class="lc-form-hint" aria-live="polite">Chọn chức danh trước để chọn nhân viên.</p>
                     <div id="initialAssignmentEmployees" class="ia-picker"></div>
                 </fieldset>
-                <label id="initialAssignmentManagerField" class="full" hidden>Quản lý trực tiếp<select name="managerId" disabled><option value="">Chưa chọn quản lý</option></select><span id="initialAssignmentManagerHint" class="lc-form-hint" aria-live="polite"></span></label>
+                <label id="initialAssignmentManagerField" class="full" hidden>Quản lý trực tiếp<input id="initialAssignmentManagerName" type="text" readonly><input name="managerId" type="hidden" disabled><span id="initialAssignmentManagerHint" class="lc-form-hint" aria-live="polite"></span></label>
             </div>
             <p id="initialAssignmentEmpty" class="lc-muted" hidden></p>
             <a id="initialAssignmentPositionLink" class="button secondary small">Thêm chức danh cho phòng ban →</a>
