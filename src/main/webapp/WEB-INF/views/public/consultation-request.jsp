@@ -77,7 +77,7 @@
                                 Đã tiếp nhận yêu cầu.
                             </strong>
                             <span>
-                                Yêu cầu của bạn đã được lưu ở trạng thái NEW. Đội ngũ HRMs Cloud sẽ liên hệ để tư vấn.
+                                Yêu cầu của bạn đã được lưu. Đội ngũ HRMs Cloud sẽ liên hệ để tư vấn.
                             </span>
                         </div>
                     </c:if>
@@ -171,11 +171,7 @@
                             </c:if>
                         </div>
                         <p class="form-note">
-                            Sau khi gửi, hồ sơ được lưu ở trạng thái
-                            <strong>
-                                NEW
-                            </strong>
-                            . System Admin sẽ xem xét trước khi tạo Company, User hoặc Subscription.
+                            Sau khi gửi, Yêu cầu của bạn đã được lưu. Đội ngũ HRMs Cloud sẽ liên hệ để tư vấn.
                         </p>
                         <button class="button button-primary button-wide submit-button" type="submit">
                             Gửi yêu cầu đăng ký tư vấn

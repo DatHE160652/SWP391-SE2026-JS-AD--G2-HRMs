@@ -312,9 +312,8 @@ CREATE TABLE Employees (
     Phone VARCHAR(30) NULL,
     Gender NVARCHAR(20) NULL,
     DateOfBirth DATE NULL,
-    IdentityNumber VARCHAR(50) NULL,
     EndDate DATE NULL,
-    Status NVARCHAR(30) NOT NULL DEFAULT 'Active' 
+    Status NVARCHAR(30) NOT NULL DEFAULT 'Active'
         CHECK (Status IN ('Active', 'On Leave', 'Inactive')),
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     UpdatedAt DATETIME2 NULL,

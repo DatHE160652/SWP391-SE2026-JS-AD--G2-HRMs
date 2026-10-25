@@ -17,10 +17,6 @@
             <h1 id="tenant-login-title">Đăng nhập</h1>
             <p>Nhập thông tin workspace và tài khoản tenant của doanh nghiệp.</p>
         </div>
-        <div class="login-info">
-            <strong>Đăng nhập lần đầu bằng mật khẩu tạm?</strong>
-            <span>Quản trị viên công ty và nhân sự sẽ được yêu cầu đổi mật khẩu sau khi xác thực thành công.</span>
-        </div>
         <c:if test="${not empty loginError}">
             <div class="alert alert-warning" role="alert"><c:out value="${loginError}"/></div>
         </c:if>
