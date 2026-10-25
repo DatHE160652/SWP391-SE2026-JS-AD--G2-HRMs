@@ -1,4 +1,5 @@
-
+-- Bootstrap tạo database mới; không chạy lại trên database đang có dữ liệu.
+-- Ghép schema Iter2 (23/10/2026), giữ cột legacy mà ứng dụng hiện tại còn dùng.
 CREATE DATABASE HRMsDB;
 GO
 
@@ -122,8 +123,9 @@ CREATE TABLE Users (
     UserId INT IDENTITY(1,1) PRIMARY KEY,
     CompanyId INT NULL,                              -- NULL đối với System Admin cấp platform
     RoleId INT NOT NULL,
-    Username VARCHAR(100) NOT NULL UNIQUE,           -- Định danh nội bộ legacy; không dùng để đăng nhập
+    Username VARCHAR(150) NOT NULL UNIQUE,           -- Định danh nội bộ legacy; không dùng để đăng nhập
     Email VARCHAR(150) COLLATE Latin1_General_100_CI_AS NOT NULL, -- Định danh đăng nhập duy nhất; backend trim/lowercase
+    EmailNormalized AS (LOWER(LTRIM(RTRIM(Email))) COLLATE Latin1_General_100_CI_AS) PERSISTED,
     DisplayName NVARCHAR(150) NOT NULL,
     AvatarUrl NVARCHAR(500) NULL,
     -- CẢNH BÁO: mật khẩu lưu dạng plaintext, chỉ dùng cho local/demo; không dùng production.
@@ -162,6 +164,7 @@ CREATE TABLE RegistrationRequests (
     -- Đúng 5 trường nhập trên form; các cột còn lại là dữ liệu hệ thống.
     FullName NVARCHAR(150) NOT NULL,
     Email VARCHAR(150) COLLATE Latin1_General_100_CI_AS NOT NULL,
+    EmailNormalized AS (LOWER(LTRIM(RTRIM(Email))) COLLATE Latin1_General_100_CI_AS) PERSISTED,
     Phone VARCHAR(10) COLLATE Latin1_General_100_BIN2 NOT NULL,
     CompanyName NVARCHAR(200) NOT NULL,
     Region VARCHAR(10) NOT NULL CHECK (Region IN ('NORTH', 'CENTRAL', 'SOUTH')),
@@ -279,6 +282,7 @@ CREATE TABLE Departments (
     CompanyId INT NOT NULL,
     DepartmentCode VARCHAR(50) NOT NULL,             -- VD: 'HR', 'TECH', 'SALE'
     DepartmentName NVARCHAR(150) NOT NULL,
+    IsActive BIT NOT NULL CONSTRAINT DF_Departments_IsActive DEFAULT 1,
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     CONSTRAINT FK_Departments_Companies FOREIGN KEY (CompanyId) REFERENCES Companies(CompanyId) ON DELETE CASCADE,
     CONSTRAINT UQ_Company_DepartmentCode UNIQUE (CompanyId, DepartmentCode)
@@ -292,9 +296,20 @@ CREATE TABLE Positions (
     CompanyId INT NOT NULL,
     PositionTitle NVARCHAR(150) NOT NULL,            -- VD: Backend Dev, Senior HR
     Description NVARCHAR(255) NULL,
+    DepartmentId INT NULL,                          -- Nullable để tương thích Position legacy
+    JobTitleId INT NULL,
+    ResponsibilityLevelId INT NULL,                 -- Luồng tạo Position cũ chưa cấp level
+    PositionCode VARCHAR(50) NULL,
+    IsActive BIT NOT NULL CONSTRAINT DF_Positions_IsActive DEFAULT 1,
+    UpdatedAt DATETIME2 NULL,
+    CanManageEmployees BIT NOT NULL CONSTRAINT DF_Positions_CanManageEmployees DEFAULT 0,
+    PositionAllowance DECIMAL(18,2) NULL,
+    ReportsToPositionId INT NULL,
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     CONSTRAINT FK_Positions_Companies FOREIGN KEY (CompanyId) REFERENCES Companies(CompanyId) ON DELETE CASCADE,
-    CONSTRAINT UQ_Company_PositionTitle UNIQUE (CompanyId, PositionTitle)
+    CONSTRAINT UQ_Positions_Company_Department_Title UNIQUE (CompanyId, DepartmentId, PositionTitle),
+    CONSTRAINT CK_Positions_Allowance CHECK (PositionAllowance IS NULL OR PositionAllowance >= 0),
+    CONSTRAINT CK_Positions_NotSelfReporting CHECK (ReportsToPositionId IS NULL OR ReportsToPositionId <> PositionId)
 );
 
 -- ------------------------------------------------------------------------
@@ -303,16 +318,24 @@ CREATE TABLE Positions (
 CREATE TABLE Employees (
     EmployeeId INT IDENTITY(1,1) PRIMARY KEY,
     CompanyId INT NOT NULL,
-    UserId INT NOT NULL UNIQUE,                      -- Ràng buộc 1-1 với tài khoản User
+    UserId INT NULL,                                 -- UNIQUE có lọc ở cuối file; cho phép hồ sơ chưa cấp User
     ManagerId INT NULL,                              -- Tự tham chiếu cấp trên quản lý trực tiếp
-    DepartmentId INT NOT NULL,
-    PositionId INT NOT NULL,
+    DepartmentId INT NULL,
+    PositionId INT NULL,
     EmployeeCode VARCHAR(50) NOT NULL,               -- Mã nhân viên nội bộ (VD: 'EMP-001')
     FullName NVARCHAR(150) NOT NULL,
     Phone VARCHAR(30) NULL,
     Gender NVARCHAR(20) NULL,
     DateOfBirth DATE NULL,
-    EndDate DATE NULL,
+    IdentityNumber VARCHAR(50) NULL,
+    Email VARCHAR(150) NULL,
+    IdentityIssuedDate DATE NULL,
+    IdentityIssuedPlace NVARCHAR(200) NULL,
+    PermanentAddress NVARCHAR(500) NULL,
+    Hometown NVARCHAR(200) NULL,
+    Major NVARCHAR(200) NULL,
+    IntendedContractType VARCHAR(30) NULL,
+    TerminationReason NVARCHAR(500) NULL,
     Status NVARCHAR(30) NOT NULL DEFAULT 'Active'
         CHECK (Status IN ('Active', 'On Leave', 'Inactive')),
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
@@ -322,7 +345,9 @@ CREATE TABLE Employees (
     CONSTRAINT FK_Employees_Manager FOREIGN KEY (ManagerId) REFERENCES Employees(EmployeeId),
     CONSTRAINT FK_Employees_Departments FOREIGN KEY (DepartmentId) REFERENCES Departments(DepartmentId),
     CONSTRAINT FK_Employees_Positions FOREIGN KEY (PositionId) REFERENCES Positions(PositionId),
-    CONSTRAINT UQ_Company_EmployeeCode UNIQUE (CompanyId, EmployeeCode)
+    CONSTRAINT UQ_Company_EmployeeCode UNIQUE (CompanyId, EmployeeCode),
+    CONSTRAINT CK_Employees_NotOwnManager CHECK (ManagerId IS NULL OR ManagerId <> EmployeeId),
+    CONSTRAINT CK_Employees_Position_RequiresDepartment CHECK (PositionId IS NULL OR DepartmentId IS NOT NULL)
 );
 
 -- ========================================================================
@@ -341,7 +366,7 @@ CREATE TABLE Attendances (
     CheckInTime TIME(0) NULL,
     CheckOutTime TIME(0) NULL,
     TotalHours DECIMAL(5,2) NOT NULL DEFAULT 0.00,
-    Status NVARCHAR(30) NOT NULL DEFAULT 'Absent' 
+    Status NVARCHAR(30) NOT NULL DEFAULT 'Absent'
         CHECK (Status IN ('Present', 'Late', 'Absent', 'On Leave', 'Early Leave')),
     Note NVARCHAR(255) NULL,
     IsManualAdjusted BIT NOT NULL DEFAULT 0,         -- Cờ đánh dấu có điều chỉnh thủ công
@@ -370,6 +395,7 @@ CREATE TABLE LeaveTypes (
     TypeName NVARCHAR(100) NOT NULL,
     DefaultDaysPerYear INT NOT NULL DEFAULT 12,
     IsPaid BIT NOT NULL DEFAULT 1,                   -- Nghỉ có hưởng lương hay không
+    IsActive BIT NOT NULL CONSTRAINT DF_LeaveTypes_IsActive DEFAULT 1,
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     CONSTRAINT FK_LeaveTypes_Companies FOREIGN KEY (CompanyId) REFERENCES Companies(CompanyId) ON DELETE CASCADE,
     CONSTRAINT UQ_Company_LeaveTypeCode UNIQUE (CompanyId, TypeCode)
@@ -406,7 +432,7 @@ CREATE TABLE LeaveRequests (
     EndDate DATE NOT NULL,
     TotalDays DECIMAL(4,1) NOT NULL CHECK (TotalDays > 0),
     Reason NVARCHAR(500) NOT NULL,
-    Status NVARCHAR(30) NOT NULL DEFAULT 'Pending' 
+    Status NVARCHAR(30) NOT NULL DEFAULT 'Pending'
         CHECK (Status IN ('Pending', 'Approved', 'Rejected', 'Cancelled')),
     ApproverId INT NULL,                             -- Manager hoặc HR thực hiện duyệt
     ApproverComment NVARCHAR(300) NULL,
@@ -423,7 +449,7 @@ CREATE TABLE LeaveRequests (
 -- ========================================================================
 -- PHẦN 6: QUẢN LÝ TÍNH LƯƠNG VÀ PHIẾU LƯƠNG
 -- Workflow 5: Payroll Management
--- Công thức: NetSalary = BaseSalary + Bonus - Deduction
+-- Công thức: NetSalary = BaseSalary + ResponsibilityAllowance + Bonus - Deduction
 -- ========================================================================
 
 -- ------------------------------------------------------------------------
@@ -435,7 +461,7 @@ CREATE TABLE PayrollPeriods (
     PeriodName NVARCHAR(100) NOT NULL,               -- VD: 'Bảng lương Tháng 09/2026'
     Month INT NOT NULL CHECK (Month BETWEEN 1 AND 12),
     Year INT NOT NULL CHECK (Year >= 2000),
-    Status NVARCHAR(30) NOT NULL DEFAULT 'Draft' 
+    Status NVARCHAR(30) NOT NULL DEFAULT 'Draft'
         CHECK (Status IN ('Draft', 'Calculated', 'Reviewed', 'Approved')),
     ApprovedByUserId INT NULL,
     ApprovedAt DATETIME2 NULL,
@@ -473,12 +499,14 @@ CREATE TABLE Payslips (
     BaseSalary DECIMAL(18,2) NOT NULL CHECK (BaseSalary >= 0),
     Bonus DECIMAL(18,2) NOT NULL DEFAULT 0.00 CHECK (Bonus >= 0),
     Deduction DECIMAL(18,2) NOT NULL DEFAULT 0.00 CHECK (Deduction >= 0),
-    -- Cột tính toán tự động: NetSalary = BaseSalary + Bonus - Deduction
-    NetSalary AS (BaseSalary + Bonus - Deduction),
+    ResponsibilityAllowance DECIMAL(18,2) NOT NULL CONSTRAINT DF_Payslips_ResponsibilityAllowance DEFAULT 0.00,
+    -- Cột tính toán tự động: NetSalary = BaseSalary + ResponsibilityAllowance + Bonus - Deduction
+    NetSalary AS (BaseSalary + ResponsibilityAllowance + Bonus - Deduction),
     GeneratedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     CONSTRAINT FK_Payslips_PayrollPeriods FOREIGN KEY (PayrollPeriodId) REFERENCES PayrollPeriods(PayrollPeriodId),
     CONSTRAINT FK_Payslips_Employees FOREIGN KEY (EmployeeId) REFERENCES Employees(EmployeeId),
-    CONSTRAINT UQ_Period_Employee_Payslip UNIQUE (PayrollPeriodId, EmployeeId)
+    CONSTRAINT UQ_Period_Employee_Payslip UNIQUE (PayrollPeriodId, EmployeeId),
+    CONSTRAINT CK_Payslips_ResponsibilityAllowance CHECK (ResponsibilityAllowance >= 0)
 );
 
 -- ========================================================================
@@ -492,7 +520,7 @@ CREATE TABLE Payslips (
 CREATE TABLE BulkImportLogs (
     ImportId INT IDENTITY(1,1) PRIMARY KEY,
     CompanyId INT NOT NULL,
-    ImportType NVARCHAR(50) NOT NULL 
+    ImportType NVARCHAR(50) NOT NULL
         CHECK (ImportType IN ('EMPLOYEE_IMPORT', 'ATTENDANCE_IMPORT', 'PAYROLL_ADJUSTMENT_IMPORT')),
     FileName NVARCHAR(255) NOT NULL,
     TotalRows INT NOT NULL DEFAULT 0,
@@ -529,7 +557,7 @@ GO
 -- ========================================================================
 
 -- 1. Truy vấn phân quyền và tổ chức
-CREATE UNIQUE INDEX UX_Users_Email ON Users(Email);
+CREATE UNIQUE INDEX UX_Users_EmailNormalized ON Users(EmailNormalized);
 CREATE INDEX IX_Users_CompanyId ON Users(CompanyId);
 CREATE INDEX IX_Employees_CompanyId ON Employees(CompanyId);
 CREATE INDEX IX_Employees_ManagerId ON Employees(ManagerId);
@@ -550,7 +578,7 @@ CREATE INDEX IX_Payslips_Period ON Payslips(PayrollPeriodId);
 -- Hai index riêng chặn trùng email HOẶC tên giữa cả ba trạng thái đang xử lý.
 -- CHECK Status giới hạn năm giá trị; loại CONVERTED/DELETED còn NEW/UNDER_REVIEW/CONVERTING.
 CREATE UNIQUE INDEX UX_RegistrationRequests_PendingEmail
-    ON RegistrationRequests(Email)
+    ON RegistrationRequests(EmailNormalized)
     WHERE Status <> 'CONVERTED' AND Status <> 'DELETED';
 CREATE UNIQUE INDEX UX_RegistrationRequests_PendingCompanyName
     ON RegistrationRequests(CompanyNameNormalized)
@@ -602,7 +630,9 @@ CREATE TABLE EmployeeDocuments
     UploadedDate DATETIME DEFAULT GETDATE(),
 
     Status NVARCHAR(30),
-
+    MimeType VARCHAR(100) NULL,
+    FileSizeBytes BIGINT NULL,
+    ContractId BIGINT NULL,
 
     FOREIGN KEY(EmployeeId)
     REFERENCES Employees(EmployeeId)
@@ -673,5 +703,850 @@ BEGIN
             N'Xin về sớm việc gia đình'
         );
     END;
+END;
+GO
+
+-- ========================================================================
+-- PHẦN 10: SCHEMA ITER2 — HỢP ĐỒNG, VỊ TRÍ VÀ LỊCH SỬ NHÂN SỰ
+-- Giữ Password, Employees.StartDate/BaseSalary và Position nullable cho code legacy.
+-- Không seed tenant, baseline hoặc đánh dấu version migration đã chạy.
+-- ========================================================================
+
+CREATE TABLE [dbo].[JobTitles](
+    [JobTitleId] [int] IDENTITY(1,1) NOT NULL,
+    [CompanyId] [int] NOT NULL,
+    [JobTitleCode] [varchar](50) NOT NULL,
+    [JobTitleName] [nvarchar](150) NOT NULL,
+    [Description] [nvarchar](500) NULL,
+    [IsActive] [bit] NOT NULL,
+    [CreatedAt] [datetime2](7) NOT NULL,
+    [UpdatedAt] [datetime2](7) NULL,
+ CONSTRAINT [PK_JobTitles] PRIMARY KEY CLUSTERED
+(
+    [JobTitleId] ASC
+),
+ CONSTRAINT [UQ_JobTitles_Company_Code] UNIQUE NONCLUSTERED
+(
+    [CompanyId] ASC,
+    [JobTitleCode] ASC
+),
+ CONSTRAINT [UQ_JobTitles_Company_Id] UNIQUE NONCLUSTERED
+(
+    [CompanyId] ASC,
+    [JobTitleId] ASC
+),
+ CONSTRAINT [UQ_JobTitles_Company_Name] UNIQUE NONCLUSTERED
+(
+    [CompanyId] ASC,
+    [JobTitleName] ASC
+)
+);
+GO
+
+CREATE TABLE [dbo].[ResponsibilityLevels](
+    [ResponsibilityLevelId] [int] IDENTITY(1,1) NOT NULL,
+    [CompanyId] [int] NOT NULL,
+    [LevelCode] [varchar](50) NOT NULL,
+    [LevelName] [nvarchar](100) NOT NULL,
+    [RankOrder] [int] NOT NULL,
+    [IsActive] [bit] NOT NULL,
+    [CreatedAt] [datetime2](7) NOT NULL,
+    [UpdatedAt] [datetime2](7) NULL,
+ CONSTRAINT [PK_ResponsibilityLevels] PRIMARY KEY CLUSTERED
+(
+    [ResponsibilityLevelId] ASC
+),
+ CONSTRAINT [UQ_ResponsibilityLevels_Company_Code] UNIQUE NONCLUSTERED
+(
+    [CompanyId] ASC,
+    [LevelCode] ASC
+),
+ CONSTRAINT [UQ_ResponsibilityLevels_Company_Id] UNIQUE NONCLUSTERED
+(
+    [CompanyId] ASC,
+    [ResponsibilityLevelId] ASC
+),
+ CONSTRAINT [UQ_ResponsibilityLevels_Company_Rank] UNIQUE NONCLUSTERED
+(
+    [CompanyId] ASC,
+    [RankOrder] ASC
+)
+);
+GO
+
+CREATE TABLE [dbo].[ResponsibilityAllowancePolicies](
+    [AllowancePolicyId] [bigint] IDENTITY(1,1) NOT NULL,
+    [CompanyId] [int] NOT NULL,
+    [ResponsibilityLevelId] [int] NOT NULL,
+    [Amount] [decimal](18, 2) NOT NULL,
+    [EffectiveFrom] [date] NOT NULL,
+    [EffectiveTo] [date] NULL,
+    [CreatedAt] [datetime2](7) NOT NULL,
+    [CreatedByUserId] [int] NULL,
+ CONSTRAINT [PK_ResponsibilityAllowancePolicies] PRIMARY KEY CLUSTERED
+(
+    [AllowancePolicyId] ASC
+),
+ CONSTRAINT [UQ_AllowancePolicies_Level_Start] UNIQUE NONCLUSTERED
+(
+    [CompanyId] ASC,
+    [ResponsibilityLevelId] ASC,
+    [EffectiveFrom] ASC
+)
+);
+GO
+
+CREATE TABLE [dbo].[EmploymentContracts](
+    [ContractId] [bigint] IDENTITY(1,1) NOT NULL,
+    [CompanyId] [int] NOT NULL,
+    [EmployeeId] [int] NOT NULL,
+    [ContractCode] [varchar](60) NOT NULL,
+    [ContractType] [varchar](30) NOT NULL,
+    [StartDate] [date] NOT NULL,
+    [EndDate] [date] NULL,
+    [GrossSalary] [decimal](18, 2) NOT NULL,
+    [Status] [varchar](25) NOT NULL,
+    [SignedDate] [date] NULL,
+    [TerminatedDate] [date] NULL,
+    [TerminationReason] [nvarchar](500) NULL,
+    [Notes] [nvarchar](1000) NULL,
+    [CreatedByUserId] [int] NULL,
+    [CreatedAt] [datetime2](7) NOT NULL,
+    [UpdatedAt] [datetime2](7) NULL,
+    [TravelAllowance] [decimal](18, 2) NULL,
+ CONSTRAINT [PK_EmploymentContracts] PRIMARY KEY CLUSTERED
+(
+    [ContractId] ASC
+),
+ CONSTRAINT [UQ_EmploymentContracts_Company_Code] UNIQUE NONCLUSTERED
+(
+    [CompanyId] ASC,
+    [ContractCode] ASC
+)
+);
+GO
+
+CREATE TABLE [dbo].[EmployeePositionChanges](
+    [PositionChangeId] [bigint] IDENTITY(1,1) NOT NULL,
+    [CompanyId] [int] NOT NULL,
+    [EmployeeId] [int] NOT NULL,
+    [OldPositionId] [int] NULL,
+    [NewPositionId] [int] NOT NULL,
+    [ChangeType] [varchar](20) NOT NULL,
+    [Status] [varchar](20) NOT NULL,
+    [EffectiveDate] [date] NOT NULL,
+    [NewBaseSalary] [decimal](18, 2) NULL,
+    [NewManagerId] [int] NULL,
+    [Reason] [nvarchar](500) NOT NULL,
+    [CreatedByUserId] [int] NOT NULL,
+    [CreatedAt] [datetime2](7) NOT NULL,
+    [ApprovedByUserId] [int] NULL,
+    [ApprovedAt] [datetime2](7) NULL,
+    [AppliedAt] [datetime2](7) NULL,
+    [OldManagerId] [int] NULL,
+ CONSTRAINT [PK_EmployeePositionChanges] PRIMARY KEY CLUSTERED
+(
+    [PositionChangeId] ASC
+),
+ CONSTRAINT [UQ_EmployeePositionChanges_Company_Id] UNIQUE NONCLUSTERED
+(
+    [CompanyId] ASC,
+    [PositionChangeId] ASC
+)
+);
+GO
+
+CREATE TABLE [dbo].[EmployeePositionAssignments](
+    [AssignmentId] [bigint] IDENTITY(1,1) NOT NULL,
+    [CompanyId] [int] NOT NULL,
+    [EmployeeId] [int] NOT NULL,
+    [DepartmentId] [int] NOT NULL,
+    [PositionId] [int] NOT NULL,
+    [EffectiveFrom] [date] NOT NULL,
+    [EffectiveTo] [date] NULL,
+    [ChangeType] [varchar](20) NOT NULL,
+    [Reason] [nvarchar](500) NULL,
+    [SourceChangeId] [bigint] NULL,
+    [CreatedAt] [datetime2](7) NOT NULL,
+    [ManagerId] [int] NULL,
+ CONSTRAINT [PK_EmployeePositionAssignments] PRIMARY KEY CLUSTERED
+(
+    [AssignmentId] ASC
+)
+);
+GO
+
+CREATE TABLE [dbo].[EmployeeCompensationHistories](
+    [CompensationHistoryId] [bigint] IDENTITY(1,1) NOT NULL,
+    [CompanyId] [int] NOT NULL,
+    [EmployeeId] [int] NOT NULL,
+    [BaseSalary] [decimal](18, 2) NOT NULL,
+    [EffectiveFrom] [date] NOT NULL,
+    [EffectiveTo] [date] NULL,
+    [Reason] [nvarchar](500) NULL,
+    [SourceChangeId] [bigint] NULL,
+    [CreatedAt] [datetime2](7) NOT NULL,
+    [CreatedByUserId] [int] NULL,
+    [InsuranceSalary] [decimal](18, 2) NULL,
+    [PositionAllowance] [decimal](18, 2) NULL,
+    [TravelAllowance] [decimal](18, 2) NULL,
+    [SourceContractId] [bigint] NULL,
+ CONSTRAINT [PK_EmployeeCompensationHistories] PRIMARY KEY CLUSTERED
+(
+    [CompensationHistoryId] ASC
+)
+);
+GO
+
+CREATE TABLE [dbo].[ProfileUpdatePeriods](
+    [PeriodId] [bigint] IDENTITY(1,1) NOT NULL,
+    [CompanyId] [int] NOT NULL,
+    [Title] [nvarchar](150) NOT NULL,
+    [StartsAt] [datetime2](7) NOT NULL,
+    [EndsAt] [datetime2](7) NOT NULL,
+    [ClosedAt] [datetime2](7) NULL,
+    [CreatedByUserId] [int] NOT NULL,
+    [CreatedAt] [datetime2](7) NOT NULL,
+    [PeriodType] [varchar](10) NOT NULL,
+PRIMARY KEY CLUSTERED
+(
+    [PeriodId] ASC
+)
+);
+GO
+
+CREATE TABLE [dbo].[LifecycleSchemaVersions](
+    [Version] [varchar](80) NOT NULL,
+    [AppliedAt] [datetime2](7) NOT NULL,
+PRIMARY KEY CLUSTERED
+(
+    [Version] ASC
+)
+);
+GO
+
+
+-- Defaults của các bảng Iter2.
+
+ALTER TABLE [dbo].[EmployeeCompensationHistories] ADD  CONSTRAINT [DF_EmployeeCompensationHistories_CreatedAt]  DEFAULT (sysutcdatetime()) FOR [CreatedAt];
+GO
+
+ALTER TABLE [dbo].[EmployeePositionAssignments] ADD  CONSTRAINT [DF_EmployeePositionAssignments_CreatedAt]  DEFAULT (sysutcdatetime()) FOR [CreatedAt];
+GO
+
+ALTER TABLE [dbo].[EmployeePositionChanges] ADD  CONSTRAINT [DF_EmployeePositionChanges_Status]  DEFAULT ('PENDING') FOR [Status];
+GO
+
+ALTER TABLE [dbo].[EmployeePositionChanges] ADD  CONSTRAINT [DF_EmployeePositionChanges_CreatedAt]  DEFAULT (sysutcdatetime()) FOR [CreatedAt];
+GO
+
+ALTER TABLE [dbo].[EmploymentContracts] ADD  CONSTRAINT [DF_EmploymentContracts_Status]  DEFAULT ('DRAFT') FOR [Status];
+GO
+
+ALTER TABLE [dbo].[EmploymentContracts] ADD  CONSTRAINT [DF_EmploymentContracts_CreatedAt]  DEFAULT (sysutcdatetime()) FOR [CreatedAt];
+GO
+
+ALTER TABLE [dbo].[JobTitles] ADD  CONSTRAINT [DF_JobTitles_IsActive]  DEFAULT ((1)) FOR [IsActive];
+GO
+
+ALTER TABLE [dbo].[JobTitles] ADD  CONSTRAINT [DF_JobTitles_CreatedAt]  DEFAULT (sysutcdatetime()) FOR [CreatedAt];
+GO
+
+ALTER TABLE [dbo].[LifecycleSchemaVersions] ADD  DEFAULT (sysutcdatetime()) FOR [AppliedAt];
+GO
+
+ALTER TABLE [dbo].[ProfileUpdatePeriods] ADD  DEFAULT (sysutcdatetime()) FOR [CreatedAt];
+GO
+
+ALTER TABLE [dbo].[ProfileUpdatePeriods] ADD  CONSTRAINT [DF_ProfileUpdatePeriods_PeriodType]  DEFAULT ('PROFILE') FOR [PeriodType];
+GO
+
+ALTER TABLE [dbo].[ResponsibilityAllowancePolicies] ADD  CONSTRAINT [DF_ResponsibilityAllowancePolicies_CreatedAt]  DEFAULT (sysutcdatetime()) FOR [CreatedAt];
+GO
+
+ALTER TABLE [dbo].[ResponsibilityLevels] ADD  CONSTRAINT [DF_ResponsibilityLevels_IsActive]  DEFAULT ((1)) FOR [IsActive];
+GO
+
+ALTER TABLE [dbo].[ResponsibilityLevels] ADD  CONSTRAINT [DF_ResponsibilityLevels_CreatedAt]  DEFAULT (sysutcdatetime()) FOR [CreatedAt];
+GO
+
+
+-- Index hỗ trợ khóa ghép theo Company và truy vấn lịch sử.
+
+CREATE UNIQUE NONCLUSTERED INDEX [UX_Departments_Company_Id] ON [dbo].[Departments]
+(
+    [CompanyId] ASC,
+    [DepartmentId] ASC
+);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_Compensation_SourceContract] ON [dbo].[EmployeeCompensationHistories]
+(
+    [CompanyId] ASC,
+    [EmployeeId] ASC,
+    [SourceContractId] ASC
+);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_EmployeeCompensationHistories_Dates] ON [dbo].[EmployeeCompensationHistories]
+(
+    [CompanyId] ASC,
+    [EmployeeId] ASC,
+    [EffectiveFrom] DESC
+)
+INCLUDE([EffectiveTo],[BaseSalary]);
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [UX_EmployeeCompensationHistories_OpenEnded] ON [dbo].[EmployeeCompensationHistories]
+(
+    [CompanyId] ASC,
+    [EmployeeId] ASC
+)
+WHERE ([EffectiveTo] IS NULL);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_Assignments_PositionPeriod] ON [dbo].[EmployeePositionAssignments]
+(
+    [CompanyId] ASC,
+    [PositionId] ASC,
+    [EffectiveFrom] ASC
+)
+INCLUDE([EmployeeId],[EffectiveTo]);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_EmployeePositionAssignments_Dates] ON [dbo].[EmployeePositionAssignments]
+(
+    [CompanyId] ASC,
+    [EmployeeId] ASC,
+    [EffectiveFrom] DESC
+)
+INCLUDE([EffectiveTo],[PositionId],[DepartmentId]);
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [UX_EmployeePositionAssignments_OpenEnded] ON [dbo].[EmployeePositionAssignments]
+(
+    [CompanyId] ASC,
+    [EmployeeId] ASC
+)
+WHERE ([EffectiveTo] IS NULL);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_EmployeePositionChanges_Due] ON [dbo].[EmployeePositionChanges]
+(
+    [Status] ASC,
+    [EffectiveDate] ASC,
+    [CompanyId] ASC
+);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_EmployeePositionChanges_Employee] ON [dbo].[EmployeePositionChanges]
+(
+    [CompanyId] ASC,
+    [EmployeeId] ASC,
+    [EffectiveDate] DESC
+);
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [UX_Employees_Company_Email] ON [dbo].[Employees]
+(
+    [CompanyId] ASC,
+    [Email] ASC
+)
+WHERE ([Email] IS NOT NULL);
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [UX_Employees_Company_Id] ON [dbo].[Employees]
+(
+    [CompanyId] ASC,
+    [EmployeeId] ASC
+);
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [UX_Employees_LinkedUser] ON [dbo].[Employees]
+(
+    [UserId] ASC
+)
+WHERE ([UserId] IS NOT NULL);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_EmploymentContracts_Employee_Start] ON [dbo].[EmploymentContracts]
+(
+    [EmployeeId] ASC,
+    [StartDate] DESC
+);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_EmploymentContracts_Expiry] ON [dbo].[EmploymentContracts]
+(
+    [Status] ASC,
+    [EndDate] ASC
+);
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [UX_Contracts_CompanyEmployeeContract] ON [dbo].[EmploymentContracts]
+(
+    [CompanyId] ASC,
+    [EmployeeId] ASC,
+    [ContractId] ASC
+);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_Positions_Department_Active] ON [dbo].[Positions]
+(
+    [CompanyId] ASC,
+    [DepartmentId] ASC,
+    [IsActive] ASC
+)
+INCLUDE([PositionTitle],[ResponsibilityLevelId],[CanManageEmployees]);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_Positions_ReportsToPosition] ON [dbo].[Positions]
+(
+    [CompanyId] ASC,
+    [ReportsToPositionId] ASC
+);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_Positions_ResponsibilityLevel] ON [dbo].[Positions]
+(
+    [CompanyId] ASC,
+    [ResponsibilityLevelId] ASC
+);
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [UX_Positions_Company_Code] ON [dbo].[Positions]
+(
+    [CompanyId] ASC,
+    [PositionCode] ASC
+)
+WHERE ([PositionCode] IS NOT NULL);
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [UX_Positions_Company_Department_Id] ON [dbo].[Positions]
+(
+    [CompanyId] ASC,
+    [DepartmentId] ASC,
+    [PositionId] ASC
+);
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [UX_Positions_Company_Id] ON [dbo].[Positions]
+(
+    [CompanyId] ASC,
+    [PositionId] ASC
+);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_ProfileUpdatePeriods_CompanyDates] ON [dbo].[ProfileUpdatePeriods]
+(
+    [CompanyId] ASC,
+    [ClosedAt] ASC,
+    [StartsAt] ASC,
+    [EndsAt] ASC
+);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_ProfileUpdatePeriods_CompanyTypeDates] ON [dbo].[ProfileUpdatePeriods]
+(
+    [CompanyId] ASC,
+    [PeriodType] ASC,
+    [StartsAt] ASC,
+    [EndsAt] ASC
+)
+INCLUDE([ClosedAt]);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_AllowancePolicies_Lookup] ON [dbo].[ResponsibilityAllowancePolicies]
+(
+    [CompanyId] ASC,
+    [ResponsibilityLevelId] ASC,
+    [EffectiveFrom] DESC
+)
+INCLUDE([EffectiveTo],[Amount]);
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [UX_AllowancePolicies_OpenEnded] ON [dbo].[ResponsibilityAllowancePolicies]
+(
+    [CompanyId] ASC,
+    [ResponsibilityLevelId] ASC
+)
+WHERE ([EffectiveTo] IS NULL);
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [UX_Lifecycle_Users_CompanyUser] ON [dbo].[Users]
+(
+    [CompanyId] ASC,
+    [UserId] ASC
+);
+GO
+
+
+-- CHECK mới; giữ CHECK/collation WF1/WF2 hiện có.
+
+ALTER TABLE [dbo].[EmployeeCompensationHistories]  WITH CHECK ADD  CONSTRAINT [CK_EmployeeCompensations_DateRange] CHECK  (([EffectiveTo] IS NULL OR [EffectiveTo]>=[EffectiveFrom]));
+GO
+
+ALTER TABLE [dbo].[EmployeeCompensationHistories]  WITH CHECK ADD  CONSTRAINT [CK_EmployeeCompensations_Salary] CHECK  (([BaseSalary]>=(0)));
+GO
+
+ALTER TABLE [dbo].[EmployeeCompensationHistories]  WITH CHECK ADD  CONSTRAINT [CK_Lifecycle_CompensationAmounts] CHECK  ((([InsuranceSalary] IS NULL OR [InsuranceSalary]>=(0)) AND ([PositionAllowance] IS NULL OR [PositionAllowance]>=(0)) AND ([TravelAllowance] IS NULL OR [TravelAllowance]>=(0))));
+GO
+
+ALTER TABLE [dbo].[EmployeePositionAssignments]  WITH CHECK ADD  CONSTRAINT [CK_EmployeePositionAssignments_DateRange] CHECK  (([EffectiveTo] IS NULL OR [EffectiveTo]>=[EffectiveFrom]));
+GO
+
+ALTER TABLE [dbo].[EmployeePositionAssignments]  WITH CHECK ADD  CONSTRAINT [CK_EmployeePositionAssignments_Type] CHECK  (([ChangeType]='MANAGER_CHANGE' OR [ChangeType]='CORRECTION' OR [ChangeType]='DEMOTION' OR [ChangeType]='PROMOTION' OR [ChangeType]='TRANSFER' OR [ChangeType]='HIRE' OR [ChangeType]='BASELINE'));
+GO
+
+ALTER TABLE [dbo].[EmployeePositionChanges]  WITH CHECK ADD  CONSTRAINT [CK_EmployeePositionChanges_Applied] CHECK  (([Status]<>'APPLIED' OR [AppliedAt] IS NOT NULL));
+GO
+
+ALTER TABLE [dbo].[EmployeePositionChanges]  WITH CHECK ADD  CONSTRAINT [CK_EmployeePositionChanges_Reason] CHECK  ((len(ltrim(rtrim([Reason])))>(0)));
+GO
+
+ALTER TABLE [dbo].[EmployeePositionChanges]  WITH CHECK ADD  CONSTRAINT [CK_EmployeePositionChanges_Salary] CHECK  (([NewBaseSalary] IS NULL OR [NewBaseSalary]>=(0)));
+GO
+
+ALTER TABLE [dbo].[EmployeePositionChanges]  WITH CHECK ADD  CONSTRAINT [CK_EmployeePositionChanges_Status] CHECK  (([Status]='CANCELLED' OR [Status]='REJECTED' OR [Status]='APPLIED' OR [Status]='APPROVED' OR [Status]='PENDING'));
+GO
+
+ALTER TABLE [dbo].[EmployeePositionChanges]  WITH CHECK ADD  CONSTRAINT [CK_EmployeePositionChanges_Type] CHECK  (([ChangeType]='MANAGER_CHANGE' OR [ChangeType]='CORRECTION' OR [ChangeType]='DEMOTION' OR [ChangeType]='PROMOTION' OR [ChangeType]='TRANSFER'));
+GO
+
+ALTER TABLE [dbo].[EmploymentContracts]  WITH CHECK ADD  CONSTRAINT [CK_EmploymentContracts_Dates] CHECK  (([EndDate] IS NULL OR [EndDate]>=[StartDate]));
+GO
+
+ALTER TABLE [dbo].[EmploymentContracts]  WITH CHECK ADD  CONSTRAINT [CK_EmploymentContracts_Salary] CHECK  (([GrossSalary]>=(0)));
+GO
+
+ALTER TABLE [dbo].[EmploymentContracts]  WITH CHECK ADD  CONSTRAINT [CK_EmploymentContracts_Status] CHECK  (([Status]='CANCELLED' OR [Status]='TERMINATED' OR [Status]='EXPIRED' OR [Status]='ACTIVE' OR [Status]='DRAFT'));
+GO
+
+ALTER TABLE [dbo].[EmploymentContracts]  WITH CHECK ADD  CONSTRAINT [CK_EmploymentContracts_TravelAllowance] CHECK  (([TravelAllowance] IS NULL OR [TravelAllowance]>=(0)));
+GO
+
+ALTER TABLE [dbo].[EmploymentContracts]  WITH CHECK ADD  CONSTRAINT [CK_EmploymentContracts_Type] CHECK  (([ContractType]='INDEFINITE' OR [ContractType]='FIXED_TERM' OR [ContractType]='PROBATION'));
+GO
+
+ALTER TABLE [dbo].[JobTitles]  WITH CHECK ADD  CONSTRAINT [CK_JobTitles_Names] CHECK  ((len(ltrim(rtrim([JobTitleCode])))>(0) AND len(ltrim(rtrim([JobTitleName])))>(0)));
+GO
+
+ALTER TABLE [dbo].[ProfileUpdatePeriods]  WITH CHECK ADD  CONSTRAINT [CK_ProfileUpdatePeriods_Dates] CHECK  (([EndsAt]>[StartsAt]));
+GO
+
+ALTER TABLE [dbo].[ProfileUpdatePeriods]  WITH CHECK ADD  CONSTRAINT [CK_ProfileUpdatePeriods_PeriodType] CHECK  (([PeriodType]='DOCUMENT' OR [PeriodType]='PROFILE'));
+GO
+
+ALTER TABLE [dbo].[ResponsibilityAllowancePolicies]  WITH CHECK ADD  CONSTRAINT [CK_AllowancePolicies_Amount] CHECK  (([Amount]>=(0)));
+GO
+
+ALTER TABLE [dbo].[ResponsibilityAllowancePolicies]  WITH CHECK ADD  CONSTRAINT [CK_AllowancePolicies_DateRange] CHECK  (([EffectiveTo] IS NULL OR [EffectiveTo]>[EffectiveFrom]));
+GO
+
+ALTER TABLE [dbo].[ResponsibilityLevels]  WITH CHECK ADD  CONSTRAINT [CK_ResponsibilityLevels_Name] CHECK  ((len(ltrim(rtrim([LevelCode])))>(0) AND len(ltrim(rtrim([LevelName])))>(0)));
+GO
+
+ALTER TABLE [dbo].[ResponsibilityLevels]  WITH CHECK ADD  CONSTRAINT [CK_ResponsibilityLevels_Rank] CHECK  (([RankOrder]>=(0)));
+GO
+
+
+-- FK được khai báo sau khi đủ bảng và unique index hỗ trợ.
+
+ALTER TABLE [dbo].[EmployeeCompensationHistories]  WITH CHECK ADD  CONSTRAINT [FK_Compensation_SourceContract] FOREIGN KEY([CompanyId], [EmployeeId], [SourceContractId])
+REFERENCES [dbo].[EmploymentContracts] ([CompanyId], [EmployeeId], [ContractId]);
+GO
+
+ALTER TABLE [dbo].[EmployeeCompensationHistories]  WITH CHECK ADD  CONSTRAINT [FK_EmployeeCompensations_Change] FOREIGN KEY([CompanyId], [SourceChangeId])
+REFERENCES [dbo].[EmployeePositionChanges] ([CompanyId], [PositionChangeId]);
+GO
+
+ALTER TABLE [dbo].[EmployeeCompensationHistories]  WITH CHECK ADD  CONSTRAINT [FK_EmployeeCompensations_CreatedBy] FOREIGN KEY([CreatedByUserId])
+REFERENCES [dbo].[Users] ([UserId]);
+GO
+
+ALTER TABLE [dbo].[EmployeeCompensationHistories]  WITH CHECK ADD  CONSTRAINT [FK_EmployeeCompensations_Employee] FOREIGN KEY([CompanyId], [EmployeeId])
+REFERENCES [dbo].[Employees] ([CompanyId], [EmployeeId]);
+GO
+
+ALTER TABLE [dbo].[EmployeeDocuments]  WITH CHECK ADD  CONSTRAINT [FK_EmployeeDocuments_Contract] FOREIGN KEY([ContractId])
+REFERENCES [dbo].[EmploymentContracts] ([ContractId]);
+GO
+
+ALTER TABLE [dbo].[EmployeePositionAssignments]  WITH CHECK ADD  CONSTRAINT [FK_Assignments_Company_Department_Position] FOREIGN KEY([CompanyId], [DepartmentId], [PositionId])
+REFERENCES [dbo].[Positions] ([CompanyId], [DepartmentId], [PositionId]);
+GO
+
+ALTER TABLE [dbo].[EmployeePositionAssignments]  WITH CHECK ADD  CONSTRAINT [FK_EmployeePositionAssignments_Change] FOREIGN KEY([CompanyId], [SourceChangeId])
+REFERENCES [dbo].[EmployeePositionChanges] ([CompanyId], [PositionChangeId]);
+GO
+
+ALTER TABLE [dbo].[EmployeePositionAssignments]  WITH CHECK ADD  CONSTRAINT [FK_EmployeePositionAssignments_Department] FOREIGN KEY([CompanyId], [DepartmentId])
+REFERENCES [dbo].[Departments] ([CompanyId], [DepartmentId]);
+GO
+
+ALTER TABLE [dbo].[EmployeePositionAssignments]  WITH CHECK ADD  CONSTRAINT [FK_EmployeePositionAssignments_Employee] FOREIGN KEY([CompanyId], [EmployeeId])
+REFERENCES [dbo].[Employees] ([CompanyId], [EmployeeId]);
+GO
+
+ALTER TABLE [dbo].[EmployeePositionAssignments]  WITH CHECK ADD  CONSTRAINT [FK_EmployeePositionAssignments_Manager] FOREIGN KEY([ManagerId])
+REFERENCES [dbo].[Employees] ([EmployeeId]);
+GO
+
+ALTER TABLE [dbo].[EmployeePositionAssignments]  WITH CHECK ADD  CONSTRAINT [FK_EmployeePositionAssignments_Position] FOREIGN KEY([CompanyId], [PositionId])
+REFERENCES [dbo].[Positions] ([CompanyId], [PositionId]);
+GO
+
+ALTER TABLE [dbo].[EmployeePositionAssignments]  WITH CHECK ADD  CONSTRAINT [FK_Lifecycle_AssignmentManager] FOREIGN KEY([CompanyId], [ManagerId])
+REFERENCES [dbo].[Employees] ([CompanyId], [EmployeeId]);
+GO
+
+ALTER TABLE [dbo].[EmployeePositionChanges]  WITH CHECK ADD  CONSTRAINT [FK_EmployeePositionChanges_ApprovedBy] FOREIGN KEY([ApprovedByUserId])
+REFERENCES [dbo].[Users] ([UserId]);
+GO
+
+ALTER TABLE [dbo].[EmployeePositionChanges]  WITH CHECK ADD  CONSTRAINT [FK_EmployeePositionChanges_CreatedBy] FOREIGN KEY([CreatedByUserId])
+REFERENCES [dbo].[Users] ([UserId]);
+GO
+
+ALTER TABLE [dbo].[EmployeePositionChanges]  WITH CHECK ADD  CONSTRAINT [FK_EmployeePositionChanges_Employee] FOREIGN KEY([CompanyId], [EmployeeId])
+REFERENCES [dbo].[Employees] ([CompanyId], [EmployeeId]);
+GO
+
+ALTER TABLE [dbo].[EmployeePositionChanges]  WITH CHECK ADD  CONSTRAINT [FK_EmployeePositionChanges_NewManager] FOREIGN KEY([CompanyId], [NewManagerId])
+REFERENCES [dbo].[Employees] ([CompanyId], [EmployeeId]);
+GO
+
+ALTER TABLE [dbo].[EmployeePositionChanges]  WITH CHECK ADD  CONSTRAINT [FK_EmployeePositionChanges_NewPosition] FOREIGN KEY([CompanyId], [NewPositionId])
+REFERENCES [dbo].[Positions] ([CompanyId], [PositionId]);
+GO
+
+ALTER TABLE [dbo].[EmployeePositionChanges]  WITH CHECK ADD  CONSTRAINT [FK_EmployeePositionChanges_OldManager] FOREIGN KEY([CompanyId], [OldManagerId])
+REFERENCES [dbo].[Employees] ([CompanyId], [EmployeeId]);
+GO
+
+ALTER TABLE [dbo].[EmployeePositionChanges]  WITH CHECK ADD  CONSTRAINT [FK_EmployeePositionChanges_OldPosition] FOREIGN KEY([CompanyId], [OldPositionId])
+REFERENCES [dbo].[Positions] ([CompanyId], [PositionId]);
+GO
+
+ALTER TABLE [dbo].[Employees]  WITH CHECK ADD  CONSTRAINT [FK_Employees_Company_Department] FOREIGN KEY([CompanyId], [DepartmentId])
+REFERENCES [dbo].[Departments] ([CompanyId], [DepartmentId]);
+GO
+
+ALTER TABLE [dbo].[Employees]  WITH CHECK ADD  CONSTRAINT [FK_Employees_Company_Department_Position] FOREIGN KEY([CompanyId], [DepartmentId], [PositionId])
+REFERENCES [dbo].[Positions] ([CompanyId], [DepartmentId], [PositionId]);
+GO
+
+ALTER TABLE [dbo].[Employees]  WITH CHECK ADD  CONSTRAINT [FK_Employees_Company_Manager] FOREIGN KEY([CompanyId], [ManagerId])
+REFERENCES [dbo].[Employees] ([CompanyId], [EmployeeId]);
+GO
+
+ALTER TABLE [dbo].[Employees]  WITH CHECK ADD  CONSTRAINT [FK_Lifecycle_EmployeeUserCompany] FOREIGN KEY([CompanyId], [UserId])
+REFERENCES [dbo].[Users] ([CompanyId], [UserId]);
+GO
+
+ALTER TABLE [dbo].[EmploymentContracts]  WITH CHECK ADD  CONSTRAINT [FK_EmploymentContracts_Company] FOREIGN KEY([CompanyId])
+REFERENCES [dbo].[Companies] ([CompanyId]);
+GO
+
+ALTER TABLE [dbo].[EmploymentContracts]  WITH CHECK ADD  CONSTRAINT [FK_EmploymentContracts_Creator] FOREIGN KEY([CreatedByUserId])
+REFERENCES [dbo].[Users] ([UserId]);
+GO
+
+ALTER TABLE [dbo].[EmploymentContracts]  WITH CHECK ADD  CONSTRAINT [FK_EmploymentContracts_Employee] FOREIGN KEY([EmployeeId])
+REFERENCES [dbo].[Employees] ([EmployeeId]);
+GO
+
+ALTER TABLE [dbo].[EmploymentContracts]  WITH CHECK ADD  CONSTRAINT [FK_Lifecycle_ContractEmployeeCompany] FOREIGN KEY([CompanyId], [EmployeeId])
+REFERENCES [dbo].[Employees] ([CompanyId], [EmployeeId]);
+GO
+
+ALTER TABLE [dbo].[JobTitles]  WITH CHECK ADD  CONSTRAINT [FK_JobTitles_Companies] FOREIGN KEY([CompanyId])
+REFERENCES [dbo].[Companies] ([CompanyId]);
+GO
+
+ALTER TABLE [dbo].[Positions]  WITH CHECK ADD  CONSTRAINT [FK_Positions_Company_Department] FOREIGN KEY([CompanyId], [DepartmentId])
+REFERENCES [dbo].[Departments] ([CompanyId], [DepartmentId]);
+GO
+
+ALTER TABLE [dbo].[Positions]  WITH CHECK ADD  CONSTRAINT [FK_Positions_JobTitles] FOREIGN KEY([CompanyId], [JobTitleId])
+REFERENCES [dbo].[JobTitles] ([CompanyId], [JobTitleId]);
+GO
+
+ALTER TABLE [dbo].[Positions]  WITH CHECK ADD  CONSTRAINT [FK_Positions_ReportsToPosition] FOREIGN KEY([CompanyId], [ReportsToPositionId])
+REFERENCES [dbo].[Positions] ([CompanyId], [PositionId]);
+GO
+
+ALTER TABLE [dbo].[Positions]  WITH CHECK ADD  CONSTRAINT [FK_Positions_ResponsibilityLevels] FOREIGN KEY([CompanyId], [ResponsibilityLevelId])
+REFERENCES [dbo].[ResponsibilityLevels] ([CompanyId], [ResponsibilityLevelId]);
+GO
+
+ALTER TABLE [dbo].[ProfileUpdatePeriods]  WITH CHECK ADD  CONSTRAINT [FK_ProfileUpdatePeriods_Companies] FOREIGN KEY([CompanyId])
+REFERENCES [dbo].[Companies] ([CompanyId]);
+GO
+
+ALTER TABLE [dbo].[ProfileUpdatePeriods]  WITH CHECK ADD  CONSTRAINT [FK_ProfileUpdatePeriods_Users] FOREIGN KEY([CreatedByUserId])
+REFERENCES [dbo].[Users] ([UserId]);
+GO
+
+ALTER TABLE [dbo].[ResponsibilityAllowancePolicies]  WITH CHECK ADD  CONSTRAINT [FK_AllowancePolicies_CreatedBy] FOREIGN KEY([CreatedByUserId])
+REFERENCES [dbo].[Users] ([UserId]);
+GO
+
+ALTER TABLE [dbo].[ResponsibilityAllowancePolicies]  WITH CHECK ADD  CONSTRAINT [FK_AllowancePolicies_Levels] FOREIGN KEY([CompanyId], [ResponsibilityLevelId])
+REFERENCES [dbo].[ResponsibilityLevels] ([CompanyId], [ResponsibilityLevelId]);
+GO
+
+ALTER TABLE [dbo].[ResponsibilityLevels]  WITH CHECK ADD  CONSTRAINT [FK_ResponsibilityLevels_Companies] FOREIGN KEY([CompanyId])
+REFERENCES [dbo].[Companies] ([CompanyId]);
+GO
+
+
+-- Procedure Iter2; chỉ chạy khi ứng dụng gọi với ngày hiệu lực theo Company.
+-- Cần assignment baseline; procedure không tự tạo hoặc duyệt thay đổi.
+
+CREATE PROCEDURE  [dbo].[usp_ApplyApprovedPositionChange]
+    @PositionChangeId BIGINT,
+    @AsOfDate DATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF @AsOfDate IS NULL
+        THROW 51000, '@AsOfDate (company-local) is required.', 1;
+
+    DECLARE @CompanyId INT, @EmployeeId INT, @OldPositionId INT,
+            @NewPositionId INT, @NewDepartmentId INT, @EffectiveDate DATE,
+            @NewBaseSalary DECIMAL(18,2), @NewManagerId INT,
+            @ChangeType VARCHAR(20), @ChangeStatus VARCHAR(20),
+            @Reason NVARCHAR(500), @CreatedByUserId INT,
+            @CurrentPositionId INT, @CurrentDepartmentId INT,
+            @OldRank INT, @NewRank INT;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        SELECT @CompanyId=c.CompanyId, @EmployeeId=c.EmployeeId,
+               @OldPositionId=c.OldPositionId, @NewPositionId=c.NewPositionId,
+               @EffectiveDate=c.EffectiveDate, @NewBaseSalary=c.NewBaseSalary,
+               @NewManagerId=c.NewManagerId, @ChangeType=c.ChangeType,
+               @ChangeStatus=c.Status, @Reason=c.Reason, @CreatedByUserId=c.CreatedByUserId
+        FROM dbo.EmployeePositionChanges c WITH (UPDLOCK, HOLDLOCK)
+        WHERE c.PositionChangeId=@PositionChangeId;
+
+        IF @CompanyId IS NULL
+            THROW 51001, 'Position change not found.', 1;
+        IF @ChangeStatus <> 'APPROVED'
+            THROW 51002, 'Position change must be APPROVED.', 1;
+        IF @EffectiveDate > @AsOfDate
+            THROW 51003, 'Effective date is in the future.', 1;
+
+        SELECT @CurrentPositionId=e.PositionId, @CurrentDepartmentId=e.DepartmentId
+        FROM dbo.Employees e WITH (UPDLOCK, HOLDLOCK)
+        WHERE e.CompanyId=@CompanyId AND e.EmployeeId=@EmployeeId;
+
+        IF @CurrentPositionId IS NULL OR @OldPositionId IS NULL OR @CurrentPositionId <> @OldPositionId
+            THROW 51004, 'Current Position is missing/changed; re-approve the request.', 1;
+        IF @ChangeType='MANAGER_CHANGE' AND (
+            @NewPositionId<>@CurrentPositionId OR @NewBaseSalary IS NOT NULL
+            OR ISNULL((SELECT OldManagerId FROM dbo.EmployeePositionChanges WHERE PositionChangeId=@PositionChangeId AND CompanyId=@CompanyId),0)
+                <>ISNULL((SELECT ManagerId FROM dbo.Employees WHERE CompanyId=@CompanyId AND EmployeeId=@EmployeeId),0)
+            OR ISNULL(@NewManagerId,0)=ISNULL((SELECT ManagerId FROM dbo.Employees WHERE CompanyId=@CompanyId AND EmployeeId=@EmployeeId),0))
+            THROW 51123, 'Manager-only change snapshot is stale or invalid.', 1;
+        IF @ChangeType<>'MANAGER_CHANGE' AND @CurrentPositionId=@NewPositionId
+            THROW 51005, 'New Position matches current Position.', 1;
+
+        SELECT @NewDepartmentId=p.DepartmentId, @NewRank=rl.RankOrder
+        FROM dbo.Positions p
+        JOIN dbo.ResponsibilityLevels rl ON rl.CompanyId=p.CompanyId AND rl.ResponsibilityLevelId=p.ResponsibilityLevelId
+        WHERE p.PositionId=@NewPositionId AND p.CompanyId=@CompanyId AND p.IsActive=1 AND rl.IsActive=1;
+
+        IF @NewDepartmentId IS NULL
+            THROW 51006, 'New Position is missing, inactive or incomplete.', 1;
+
+        SELECT @OldRank=rl.RankOrder
+        FROM dbo.Positions p
+        JOIN dbo.ResponsibilityLevels rl ON rl.CompanyId=p.CompanyId AND rl.ResponsibilityLevelId=p.ResponsibilityLevelId
+        WHERE p.PositionId=@CurrentPositionId AND p.CompanyId=@CompanyId;
+
+        IF @ChangeType='PROMOTION' AND (@OldRank IS NULL OR @NewRank <= @OldRank)
+            THROW 51007, 'PROMOTION must increase ResponsibilityLevel RankOrder.', 1;
+
+        IF EXISTS (
+            SELECT 1 FROM dbo.PayrollPeriods pp
+            WHERE pp.CompanyId=@CompanyId AND pp.Status='Approved'
+              AND (pp.[Year] > YEAR(@EffectiveDate)
+                  OR (pp.[Year]=YEAR(@EffectiveDate) AND pp.[Month]>=MONTH(@EffectiveDate)))
+        ) THROW 51008, 'Approved payroll period affected. Use controlled payroll correction.', 1;
+
+        IF NOT EXISTS (
+            SELECT 1 FROM dbo.EmployeePositionAssignments a WITH (UPDLOCK, HOLDLOCK)
+            WHERE a.CompanyId=@CompanyId AND a.EmployeeId=@EmployeeId
+                AND a.PositionId=@CurrentPositionId AND a.DepartmentId=@CurrentDepartmentId
+                AND a.EffectiveTo IS NULL AND a.EffectiveFrom < @EffectiveDate
+        ) THROW 51009, 'Missing current assignment/baseline or invalid effective date.', 1;
+
+        UPDATE dbo.EmployeePositionAssignments
+        SET EffectiveTo=@EffectiveDate
+        WHERE CompanyId=@CompanyId AND EmployeeId=@EmployeeId AND PositionId=@CurrentPositionId
+              AND DepartmentId=@CurrentDepartmentId AND EffectiveTo IS NULL
+              AND EffectiveFrom < @EffectiveDate;
+
+        IF @@ROWCOUNT <> 1
+            THROW 51010, 'Could not close previous position assignment.', 1;
+
+        INSERT INTO dbo.EmployeePositionAssignments
+            (CompanyId,EmployeeId,DepartmentId,PositionId,ManagerId,EffectiveFrom,EffectiveTo,
+             ChangeType,Reason,SourceChangeId)
+        VALUES
+            (@CompanyId,@EmployeeId,@NewDepartmentId,@NewPositionId,@NewManagerId,@EffectiveDate,NULL,
+             @ChangeType,@Reason,@PositionChangeId);
+
+        IF @NewBaseSalary IS NOT NULL
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM dbo.EmployeeCompensationHistories s
+                WHERE s.CompanyId=@CompanyId AND s.EmployeeId=@EmployeeId
+                      AND s.EffectiveTo IS NULL AND s.EffectiveFrom>=@EffectiveDate
+            ) THROW 51011, 'Conflicting current salary effective date.', 1;
+
+            UPDATE dbo.EmployeeCompensationHistories
+            SET EffectiveTo=@EffectiveDate
+            WHERE CompanyId=@CompanyId AND EmployeeId=@EmployeeId
+                  AND EffectiveTo IS NULL AND EffectiveFrom<@EffectiveDate;
+
+            INSERT INTO dbo.EmployeeCompensationHistories
+                (CompanyId,EmployeeId,BaseSalary,EffectiveFrom,Reason,SourceChangeId,CreatedByUserId)
+            VALUES (@CompanyId,@EmployeeId,@NewBaseSalary,@EffectiveDate,@Reason,@PositionChangeId,@CreatedByUserId);
+        END;
+
+        UPDATE dbo.Employees
+        SET PositionId=@NewPositionId,
+            DepartmentId=@NewDepartmentId,
+            ManagerId=@NewManagerId,
+            -- Đồng bộ cột lương legacy được giữ để tương thích EmployeeDAO.
+            BaseSalary=COALESCE(@NewBaseSalary, BaseSalary),
+            UpdatedAt=SYSUTCDATETIME()
+        WHERE EmployeeId=@EmployeeId AND CompanyId=@CompanyId;
+
+        UPDATE dbo.EmployeePositionChanges
+        SET Status='APPLIED',AppliedAt=SYSUTCDATETIME()
+        WHERE PositionChangeId=@PositionChangeId AND CompanyId=@CompanyId;
+
+        INSERT INTO dbo.AuditLogs
+            (CompanyId,UserId,[Action],TableName,RecordId,OldValues,NewValues,CreatedAt)
+        VALUES
+            (@CompanyId,@CreatedByUserId,N'POSITION_CHANGE_APPLIED',N'Employees',
+             CONVERT(VARCHAR(100),@EmployeeId),
+             CONCAT(N'{"PositionId":',@CurrentPositionId,N',"DepartmentId":',@CurrentDepartmentId,N'}'),
+             CONCAT(N'{"PositionId":',@NewPositionId,N',"DepartmentId":',@NewDepartmentId,N'}'),
+             SYSUTCDATETIME());
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH;
 END;
 GO
