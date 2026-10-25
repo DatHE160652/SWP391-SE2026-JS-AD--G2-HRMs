@@ -75,7 +75,7 @@
                         </div>
                         <div>
                             <label>Điện thoại</label>
-                            <input name="phone" type="tel" maxlength="10" pattern="0[0-9]{9}" required readonly>
+                            <input name="phone" type="tel" inputmode="numeric" minlength="10" maxlength="10" pattern="0[0-9]{9}" required readonly>
                         </div>
                         <div>
                             <label>Trạng thái làm việc</label>

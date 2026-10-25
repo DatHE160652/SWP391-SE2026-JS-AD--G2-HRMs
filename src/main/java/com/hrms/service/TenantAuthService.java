@@ -34,7 +34,7 @@ public class TenantAuthService {
         }
 
         TenantAccount account = userDAO.findTenantAccount(workspace, normalizedEmail);
-        if (account == null || !rawPassword.equals(account.getUser().getPassword())) {
+        if (account == null || !new BCryptPasswordVerifier().matches(rawPassword, account.getUser().getPassword())) {
             if (account != null) {
                 userDAO.recordTenantLoginFailure(account.getUser(), MAX_FAILED_ATTEMPTS, LOCK_MINUTES);
             }
@@ -48,19 +48,20 @@ public class TenantAuthService {
                 account.getUser().getUserId(), account.getCompanyId(), account.getWorkspaceCode(),
                 account.getCompanyName(), account.getUser().getDisplayName(), account.getUser().getEmail(),
                 account.getRoleCode(), account.getEmployeeId(), account.isMustChangePassword(),
-                com.hrms.util.SecuritySupport.credentialVersion(account.getUser().getPasswordHash()));
+                com.hrms.util.SecuritySupport.credentialVersion(account.getUser().getPassword()));
     }
 
-    public boolean changePassword(TenantPrincipal principal, String newPassword, String password) throws SQLException {
+    public boolean changePassword(TenantPrincipal principal, String newPassword) throws SQLException {
         if (principal == null || principal.getUserId() == null || newPassword == null
-                || newPassword.isBlank() || password == null) return false;
+                || principal.getCompanyId() == null || newPassword.isBlank()) return false;
         TenantAccount account = userDAO.findTenantAccount(principal.getWorkspaceCode(), principal.getEmail());
         if (account == null || !principal.getUserId().equals(account.getUser().getUserId())
-                || !principal.getCompanyId().equals(account.getCompanyId())) return false;
-        if (newPassword.equals(account.getUser().getPassword())) {
+                || !principal.getCompanyId().equals(account.getCompanyId())
+                || !userDAO.isCurrentTenantSessionAuthorized(principal)) return false;
+        if (new BCryptPasswordVerifier().matches(newPassword, account.getUser().getPassword())) {
             throw new IllegalArgumentException("Mật khẩu mới phải khác mật khẩu hiện tại.");
         }
-        return userDAO.updateTenantPassword(account.getUser(), password);
+        return userDAO.updateTenantPassword(account.getUser(), new BCryptPasswordHasher().hash(newPassword));
     }
 
     private String normalizeWorkspace(String value) {

@@ -106,9 +106,11 @@ window.FormValidation = (() => {
         if (field.name === 'identityNumber' && !/^[0-9]{12}$/.test(value)) {
             return 'Mã định danh (CCCD) phải gồm đúng 12 chữ số.';
         }
-        if (field.validity.patternMismatch) {
-            return field.name === 'phone' ? 'Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0.'
-                : `${label}: không đúng định dạng yêu cầu.`;
+        if (field.name === 'phone' && !/^0[0-9]{9}$/.test(value)) {
+            return 'Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0.';
+        }
+        if (field.name !== 'phone' && field.validity.patternMismatch) {
+            return `${label}: không đúng định dạng yêu cầu.`;
         }
         if (field.maxLength > 0 && value.length > field.maxLength) {
             return `${label}: tối đa ${field.maxLength} ký tự.`;

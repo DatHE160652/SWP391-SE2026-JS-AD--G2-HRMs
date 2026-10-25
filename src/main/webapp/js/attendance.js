@@ -5,13 +5,15 @@ const AttendanceApi = {
     },
 
     async post(url, data) {
+        const parameters = new URLSearchParams(data);
+        parameters.set('csrfToken', document.querySelector('meta[name="organization-csrf-token"]')?.content || '');
         const response = await fetch(withContext(url), {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
             },
-            body: new URLSearchParams(data)
+            body: parameters
         });
         return handleResponse(response);
     }

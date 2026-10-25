@@ -29,7 +29,7 @@
 <label>Mã nhân viên<input name="employeeCode" required maxlength="50" autocomplete="off"></label>
 <label>Họ tên *<input name="fullName" required maxlength="150" autocomplete="name"></label>
 <label>Email<input type="email" name="email" maxlength="150" autocomplete="email"></label>
-<label>Điện thoại *<input name="phone" required type="tel" maxlength="30" autocomplete="tel"></label>
+<label>Điện thoại *<input name="phone" required type="tel" inputmode="numeric" minlength="10" maxlength="10" pattern="0[0-9]{9}" autocomplete="tel"></label>
 <label>Trạng thái *<select name="status" required><option value="Active">Đang làm việc</option><option value="Inactive">Chưa hoạt động</option></select></label>
 <label>Ngày sinh *<input type="date" name="dateOfBirth" required></label>
 <label>Giới tính *<select name="gender" required><option value="">Chọn giới tính</option><option value="Male">Nam</option><option value="Female">Nữ</option><option value="Other">Khác</option></select></label>

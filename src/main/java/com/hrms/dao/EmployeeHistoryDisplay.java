@@ -57,7 +57,9 @@ final class EmployeeHistoryDisplay {
                     WHERE employee.CompanyId=? AND employee.EmployeeId=? AND document.DocumentId=?
                     """;
             case "UserId" -> """
-                    SELECT COALESCE(NULLIF(account.Email,''),NULLIF(account.Username,''),account.DisplayName) AS DisplayName
+                    SELECT COALESCE(NULLIF(account.Email,'') COLLATE DATABASE_DEFAULT,
+                        NULLIF(account.Username,'') COLLATE DATABASE_DEFAULT,
+                        account.DisplayName COLLATE DATABASE_DEFAULT) AS DisplayName
                     FROM Users account JOIN Employees employee ON employee.CompanyId=account.CompanyId AND employee.UserId=account.UserId
                     WHERE employee.CompanyId=? AND employee.EmployeeId=? AND account.UserId=?
                     """;

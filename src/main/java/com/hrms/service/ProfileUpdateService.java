@@ -90,8 +90,7 @@ public class ProfileUpdateService {
         for (var entry:changes.entrySet()) {
             String field=entry.getKey(),value=entry.getValue()==null?null:entry.getValue().trim();
             if (value!=null && value.isEmpty()) value=null;
-            if ("phone".equals(field) && (value==null || !value.matches("0[0-9]{9}")))
-                throw new FieldValidationException(field,"Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0.");
+            if ("phone".equals(field)) value=com.hrms.util.ValidationSupport.validatePhone(value);
             int maximum=switch(field) { case "email" -> 150; case "permanentAddress" -> 500; default -> 200; };
             if (value!=null && value.length()>maximum) throw new FieldValidationException(field,"Độ dài tối đa là "+maximum+" ký tự.");
             if ("email".equals(field) && value!=null && !value.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"))

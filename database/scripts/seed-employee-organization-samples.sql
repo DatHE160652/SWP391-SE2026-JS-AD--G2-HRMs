@@ -82,7 +82,7 @@ BEGIN TRY
     DECLARE @EmployeeRoleId int = (SELECT RoleId FROM dbo.Roles WHERE RoleCode='EMPLOYEE');
     IF @EmployeeRoleId IS NULL THROW 51002, 'EMPLOYEE role is required for disabled fixture user records.', 1;
     DECLARE @NewUsers TABLE(UserId int,Username nvarchar(256));
-    INSERT INTO dbo.Users(CompanyId,RoleId,Username,Email,DisplayName,PasswordHash,IsActive,IsLocked)
+    INSERT INTO dbo.Users(CompanyId,RoleId,Username,Email,DisplayName,Password,IsActive,IsLocked)
     OUTPUT inserted.UserId,inserted.Username INTO @NewUsers
     SELECT @CompanyId,@EmployeeRoleId,CONCAT('demo-org-',@CompanyId,'-',s.EmployeeCode),
            CONCAT('demo-org-',@CompanyId,'-',s.EmployeeCode,'@example.invalid'),s.FullName,

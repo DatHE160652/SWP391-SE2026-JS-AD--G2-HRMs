@@ -42,29 +42,12 @@ public class AuditLogDAO {
         }
     }
 
-    public void insert(Connection connection, AuditLog log) throws SQLException {
-        String sql = """
-                INSERT INTO AuditLogs (CompanyId, UserId, Action, TableName, RecordId, OldValues, NewValues, IpAddress)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """;
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            setNullableInt(statement, 1, log.getCompanyId());
-            setNullableInt(statement, 2, log.getUserId());
-            statement.setString(3, log.getAction());
-            statement.setString(4, log.getTableName());
-            statement.setString(5, log.getRecordId());
-            statement.setString(6, log.getOldValues());
-            statement.setString(7, log.getNewValues());
-            statement.setString(8, log.getIpAddress());
-            statement.executeUpdate();
-        }
-    }
-
     public List<HistoryEntry> getEmployeeHistory(int employeeId) throws SQLException {
         ensureTableExists();
         String sql = """
                 SELECT TOP 100 subject.CompanyId, l.CreatedAt, l.Action, l.OldValues, l.NewValues,
-                       COALESCE(actor.FullName, u.Email, u.Username, 'System') AS ChangedBy
+                       COALESCE(actor.FullName COLLATE DATABASE_DEFAULT, u.Email COLLATE DATABASE_DEFAULT,
+                           u.Username COLLATE DATABASE_DEFAULT, N'System') AS ChangedBy
                 FROM AuditLogs l
                 JOIN Employees subject ON subject.EmployeeId=? AND (l.CompanyId=subject.CompanyId OR l.CompanyId IS NULL)
                 LEFT JOIN Users u ON u.UserId = l.UserId

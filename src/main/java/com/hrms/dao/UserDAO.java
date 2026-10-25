@@ -73,7 +73,7 @@ public class UserDAO {
                 INNER JOIN Companies c ON c.CompanyId = u.CompanyId
                 INNER JOIN Subscriptions s ON s.CompanyId = c.CompanyId
                 WHERE u.UserId = ? AND u.CompanyId = ? AND u.RowVersion = ?
-                  AND r.RoleCode IN ('COMPANY_ADMIN', 'MANAGER', 'EMPLOYEE')
+                  AND r.RoleCode IN ('COMPANY_ADMIN', 'HR', 'MANAGER', 'EMPLOYEE')
                   AND c.IsActive = 1 AND s.Status = N'ACTIVE'
                   AND u.IsActive = 1 AND u.IsLocked = 0
                   AND (u.LockedUntil IS NULL OR u.LockedUntil <= SYSUTCDATETIME())
@@ -210,7 +210,7 @@ public class UserDAO {
         if (principal == null || principal.getCompanyId() == null || principal.getCompanyId() <= 0
                 || principal.getWorkspaceCode() == null || !isTenantUserAuthorized(principal.getUserId())) return false;
         try (Connection connection = DBConnection.getConnection(); PreparedStatement statement = connection.prepareStatement("""
-                SELECT u.PasswordHash FROM Users u JOIN Roles r ON r.RoleId=u.RoleId
+                SELECT u.Password FROM Users u JOIN Roles r ON r.RoleId=u.RoleId
                 JOIN Companies c ON c.CompanyId=u.CompanyId
                 WHERE u.UserId=? AND u.CompanyId=? AND r.RoleCode=? AND u.MustChangePassword=? AND c.WorkspaceCode=?
                 """)) {
@@ -222,7 +222,7 @@ public class UserDAO {
             try (ResultSet rows = statement.executeQuery()) {
                 return rows.next() && principal.getCredentialVersion() != null
                         && java.security.MessageDigest.isEqual(principal.getCredentialVersion().getBytes(java.nio.charset.StandardCharsets.UTF_8),
-                        com.hrms.util.SecuritySupport.credentialVersion(rows.getString("PasswordHash")).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                        com.hrms.util.SecuritySupport.credentialVersion(rows.getString("Password")).getBytes(java.nio.charset.StandardCharsets.UTF_8));
             }
         }
     }
