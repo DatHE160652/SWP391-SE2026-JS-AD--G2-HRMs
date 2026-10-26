@@ -21,7 +21,8 @@
         <div class="lc-nav-label">CỔNG NHÂN VIÊN</div><nav aria-label="Chức năng cá nhân">
         <a class="active" href="my-profile">Hồ sơ cá nhân</a>
         <a  href="../attendance/employee-attendance">Chấm công cá nhân</a>
-        </nav><a class="lc-signout" href="../logout">↪ <span>Đăng xuất</span></a>
+        </nav><a href="../payslips">Phiếu lương của tôi</a>
+<a class="lc-signout" href="../logout">↪ <span>Đăng xuất</span></a>
     </aside>
 
     <header class="lc-topbar"><span>Cổng nhân viên <span class="lc-muted">/ Hồ sơ cá nhân</span></span><span class="lc-workspace">Workspace · <c:out value="${sessionScope.tenantPrincipal.workspaceCode}" default="—"/></span></header>
@@ -172,5 +173,6 @@
         </section>
     </main>
 <script src="../js/employee.js?v=<%= application.getResource("/js/employee.js").openConnection().getLastModified() %>"></script>
+<script src="../js/payroll-notifications.js"></script>
 </body>
 </html>

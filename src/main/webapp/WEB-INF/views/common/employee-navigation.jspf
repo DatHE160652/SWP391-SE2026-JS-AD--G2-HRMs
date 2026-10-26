@@ -6,6 +6,7 @@
         <a href="${pageContext.request.contextPath}/employee/organization" class="${employeeNavPage == 'organization' ? 'active' : ''}" ${employeeNavPage == 'organization' ? 'aria-current="page"' : ''}>Sơ đồ tổ chức</a>
         <a href="${pageContext.request.contextPath}/employee/my-contracts" class="${employeeNavPage == 'contracts' ? 'active' : ''}" ${employeeNavPage == 'contracts' ? 'aria-current="page"' : ''}>Hợp đồng của tôi</a>
         <a href="${pageContext.request.contextPath}/attendance/employee-attendance" class="${employeeNavPage == 'attendance' ? 'active' : ''}" ${employeeNavPage == 'attendance' ? 'aria-current="page"' : ''}>Chấm công cá nhân</a>
+        <a href="${pageContext.request.contextPath}/payslips">Phiếu lương của tôi</a>
     </nav>
     <span class="employee-navigation-workspace">Workspace · <c:out value="${sessionScope.tenantPrincipal.workspaceCode}" default="—"/></span>
     <a class="employee-navigation-signout" href="${pageContext.request.contextPath}/logout">Đăng xuất</a>

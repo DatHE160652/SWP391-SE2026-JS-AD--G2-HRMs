@@ -7,6 +7,8 @@
 
     <display-name>HRMs - HR Management Platform for SMEs</display-name>
 
+    <!-- Windows JVMs may default to a legacy charset. Read static JS/CSS as UTF-8
+         when the encoding filter requests UTF-8 output, avoiding double encoding. -->
     <servlet>
         <servlet-name>default</servlet-name>
         <servlet-class>org.apache.catalina.servlets.DefaultServlet</servlet-class>
@@ -353,6 +355,23 @@
         <url-pattern>/systemadmin/registration-request-details</url-pattern>
         <url-pattern>/systemadmin/registration-request/confirm</url-pattern>
         <url-pattern>/systemadmin/registration-request/delete</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>PayrollController</servlet-name>
+        <servlet-class>com.hrms.controller.hr.PayrollController</servlet-class>
+        <multipart-config>
+            <max-file-size>5242880</max-file-size>
+            <max-request-size>6291456</max-request-size>
+            <file-size-threshold>0</file-size-threshold>
+        </multipart-config>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>PayrollController</servlet-name>
+        <url-pattern>/payroll</url-pattern>
+        <url-pattern>/payroll/*</url-pattern>
+        <url-pattern>/payslips</url-pattern>
+        <url-pattern>/payslips/*</url-pattern>
     </servlet-mapping>
 
     <servlet>

@@ -44,6 +44,10 @@ public final class TenantPrincipal {
     public boolean isCompanyAdministrator() {
         return "COMPANY_ADMIN".equalsIgnoreCase(roleCode) || "HR".equalsIgnoreCase(roleCode);
     }
+    /** Payroll access does not grant employee/account or organization administration. */
+    public boolean canManagePayroll() {
+        return isCompanyAdministrator() || "MANAGER".equalsIgnoreCase(roleCode);
+    }
     public Integer getEmployeeId() { return employeeId; }
     public boolean isMustChangePassword() { return mustChangePassword; }
     public String getCredentialVersion() { return credentialVersion; }
