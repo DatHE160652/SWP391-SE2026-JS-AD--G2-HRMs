@@ -18,3 +18,5 @@ dist/
 application-local.properties
 db.properties
 test/
+
+SE2061(JS-AD)_G2_HRMs_DB.sql
