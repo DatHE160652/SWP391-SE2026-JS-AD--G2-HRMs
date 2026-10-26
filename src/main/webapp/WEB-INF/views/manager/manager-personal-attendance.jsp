@@ -19,6 +19,8 @@
         <a class="nav-link" href="manager-attendance?view=list">Danh sách chấm công</a>
         <a class="nav-link active" href="manager-personal-attendance">Chấm công Cá nhân</a>
         <a class="nav-link" href="attendance-report">Báo cáo Chấm công</a>
+        <a class="nav-link" href="../payslips">Phiếu lương của tôi</a>
+        <a class="nav-link" href="${pageContext.request.contextPath}/payroll">Quản lý lương</a>
         <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
     </aside>
 
@@ -100,5 +102,6 @@
     </main>
 </div>
 <script src="../js/attendance.js?v=<%= application.getResource("/js/attendance.js").openConnection().getLastModified() %>"></script>
+<script src="../js/payroll-notifications.js"></script>
 </body>
 </html>

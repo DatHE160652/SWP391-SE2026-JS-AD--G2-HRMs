@@ -23,6 +23,19 @@ public final class SecuritySupport {
     public static final String CSRF_ATTRIBUTE = "systemAdminCsrfToken";
     public static final String PUBLIC_CSRF_ATTRIBUTE = "publicFaqCsrfToken";
     public static final String TENANT_PRINCIPAL_ATTRIBUTE = "tenantPrincipal";
+    public static final String PAYROLL_CSRF_ATTRIBUTE = "payrollCsrfToken";
+
+    public static String ensurePayrollCsrfToken(HttpSession session) {
+        return ensureToken(session, PAYROLL_CSRF_ATTRIBUTE);
+    }
+
+    public static boolean hasValidPayrollCsrfToken(HttpServletRequest request) {
+        HttpSession session=request.getSession(false);
+        Object expected=session==null?null:session.getAttribute(PAYROLL_CSRF_ATTRIBUTE);
+        String submitted=request.getHeader("X-CSRF-Token");
+        if(submitted==null) submitted=request.getParameter("csrfToken");
+        return expected instanceof String token && submitted!=null && constantTimeEquals(token,submitted);
+    }
     public static final String TENANT_CSRF_ATTRIBUTE = "tenantPasswordCsrfToken";
 
     private static final SecureRandom RANDOM = new SecureRandom();

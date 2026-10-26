@@ -21,6 +21,7 @@
         <a class="nav-link" href="../employee/my-profile">Hồ sơ cá nhân</a>
         <a class="nav-link active" href="employee-attendance">Chấm công cá nhân</a>
 
+        <a class="nav-link" href="../payslips">Phiếu lương của tôi</a>
         <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
     </aside>
 
@@ -129,5 +130,6 @@
     </main>
 </div>
 <script src="../js/attendance.js?v=<%= application.getResource("/js/attendance.js").openConnection().getLastModified() %>"></script>
+<script src="../js/payroll-notifications.js"></script>
 </body>
 </html>

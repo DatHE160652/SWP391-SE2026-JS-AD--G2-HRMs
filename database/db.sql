@@ -1,5 +1,6 @@
 -- Bootstrap tạo database mới; không chạy lại trên database đang có dữ liệu.
--- Ghép schema Iter2 (23/10/2026), giữ cột legacy mà ứng dụng hiện tại còn dùng.
+-- Schema chính được hợp nhất với dbver.text ngày 26/10/2026.
+-- Database đã có dữ liệu dùng scripts/database-update-20261026.sql và các migration payroll.
 CREATE DATABASE HRMsDB;
 GO
 
@@ -336,6 +337,9 @@ CREATE TABLE Employees (
     Major NVARCHAR(200) NULL,
     IntendedContractType VARCHAR(30) NULL,
     TerminationReason NVARCHAR(500) NULL,
+    StartDate DATE NULL,                            -- Tương thích legacy; hồ sơ có thể được tạo trước hợp đồng
+    EndDate DATE NULL,
+    BaseSalary DECIMAL(18,2) NOT NULL DEFAULT 0.00 CHECK (BaseSalary >= 0), -- Chỉ tương thích; payroll đọc lịch sử lương
     Status NVARCHAR(30) NOT NULL DEFAULT 'Active'
         CHECK (Status IN ('Active', 'On Leave', 'Inactive')),
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
@@ -349,22 +353,6 @@ CREATE TABLE Employees (
     CONSTRAINT CK_Employees_NotOwnManager CHECK (ManagerId IS NULL OR ManagerId <> EmployeeId),
     CONSTRAINT CK_Employees_Position_RequiresDepartment CHECK (PositionId IS NULL OR DepartmentId IS NOT NULL)
 );
-
-CREATE TABLE ProfileUpdatePeriods (
-    PeriodId BIGINT IDENTITY(1,1) PRIMARY KEY,
-    CompanyId INT NOT NULL,
-    Title NVARCHAR(150) NOT NULL,
-    StartsAt DATETIME2 NOT NULL,
-    EndsAt DATETIME2 NOT NULL,
-    ClosedAt DATETIME2 NULL,
-    CreatedByUserId INT NOT NULL,
-    CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
-    CONSTRAINT FK_ProfileUpdatePeriods_Companies FOREIGN KEY (CompanyId) REFERENCES Companies(CompanyId),
-    CONSTRAINT FK_ProfileUpdatePeriods_Users FOREIGN KEY (CreatedByUserId) REFERENCES Users(UserId),
-    CONSTRAINT CK_ProfileUpdatePeriods_Dates CHECK (EndsAt > StartsAt)
-);
-CREATE INDEX IX_ProfileUpdatePeriods_CompanyDates
-    ON ProfileUpdatePeriods (CompanyId, ClosedAt, StartsAt, EndsAt);
 
 -- ========================================================================
 -- PHẦN 4: THEO DÕI CHẤM CÔNG HÀNG NGÀY
@@ -481,9 +469,19 @@ CREATE TABLE PayrollPeriods (
         CHECK (Status IN ('Draft', 'Calculated', 'Reviewed', 'Approved')),
     ApprovedByUserId INT NULL,
     ApprovedAt DATETIME2 NULL,
+    ReviewedByUserId INT NULL,
+    ReviewedAt DATETIME2 NULL,
+    IsClosed BIT NOT NULL DEFAULT 0,                -- Lock flag; not a fifth payroll status
+    PublishedAt DATETIME2 NULL,                     -- Employee-visible only after publication
+    PublishedByUserId INT NULL,
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     CONSTRAINT FK_PayrollPeriods_Companies FOREIGN KEY (CompanyId) REFERENCES Companies(CompanyId) ON DELETE CASCADE,
     CONSTRAINT FK_PayrollPeriods_ApprovedBy FOREIGN KEY (ApprovedByUserId) REFERENCES Users(UserId),
+    CONSTRAINT FK_PayrollPeriods_ReviewedBy FOREIGN KEY (ReviewedByUserId) REFERENCES Users(UserId),
+    CONSTRAINT CK_PayrollPeriods_ReviewMetadata CHECK (
+        (ReviewedByUserId IS NULL AND ReviewedAt IS NULL)
+        OR (ReviewedByUserId IS NOT NULL AND ReviewedAt IS NOT NULL)),
+    CONSTRAINT FK_PayrollPeriods_PublishedBy FOREIGN KEY (PublishedByUserId) REFERENCES Users(UserId),
     CONSTRAINT UQ_Company_Payroll_Month_Year UNIQUE (CompanyId, Month, Year)
 );
 
@@ -524,6 +522,21 @@ CREATE TABLE Payslips (
     CONSTRAINT UQ_Period_Employee_Payslip UNIQUE (PayrollPeriodId, EmployeeId),
     CONSTRAINT CK_Payslips_ResponsibilityAllowance CHECK (ResponsibilityAllowance >= 0)
 );
+
+-- Publication and each employee's in-system notification are committed together.
+CREATE TABLE PayrollNotifications (
+    NotificationId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    PayslipId BIGINT NOT NULL,
+    EmployeeId INT NOT NULL,
+    CompanyId INT NOT NULL,
+    CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    ReadAt DATETIME2 NULL,
+    CONSTRAINT FK_PayrollNotifications_Payslip FOREIGN KEY (PayslipId) REFERENCES Payslips(PayslipId),
+    CONSTRAINT FK_PayrollNotifications_Employee FOREIGN KEY (EmployeeId) REFERENCES Employees(EmployeeId),
+    CONSTRAINT FK_PayrollNotifications_Company FOREIGN KEY (CompanyId) REFERENCES Companies(CompanyId),
+    CONSTRAINT UQ_PayrollNotifications_Payslip UNIQUE (PayslipId)
+);
+CREATE INDEX IX_PayrollNotifications_Employee ON PayrollNotifications(CompanyId,EmployeeId,CreatedAt DESC);
 
 -- ========================================================================
 -- PHẦN 7: NHẬP DỮ LIỆU EXCEL LỚN VÀ NHẬT KÝ KIỂM TOÁN
@@ -907,6 +920,7 @@ CREATE TABLE [dbo].[EmployeeCompensationHistories](
     [PositionAllowance] [decimal](18, 2) NULL,
     [TravelAllowance] [decimal](18, 2) NULL,
     [SourceContractId] [bigint] NULL,
+    [SalaryStructureCode] [varchar](50) NULL,          -- Bảo toàn metadata khi tạo lịch sử lương mới
  CONSTRAINT [PK_EmployeeCompensationHistories] PRIMARY KEY CLUSTERED
 (
     [CompensationHistoryId] ASC
@@ -1564,5 +1578,26 @@ BEGIN
         IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
         THROW;
     END CATCH;
+END;
+GO
+
+-- Payroll uses existing project roles; no account is promoted or granted
+-- access to unrelated administration screens by this projection.
+CREATE OR ALTER VIEW dbo.vw_PayrollOperators
+AS
+    SELECT u.UserId,u.CompanyId,r.RoleCode
+    FROM dbo.Users u JOIN dbo.Roles r ON r.RoleId=u.RoleId
+    WHERE u.CompanyId IS NOT NULL AND r.RoleCode IN ('MANAGER','COMPANY_ADMIN','HR')
+        AND u.IsActive=1 AND u.IsLocked=0 AND u.MustChangePassword=0
+        AND (u.LockedUntil IS NULL OR u.LockedUntil<=SYSUTCDATETIME());
+GO
+
+CREATE OR ALTER TRIGGER dbo.TR_PayrollPeriods_Reviewer ON dbo.PayrollPeriods
+AFTER INSERT, UPDATE AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (SELECT 1 FROM inserted i LEFT JOIN dbo.Users u ON u.UserId=i.ReviewedByUserId
+        WHERE i.ReviewedByUserId IS NOT NULL AND (u.CompanyId IS NULL OR u.CompanyId<>i.CompanyId))
+        THROW 51004, 'Payroll reviewer references another company.', 1;
 END;
 GO

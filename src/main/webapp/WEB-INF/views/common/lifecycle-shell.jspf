@@ -18,6 +18,9 @@
 </div></section><section class="lc-nav-group" data-nav-group="other"><button type="button" class="lc-group-toggle" aria-controls="lc-other-links" aria-expanded="true">NGHIỆP VỤ KHÁC</button><div class="lc-nav-links" id="lc-other-links">
 <a href="${pageContext.request.contextPath}/attendance/company-attendance"><span class="lc-nav-icon" aria-hidden="true">◷</span><span>Chấm công</span></a>
 <a href="${pageContext.request.contextPath}/leave/all-requests"><span class="lc-nav-icon" aria-hidden="true">▢</span><span>Nghỉ phép</span></a>
+<a href="${pageContext.request.contextPath}/payroll"><span class="lc-nav-icon" aria-hidden="true">▤</span><span>Quản lý kỳ lương</span></a>
+<a href="${pageContext.request.contextPath}/payroll/salaries"><span class="lc-nav-icon" aria-hidden="true">▤</span><span>Lương cơ bản</span></a>
+<a href="${pageContext.request.contextPath}/payslips"><span class="lc-nav-icon" aria-hidden="true">▤</span><span>Phiếu lương của tôi</span></a>
 </div></section></nav><a class="lc-signout" href="${pageContext.request.contextPath}/logout" aria-label="Đăng xuất"><span class="lc-nav-icon" aria-hidden="true">↪</span><span>Đăng xuất</span></a></aside>
 <header class="lc-topbar"><span>Quản trị nhân sự <span class="lc-muted">/ Quy trình nhân sự</span></span><span class="lc-workspace" title="<c:out value='${sessionScope.tenantPrincipal.companyName}'/>">Workspace · <c:out value="${sessionScope.tenantPrincipal.workspaceCode}" default="—"/></span></header>
 <%@ include file="/WEB-INF/views/common/appearance.jspf" %>

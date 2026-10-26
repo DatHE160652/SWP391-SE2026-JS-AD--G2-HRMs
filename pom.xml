@@ -17,6 +17,13 @@
     </properties>
 
     <dependencies>
+        <!-- Payroll adjustments: native Excel .xlsx/.xls templates and import. -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.5.1</version>
+        </dependency>
+
         <!-- Jakarta Servlet API - Tomcat 10.1+ -->
         <dependency>
             <groupId>jakarta.servlet</groupId>

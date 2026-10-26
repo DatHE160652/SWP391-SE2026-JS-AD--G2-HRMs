@@ -234,6 +234,7 @@ function renderMyProfileSidebar(roleCode) {
             <a class="nav-link" href="../attendance/manager-attendance">Điểm danh Nhân sự</a>
             <a class="nav-link" href="../attendance/manager-personal-attendance">Chấm công Cá nhân</a>
             <a class="nav-link" href="../attendance/attendance-report">Báo cáo Chấm công</a>
+            <a class="nav-link" href="../payslips">Phiếu lương của tôi</a>
             <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
         `;
         return;
@@ -247,6 +248,9 @@ function renderMyProfileSidebar(roleCode) {
             <a class="nav-link" href="../employee/profile-update-periods">Đợt cập nhật hồ sơ</a>
             <a class="nav-link" href="../department/department-list">Quản lý Phòng ban</a>
             <a class="nav-link" href="../position/position-list">Quản lý Chức danh</a>
+            <a class="nav-link" href="../payroll">Quản lý kỳ lương</a>
+            <a class="nav-link" href="../payroll/salaries">Lương cơ bản</a>
+            <a class="nav-link" href="../payslips">Phiếu lương của tôi</a>
             <a class="nav-link" href="../responsibility-level/responsibility-level-list">Cấp trách nhiệm</a>
             <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
         `;
@@ -257,6 +261,7 @@ function renderMyProfileSidebar(roleCode) {
         <div class="nav-label">Chức năng cá nhân</div>
         <a class="nav-link active" href="../employee/my-profile">Hồ sơ cá nhân</a>
         <a class="nav-link" href="../attendance/employee-attendance">Chấm công cá nhân</a>
+        <a class="nav-link" href="../payslips">Phiếu lương của tôi</a>
         <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
     `;
 }

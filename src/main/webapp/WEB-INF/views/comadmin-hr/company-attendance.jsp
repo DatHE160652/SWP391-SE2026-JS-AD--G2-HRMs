@@ -24,6 +24,8 @@
         <a class="nav-link active" href="company-attendance">Giám sát Công ty</a>
         <a class="nav-link" href="attendance-report">Báo cáo Chấm công</a>
 
+        <a class="nav-link" href="../payroll">Quản lý kỳ lương</a>
+        <a class="nav-link" href="../payroll/salaries">Lương cơ bản</a>
         <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
         <a class="nav-link" href="../employee/my-profile">Hồ sơ cá nhân</a>
     </aside>

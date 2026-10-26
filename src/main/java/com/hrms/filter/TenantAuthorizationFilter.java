@@ -45,7 +45,7 @@ public class TenantAuthorizationFilter implements Filter {
             return;
         }
 
-        String path = httpRequest.getServletPath();
+        String path = fullPath(httpRequest);
         if (path.startsWith("/images/employees/") || path.startsWith("/uploads/employees/")) {
             httpResponse.sendError(404);
             return;
@@ -94,6 +94,14 @@ public class TenantAuthorizationFilter implements Filter {
     private boolean isAllowed(HttpServletRequest request, TenantPrincipal principal) {
         if (request.getServletPath().equals("/change-password") || request.getServletPath().startsWith("/leave/")) return true;
         String role = role(principal);
+        String payrollPath = fullPath(request);
+        if (payrollPath.equals("/payroll") || payrollPath.startsWith("/payroll/")) {
+            return principal.canManagePayroll();
+        }
+        if (payrollPath.equals("/payslips") || payrollPath.startsWith("/payslips/")) {
+            return principal.getEmployeeId() != null && (isGet(request.getMethod())
+                    || isPost(request.getMethod()) && payrollPath.equals("/payslips/api/read"));
+        }
         if (principal.isCompanyAdministrator()) {
             return true;
         }
@@ -198,7 +206,9 @@ public class TenantAuthorizationFilter implements Filter {
         if (path.equals("/change-password") || path.startsWith("/leave/")) return true;
         if (path.startsWith("/lifecycle/")) return true;
         if (path.startsWith("/responsibility-level/") || path.equals("/responsibility-levels") || path.startsWith("/responsibility-levels/")) return true;
-        return path.startsWith("/employee/")
+        return path.equals("/payroll") || path.startsWith("/payroll/")
+                || path.equals("/payslips") || path.startsWith("/payslips/")
+                || path.startsWith("/employee/")
                 || path.startsWith("/job-title/")
                 || path.equals("/job-titles")
                 || path.startsWith("/job-titles/")
@@ -255,8 +265,9 @@ public class TenantAuthorizationFilter implements Filter {
         if (request.getServletPath().startsWith("/lifecycle/api/") || request.getServletPath().startsWith("/leave/api/")) return true;
         if (request.getServletPath().equals("/responsibility-levels") || request.getServletPath().startsWith("/responsibility-levels/")) return true;
         String accept = request.getHeader("Accept");
-        String path = request.getServletPath();
+        String path = fullPath(request);
         return accept != null && accept.contains("application/json")
+                || path.startsWith("/payroll/api/") || path.startsWith("/payslips/api/")
                 || path.equals("/job-titles")
                 || path.startsWith("/job-titles/")
                 || path.equals("/employees")
@@ -288,5 +299,9 @@ public class TenantAuthorizationFilter implements Filter {
 
     private String role(TenantPrincipal principal) {
         return principal.getRoleCode() == null ? "" : principal.getRoleCode().toUpperCase();
+    }
+
+    private String fullPath(HttpServletRequest request) {
+        return request.getServletPath() + (request.getPathInfo() == null ? "" : request.getPathInfo());
     }
 }

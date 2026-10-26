@@ -9,9 +9,41 @@ public class PayrollPeriod {
     private Integer month;
     private Integer year;
     private String status;
+    private Integer reviewedByUserId;
+    private LocalDateTime reviewedAt;
+    private String reviewedByName;
     private Integer approvedByUserId;
     private LocalDateTime approvedAt;
+    private String approvedByName;
     private LocalDateTime createdAt;
+    private boolean closed;
+    private LocalDateTime publishedAt;
+    private int employeeCount;
+    private java.math.BigDecimal totalNetSalary;
+    private java.math.BigDecimal totalIncome;
+    private java.math.BigDecimal totalDeduction;
+
+    public Integer getReviewedByUserId() { return reviewedByUserId; }
+    public void setReviewedByUserId(Integer reviewedByUserId) { this.reviewedByUserId = reviewedByUserId; }
+    public LocalDateTime getReviewedAt() { return reviewedAt; }
+    public void setReviewedAt(LocalDateTime reviewedAt) { this.reviewedAt = reviewedAt; }
+    public String getReviewedByName() { return reviewedByName; }
+    public void setReviewedByName(String reviewedByName) { this.reviewedByName = reviewedByName; }
+    public String getApprovedByName() { return approvedByName; }
+    public void setApprovedByName(String approvedByName) { this.approvedByName = approvedByName; }
+    public java.math.BigDecimal getTotalIncome() { return totalIncome; }
+    public void setTotalIncome(java.math.BigDecimal totalIncome) { this.totalIncome = totalIncome; }
+    public java.math.BigDecimal getTotalDeduction() { return totalDeduction; }
+    public void setTotalDeduction(java.math.BigDecimal totalDeduction) { this.totalDeduction = totalDeduction; }
+
+    public boolean isClosed() { return closed; }
+    public void setClosed(boolean closed) { this.closed = closed; }
+    public LocalDateTime getPublishedAt() { return publishedAt; }
+    public void setPublishedAt(LocalDateTime publishedAt) { this.publishedAt = publishedAt; }
+    public int getEmployeeCount() { return employeeCount; }
+    public void setEmployeeCount(int employeeCount) { this.employeeCount = employeeCount; }
+    public java.math.BigDecimal getTotalNetSalary() { return totalNetSalary; }
+    public void setTotalNetSalary(java.math.BigDecimal totalNetSalary) { this.totalNetSalary = totalNetSalary; }
 
     public Integer getPayrollPeriodId() { return payrollPeriodId; }
     public void setPayrollPeriodId(Integer payrollPeriodId) { this.payrollPeriodId = payrollPeriodId; }
