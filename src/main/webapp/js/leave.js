@@ -125,7 +125,7 @@ const LeaveApp = (() => {
 
             banner.className = "calc-banner";
             FormValidation.setError(form, 'endDate', '');
-            banner.querySelector(".calc-text").innerHTML = `Số ngày làm việc tính toán: <strong>${days} ngày</strong> (đã trừ Thứ 7, Chủ Nhật)`;
+            banner.querySelector(".calc-text").innerHTML = `Số ngày làm việc tính toán: <strong><span id="calcWorkingDays">${days}</span> ngày</strong> (đã trừ Thứ 7, Chủ Nhật)`;
 
             // Kiểm tra khoảng thời gian có vắt qua năm tài chính hay không
             const sYear = parseInt(sVal.split("-")[0], 10);
