@@ -3,7 +3,9 @@ package com.hrms.dao;
 import java.math.BigDecimal;
 
 /**
- * Data transfer object representing aggregated leave utilization and entitlement per employee.
+ * Đối tượng vận chuyển dữ liệu (DTO) tổng hợp báo cáo tình hình sử dụng ngày phép của nhân viên:
+ * Bao gồm hạn mức được cấp, số ngày đã dùng, số ngày còn lại, phân bổ phép có/không hưởng lương
+ * và tổng số lượng đơn theo từng trạng thái.
  */
 public class LeaveReportDTO {
     private int employeeId;

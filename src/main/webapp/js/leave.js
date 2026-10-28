@@ -1,13 +1,15 @@
 /**
  * ==========================================================================
- * Leave Management Client Scripts (leave.js)
- * Manages dynamic working-day calculations, quota balance views, request tables,
- * paginated filters, review modals, and calendar grids.
+ * Kịch bản phía giao diện phân hệ Quản lý nghỉ phép (leave.js)
+ * Xử lý tính toán động số ngày làm việc, hiển thị số dư phép, bảng đơn phân trang,
+ * hộp thoại xét duyệt/từ chối, lịch nghỉ phép trực quan và báo cáo thống kê.
  * ==========================================================================
  */
 
 const LeaveApp = (() => {
-    // Utility: calculate working days locally (Monday to Friday)
+    /**
+     * Thuật toán tính toán số ngày làm việc thực tế ở client (tự động loại trừ Thứ 7 và Chủ Nhật).
+     */
     function computeWorkingDays(startStr, endStr) {
         if (!startStr || !endStr) return 0;
         const start = new Date(startStr);
@@ -17,7 +19,7 @@ const LeaveApp = (() => {
         let count = 0;
         const cur = new Date(start);
         while (cur <= end) {
-            const day = cur.getDay(); // 0 is Sunday, 6 is Saturday
+            const day = cur.getDay(); // 0: Chủ Nhật, 6: Thứ Bảy
             if (day !== 0 && day !== 6) {
                 count++;
             }
@@ -26,7 +28,7 @@ const LeaveApp = (() => {
         return count;
     }
 
-    // Utility: show toast or banner message
+    // Tiện ích hiển thị thông báo phản hồi (thành công hoặc lỗi)
     function showMessage(elId, text, isError = false) {
         const el = document.getElementById(elId);
         if (!el) return;
@@ -42,7 +44,7 @@ const LeaveApp = (() => {
         el.style.display = "none";
     }
 
-    // Modal controls
+    // Điều khiển đóng / mở cửa sổ Modal
     function openModal(modalId) {
         const m = document.getElementById(modalId);
         if (m) m.classList.add("active");
@@ -54,7 +56,7 @@ const LeaveApp = (() => {
     }
 
     // --------------------------------------------------------------------------
-    // 1. Employee: Submit Leave Request
+    // 1. Phía nhân viên: Khởi tạo và xử lý nộp đơn xin nghỉ phép
     // --------------------------------------------------------------------------
     function initSubmitForm() {
         const form = document.getElementById("leaveSubmitForm");
@@ -64,6 +66,8 @@ const LeaveApp = (() => {
         const daysDisplay = document.getElementById("calcWorkingDays");
         const banner = document.getElementById("calcBanner");
         const balanceNotice = document.getElementById("balanceNotice");
+        const crossYearBanner = document.getElementById("crossYearBanner");
+        const crossYearDetails = document.getElementById("crossYearDetails");
         const btnSubmit = document.getElementById("btnSubmitLeave");
 
         let cachedBalances = {};
@@ -87,6 +91,12 @@ const LeaveApp = (() => {
             })
             .catch(() => {});
 
+        /**
+         * Thuật toán tính toán số ngày nghỉ trực tiếp trên giao diện:
+         * - Tính toán số ngày làm việc thực tế (tự động trừ Thứ 7, Chủ Nhật).
+         * - Phát hiện thời gian nghỉ vắt qua 2 năm tài chính để kích hoạt giao diện đề xuất tách đơn.
+         * - So sánh với số dư ngày phép còn lại (RemainingDays) để cảnh báo kịp thời cho nhân viên.
+         */
         function updateCalculation() {
             const sVal = startDateInput.value;
             const eVal = endDateInput.value;
@@ -95,6 +105,7 @@ const LeaveApp = (() => {
             if (!sVal || !eVal) {
                 FormValidation.setError(form, 'endDate', '');
                 banner.style.display = "none";
+                if (crossYearBanner) crossYearBanner.style.display = "none";
                 balanceNotice.textContent = "";
                 return;
             }
@@ -107,6 +118,7 @@ const LeaveApp = (() => {
                 FormValidation.setError(form, 'endDate', 'Khoảng thời gian đã chọn không có ngày làm việc.');
                 banner.className = "calc-banner error";
                 banner.querySelector(".calc-text").textContent = "Khoảng thời gian đã chọn không có ngày làm việc (rơi vào T7, CN).";
+                if (crossYearBanner) crossYearBanner.style.display = "none";
                 btnSubmit.disabled = true;
                 return;
             }
@@ -115,9 +127,27 @@ const LeaveApp = (() => {
             FormValidation.setError(form, 'endDate', '');
             banner.querySelector(".calc-text").innerHTML = `Số ngày làm việc tính toán: <strong>${days} ngày</strong> (đã trừ Thứ 7, Chủ Nhật)`;
 
+            // Kiểm tra khoảng thời gian có vắt qua năm tài chính hay không
+            const sYear = parseInt(sVal.split("-")[0], 10);
+            const eYear = parseInt(eVal.split("-")[0], 10);
+
+            if (sYear !== eYear && crossYearBanner && crossYearDetails) {
+                const daysPart1 = computeWorkingDays(sVal, `${sYear}-12-31`);
+                const daysPart2 = computeWorkingDays(`${eYear}-01-01`, eVal);
+
+                crossYearDetails.innerHTML = `
+                    <div style="margin-bottom: 4px;">• <strong>Đơn 1 (Năm ${sYear}):</strong> từ ${sVal} đến 31/12/${sYear} — <strong>${daysPart1} ngày</strong> làm việc</div>
+                    <div style="margin-bottom: 4px;">• <strong>Đơn 2 (Năm ${eYear}):</strong> từ 01/01/${eYear} đến ${eVal} — <strong>${daysPart2} ngày</strong> làm việc</div>
+                    <div style="font-size: 12px; color: #475467; margin-top: 6px;">* Hệ thống sẽ tự động tách và giữ nguyên toàn bộ lý do và loại nghỉ phép cho từng đơn.</div>
+                `;
+                crossYearBanner.style.display = "flex";
+            } else if (crossYearBanner) {
+                crossYearBanner.style.display = "none";
+            }
+
             if (tId && cachedBalances[tId]) {
                 const rem = parseFloat(cachedBalances[tId].remainingDays || 0);
-                if (days > rem) {
+                if (sYear === eYear && days > rem) {
                     FormValidation.setError(form, 'endDate', `Số ngày nghỉ vượt quá số dư hiện tại (${rem} ngày).`);
                     banner.className = "calc-banner error";
                     balanceNotice.innerHTML = `<span style="color:#b42318;font-weight:700;">Vượt quá số dư hiện tại (${rem} ngày còn lại)!</span>`;
@@ -146,39 +176,80 @@ const LeaveApp = (() => {
         form.addEventListener("submit", e => {
             e.preventDefault();
             const formData = new URLSearchParams(new FormData(form));
-                formData.set("csrfToken", document.querySelector('meta[name="organization-csrf-token"]')?.content || "");
+            formData.set("csrfToken", document.querySelector('meta[name="organization-csrf-token"]')?.content || "");
+
+            const sVal = startDateInput.value;
+            const eVal = endDateInput.value;
+            const sYear = parseInt(sVal.split("-")[0], 10);
+            const eYear = parseInt(eVal.split("-")[0], 10);
+
+            if (sYear !== eYear) {
+                const daysPart1 = computeWorkingDays(sVal, `${sYear}-12-31`);
+                const daysPart2 = computeWorkingDays(`${eYear}-01-01`, eVal);
+                const confirmed = confirm(
+                    `Khoảng thời gian xin nghỉ vắt qua 2 năm tài chính (${sYear} và ${eYear}).\n` +
+                    `Hệ thống sẽ tự động tách thành 2 đơn riêng biệt:\n` +
+                    `1. Đơn năm ${sYear}: từ ${sVal} đến 31/12/${sYear} (${daysPart1} ngày làm việc)\n` +
+                    `2. Đơn năm ${eYear}: từ 01/01/${eYear} đến ${eVal} (${daysPart2} ngày làm việc)\n\n` +
+                    `Toàn bộ nội dung lý do sẽ được giữ nguyên cho cả 2 đơn.\n` +
+                    `Bạn có đồng ý tách và nộp các đơn này không?`
+                );
+                if (!confirmed) {
+                    return;
+                }
+                formData.set("confirmSplit", "true");
+            }
 
             btnSubmit.disabled = true;
             btnSubmit.textContent = "Đang gửi đơn...";
 
-            fetch("../leave/api/submit", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: formData.toString()
-            })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        alert(data.message || "Nộp đơn xin nghỉ phép thành công!");
-                        window.location.href = "my-requests";
-                    } else {
-                        if (!FormValidation.showErrors(form, data)) {
-                            showMessage('submitMessage', data.message || 'Không thể nộp đơn.', true);
+            function submitRequestData(dataToSend) {
+                fetch("../leave/api/submit", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: dataToSend.toString()
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(data.message || "Nộp đơn xin nghỉ phép thành công!");
+                            window.location.href = "my-requests";
+                        } else if (data.requiresSplit) {
+                            let splitMsg = data.message + "\n\nChi tiết các đơn đề xuất:\n";
+                            if (data.splits && data.splits.length > 0) {
+                                data.splits.forEach((s, idx) => {
+                                    splitMsg += `${idx + 1}. Năm ${s.year}: từ ${s.startDate} đến ${s.endDate} (${s.totalDays} ngày làm việc)\n`;
+                                });
+                            }
+                            splitMsg += "\nToàn bộ lý do và loại phép giữ nguyên. Bạn có muốn gửi các đơn này không?";
+                            if (confirm(splitMsg)) {
+                                dataToSend.set("confirmSplit", "true");
+                                submitRequestData(dataToSend);
+                            } else {
+                                btnSubmit.disabled = false;
+                                btnSubmit.textContent = "Nộp đơn xin nghỉ";
+                            }
+                        } else {
+                            if (!FormValidation.showErrors(form, data)) {
+                                showMessage('submitMessage', data.message || 'Không thể nộp đơn.', true);
+                            }
+                            btnSubmit.disabled = false;
+                            btnSubmit.textContent = "Nộp đơn xin nghỉ";
                         }
+                    })
+                    .catch(err => {
+                        alert("Lỗi kết nối máy chủ: " + err);
                         btnSubmit.disabled = false;
                         btnSubmit.textContent = "Nộp đơn xin nghỉ";
-                    }
-                })
-                .catch(err => {
-                    alert("Lỗi kết nối máy chủ: " + err);
-                    btnSubmit.disabled = false;
-                    btnSubmit.textContent = "Nộp đơn xin nghỉ";
-                });
+                    });
+            }
+
+            submitRequestData(formData);
         });
     }
 
     // --------------------------------------------------------------------------
-    // 2. Employee: Leave Balances View
+    // 2. Phía nhân viên: Xem danh sách số dư ngày phép theo năm tài chính
     // --------------------------------------------------------------------------
     function initBalancesView() {
         const container = document.getElementById("balanceGridContainer");
@@ -244,7 +315,7 @@ const LeaveApp = (() => {
     }
 
     // --------------------------------------------------------------------------
-    // 3. Employee: My Requests History
+    // 3. Phía nhân viên: Lịch sử và trạng thái các đơn nghỉ phép đã nộp
     // --------------------------------------------------------------------------
     function initMyRequestsView() {
         const tableBody = document.getElementById("requestsTableBody");
@@ -311,7 +382,7 @@ const LeaveApp = (() => {
     }
 
     // --------------------------------------------------------------------------
-    // 4. Manager: Pending Approvals
+    // 4. Phía quản lý (Manager): Danh sách đơn nghỉ phép đang chờ duyệt của nhóm
     // --------------------------------------------------------------------------
     function initPendingApprovalsView() {
         const tableBody = document.getElementById("pendingTableBody");
@@ -367,7 +438,7 @@ const LeaveApp = (() => {
     }
 
     // --------------------------------------------------------------------------
-    // 5. Admin / HR: Company-wide Requests
+    // 5. Phía quản trị (Admin / HR): Tra cứu danh sách đơn nghỉ phép toàn công ty
     // --------------------------------------------------------------------------
     function initAllRequestsView() {
         const tableBody = document.getElementById("allRequestsTableBody");
@@ -461,7 +532,7 @@ const LeaveApp = (() => {
     }
 
     // --------------------------------------------------------------------------
-    // 6. Admin / HR: Leave Policies & Types Configuration
+    // 6. Phía quản trị (Admin / HR): Cấu hình chính sách và danh mục loại nghỉ phép
     // --------------------------------------------------------------------------
     function initLeaveTypesView() {
         const tableBody = document.getElementById("typesTableBody");
@@ -539,7 +610,7 @@ const LeaveApp = (() => {
     }
 
     // --------------------------------------------------------------------------
-    // 7. Interactive Calendar View (Employee & Company)
+    // 7. Lưới lịch trực quan: Hiển thị các sự kiện nghỉ phép theo tháng (Cá nhân / Toàn công ty)
     // --------------------------------------------------------------------------
     function initCalendarView(isEmployeeOnly = false) {
         let currentYear = new Date().getFullYear();
@@ -588,6 +659,13 @@ const LeaveApp = (() => {
                 });
         }
 
+        /**
+         * Thuật toán xây dựng lưới lịch trực quan 7 cột (từ Thứ 2 đến Chủ Nhật):
+         * - Tính toán ngày đầu tuần của tháng để lấp đầy các ô trống từ cuối tháng trước.
+         * - Tạo ô cho từng ngày trong tháng, nhận diện ngày cuối tuần (Thứ 7, CN) và ngày hiện tại.
+         * - Lọc các sự kiện nghỉ phép trùng khớp với ngày và hiển thị các thẻ chip màu tương ứng.
+         * - Bù thêm các ô trống đầu tháng sau để lưới vuông vức, cân đối hàng cột.
+         */
         function buildCalendarGrid(year, month, events) {
             daysContainer.innerHTML = "";
 
@@ -699,7 +777,7 @@ const LeaveApp = (() => {
     }
 
     // --------------------------------------------------------------------------
-    // 8. Admin / HR: Leave Utilization Report
+    // 8. Phía quản trị (Admin / HR): Báo cáo thống kê tình hình sử dụng ngày phép
     // --------------------------------------------------------------------------
     function initReportView() {
         const tableBody = document.getElementById("reportTableBody");
@@ -777,8 +855,13 @@ const LeaveApp = (() => {
     }
 
     // --------------------------------------------------------------------------
-    // Pagination Generator Helper
+    // Tiện ích tạo thanh phân trang động
     // --------------------------------------------------------------------------
+    /**
+     * Thuật toán hiển thị thanh phân trang động:
+     * - Tính toán tổng số trang dựa trên tổng số bản ghi (totalRecords) và kích thước trang (pageSize).
+     * - Tự động hiển thị các trang liền kề và dấu chấm lửng (...) cho các trang ở giữa.
+     */
     function renderPagination(container, totalRecords, curPage, pageSize, onPageChange) {
         if (!container) return;
         if (totalRecords <= 0) {
@@ -815,7 +898,7 @@ const LeaveApp = (() => {
     }
 
     // --------------------------------------------------------------------------
-    // Shared Actions (Approve, Reject, Cancel, Details)
+    // Các thao tác xét duyệt, từ chối, hủy đơn và xem chi tiết dùng chung
     // --------------------------------------------------------------------------
     function openApproveModal(reqId, empName) {
         document.getElementById("approveReqId").value = reqId;

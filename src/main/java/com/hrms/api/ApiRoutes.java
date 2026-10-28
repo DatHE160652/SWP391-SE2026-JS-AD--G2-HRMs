@@ -97,6 +97,7 @@ public final class ApiRoutes {
     public static final String LEAVE_API_REPORT = LEAVE_PREFIX + "/api/report";
     public static final String LEAVE_EXPORT_EXCEL = LEAVE_PREFIX + "/export-excel";
     public static final String LEAVE_API_CALCULATE_DAYS = LEAVE_PREFIX + "/api/calculate-days";
+    public static final String LEAVE_API_RECONCILE = LEAVE_PREFIX + "/api/reconcile-attendance";
 
     private ApiRoutes() {
     }

@@ -15,12 +15,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Data access operations for leave requests, workflow transitions, and reporting.
+ * Lớp truy xuất cơ sở dữ liệu (DAO) cho phân hệ đơn xin nghỉ phép:
+ * - Thêm mới, tra cứu chi tiết đơn kèm thông tin nhân viên, phòng ban và chính sách phép.
+ * - Phân trang danh sách đơn theo nhân viên, cấp quản lý trực tiếp hoặc toàn công ty.
+ * - Cập nhật trạng thái duyệt đơn (Approved / Rejected) và hủy đơn chờ duyệt.
+ * - Đồng bộ bản ghi chấm công bằng câu lệnh MERGE tránh xung đột trùng lặp khóa duy nhất.
+ * - Tổng hợp dữ liệu hiển thị lịch nghỉ phép và báo cáo thống kê tình hình sử dụng phép.
  */
 public class LeaveRequestDAO {
 
     /**
-     * Inserts a new leave request in 'Pending' status.
+     * Thêm mới một đơn xin nghỉ phép với trạng thái ban đầu là 'Pending' (Chờ duyệt).
+     * Trả về mã định danh (LeaveRequestId) tự sinh trong cơ sở dữ liệu.
      */
     public int insertRequest(LeaveRequest r) throws SQLException {
         String sql = """
@@ -51,7 +57,8 @@ public class LeaveRequestDAO {
     }
 
     /**
-     * Retrieves a leave request by ID with joined employee, department, and policy details.
+     * Lấy thông tin chi tiết một đơn xin nghỉ phép theo ID.
+     * Liên kết thông tin nhân viên, phòng ban, loại nghỉ phép, người quản lý và người duyệt.
      */
     public LeaveRequest getRequestById(int leaveRequestId) throws SQLException {
         String sql = """
@@ -83,7 +90,7 @@ public class LeaveRequestDAO {
     }
 
     /**
-     * Lists leave requests for a single employee with optional status and year filters, using pagination.
+     * Lấy danh sách đơn nghỉ phép của một nhân viên (hỗ trợ lọc theo trạng thái, năm và phân trang).
      */
     public List<LeaveRequest> getRequestsByEmployee(int employeeId, String status, Integer year, int offset, int limit) throws SQLException {
         StringBuilder sql = new StringBuilder("""
@@ -134,7 +141,7 @@ public class LeaveRequestDAO {
     }
 
     /**
-     * Counts requests for an employee matching filter conditions.
+     * Đếm tổng số đơn xin nghỉ phép của nhân viên theo điều kiện lọc để phân trang.
      */
     public int countRequestsByEmployee(int employeeId, String status, Integer year) throws SQLException {
         StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM LeaveRequests WHERE EmployeeId = ?");
@@ -162,7 +169,7 @@ public class LeaveRequestDAO {
     }
 
     /**
-     * Retrieves pending requests for employees who report to the given manager.
+     * Lấy danh sách các đơn nghỉ phép đang 'Pending' của nhân viên thuộc nhóm do Manager phụ trách.
      */
     public List<LeaveRequest> getPendingRequestsByManager(int managerEmployeeId, int offset, int limit) throws SQLException {
         String sql = """
@@ -200,7 +207,7 @@ public class LeaveRequestDAO {
     }
 
     /**
-     * Counts pending requests under the given manager.
+     * Đếm số lượng đơn nghỉ phép đang chờ duyệt thuộc quyền quản lý của Manager.
      */
     public int countPendingRequestsByManager(int managerEmployeeId) throws SQLException {
         String sql = """
@@ -220,7 +227,7 @@ public class LeaveRequestDAO {
     }
 
     /**
-     * Retrieves company-wide leave requests with multiple filter criteria and pagination.
+     * Lấy danh sách đơn nghỉ phép toàn công ty (dành cho Admin/HR) với bộ lọc đa tiêu chí và phân trang.
      */
     public List<LeaveRequest> getAllRequestsByCompany(int companyId, String status, Integer departmentId,
                                                      Integer leaveTypeId, LocalDate fromDate, LocalDate toDate,
@@ -261,7 +268,7 @@ public class LeaveRequestDAO {
     }
 
     /**
-     * Counts company-wide leave requests matching filter criteria.
+     * Đếm tổng số đơn xin nghỉ phép toàn công ty thỏa mãn điều kiện lọc.
      */
     public int countAllRequestsByCompany(int companyId, String status, Integer departmentId,
                                         Integer leaveTypeId, LocalDate fromDate, LocalDate toDate,
@@ -285,7 +292,7 @@ public class LeaveRequestDAO {
     }
 
     /**
-     * Updates request review outcome (Approved / Rejected) within an active transaction.
+     * Cập nhật trạng thái duyệt đơn (Approved / Rejected) kèm người duyệt và lời nhắn trong một giao dịch.
      */
     public boolean updateStatus(Connection conn, int leaveRequestId, String status, Integer approverUserId, String comment) throws SQLException {
         String sql = """
@@ -308,7 +315,10 @@ public class LeaveRequestDAO {
     }
 
     /**
-     * Synchronizes an approved leave day into the attendance log using an upsert MERGE command.
+     * Đồng bộ ngày nghỉ phép đã duyệt sang bảng Chấm công (Attendances) bằng lệnh MERGE (Upsert):
+     * Nếu đã có bản ghi chấm công -> Cập nhật trạng thái 'On Leave' và ghi chú.
+     * Nếu chưa có bản ghi -> Chèn mới với Status = 'On Leave' và TotalHours = 0.00.
+     * Tránh xung đột trùng lặp khóa duy nhất (EmployeeId, AttendanceDate).
      */
     public void syncAttendanceOnLeave(Connection conn, int companyId, int employeeId, LocalDate date, String note) throws SQLException {
         String sql = """
@@ -332,7 +342,7 @@ public class LeaveRequestDAO {
     }
 
     /**
-     * Allows an employee to cancel their request if it is still Pending.
+     * Cho phép nhân viên tự hủy đơn xin nghỉ phép của mình khi đơn vẫn ở trạng thái 'Pending'.
      */
     public boolean cancelRequestByEmployee(int leaveRequestId, int employeeId) throws SQLException {
         String sql = """
@@ -350,7 +360,8 @@ public class LeaveRequestDAO {
     }
 
     /**
-     * Retrieves approved leave requests intersecting a target date range for calendar display.
+     * Lấy danh sách các đơn nghỉ phép đã được phê duyệt ('Approved') giao thoa với khoảng thời gian target
+     * để vẽ các sự kiện nghỉ phép trên giao diện lịch làm việc.
      */
     public List<LeaveRequest> getApprovedRequestsForCalendar(int companyId, Integer employeeId, Integer departmentId,
                                                             LocalDate startDate, LocalDate endDate) throws SQLException {
@@ -403,7 +414,9 @@ public class LeaveRequestDAO {
     }
 
     /**
-     * Aggregates employee leave quotas and consumption into summary report rows.
+     * Tổng hợp dữ liệu báo cáo thống kê tình hình sử dụng ngày phép toàn công ty theo năm:
+     * Gom nhóm theo nhân viên, tính tổng ngày phép được cấp, đã sử dụng, còn lại,
+     * số ngày nghỉ có lương / không lương và số lượng đơn theo từng trạng thái.
      */
     public List<LeaveReportDTO> getLeaveUtilizationReport(int companyId, int year, Integer departmentId) throws SQLException {
         StringBuilder sql = new StringBuilder("""

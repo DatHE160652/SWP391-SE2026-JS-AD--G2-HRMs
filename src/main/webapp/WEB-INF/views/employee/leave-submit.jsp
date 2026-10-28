@@ -70,6 +70,18 @@
                                 Số ngày làm việc tính toán: <strong><span id="calcWorkingDays">0</span> ngày</strong> (đã trừ Thứ 7, Chủ Nhật)
                             </div>
                         </div>
+
+                        <!-- Cross-Year Proposal Banner -->
+                        <div id="crossYearBanner" class="calc-banner info" style="display: none; margin-top: 10px; background: #eff8ff; border: 1px solid #b2ddff; color: #175cd3; padding: 14px 16px; border-radius: 8px;">
+                            <svg width="22" height="22" fill="currentColor" viewBox="0 0 20 20" style="flex-shrink:0; margin-top: 2px;">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                            </svg>
+                            <div style="font-size: 13px; line-height: 1.5;">
+                                <strong>Đề xuất tự động tách đơn theo năm tài chính:</strong><br>
+                                <span id="crossYearText">Khoảng thời gian xin nghỉ vắt qua 2 năm. Hệ thống đề xuất tách thành các đơn riêng theo từng năm tài chính:</span>
+                                <div id="crossYearDetails" style="margin-top: 8px; font-weight: 500;"></div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-group-full">

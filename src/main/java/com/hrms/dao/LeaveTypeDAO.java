@@ -12,12 +12,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Data access operations for leave policies and type definitions.
+ * Lớp truy xuất cơ sở dữ liệu (DAO) cho chính sách và danh mục loại nghỉ phép:
+ * - Tra cứu danh mục loại nghỉ phép của công ty theo ID hoặc mã loại phép
+ * (TypeCode).
+ * - Thêm mới chính sách loại nghỉ phép, cập nhật số ngày mặc định và chế độ
+ * tính lương (IsPaid).
+ * - Kích hoạt hoặc vô hiệu hóa trạng thái hoạt động của từng loại phép.
  */
 public class LeaveTypeDAO {
 
     /**
-     * Retrieves all leave types configured for a specific company.
+     * Lấy toàn bộ danh mục các loại nghỉ phép được cấu hình cho một công ty.
      */
     public List<LeaveType> getLeaveTypesByCompany(int companyId) throws SQLException {
         String sql = """
@@ -28,7 +33,7 @@ public class LeaveTypeDAO {
                 """;
 
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, companyId);
             try (ResultSet rs = ps.executeQuery()) {
                 List<LeaveType> list = new ArrayList<>();
@@ -41,7 +46,7 @@ public class LeaveTypeDAO {
     }
 
     /**
-     * Retrieves a leave type by its primary key.
+     * Lấy thông tin chi tiết một loại nghỉ phép theo khóa chính (LeaveTypeId).
      */
     public LeaveType getLeaveTypeById(int leaveTypeId) throws SQLException {
         String sql = """
@@ -51,7 +56,7 @@ public class LeaveTypeDAO {
                 """;
 
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, leaveTypeId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -63,7 +68,8 @@ public class LeaveTypeDAO {
     }
 
     /**
-     * Finds a leave type by company and unique type code (e.g., ANNUAL, SICK).
+     * Tìm kiếm loại nghỉ phép theo mã loại (VD: ANNUAL, SICK) trong phạm vi công
+     * ty.
      */
     public LeaveType getLeaveTypeByCode(int companyId, String typeCode) throws SQLException {
         String sql = """
@@ -73,7 +79,7 @@ public class LeaveTypeDAO {
                 """;
 
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, companyId);
             ps.setString(2, typeCode);
             try (ResultSet rs = ps.executeQuery()) {
@@ -86,7 +92,7 @@ public class LeaveTypeDAO {
     }
 
     /**
-     * Creates a new leave type policy for the company.
+     * Tạo mới một chính sách loại nghỉ phép cho công ty.
      */
     public int createLeaveType(LeaveType leaveType) throws SQLException {
         String sql = """
@@ -95,7 +101,7 @@ public class LeaveTypeDAO {
                 """;
 
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+                PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, leaveType.getCompanyId());
             ps.setString(2, leaveType.getTypeCode().trim().toUpperCase());
             ps.setString(3, leaveType.getTypeName().trim());
@@ -113,7 +119,8 @@ public class LeaveTypeDAO {
     }
 
     /**
-     * Updates an existing leave type's details.
+     * Cập nhật thông tin chính sách loại nghỉ phép (tên, số ngày mặc định, chế độ
+     * tính lương).
      */
     public boolean updateLeaveType(LeaveType leaveType) throws SQLException {
         String sql = """
@@ -123,7 +130,7 @@ public class LeaveTypeDAO {
                 """;
 
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, leaveType.getTypeName().trim());
             ps.setInt(2, leaveType.getDefaultDaysPerYear() != null ? leaveType.getDefaultDaysPerYear() : 12);
             ps.setBoolean(3, leaveType.getPaid() != null ? leaveType.getPaid() : true);
@@ -134,10 +141,14 @@ public class LeaveTypeDAO {
         }
     }
 
+    /**
+     * Bật hoặc tắt trạng thái hoạt động (kích hoạt / vô hiệu hóa) của loại nghỉ
+     * phép.
+     */
     public boolean setLeaveTypeActive(int leaveTypeId, int companyId, boolean active) throws SQLException {
         String sql = "UPDATE LeaveTypes SET IsActive=? WHERE LeaveTypeId=? AND CompanyId=?";
         try (Connection connection = DBConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+                PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setBoolean(1, active);
             statement.setInt(2, leaveTypeId);
             statement.setInt(3, companyId);

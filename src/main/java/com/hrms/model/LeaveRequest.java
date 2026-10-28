@@ -4,6 +4,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+/**
+ * Thực thể đại diện cho bảng LeaveRequests trong cơ sở dữ liệu:
+ * Lưu trữ thông tin đơn xin nghỉ phép của nhân viên, số ngày nghỉ, trạng thái duyệt
+ * và các trường dữ liệu bổ trợ hiển thị từ các bảng liên kết (Employees, Departments, LeaveTypes, Users).
+ */
 public class LeaveRequest {
 	private Integer leaveRequestId;
 	private Integer companyId;

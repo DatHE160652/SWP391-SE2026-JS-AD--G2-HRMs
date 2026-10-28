@@ -29,8 +29,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
- * Controller coordinating leave policies, balances, submissions, approval workflows,
- * calendars, and analytics reports.
+ * Bộ điều hướng Servlet trung tâm cho phân hệ Quản lý nghỉ phép:
+ * - Điều hướng giao diện và phản hồi API dữ liệu theo vai trò người dùng (Nhân viên, Quản lý, Quản trị/HR).
+ * - Quản lý chính sách, theo dõi số dư, nộp đơn, xét duyệt/từ chối, lịch trực quan và báo cáo thống kê.
  */
 @WebServlet(name = "LeaveController", urlPatterns = {
         ApiRoutes.LEAVE_PAGE_TYPES,
@@ -53,7 +54,8 @@ import java.util.List;
         ApiRoutes.LEAVE_API_CALENDAR_EVENTS,
         ApiRoutes.LEAVE_API_REPORT,
         ApiRoutes.LEAVE_EXPORT_EXCEL,
-        ApiRoutes.LEAVE_API_CALCULATE_DAYS
+        ApiRoutes.LEAVE_API_CALCULATE_DAYS,
+        ApiRoutes.LEAVE_API_RECONCILE
 })
 public class LeaveController extends HttpServlet {
     private final LeaveService leaveService = new LeaveService();
@@ -67,11 +69,15 @@ public class LeaveController extends HttpServlet {
             switch (path) {
                 // View Pages
                 case ApiRoutes.LEAVE_PAGE_TYPES -> forwardView(request, response, ApiRoutes.VIEW_LEAVE_TYPE_LIST, true);
-                case ApiRoutes.LEAVE_PAGE_MY_BALANCES -> forwardView(request, response, ApiRoutes.VIEW_LEAVE_MY_BALANCES, false);
-                case ApiRoutes.LEAVE_PAGE_MY_REQUESTS -> forwardView(request, response, ApiRoutes.VIEW_LEAVE_MY_REQUESTS, false);
+                case ApiRoutes.LEAVE_PAGE_MY_BALANCES ->
+                    forwardView(request, response, ApiRoutes.VIEW_LEAVE_MY_BALANCES, false);
+                case ApiRoutes.LEAVE_PAGE_MY_REQUESTS ->
+                    forwardView(request, response, ApiRoutes.VIEW_LEAVE_MY_REQUESTS, false);
                 case ApiRoutes.LEAVE_PAGE_SUBMIT -> forwardView(request, response, ApiRoutes.VIEW_LEAVE_SUBMIT, false);
-                case ApiRoutes.LEAVE_PAGE_PENDING_APPROVALS -> forwardView(request, response, ApiRoutes.VIEW_LEAVE_PENDING_APPROVALS, false);
-                case ApiRoutes.LEAVE_PAGE_ALL_REQUESTS -> forwardView(request, response, ApiRoutes.VIEW_LEAVE_ALL_REQUESTS, true);
+                case ApiRoutes.LEAVE_PAGE_PENDING_APPROVALS ->
+                    forwardView(request, response, ApiRoutes.VIEW_LEAVE_PENDING_APPROVALS, false);
+                case ApiRoutes.LEAVE_PAGE_ALL_REQUESTS ->
+                    forwardView(request, response, ApiRoutes.VIEW_LEAVE_ALL_REQUESTS, true);
                 case ApiRoutes.LEAVE_PAGE_CALENDAR -> handleCalendarPage(request, response);
                 case ApiRoutes.LEAVE_PAGE_REPORT -> forwardView(request, response, ApiRoutes.VIEW_LEAVE_REPORT, true);
 
@@ -85,11 +91,14 @@ public class LeaveController extends HttpServlet {
                 case ApiRoutes.LEAVE_API_REPORT -> handleGetReport(request, response);
                 case ApiRoutes.LEAVE_EXPORT_EXCEL -> handleExportExcel(request, response);
                 case ApiRoutes.LEAVE_API_CALCULATE_DAYS -> handleCalculateWorkingDays(request, response);
+                case ApiRoutes.LEAVE_API_RECONCILE -> handleReconcileAttendance(request, response);
 
-                default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Không tìm thấy chức năng được yêu cầu."));
+                default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND,
+                        error("Không tìm thấy chức năng được yêu cầu."));
             }
         } catch (SQLException e) {
-            writeJson(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, error("Database error: " + e.getMessage()));
+            writeJson(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    error("Database error: " + e.getMessage()));
         } catch (IllegalArgumentException e) {
             writeJson(response, HttpServletResponse.SC_BAD_REQUEST, ValidationSupport.errorJson(e));
         } catch (Exception e) {
@@ -109,10 +118,13 @@ public class LeaveController extends HttpServlet {
                 case ApiRoutes.LEAVE_API_APPROVE -> handleApproveRequest(request, response);
                 case ApiRoutes.LEAVE_API_REJECT -> handleRejectRequest(request, response);
                 case ApiRoutes.LEAVE_API_TYPES -> handleSaveLeaveType(request, response);
-                default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Không tìm thấy chức năng được yêu cầu."));
+                case ApiRoutes.LEAVE_API_RECONCILE -> handleReconcileAttendance(request, response);
+                default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND,
+                        error("Không tìm thấy chức năng được yêu cầu."));
             }
         } catch (SQLException e) {
-            writeJson(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, error("Database error: " + e.getMessage()));
+            writeJson(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    error("Database error: " + e.getMessage()));
         } catch (IllegalArgumentException e) {
             writeJson(response, HttpServletResponse.SC_BAD_REQUEST, ValidationSupport.errorJson(e));
         } catch (Exception e) {
@@ -120,7 +132,11 @@ public class LeaveController extends HttpServlet {
         }
     }
 
-    private void forwardView(HttpServletRequest request, HttpServletResponse response, String jspPath, boolean adminOnly)
+    /**
+     * Điều hướng hiển thị trang giao diện JSP, kèm xác thực phiên làm việc và phân quyền Quản trị viên/HR.
+     */
+    private void forwardView(HttpServletRequest request, HttpServletResponse response, String jspPath,
+            boolean adminOnly)
             throws ServletException, IOException {
         TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
         if (principal == null) {
@@ -138,6 +154,11 @@ public class LeaveController extends HttpServlet {
         request.getRequestDispatcher(jspPath).forward(request, response);
     }
 
+    /**
+     * Điều hướng đến giao diện lịch nghỉ phép dựa theo vai trò của người dùng:
+     * - Nhân viên: xem lịch làm việc / nghỉ phép cá nhân.
+     * - Quản lý / Quản trị viên: xem lịch nghỉ phép tổng thể của nhóm và công ty.
+     */
     private void handleCalendarPage(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
@@ -147,7 +168,7 @@ public class LeaveController extends HttpServlet {
         }
 
         request.setAttribute("currentUser", principal);
-        // Employees view personal calendar; Managers and Admins view team/company calendar
+        // Phân quyền hiển thị: Nhân viên xem lịch cá nhân, Quản lý/HR xem lịch chung
         if (isRole(principal, "EMPLOYEE")) {
             request.getRequestDispatcher(ApiRoutes.VIEW_LEAVE_CALENDAR_EMPLOYEE).forward(request, response);
         } else {
@@ -155,13 +176,17 @@ public class LeaveController extends HttpServlet {
         }
     }
 
+    /**
+     * API truy vấn danh mục các loại nghỉ phép được cấu hình cho công ty dưới dạng JSON.
+     */
     private void handleGetLeaveTypes(HttpServletRequest request, HttpServletResponse response)
             throws SQLException, IOException {
         TenantPrincipal principal = getRequiredPrincipal(request);
         List<LeaveType> list = leaveService.getLeaveTypeDAO().getLeaveTypesByCompany(principal.getCompanyId());
         StringBuilder sb = new StringBuilder("{\"success\":true,\"data\":[");
         for (int i = 0; i < list.size(); i++) {
-            if (i > 0) sb.append(",");
+            if (i > 0)
+                sb.append(",");
             LeaveType t = list.get(i);
             sb.append("{")
                     .append("\"leaveTypeId\":").append(t.getLeaveTypeId()).append(",")
@@ -176,16 +201,21 @@ public class LeaveController extends HttpServlet {
         writeJson(response, HttpServletResponse.SC_OK, sb.toString());
     }
 
+    /**
+     * API lưu cấu hình loại nghỉ phép: thêm mới hoặc cập nhật chính sách, kích hoạt hoặc vô hiệu hóa loại phép.
+     */
     private void handleSaveLeaveType(HttpServletRequest request, HttpServletResponse response)
             throws SQLException, IOException {
         TenantPrincipal principal = getRequiredPrincipal(request);
         if (!isAdminOrHr(principal)) {
-            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Chỉ quản trị viên mới có quyền cập nhật danh mục nghỉ phép."));
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN,
+                    error("Chỉ quản trị viên mới có quyền cập nhật danh mục nghỉ phép."));
             return;
         }
 
         if (!SecuritySupport.hasValidPublicCsrfToken(request)) {
-            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Phiên thao tác không hợp lệ. Vui lòng tải lại trang."));
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN,
+                    error("Phiên thao tác không hợp lệ. Vui lòng tải lại trang."));
             return;
         }
         String action = request.getParameter("action");
@@ -195,15 +225,18 @@ public class LeaveController extends HttpServlet {
             if (!leaveService.getLeaveTypeDAO().setLeaveTypeActive(leaveTypeId, principal.getCompanyId(), active)) {
                 throw new IllegalArgumentException("Không tìm thấy loại nghỉ phép trong công ty của bạn.");
             }
-            writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"message\":\"Leave type status updated.\"}");
+            writeJson(response, HttpServletResponse.SC_OK,
+                    "{\"success\":true,\"message\":\"Leave type status updated.\"}");
             return;
         }
-        if (action != null && !action.isBlank()) throw new IllegalArgumentException("Thao tác loại nghỉ phép không được hỗ trợ.");
+        if (action != null && !action.isBlank())
+            throw new IllegalArgumentException("Thao tác loại nghỉ phép không được hỗ trợ.");
 
         String typeCode = request.getParameter("typeCode");
         String typeName = request.getParameter("typeName");
         int defaultDays = parseOptionalInt(request.getParameter("defaultDaysPerYear"), 12);
-        boolean isPaid = "true".equalsIgnoreCase(request.getParameter("isPaid")) || "1".equals(request.getParameter("isPaid"));
+        boolean isPaid = "true".equalsIgnoreCase(request.getParameter("isPaid"))
+                || "1".equals(request.getParameter("isPaid"));
         Integer leaveTypeId = parseNullableInt(request.getParameter("leaveTypeId"));
 
         if (typeName == null || typeName.isBlank()) {
@@ -218,14 +251,17 @@ public class LeaveController extends HttpServlet {
             lt.setDefaultDaysPerYear(defaultDays);
             lt.setPaid(isPaid);
             leaveService.getLeaveTypeDAO().updateLeaveType(lt);
-            writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"message\":\"Cập nhật chính sách thành công!\"}");
+            writeJson(response, HttpServletResponse.SC_OK,
+                    "{\"success\":true,\"message\":\"Cập nhật chính sách thành công!\"}");
         } else {
             if (typeCode == null || typeCode.isBlank()) {
                 throw new FieldValidationException("typeCode", "Vui lòng nhập mã loại nghỉ phép (VD: ANNUAL, SICK).");
             }
-            LeaveType existing = leaveService.getLeaveTypeDAO().getLeaveTypeByCode(principal.getCompanyId(), typeCode.trim().toUpperCase());
+            LeaveType existing = leaveService.getLeaveTypeDAO().getLeaveTypeByCode(principal.getCompanyId(),
+                    typeCode.trim().toUpperCase());
             if (existing != null) {
-                throw new FieldValidationException("typeCode", "Mã loại nghỉ phép '" + typeCode.trim().toUpperCase() + "' đã tồn tại.");
+                throw new FieldValidationException("typeCode",
+                        "Mã loại nghỉ phép '" + typeCode.trim().toUpperCase() + "' đã tồn tại.");
             }
             LeaveType lt = new LeaveType();
             lt.setCompanyId(principal.getCompanyId());
@@ -234,10 +270,14 @@ public class LeaveController extends HttpServlet {
             lt.setDefaultDaysPerYear(defaultDays);
             lt.setPaid(isPaid);
             int newId = leaveService.getLeaveTypeDAO().createLeaveType(lt);
-            writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"message\":\"Thêm loại nghỉ phép thành công!\",\"id\":" + newId + "}");
+            writeJson(response, HttpServletResponse.SC_OK,
+                    "{\"success\":true,\"message\":\"Thêm loại nghỉ phép thành công!\",\"id\":" + newId + "}");
         }
     }
 
+    /**
+     * API truy vấn danh sách số dư ngày phép của nhân viên đang đăng nhập theo năm tài chính.
+     */
     private void handleGetMyBalances(HttpServletRequest request, HttpServletResponse response)
             throws SQLException, IOException {
         TenantPrincipal principal = getRequiredPrincipal(request);
@@ -247,7 +287,8 @@ public class LeaveController extends HttpServlet {
         List<LeaveBalance> balances = leaveService.getEmployeeBalances(employeeId, principal.getCompanyId(), year);
         StringBuilder sb = new StringBuilder("{\"success\":true,\"year\":").append(year).append(",\"data\":[");
         for (int i = 0; i < balances.size(); i++) {
-            if (i > 0) sb.append(",");
+            if (i > 0)
+                sb.append(",");
             LeaveBalance b = balances.get(i);
             sb.append("{")
                     .append("\"balanceId\":").append(b.getBalanceId()).append(",")
@@ -255,8 +296,10 @@ public class LeaveController extends HttpServlet {
                     .append("\"leaveTypeCode\":").append(quote(b.getLeaveTypeCode())).append(",")
                     .append("\"leaveTypeName\":").append(quote(b.getLeaveTypeName())).append(",")
                     .append("\"isPaid\":").append(Boolean.TRUE.equals(b.getIsPaid())).append(",")
-                    .append("\"defaultDaysPerYear\":").append(b.getDefaultDaysPerYear() != null ? b.getDefaultDaysPerYear() : 0).append(",")
-                    .append("\"entitledDays\":").append(b.getEntitledDays() != null ? b.getEntitledDays() : 0).append(",")
+                    .append("\"defaultDaysPerYear\":")
+                    .append(b.getDefaultDaysPerYear() != null ? b.getDefaultDaysPerYear() : 0).append(",")
+                    .append("\"entitledDays\":").append(b.getEntitledDays() != null ? b.getEntitledDays() : 0)
+                    .append(",")
                     .append("\"usedDays\":").append(b.getUsedDays() != null ? b.getUsedDays() : 0).append(",")
                     .append("\"remainingDays\":").append(b.getRemainingDays() != null ? b.getRemainingDays() : 0)
                     .append("}");
@@ -265,6 +308,9 @@ public class LeaveController extends HttpServlet {
         writeJson(response, HttpServletResponse.SC_OK, sb.toString());
     }
 
+    /**
+     * API truy vấn lịch sử các đơn xin nghỉ phép của nhân viên (hỗ trợ phân trang và lọc theo trạng thái/năm).
+     */
     private void handleGetMyRequests(HttpServletRequest request, HttpServletResponse response)
             throws SQLException, IOException {
         TenantPrincipal principal = getRequiredPrincipal(request);
@@ -276,11 +322,17 @@ public class LeaveController extends HttpServlet {
         int offset = (page - 1) * pageSize;
 
         int totalCount = leaveService.getLeaveRequestDAO().countRequestsByEmployee(employeeId, status, year);
-        List<LeaveRequest> list = leaveService.getLeaveRequestDAO().getRequestsByEmployee(employeeId, status, year, offset, pageSize);
+        List<LeaveRequest> list = leaveService.getLeaveRequestDAO().getRequestsByEmployee(employeeId, status, year,
+                offset, pageSize);
 
         writePagedRequestsJson(response, list, totalCount, page, pageSize);
     }
 
+    /**
+     * API tiếp nhận và xử lý nộp đơn xin nghỉ phép của nhân viên:
+     * - Nếu thời gian nghỉ vắt qua 2 năm tài chính và chưa xác nhận tách đơn: trả về đề xuất tách đơn để người dùng xem trước.
+     * - Nếu đã xác nhận tách đơn hoặc đơn cùng năm: kiểm tra hạn mức và lưu đơn vào cơ sở dữ liệu.
+     */
     private void handleSubmitRequest(HttpServletRequest request, HttpServletResponse response)
             throws SQLException, IOException {
         TenantPrincipal principal = getRequiredPrincipal(request);
@@ -289,16 +341,53 @@ public class LeaveController extends HttpServlet {
         LocalDate startDate = parseRequiredDate(request.getParameter("startDate"), "Vui lòng chọn ngày bắt đầu.");
         LocalDate endDate = parseRequiredDate(request.getParameter("endDate"), "Vui lòng chọn ngày kết thúc.");
         String reason = request.getParameter("reason");
+        boolean confirmSplit = "true".equalsIgnoreCase(request.getParameter("confirmSplit"));
+
+        if (startDate.getYear() != endDate.getYear()) {
+            if (!confirmSplit) {
+                List<LeaveRequest> splits = leaveService.splitCrossYearRequests(
+                        principal.getCompanyId(), employeeId, leaveTypeId, startDate, endDate, reason);
+                StringBuilder sb = new StringBuilder("{");
+                sb.append("\"success\":false,");
+                sb.append("\"requiresSplit\":true,");
+                sb.append(
+                        "\"message\":\"Khoảng thời gian nghỉ phép vắt qua 2 năm tài chính khác nhau. Hệ thống đề xuất tự động tách thành 2 đơn riêng theo từng năm.\",");
+                sb.append("\"splits\":[");
+                for (int i = 0; i < splits.size(); i++) {
+                    if (i > 0)
+                        sb.append(",");
+                    LeaveRequest s = splits.get(i);
+                    sb.append("{\"year\":").append(s.getStartDate().getYear())
+                            .append(",\"startDate\":\"").append(s.getStartDate()).append("\"")
+                            .append(",\"endDate\":\"").append(s.getEndDate()).append("\"")
+                            .append(",\"totalDays\":").append(s.getTotalDays())
+                            .append("}");
+                }
+                sb.append("]}");
+                writeJson(response, HttpServletResponse.SC_OK, sb.toString());
+                return;
+            }
+
+            List<LeaveRequest> submittedList = leaveService.submitCrossYearLeaveRequests(
+                    principal.getCompanyId(), employeeId, leaveTypeId, startDate, endDate, reason);
+            writeJson(response, HttpServletResponse.SC_OK,
+                    "{\"success\":true,\"message\":\"Đã tách và nộp thành công " + submittedList.size()
+                            + " đơn xin nghỉ phép tương ứng theo từng năm tài chính!\",\"splitCount\":"
+                            + submittedList.size() + "}");
+            return;
+        }
 
         LeaveRequest submitted = leaveService.submitLeaveRequest(
-                principal.getCompanyId(), employeeId, leaveTypeId, startDate, endDate, reason
-        );
+                principal.getCompanyId(), employeeId, leaveTypeId, startDate, endDate, reason);
 
         writeJson(response, HttpServletResponse.SC_OK,
                 "{\"success\":true,\"message\":\"Nộp đơn xin nghỉ phép thành công! Đơn đang chờ duyệt.\",\"leaveRequestId\":"
                         + submitted.getLeaveRequestId() + "}");
     }
 
+    /**
+     * API hủy đơn xin nghỉ phép: Chỉ chính chủ sở hữu đơn mới có thể hủy khi đơn đang ở trạng thái 'Pending'.
+     */
     private void handleCancelRequest(HttpServletRequest request, HttpServletResponse response)
             throws SQLException, IOException {
         TenantPrincipal principal = getRequiredPrincipal(request);
@@ -307,12 +396,19 @@ public class LeaveController extends HttpServlet {
 
         boolean cancelled = leaveService.cancelPendingRequest(leaveRequestId, employeeId);
         if (cancelled) {
-            writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"message\":\"Hủy đơn xin nghỉ phép thành công.\"}");
+            writeJson(response, HttpServletResponse.SC_OK,
+                    "{\"success\":true,\"message\":\"Hủy đơn xin nghỉ phép thành công.\"}");
         } else {
-            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error("Không thể hủy đơn (có thể đơn không còn ở trạng thái Chờ duyệt)."));
+            writeJson(response, HttpServletResponse.SC_BAD_REQUEST,
+                    error("Không thể hủy đơn (có thể đơn không còn ở trạng thái Chờ duyệt)."));
         }
     }
 
+    /**
+     * API truy vấn danh sách đơn xin nghỉ phép đang chờ duyệt:
+     * - Admin/HR: lấy toàn bộ đơn chờ duyệt của toàn công ty.
+     * - Manager: lấy các đơn chờ duyệt của các nhân viên cấp dưới trực tiếp.
+     */
     private void handleGetPendingApprovals(HttpServletRequest request, HttpServletResponse response)
             throws SQLException, IOException {
         TenantPrincipal principal = getRequiredPrincipal(request);
@@ -325,14 +421,13 @@ public class LeaveController extends HttpServlet {
 
         if (isAdminOrHr(principal)) {
             totalCount = leaveService.getLeaveRequestDAO().countAllRequestsByCompany(
-                    principal.getCompanyId(), "Pending", null, null, null, null, null
-            );
+                    principal.getCompanyId(), "Pending", null, null, null, null, null);
             list = leaveService.getLeaveRequestDAO().getAllRequestsByCompany(
-                    principal.getCompanyId(), "Pending", null, null, null, null, null, offset, pageSize
-            );
+                    principal.getCompanyId(), "Pending", null, null, null, null, null, offset, pageSize);
         } else if (isRole(principal, "MANAGER") && principal.getEmployeeId() != null) {
             totalCount = leaveService.getLeaveRequestDAO().countPendingRequestsByManager(principal.getEmployeeId());
-            list = leaveService.getLeaveRequestDAO().getPendingRequestsByManager(principal.getEmployeeId(), offset, pageSize);
+            list = leaveService.getLeaveRequestDAO().getPendingRequestsByManager(principal.getEmployeeId(), offset,
+                    pageSize);
         } else {
             writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Bạn không có quyền duyệt đơn nghỉ phép."));
             return;
@@ -341,6 +436,10 @@ public class LeaveController extends HttpServlet {
         writePagedRequestsJson(response, list, totalCount, page, pageSize);
     }
 
+    /**
+     * API phê duyệt đơn nghỉ phép:
+     * Thực hiện trong giao dịch nguyên tử (Atomic) cập nhật trạng thái đơn, trừ số dư phép và đồng bộ sang chấm công.
+     */
     private void handleApproveRequest(HttpServletRequest request, HttpServletResponse response)
             throws SQLException, IOException {
         TenantPrincipal principal = getRequiredPrincipal(request);
@@ -354,6 +453,9 @@ public class LeaveController extends HttpServlet {
                 "{\"success\":true,\"message\":\"Phê duyệt đơn thành công! Số dư đã được khấu trừ và đồng bộ sang chấm công.\"}");
     }
 
+    /**
+     * API từ chối đơn xin nghỉ phép kèm lời nhắn/lý do bắt buộc từ người xét duyệt.
+     */
     private void handleRejectRequest(HttpServletRequest request, HttpServletResponse response)
             throws SQLException, IOException {
         TenantPrincipal principal = getRequiredPrincipal(request);
@@ -366,14 +468,19 @@ public class LeaveController extends HttpServlet {
         }
 
         leaveService.rejectLeaveRequest(leaveRequestId, principal.getUserId(), comment.trim());
-        writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"message\":\"Đã từ chối đơn xin nghỉ phép.\"}");
+        writeJson(response, HttpServletResponse.SC_OK,
+                "{\"success\":true,\"message\":\"Đã từ chối đơn xin nghỉ phép.\"}");
     }
 
+    /**
+     * API truy vấn danh sách đơn xin nghỉ phép toàn công ty (Admin/HR/Manager) với bộ lọc đa tiêu chí và phân trang.
+     */
     private void handleGetAllRequests(HttpServletRequest request, HttpServletResponse response)
             throws SQLException, IOException {
         TenantPrincipal principal = getRequiredPrincipal(request);
         if (!isAdminOrHr(principal) && !isRole(principal, "MANAGER")) {
-            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Không có quyền truy cập danh sách đơn toàn công ty."));
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN,
+                    error("Không có quyền truy cập danh sách đơn toàn công ty."));
             return;
         }
 
@@ -388,15 +495,17 @@ public class LeaveController extends HttpServlet {
         int offset = (page - 1) * pageSize;
 
         int totalCount = leaveService.getLeaveRequestDAO().countAllRequestsByCompany(
-                principal.getCompanyId(), status, departmentId, leaveTypeId, fromDate, toDate, keyword
-        );
+                principal.getCompanyId(), status, departmentId, leaveTypeId, fromDate, toDate, keyword);
         List<LeaveRequest> list = leaveService.getLeaveRequestDAO().getAllRequestsByCompany(
-                principal.getCompanyId(), status, departmentId, leaveTypeId, fromDate, toDate, keyword, offset, pageSize
-        );
+                principal.getCompanyId(), status, departmentId, leaveTypeId, fromDate, toDate, keyword, offset,
+                pageSize);
 
         writePagedRequestsJson(response, list, totalCount, page, pageSize);
     }
 
+    /**
+     * API trả về các sự kiện nghỉ phép đã được phê duyệt trong tháng chỉ định để hiển thị trực quan trên lịch làm việc.
+     */
     private void handleGetCalendarEvents(HttpServletRequest request, HttpServletResponse response)
             throws SQLException, IOException {
         TenantPrincipal principal = getRequiredPrincipal(request);
@@ -419,12 +528,12 @@ public class LeaveController extends HttpServlet {
         }
 
         List<LeaveRequest> events = leaveService.getLeaveRequestDAO().getApprovedRequestsForCalendar(
-                principal.getCompanyId(), filterEmployeeId, departmentId, firstDay, lastDay
-        );
+                principal.getCompanyId(), filterEmployeeId, departmentId, firstDay, lastDay);
 
         StringBuilder sb = new StringBuilder("{\"success\":true,\"data\":[");
         for (int i = 0; i < events.size(); i++) {
-            if (i > 0) sb.append(",");
+            if (i > 0)
+                sb.append(",");
             LeaveRequest r = events.get(i);
             sb.append("{")
                     .append("\"leaveRequestId\":").append(r.getLeaveRequestId()).append(",")
@@ -445,6 +554,9 @@ public class LeaveController extends HttpServlet {
         writeJson(response, HttpServletResponse.SC_OK, sb.toString());
     }
 
+    /**
+     * API tổng hợp báo cáo tình hình sử dụng ngày phép toàn công ty theo năm và phòng ban.
+     */
     private void handleGetReport(HttpServletRequest request, HttpServletResponse response)
             throws SQLException, IOException {
         TenantPrincipal principal = getRequiredPrincipal(request);
@@ -460,12 +572,12 @@ public class LeaveController extends HttpServlet {
         Integer departmentId = parseNullableInt(request.getParameter("departmentId"));
 
         List<LeaveReportDTO> reports = leaveService.getLeaveRequestDAO().getLeaveUtilizationReport(
-                principal.getCompanyId(), year, departmentId
-        );
+                principal.getCompanyId(), year, departmentId);
 
         StringBuilder sb = new StringBuilder("{\"success\":true,\"year\":").append(year).append(",\"data\":[");
         for (int i = 0; i < reports.size(); i++) {
-            if (i > 0) sb.append(",");
+            if (i > 0)
+                sb.append(",");
             LeaveReportDTO r = reports.get(i);
             sb.append("{")
                     .append("\"employeeId\":").append(r.getEmployeeId()).append(",")
@@ -488,6 +600,9 @@ public class LeaveController extends HttpServlet {
         writeJson(response, HttpServletResponse.SC_OK, sb.toString());
     }
 
+    /**
+     * API kết xuất báo cáo sử dụng ngày phép ra định dạng Microsoft Excel SpreadsheetML (.xls).
+     */
     private void handleExportExcel(HttpServletRequest request, HttpServletResponse response)
             throws SQLException, IOException {
         TenantPrincipal principal = getRequiredPrincipal(request);
@@ -503,8 +618,7 @@ public class LeaveController extends HttpServlet {
         Integer departmentId = parseNullableInt(request.getParameter("departmentId"));
 
         List<LeaveReportDTO> reports = leaveService.getLeaveRequestDAO().getLeaveUtilizationReport(
-                principal.getCompanyId(), year, departmentId
-        );
+                principal.getCompanyId(), year, departmentId);
 
         String xmlSpreadsheet = leaveService.generateExcelSpreadsheetXml(reports, year);
         byte[] bytes = xmlSpreadsheet.getBytes(StandardCharsets.UTF_8);
@@ -519,7 +633,11 @@ public class LeaveController extends HttpServlet {
         }
     }
 
-    private void handleCalculateWorkingDays(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    /**
+     * API tính toán số ngày làm việc thực tế (trừ Thứ 7, Chủ Nhật) và thông tin đề xuất tách đơn vắt năm.
+     */
+    private void handleCalculateWorkingDays(HttpServletRequest request, HttpServletResponse response)
+            throws IOException {
         LocalDate startDate = parseOptionalDate(request.getParameter("startDate"));
         LocalDate endDate = parseOptionalDate(request.getParameter("endDate"));
 
@@ -529,10 +647,77 @@ public class LeaveController extends HttpServlet {
         }
 
         BigDecimal days = leaveService.calculateWorkingDays(startDate, endDate);
-        writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"workingDays\":" + days + "}");
+        boolean isCrossYear = startDate.getYear() != endDate.getYear();
+
+        StringBuilder sb = new StringBuilder("{");
+        sb.append("\"success\":true,");
+        sb.append("\"workingDays\":").append(days).append(",");
+        sb.append("\"isCrossYear\":").append(isCrossYear);
+
+        if (isCrossYear) {
+            TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+            int companyId = principal != null && principal.getCompanyId() != null ? principal.getCompanyId() : 0;
+            int employeeId = principal != null && principal.getEmployeeId() != null ? principal.getEmployeeId() : 0;
+            int leaveTypeId = parseOptionalInt(request.getParameter("leaveTypeId"), 0);
+            List<LeaveRequest> splits = leaveService.splitCrossYearRequests(companyId, employeeId, leaveTypeId,
+                    startDate, endDate, "");
+            sb.append(",\"splits\":[");
+            for (int i = 0; i < splits.size(); i++) {
+                if (i > 0)
+                    sb.append(",");
+                LeaveRequest s = splits.get(i);
+                sb.append("{\"year\":").append(s.getStartDate().getYear())
+                        .append(",\"startDate\":\"").append(s.getStartDate()).append("\"")
+                        .append(",\"endDate\":\"").append(s.getEndDate()).append("\"")
+                        .append(",\"totalDays\":").append(s.getTotalDays())
+                        .append("}");
+            }
+            sb.append("]");
+        }
+
+        sb.append("}");
+        writeJson(response, HttpServletResponse.SC_OK, sb.toString());
     }
 
-    private void writePagedRequestsJson(HttpServletResponse response, List<LeaveRequest> list, int totalCount, int page, int pageSize) throws IOException {
+    /**
+     * API thủ công kích hoạt đối soát và đồng bộ chấm công cuối ngày cho ngày chỉ định (dành cho Admin/HR).
+     */
+    private void handleReconcileAttendance(HttpServletRequest request, HttpServletResponse response)
+            throws SQLException, IOException {
+        TenantPrincipal principal = getRequiredPrincipal(request);
+        if (!isAdminOrHr(principal)) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN,
+                    error("Chỉ quản trị viên hoặc nhân sự (HR) mới có quyền đồng bộ chấm công."));
+            return;
+        }
+
+        LocalDate targetDate = parseOptionalDate(request.getParameter("date"));
+        if (targetDate == null) {
+            targetDate = LocalDate.now();
+        }
+
+        com.hrms.service.scheduler.EndOfDayReconciliationWorker worker = new com.hrms.service.scheduler.EndOfDayReconciliationWorker();
+        com.hrms.service.scheduler.EndOfDayReconciliationWorker.ReconciliationResult result = worker
+                .reconcileDate(targetDate);
+
+        StringBuilder sb = new StringBuilder("{");
+        sb.append("\"success\":true,");
+        sb.append("\"message\":\"Đồng bộ chấm công cuối ngày thành công cho ngày ").append(result.getDate())
+                .append(".\",");
+        sb.append("\"targetDate\":\"").append(result.getDate()).append("\",");
+        sb.append("\"totalActiveChecked\":").append(result.getTotalActiveChecked()).append(",");
+        sb.append("\"onLeaveCreated\":").append(result.getOnLeaveCreated()).append(",");
+        sb.append("\"absentCreated\":").append(result.getAbsentCreated());
+        sb.append("}");
+
+        writeJson(response, HttpServletResponse.SC_OK, sb.toString());
+    }
+
+    /**
+     * Chuẩn hóa và xuất định dạng JSON cho danh sách đơn nghỉ phép có hỗ trợ phân trang.
+     */
+    private void writePagedRequestsJson(HttpServletResponse response, List<LeaveRequest> list, int totalCount, int page,
+            int pageSize) throws IOException {
         StringBuilder sb = new StringBuilder("{");
         sb.append("\"success\":true,");
         sb.append("\"total\":").append(totalCount).append(",");
@@ -541,7 +726,8 @@ public class LeaveController extends HttpServlet {
         sb.append("\"totalPages\":").append((int) Math.ceil((double) totalCount / pageSize)).append(",");
         sb.append("\"data\":[");
         for (int i = 0; i < list.size(); i++) {
-            if (i > 0) sb.append(",");
+            if (i > 0)
+                sb.append(",");
             LeaveRequest r = list.get(i);
             sb.append("{")
                     .append("\"leaveRequestId\":").append(r.getLeaveRequestId()).append(",")
@@ -563,8 +749,15 @@ public class LeaveController extends HttpServlet {
                     .append("\"approverId\":").append(r.getApproverId()).append(",")
                     .append("\"approverDisplayName\":").append(quote(r.getApproverDisplayName())).append(",")
                     .append("\"approverComment\":").append(quote(r.getApproverComment())).append(",")
-                    .append("\"reviewedAt\":").append(r.getReviewedAt() != null ? quote(r.getReviewedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))) : "null").append(",")
-                    .append("\"createdAt\":").append(r.getCreatedAt() != null ? quote(r.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))) : "null")
+                    .append("\"reviewedAt\":")
+                    .append(r.getReviewedAt() != null
+                            ? quote(r.getReviewedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                            : "null")
+                    .append(",")
+                    .append("\"createdAt\":")
+                    .append(r.getCreatedAt() != null
+                            ? quote(r.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                            : "null")
                     .append("}");
         }
         sb.append("]}");
@@ -586,12 +779,27 @@ public class LeaveController extends HttpServlet {
         return principal.getEmployeeId();
     }
 
+    /**
+     * Kiểm tra quyền phê duyệt đơn: chỉ Quản lý, HR hoặc Quản trị viên công ty mới được phép.
+     */
     private void ensureCanReview(TenantPrincipal principal) {
         if (!isAdminOrHr(principal) && !isRole(principal, "MANAGER")) {
             throw new IllegalArgumentException("Bạn không có quyền duyệt hoặc từ chối đơn nghỉ phép.");
         }
     }
 
+    /**
+     * Kiểm tra quyền quản trị: chỉ HR hoặc Quản trị viên công ty mới được phép thực hiện thao tác này.
+     */
+    private void ensureAdminOrHr(TenantPrincipal principal) {
+        if (!isAdminOrHr(principal)) {
+            throw new IllegalArgumentException("Chỉ quản trị viên hoặc nhân sự (HR) mới có quyền thực hiện thao tác này.");
+        }
+    }
+
+    /**
+     * Xác định người dùng hiện tại có vai trò là Quản trị viên công ty hoặc Nhân sự (HR) hay không.
+     */
     private boolean isAdminOrHr(TenantPrincipal principal) {
         return isRole(principal, "COMPANY_ADMIN") || isRole(principal, "HR");
     }
@@ -609,8 +817,10 @@ public class LeaveController extends HttpServlet {
     }
 
     private String quote(String value) {
-        if (value == null) return "null";
-        return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r") + "\"";
+        if (value == null)
+            return "null";
+        return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r")
+                + "\"";
     }
 
     private String error(String message) {

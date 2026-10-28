@@ -13,13 +13,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Data access operations for employee leave balance quotas and remaining days.
+ * Lớp truy xuất cơ sở dữ liệu (DAO) quản lý hạn mức và số dư ngày phép của nhân viên:
+ * - Tra cứu số dư ngày phép theo nhân viên, loại phép và năm tài chính.
+ * - Khấu trừ số ngày nghỉ khi phê duyệt đơn: cập nhật tăng số ngày đã dùng (UsedDays).
+ *   (Lưu ý: Cột RemainingDays trong SQL Server là cột tính toán tự động [EntitledDays - UsedDays]).
+ * - Khởi tạo hạn mức ngày phép ban đầu cho nhân viên mới hoặc năm làm việc mới.
+ * - Thống kê số dư ngày phép toàn công ty hoặc theo phòng ban.
  */
 public class LeaveBalanceDAO {
 
     /**
-     * Retrieves all leave balances for a specific employee and calendar year,
-     * including policy metadata joined from LeaveTypes.
+     * Lấy toàn bộ số dư ngày phép của một nhân viên trong năm tài chính chỉ định,
+     * bao gồm thông tin chi tiết loại nghỉ phép (tên loại phép, có lương/không lương, hạn mức mặc định).
      */
     public List<LeaveBalance> getBalancesByEmployeeAndYear(int employeeId, int year) throws SQLException {
         String sql = """
@@ -47,7 +52,7 @@ public class LeaveBalanceDAO {
     }
 
     /**
-     * Retrieves a single balance record by employee, leave type, and calendar year.
+     * Tra cứu bản ghi số dư ngày phép của một nhân viên theo từng loại phép và năm tài chính.
      */
     public LeaveBalance getBalance(int employeeId, int leaveTypeId, int year) throws SQLException {
         String sql = """
@@ -74,8 +79,9 @@ public class LeaveBalanceDAO {
     }
 
     /**
-     * Deducts leave days upon approval by incrementing UsedDays within an external transaction.
-     * Note: RemainingDays is a computed column (EntitledDays - UsedDays) and updates automatically.
+     * Khấu trừ số ngày phép khi duyệt đơn bằng cách tăng UsedDays trong một Transaction.
+     * Lưu ý quan trọng: RemainingDays là cột được tính toán tự động trong SQL Server (EntitledDays - UsedDays),
+     * không được cập nhật trực tiếp vào RemainingDays để tránh lỗi hệ thống.
      */
     public boolean deductUsedDays(Connection conn, int balanceId, BigDecimal additionalDays) throws SQLException {
         String sql = """
@@ -92,7 +98,7 @@ public class LeaveBalanceDAO {
     }
 
     /**
-     * Inserts an initial balance quota record for an employee.
+     * Khởi tạo bản ghi hạn mức ngày phép ban đầu (EntitledDays) cho nhân viên với UsedDays = 0.
      */
     public int insertBalance(Connection conn, int employeeId, int leaveTypeId, int year, BigDecimal entitledDays) throws SQLException {
         String sql = """
@@ -116,7 +122,7 @@ public class LeaveBalanceDAO {
     }
 
     /**
-     * Retrieves leave balances across the company or for a specific department for quota monitoring.
+     * Lấy danh sách số dư ngày phép của toàn bộ nhân viên trong công ty hoặc theo phòng ban.
      */
     public List<LeaveBalance> getCompanyBalances(int companyId, int year, Integer departmentId) throws SQLException {
         StringBuilder sql = new StringBuilder("""

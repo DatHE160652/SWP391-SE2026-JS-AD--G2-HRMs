@@ -3,6 +3,11 @@ package com.hrms.model;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * Thực thể đại diện cho bảng LeaveBalances trong cơ sở dữ liệu:
+ * Quản lý hạn mức ngày phép được cấp (EntitledDays), số ngày đã dùng (UsedDays)
+ * và số ngày phép còn lại (RemainingDays - cột tính toán tự động trong SQL Server).
+ */
 public class LeaveBalance {
 	private Integer balanceId;
 	private Integer employeeId;

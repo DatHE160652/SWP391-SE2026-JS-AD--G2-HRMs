@@ -2,6 +2,11 @@ package com.hrms.model;
 
 import java.time.LocalDateTime;
 
+/**
+ * Thực thể đại diện cho bảng LeaveTypes trong cơ sở dữ liệu:
+ * Cấu hình danh mục loại nghỉ phép, hạn mức ngày mặc định trong năm,
+ * chế độ hưởng lương (IsPaid) và trạng thái hoạt động (IsActive).
+ */
 public class LeaveType {
     private boolean active = true;
 
