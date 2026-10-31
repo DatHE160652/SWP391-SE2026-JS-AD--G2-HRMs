@@ -102,12 +102,19 @@ public class TenantAuthorizationFilter implements Filter {
             return principal.getEmployeeId() != null && (isGet(request.getMethod())
                     || isPost(request.getMethod()) && payrollPath.equals("/payslips/api/read"));
         }
-        if (principal.isCompanyAdministrator()) {
-            return true;
-        }
-
         String path = request.getServletPath();
         String method = request.getMethod();
+
+        if (principal.isCompanyAdministrator()) {
+            if (isPost(method) && (
+                    path.equals("/attendance/check-in")
+                    || path.equals("/attendance/check-out")
+                    || path.equals("/attendance/batch-complete")
+                    || path.equals("/attendance/manual-adjust"))) {
+                return false;
+            }
+            return true;
+        }
 
         if ("MANAGER".equals(role)) {
             return isManagerAllowed(path, method);

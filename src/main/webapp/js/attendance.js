@@ -1174,6 +1174,9 @@ function renderCompanyRows(records) {
 
     tbody.innerHTML = records.map(r => {
         const statusClass = (r.status || '').replace(/\s+/g, '');
+        const manualBadge = (r.manualAdjusted || r.isManualAdjusted)
+            ? '<span class="badge" style="background:#e0e7ff;color:#4338ca;border:1px solid #c7d2fe;font-size:11px;margin-left:4px;">Bổ sung</span>'
+            : '';
         return `
             <tr>
                 <td><strong>${safe(r.employeeCode)}</strong></td>
@@ -1183,7 +1186,7 @@ function renderCompanyRows(records) {
                 <td>${r.checkInTime ? `<strong>${r.checkInTime}</strong>` : '<span class="text-muted">--:--:--</span>'}</td>
                 <td>${r.checkOutTime ? `<strong>${r.checkOutTime}</strong>` : '<span class="text-muted">--:--:--</span>'}</td>
                 <td><strong>${r.totalHours || '0.00'}</strong> hrs</td>
-                <td><span class="badge ${statusClass}">${safe(r.status)}</span></td>
+                <td><span class="badge ${statusClass}">${safe(r.status)}</span>${manualBadge}</td>
                 <td><span class="text-muted">${safe(r.note)}</span></td>
             </tr>
         `;

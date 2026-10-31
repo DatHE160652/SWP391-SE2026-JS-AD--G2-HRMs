@@ -98,6 +98,17 @@ public class AttendanceController extends HttpServlet {
                 return;
             }
 
+            TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+            boolean isCompanyAdmin = principal != null && principal.isCompanyAdministrator();
+            if (isCompanyAdmin && (
+                    path.equals(ApiRoutes.ATTENDANCE_PAGE_MANAGER)
+                    || path.equals(ApiRoutes.ATTENDANCE_PAGE_MANAGER_PERSONAL)
+                    || path.equals(ApiRoutes.ATTENDANCE_PAGE_EMPLOYEE)
+                    || path.equals(ApiRoutes.MANAGER_TEAM_ATTENDANCE))) {
+                response.sendRedirect(request.getContextPath() + ApiRoutes.ATTENDANCE_PAGE_COMPANY);
+                return;
+            }
+
             switch (path) {
                 case ApiRoutes.ATTENDANCE_PERSONAL -> handlePersonalAttendance(request, response);
                 case ApiRoutes.ATTENDANCE_TEAM -> handleTeamAttendance(request, response);
@@ -171,6 +182,20 @@ public class AttendanceController extends HttpServlet {
             SecuritySupport.requireCompanyId(request);
             SecuritySupport.applyNoStore(response::setHeader);
             if (!SecuritySupport.hasValidPublicCsrfToken(request)) throw new SecurityException("Phiên làm việc đã thay đổi. Vui lòng tải lại trang trước khi lưu.");
+
+            TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+            if (principal != null && principal.isCompanyAdministrator()) {
+                switch (path) {
+                    case ApiRoutes.ATTENDANCE_CHECK_IN,
+                         ApiRoutes.ATTENDANCE_CHECK_OUT,
+                         ApiRoutes.ATTENDANCE_BATCH_COMPLETE,
+                         ApiRoutes.ATTENDANCE_MANUAL_ADJUST -> {
+                        writeJson(response, HttpServletResponse.SC_FORBIDDEN,
+                                error("Tài khoản Quản trị Công ty chỉ có quyền giám sát và xem báo cáo tổng hợp chấm công. Thao tác điểm danh chỉ dành cho Quản lý phòng ban."));
+                        return;
+                    }
+                }
+            }
             switch (path) {
                 case ApiRoutes.ATTENDANCE_CHECK_IN -> handleCheckIn(request, response);
                 case ApiRoutes.ATTENDANCE_CHECK_OUT -> handleCheckOut(request, response);

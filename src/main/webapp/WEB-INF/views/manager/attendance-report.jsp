@@ -14,15 +14,34 @@
 <div class="shell">
     <aside class="sidebar">
         <div class="brand">HRMs Cloud<span><c:out value="${not empty sessionScope.tenantPrincipal.companyName ? sessionScope.tenantPrincipal.companyName : 'TechNova JSC'}"/></span></div>
-        <div class="nav-label">Phân hệ Chấm công</div>
-        <a class="nav-link" href="../employee/my-profile?nav=manager">Hồ sơ cá nhân</a>
-        <a class="nav-link" href="manager-attendance">Điểm danh Nhân sự</a>
-        <a class="nav-link" href="manager-attendance?view=list">Danh sách chấm công</a>
-        <a class="nav-link" href="manager-personal-attendance">Chấm công Cá nhân</a>
-        <a class="nav-link active" href="attendance-report">Báo cáo Chấm công</a>
-        <a class="nav-link" href="../payslips">Phiếu lương của tôi</a>
-        <a class="nav-link" href="${pageContext.request.contextPath}/payroll">Quản lý lương</a>
-        <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
+        <c:choose>
+            <c:when test="${sessionScope.tenantPrincipal.companyAdministrator}">
+                <div class="nav-label">Phân hệ Quản trị</div>
+                <a class="nav-link" href="../employee/employee-list">Quản lý Nhân sự</a>
+                <a class="nav-link" href="../department/department-list">Quản lý Phòng ban</a>
+                <a class="nav-link" href="../position/position-list">Quản lý Chức danh</a>
+
+                <div class="nav-label" style="margin-top: 18px;">Phân hệ Chấm công</div>
+                <a class="nav-link" href="company-attendance">Giám sát Công ty</a>
+                <a class="nav-link active" href="attendance-report">Báo cáo Chấm công</a>
+
+                <a class="nav-link" href="../payroll">Quản lý kỳ lương</a>
+                <a class="nav-link" href="../payroll/salaries">Lương cơ bản</a>
+                <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
+                <a class="nav-link" href="../employee/my-profile">Hồ sơ cá nhân</a>
+            </c:when>
+            <c:otherwise>
+                <div class="nav-label">Phân hệ Chấm công</div>
+                <a class="nav-link" href="../employee/my-profile?nav=manager">Hồ sơ cá nhân</a>
+                <a class="nav-link" href="manager-attendance">Điểm danh Nhân sự</a>
+                <a class="nav-link" href="manager-attendance?view=list">Danh sách chấm công</a>
+                <a class="nav-link" href="manager-personal-attendance">Chấm công Cá nhân</a>
+                <a class="nav-link active" href="attendance-report">Báo cáo Chấm công</a>
+                <a class="nav-link" href="../payslips">Phiếu lương của tôi</a>
+                <a class="nav-link" href="${pageContext.request.contextPath}/payroll">Quản lý lương</a>
+                <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
+            </c:otherwise>
+        </c:choose>
     </aside>
 
     <main class="content">
