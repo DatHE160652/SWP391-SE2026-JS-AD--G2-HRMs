@@ -39,6 +39,8 @@ public final class ApiRoutes {
     public static final String ATTENDANCE_REPORT = ATTENDANCE_PREFIX + "/report";
     public static final String ATTENDANCE_EXPORT_REPORT = ATTENDANCE_PREFIX + "/export-report";
     public static final String ATTENDANCE_META = ATTENDANCE_PREFIX + "/meta";
+    public static final String ATTENDANCE_SHIFT_SETTING = ATTENDANCE_PREFIX + "/shift-setting";
+    public static final String ATTENDANCE_MANUAL_ADJUST = ATTENDANCE_PREFIX + "/manual-adjust";
 
     // Attendance View Pages (Canonical routes)
     public static final String ATTENDANCE_PAGE_MANAGER = ATTENDANCE_PREFIX + "/manager-attendance";

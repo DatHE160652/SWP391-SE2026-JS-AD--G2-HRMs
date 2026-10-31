@@ -4,6 +4,7 @@ import com.hrms.api.ApiRoutes;
 import com.hrms.dao.AttendanceDAO.AttendanceDTO;
 import com.hrms.dao.AttendanceReportDAO;
 import com.hrms.dao.AttendanceSummaryDAO;
+import com.hrms.model.CompanyShiftSetting;
 import com.hrms.model.Department;
 import com.hrms.model.Employee;
 import com.hrms.service.AttendanceService;
@@ -59,6 +60,8 @@ import java.util.stream.Collectors;
         ApiRoutes.ATTENDANCE_REPORT,
         ApiRoutes.ATTENDANCE_EXPORT_REPORT,
         ApiRoutes.ATTENDANCE_META,
+        ApiRoutes.ATTENDANCE_SHIFT_SETTING,
+        ApiRoutes.ATTENDANCE_MANUAL_ADJUST,
         ApiRoutes.MANAGER_TEAM_ATTENDANCE,
         ApiRoutes.MANAGER_EMPLOYEE_ATTENDANCE,
         ApiRoutes.MANAGER_EMPLOYEE_ATTENDANCE_HTML,
@@ -74,7 +77,7 @@ public class AttendanceController extends HttpServlet {
         this(new AttendanceService(), new EmployeeService(), new DepartmentService());
     }
 
-    AttendanceController(AttendanceService attendanceService, EmployeeService employeeService, DepartmentService departmentService) {
+    public AttendanceController(AttendanceService attendanceService, EmployeeService employeeService, DepartmentService departmentService) {
         this.attendanceService = attendanceService;
         this.employeeService = employeeService;
         this.departmentService = departmentService;
@@ -145,6 +148,7 @@ public class AttendanceController extends HttpServlet {
                 }
                 case ApiRoutes.ATTENDANCE_EXPORT_REPORT -> handleExportReport(request, response);
                 case ApiRoutes.ATTENDANCE_META -> handleMeta(request, response);
+                case ApiRoutes.ATTENDANCE_SHIFT_SETTING -> handleGetShiftSetting(request, response);
                 default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Endpoint not found."));
             }
         } catch (SecurityException e) {
@@ -171,6 +175,8 @@ public class AttendanceController extends HttpServlet {
                 case ApiRoutes.ATTENDANCE_CHECK_IN -> handleCheckIn(request, response);
                 case ApiRoutes.ATTENDANCE_CHECK_OUT -> handleCheckOut(request, response);
                 case ApiRoutes.ATTENDANCE_BATCH_COMPLETE -> handleBatchComplete(request, response);
+                case ApiRoutes.ATTENDANCE_SHIFT_SETTING -> handleSaveShiftSetting(request, response);
+                case ApiRoutes.ATTENDANCE_MANUAL_ADJUST -> handleManualAdjust(request, response);
                 default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Endpoint not found."));
             }
         } catch (SecurityException e) {
@@ -285,6 +291,37 @@ public class AttendanceController extends HttpServlet {
         }
         writeJson(response, HttpServletResponse.SC_OK,
                 "{\"success\":true,\"message\":" + quote(msg) + ",\"updatedCount\":" + successCount + ",\"data\":" + toJsonArray(updatedList) + "}");
+    }
+
+    /**
+     * Manager/Admin thực hiện điểm danh bổ sung / điều chỉnh công thủ công cho bất kỳ ngày nào
+     */
+    private void handleManualAdjust(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (isRole(principal, "EMPLOYEE")) {
+            throw new SecurityException("Bạn không có quyền thực hiện điểm danh bổ sung.");
+        }
+
+        int companyId = SecuritySupport.requireCompanyId(request);
+        int employeeId = parseRequiredInt(request.getParameter("employeeId"), "Vui lòng chọn nhân viên cần điểm danh bổ sung.");
+        LocalDate date = parseOptionalDate(request.getParameter("date"));
+        if (date == null) {
+            throw new IllegalArgumentException("Vui lòng chọn ngày cần điểm danh bổ sung.");
+        }
+
+        ensureCanManageAttendance(request, employeeId, date);
+
+        LocalTime checkInTime = parseOptionalTime(request.getParameter("checkInTime"));
+        LocalTime checkOutTime = parseOptionalTime(request.getParameter("checkOutTime"));
+        String note = trimToNull(request.getParameter("note"));
+        Integer adjustedByUserId = principal != null ? principal.getUserId() : null;
+
+        AttendanceDTO result = attendanceService.manualAdjustAttendance(
+                companyId, employeeId, date, checkInTime, checkOutTime, note, adjustedByUserId
+        );
+
+        writeJson(response, HttpServletResponse.SC_OK,
+                "{\"success\":true,\"message\":\"Điểm danh bổ sung thành công!\",\"data\":" + toJson(result) + "}");
     }
 
     /**
@@ -649,6 +686,7 @@ public class AttendanceController extends HttpServlet {
                 + "\"checkInTime\":" + (a.getCheckInTime() != null ? quote(a.getCheckInTime().format(DateTimeFormatter.ofPattern("HH:mm:ss"))) : "null") + ","
                 + "\"checkOutTime\":" + (a.getCheckOutTime() != null ? quote(a.getCheckOutTime().format(DateTimeFormatter.ofPattern("HH:mm:ss"))) : "null") + ","
                 + "\"totalHours\":" + (a.getTotalHours() != null ? a.getTotalHours() : "0.00") + ","
+                + "\"workCredit\":" + (a.getWorkCredit() != null ? a.getWorkCredit() : "0.0") + ","
                 + "\"status\":" + quote(a.getStatus()) + ","
                 + "\"note\":" + quote(a.getNote()) + ","
                 + "\"manualAdjusted\":" + (a.getManualAdjusted() != null && a.getManualAdjusted()) + ","
@@ -662,6 +700,7 @@ public class AttendanceController extends HttpServlet {
         if (s == null) return "{}";
         return "{"
                 + "\"totalWorkingDays\":" + s.getTotalWorkingDays() + ","
+                + "\"totalWorkCredits\":" + (s.getTotalWorkCredits() != null ? s.getTotalWorkCredits() : "0.0") + ","
                 + "\"totalHours\":" + (s.getTotalHours() != null ? s.getTotalHours() : "0.00") + ","
                 + "\"presentDays\":" + s.getPresentDays() + ","
                 + "\"lateDays\":" + s.getLateDays() + ","
@@ -702,6 +741,73 @@ public class AttendanceController extends HttpServlet {
                     .append("}");
         }
         return sb.append("]").toString();
+    }
+
+
+    private void handleGetShiftSetting(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        int companyId = SecuritySupport.requireCompanyId(request);
+        CompanyShiftSetting setting = attendanceService.getCompanyShiftSetting(companyId);
+        writeJson(response, HttpServletResponse.SC_OK,
+                "{\"success\":true,\"data\":" + toJson(setting) + "}");
+    }
+
+    private void handleSaveShiftSetting(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (isRole(principal, "EMPLOYEE")) {
+            throw new SecurityException("Bạn không có quyền thay đổi cài đặt ca làm việc của công ty.");
+        }
+
+        int companyId = SecuritySupport.requireCompanyId(request);
+        LocalTime startTime = parseOptionalTime(request.getParameter("shiftStartTime"));
+        if (startTime == null) {
+            throw new IllegalArgumentException("Vui lòng chọn giờ bắt đầu ca làm việc.");
+        }
+        LocalTime endTime = parseOptionalTime(request.getParameter("shiftEndTime"));
+        if (endTime == null) {
+            throw new IllegalArgumentException("Vui lòng chọn giờ kết thúc ca làm việc.");
+        }
+        if (!endTime.isAfter(startTime)) {
+            throw new IllegalArgumentException("Giờ kết thúc ca làm việc phải sau giờ bắt đầu ca.");
+        }
+
+        int lunchBreakMinutes = parseOptionalInt(request.getParameter("lunchBreakMinutes"), CompanyShiftSetting.DEFAULT_LUNCH_BREAK_MINUTES);
+        if (lunchBreakMinutes < 0 || lunchBreakMinutes > 240) {
+            throw new IllegalArgumentException("Thời gian nghỉ trưa phải từ 0 đến 240 phút.");
+        }
+
+        int gracePeriodMinutes = parseOptionalInt(request.getParameter("gracePeriodMinutes"), CompanyShiftSetting.DEFAULT_GRACE_PERIOD_MINUTES);
+        if (gracePeriodMinutes < 0 || gracePeriodMinutes > 120) {
+            throw new IllegalArgumentException("Thời gian ân hạn phải từ 0 đến 120 phút.");
+        }
+
+        CompanyShiftSetting setting = new CompanyShiftSetting();
+        setting.setCompanyId(companyId);
+        setting.setShiftStartTime(startTime);
+        setting.setShiftEndTime(endTime);
+        setting.setLunchBreakMinutes(lunchBreakMinutes);
+        setting.setGracePeriodMinutes(gracePeriodMinutes);
+        setting.setUpdatedByUserId(principal.getUserId());
+
+        attendanceService.updateCompanyShiftSetting(setting);
+
+        CompanyShiftSetting updated = attendanceService.getCompanyShiftSetting(companyId);
+        writeJson(response, HttpServletResponse.SC_OK,
+                "{\"success\":true,\"message\":\"Cập nhật giờ giấc làm việc thành công!\",\"data\":" + toJson(updated) + "}");
+    }
+
+    private String toJson(CompanyShiftSetting s) {
+        if (s == null) return "null";
+        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm:ss");
+        return "{"
+                + "\"companyId\":" + s.getCompanyId() + ","
+                + "\"shiftStartTime\":" + (s.getShiftStartTime() != null ? quote(s.getShiftStartTime().format(timeFmt)) : "null") + ","
+                + "\"shiftEndTime\":" + (s.getShiftEndTime() != null ? quote(s.getShiftEndTime().format(timeFmt)) : "null") + ","
+                + "\"lunchBreakMinutes\":" + s.getLunchBreakMinutes() + ","
+                + "\"gracePeriodMinutes\":" + s.getGracePeriodMinutes() + ","
+                + "\"updatedAt\":" + (s.getUpdatedAt() != null ? quote(s.getUpdatedAt().toString()) : "null") + ","
+                + "\"updatedByUserId\":" + s.getUpdatedByUserId() + ","
+                + "\"updatedByName\":" + quote(s.getUpdatedByName())
+                + "}";
     }
 
     private String quote(String value) {

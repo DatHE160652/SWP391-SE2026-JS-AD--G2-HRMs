@@ -1,4 +1,5 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -12,7 +13,7 @@
 <body data-page="company-attendance">
 <div class="shell">
     <aside class="sidebar">
-        <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
+        <div class="brand">HRMs Cloud<span><c:out value="${not empty sessionScope.tenantPrincipal.companyName ? sessionScope.tenantPrincipal.companyName : 'TechNova JSC'}"/></span></div>
         <div class="nav-label">Phân hệ Quản trị</div>
         <a class="nav-link" href="../employee/employee-list">Quản lý Nhân sự</a>
         <a class="nav-link" href="../department/department-list">Quản lý Phòng ban</a>

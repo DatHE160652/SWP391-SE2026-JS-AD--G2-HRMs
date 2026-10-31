@@ -146,7 +146,8 @@ public class TenantAuthorizationFilter implements Filter {
                         || path.equals("/attendance/team")
                         || path.equals("/attendance/report")
                         || path.equals("/attendance/export-report")
-                        || path.equals("/attendance/meta"))) {
+                        || path.equals("/attendance/meta")
+                        || path.equals("/attendance/shift-setting"))) {
             return true;
         }
 
@@ -164,7 +165,9 @@ public class TenantAuthorizationFilter implements Filter {
         return isPost(method) && (
                 path.equals("/attendance/check-in")
                         || path.equals("/attendance/check-out")
-                        || path.equals("/attendance/batch-complete"));
+                        || path.equals("/attendance/batch-complete")
+                        || path.equals("/attendance/shift-setting")
+                        || path.equals("/attendance/manual-adjust"));
     }
 
     private boolean isEmployeeAllowed(HttpServletRequest request, TenantPrincipal principal,
@@ -179,7 +182,8 @@ public class TenantAuthorizationFilter implements Filter {
                         || path.equals("/documents/me/download")
                         || path.equals("/attendance/employee-attendance")
                         || path.equals("/attendance/employee-attendance.html")
-                        || path.equals("/attendance/meta"))) {
+                        || path.equals("/attendance/meta")
+                        || path.equals("/attendance/shift-setting"))) {
             return true;
         }
 

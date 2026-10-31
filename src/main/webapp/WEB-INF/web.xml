@@ -290,6 +290,8 @@
         <url-pattern>/attendance/report</url-pattern>
         <url-pattern>/attendance/export-report</url-pattern>
         <url-pattern>/attendance/meta</url-pattern>
+        <url-pattern>/attendance/shift-setting</url-pattern>
+        <url-pattern>/attendance/manual-adjust</url-pattern>
         <!-- Compatibility / Legacy manager routes -->
         <url-pattern>/manager/team-attendance</url-pattern>
         <url-pattern>/manager/employee-attendance</url-pattern>

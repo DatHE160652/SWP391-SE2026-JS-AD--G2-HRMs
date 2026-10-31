@@ -102,6 +102,82 @@ public class AttendanceDAO {
         }
     }
 
+    public long upsertManualAdjustment(int companyId, int employeeId, LocalDate date,
+                                       LocalTime checkInTime, LocalTime checkOutTime,
+                                       BigDecimal totalHours, String status, String note,
+                                       Integer adjustedByUserId) throws SQLException {
+        AttendanceDTO existing = getAttendanceByEmployeeAndDate(employeeId, date);
+        if (existing != null && existing.getAttendanceId() != null) {
+            String sql = """
+                    UPDATE Attendances
+                    SET CheckInTime = ?, CheckOutTime = ?, TotalHours = ?, Status = ?,
+                        Note = ?, IsManualAdjusted = 1, AdjustedByUserId = ?, UpdatedAt = SYSUTCDATETIME()
+                    WHERE AttendanceId = ?
+                    """;
+            try (Connection conn = DBConnection.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(sql)) {
+                if (checkInTime != null) {
+                    ps.setTime(1, Time.valueOf(checkInTime));
+                } else {
+                    ps.setNull(1, java.sql.Types.TIME);
+                }
+                if (checkOutTime != null) {
+                    ps.setTime(2, Time.valueOf(checkOutTime));
+                } else {
+                    ps.setNull(2, java.sql.Types.TIME);
+                }
+                ps.setBigDecimal(3, totalHours != null ? totalHours : BigDecimal.ZERO);
+                ps.setString(4, status);
+                ps.setString(5, note);
+                if (adjustedByUserId != null && adjustedByUserId > 0) {
+                    ps.setInt(6, adjustedByUserId);
+                } else {
+                    ps.setNull(6, java.sql.Types.INTEGER);
+                }
+                ps.setLong(7, existing.getAttendanceId());
+                ps.executeUpdate();
+                return existing.getAttendanceId();
+            }
+        } else {
+            String sql = """
+                    INSERT INTO Attendances (CompanyId, EmployeeId, AttendanceDate, CheckInTime, CheckOutTime,
+                                             TotalHours, Status, Note, IsManualAdjusted, AdjustedByUserId, CreatedAt)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, SYSUTCDATETIME())
+                    """;
+            try (Connection conn = DBConnection.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+                ps.setInt(1, companyId);
+                ps.setInt(2, employeeId);
+                ps.setDate(3, Date.valueOf(date));
+                if (checkInTime != null) {
+                    ps.setTime(4, Time.valueOf(checkInTime));
+                } else {
+                    ps.setNull(4, java.sql.Types.TIME);
+                }
+                if (checkOutTime != null) {
+                    ps.setTime(5, Time.valueOf(checkOutTime));
+                } else {
+                    ps.setNull(5, java.sql.Types.TIME);
+                }
+                ps.setBigDecimal(6, totalHours != null ? totalHours : BigDecimal.ZERO);
+                ps.setString(7, status);
+                ps.setString(8, note);
+                if (adjustedByUserId != null && adjustedByUserId > 0) {
+                    ps.setInt(9, adjustedByUserId);
+                } else {
+                    ps.setNull(9, java.sql.Types.INTEGER);
+                }
+                ps.executeUpdate();
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        return rs.getLong(1);
+                    }
+                }
+            }
+        }
+        return 0;
+    }
+
     public List<AttendanceDTO> getPersonalAttendance(int employeeId, int month, int year) throws SQLException {
         String sql = """
                 SELECT a.AttendanceId, a.CompanyId, a.EmployeeId, a.AttendanceDate,
@@ -137,6 +213,11 @@ public class AttendanceDAO {
         String sql = """
                 SELECT 
                     COUNT(CASE WHEN Status IN ('Present', 'Late', 'Early Leave') THEN 1 END) AS TotalWorkingDays,
+                    ISNULL(SUM(CASE 
+                        WHEN (Status IN ('Present', 'Late', 'Early Leave') OR Status LIKE '%Present%' OR Status LIKE '%Late%' OR Status LIKE '%Early%') AND TotalHours >= 7.0 THEN 1.0
+                        WHEN (Status IN ('Present', 'Late', 'Early Leave') OR Status LIKE '%Present%' OR Status LIKE '%Late%' OR Status LIKE '%Early%') AND TotalHours >= 3.5 THEN 0.5
+                        ELSE 0.0
+                    END), 0.0) AS TotalWorkCredits,
                     ISNULL(SUM(CASE WHEN Status IN ('Present', 'Late', 'Early Leave') THEN TotalHours ELSE 0 END), 0) AS TotalHours,
                     COUNT(CASE WHEN Status = 'Present' THEN 1 END) AS PresentDays,
                     COUNT(CASE WHEN Status = 'Late' THEN 1 END) AS LateDays,
@@ -156,6 +237,7 @@ public class AttendanceDAO {
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     summary.setTotalWorkingDays(rs.getInt("TotalWorkingDays"));
+                    summary.setTotalWorkCredits(rs.getBigDecimal("TotalWorkCredits"));
                     summary.setTotalHours(rs.getBigDecimal("TotalHours"));
                     summary.setPresentDays(rs.getInt("PresentDays"));
                     summary.setLateDays(rs.getInt("LateDays"));
@@ -510,6 +592,7 @@ public class AttendanceDAO {
         Time outTime = rs.getTime("CheckOutTime");
         if (outTime != null) dto.setCheckOutTime(outTime.toLocalTime());
         dto.setTotalHours(rs.getBigDecimal("TotalHours"));
+        dto.setWorkCredit(AttendanceDTO.calculateWorkCredit(dto.getTotalHours()));
         dto.setStatus(rs.getString("Status"));
         dto.setNote(rs.getString("Note"));
         dto.setManualAdjusted(rs.getBoolean("IsManualAdjusted"));
@@ -550,6 +633,7 @@ public class AttendanceDAO {
         private LocalTime checkInTime;
         private LocalTime checkOutTime;
         private BigDecimal totalHours;
+        private BigDecimal workCredit;
         private String status;
         private String note;
         private Boolean manualAdjusted;
@@ -599,6 +683,27 @@ public class AttendanceDAO {
 
         public BigDecimal getTotalHours() { return totalHours; }
         public void setTotalHours(BigDecimal totalHours) { this.totalHours = totalHours; }
+
+        public static BigDecimal calculateWorkCredit(BigDecimal hours) {
+            if (hours == null) return BigDecimal.ZERO;
+            if (hours.compareTo(BigDecimal.valueOf(7.0)) >= 0) {
+                return BigDecimal.valueOf(1.0);
+            } else if (hours.compareTo(BigDecimal.valueOf(3.5)) >= 0) {
+                return BigDecimal.valueOf(0.5);
+            }
+            return BigDecimal.ZERO;
+        }
+
+        public BigDecimal getWorkCredit() {
+            if (workCredit != null) {
+                return workCredit;
+            }
+            return calculateWorkCredit(totalHours);
+        }
+
+        public void setWorkCredit(BigDecimal workCredit) {
+            this.workCredit = workCredit;
+        }
 
         public String getStatus() { return status; }
         public void setStatus(String status) { this.status = status; }

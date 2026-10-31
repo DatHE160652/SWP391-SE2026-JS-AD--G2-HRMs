@@ -16,7 +16,7 @@
 <%@ include file="/WEB-INF/views/common/employee-navigation.jspf" %>
 <div class="shell">
     <aside class="sidebar">
-        <div class="brand">HRMs Cloud<span>Cổng nhân viên</span></div>
+        <div class="brand">HRMs Cloud<span><c:out value="${not empty sessionScope.tenantPrincipal.companyName ? sessionScope.tenantPrincipal.companyName : 'Cổng nhân viên'}"/></span></div>
         <div class="nav-label">Chức năng cá nhân</div>
         <a class="nav-link" href="../employee/my-profile">Hồ sơ cá nhân</a>
         <a class="nav-link active" href="employee-attendance">Chấm công cá nhân</a>
@@ -80,10 +80,17 @@
             </div>
         </section>
 
-        <section class="summary-grid" style="grid-template-columns: repeat(6, minmax(130px, 1fr));">
+        <!-- Notification Banner: Tình trạng đi muộn / về sớm (Tối đa 5 buổi/tháng) -->
+        <div id="violationNoticeBanner" style="display:none;"></div>
+
+        <section class="summary-grid" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));">
             <div class="summary-card">
                 <div class="summary-label">Số ngày đi làm</div>
                 <div id="totalWorkingDays" class="summary-number">0</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Số ngày công</div>
+                <div id="totalWorkCredits" class="summary-number text-success" style="font-size: 24px;">0 công</div>
             </div>
             <div class="summary-card">
                 <div class="summary-label">Tổng giờ làm</div>
@@ -118,12 +125,13 @@
                     <th>Giờ vào</th>
                     <th>Giờ ra</th>
                     <th>Tổng giờ</th>
+                    <th>Số công</th>
                     <th>Trạng thái</th>
                     <th>Ghi chú</th>
                 </tr>
                 </thead>
                 <tbody id="attendanceRows">
-                    <tr><td colspan="7" style="text-align:center;color:#667085;padding:24px;">Đang tải dữ liệu...</td></tr>
+                    <tr><td colspan="8" style="text-align:center;color:#667085;padding:24px;">Đang tải dữ liệu...</td></tr>
                 </tbody>
             </table>
         </section>
