@@ -1,0 +1,8 @@
+# Copy this file to src/main/resources/db.properties and fill in your local values.
+# db.properties is ignored by Git; never commit real credentials.
+# Environment variables (HRM_DB_*) or -Dhrm.db.* JVM properties override these values.
+
+db.driver=com.microsoft.sqlserver.jdbc.SQLServerDriver
+db.url=jdbc:sqlserver://localhost:1433;databaseName=HRMsDB;encrypt=true;trustServerCertificate=true
+db.username=
+db.password=

@@ -1,17 +1,71 @@
 package com.hrms.model;
 
-import java.math.BigDecimal;
 import java.sql.Date;
 
 public class Employee {
     private int employeeId;
+    private Integer companyId;
+    private Integer departmentId;
+    private Integer positionId;
+    private Integer managerId;
+    private String email;
+    private Date identityIssuedDate;
+    private String identityIssuedPlace;
+    private String permanentAddress;
+    private String hometown;
+    private String major;
+    private String intendedContractType;
+    private String contractType;
+    private String contractCode;
+    private String contractStatus;
+    private String departmentName;
+    private String positionTitle;
+    private String managerName;
+    private String updatedAt;
+
+    public Integer getManagerId() { return managerId; }
+    public void setManagerId(Integer value) { managerId = value; }
+    public String getEmail() { return email; }
+    public void setEmail(String value) { email = value; }
+    public Date getIdentityIssuedDate() { return identityIssuedDate; }
+    public void setIdentityIssuedDate(Date value) { identityIssuedDate = value; }
+    public String getIdentityIssuedPlace() { return identityIssuedPlace; }
+    public void setIdentityIssuedPlace(String value) { identityIssuedPlace = value; }
+    public String getPermanentAddress() { return permanentAddress; }
+    public void setPermanentAddress(String value) { permanentAddress = value; }
+    public String getHometown() { return hometown; }
+    public void setHometown(String value) { hometown = value; }
+    public String getMajor() { return major; }
+    public void setMajor(String value) { major = value; }
+    public String getIntendedContractType() { return intendedContractType; }
+    public void setIntendedContractType(String value) { intendedContractType = value; }
+    public String getContractType() { return contractType; }
+    public void setContractType(String value) { contractType = value; }
+    public String getContractCode() { return contractCode; }
+    public void setContractCode(String value) { contractCode = value; }
+    public String getContractStatus() { return contractStatus; }
+    public void setContractStatus(String value) { contractStatus = value; }
+    public String getDepartmentName() { return departmentName; }
+    public void setDepartmentName(String value) { departmentName = value; }
+    public String getPositionTitle() { return positionTitle; }
+    public void setPositionTitle(String value) { positionTitle = value; }
+    public String getManagerName() { return managerName; }
+    public void setManagerName(String value) { managerName = value; }
+    public String getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(String value) { updatedAt = value; }
+
+    public Integer getCompanyId() { return companyId; }
+    public void setCompanyId(Integer companyId) { this.companyId = companyId; }
+    public Integer getDepartmentId() { return departmentId; }
+    public void setDepartmentId(Integer departmentId) { this.departmentId = departmentId; }
+    public Integer getPositionId() { return positionId; }
+    public void setPositionId(Integer positionId) { this.positionId = positionId; }
     private String employeeCode;
     private String fullName;
     private String phone;
     private String gender;
     private Date dateOfBirth;
-    private Date startDate;
-    private BigDecimal baseSalary;
+    private String identityNumber;
     private String status;
     private Integer userId;
     private String username;
@@ -22,15 +76,14 @@ public class Employee {
     }
 
     public Employee(int employeeId, String employeeCode, String fullName, String phone, String gender,
-            Date dateOfBirth, Date startDate, BigDecimal baseSalary, String status) {
+            Date dateOfBirth, String identityNumber, String status) {
         this.employeeId = employeeId;
         this.employeeCode = employeeCode;
         this.fullName = fullName;
         this.phone = phone;
         this.gender = gender;
         this.dateOfBirth = dateOfBirth;
-        this.startDate = startDate;
-        this.baseSalary = baseSalary;
+        this.identityNumber = identityNumber;
         this.status = status;
     }
 
@@ -82,20 +135,12 @@ public class Employee {
         this.dateOfBirth = dateOfBirth;
     }
 
-    public Date getStartDate() {
-        return startDate;
+    public String getIdentityNumber() {
+        return identityNumber;
     }
 
-    public void setStartDate(Date startDate) {
-        this.startDate = startDate;
-    }
-
-    public BigDecimal getBaseSalary() {
-        return baseSalary;
-    }
-
-    public void setBaseSalary(BigDecimal baseSalary) {
-        this.baseSalary = baseSalary;
+    public void setIdentityNumber(String identityNumber) {
+        this.identityNumber = identityNumber;
     }
 
     public String getStatus() {
@@ -147,8 +192,6 @@ public class Employee {
                 + ", phone='" + phone + '\''
                 + ", gender='" + gender + '\''
                 + ", dateOfBirth=" + dateOfBirth
-                + ", startDate=" + startDate
-                + ", baseSalary=" + baseSalary
                 + ", status='" + status + '\''
                 + ", userId=" + userId
                 + ", username='" + username + '\''

@@ -1,0 +1,23 @@
+<%@ page pageEncoding="UTF-8" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<aside class="lc-sidebar">
+<a class="lc-brand" href="${pageContext.request.contextPath}/lifecycle/dashboard"><span class="lc-logo">H</span><span class="lc-brand-name">HRMs Cloud</span></a>
+<nav aria-label="Điều hướng nhân sự">
+<section class="lc-nav-group" data-nav-group="workspace"><button type="button" class="lc-group-toggle" aria-controls="lc-workspace-links" aria-expanded="true">WORKSPACE</button><div class="lc-nav-links" id="lc-workspace-links">
+<a href="${pageContext.request.contextPath}/lifecycle/dashboard"><span class="lc-nav-icon" aria-hidden="true">◫</span><span>Tổng quan</span></a>
+<a href="${pageContext.request.contextPath}/employee/employee-list"><span class="lc-nav-icon" aria-hidden="true">♙</span><span>Hồ sơ nhân viên</span></a>
+<a href="${pageContext.request.contextPath}/employee/profile-update-periods"><span class="lc-nav-icon" aria-hidden="true">↻</span><span>Cập nhật hồ sơ</span></a>
+<a href="${pageContext.request.contextPath}/employee/document-update-periods"><span class="lc-nav-icon" aria-hidden="true">▱</span><span>Cập nhật tài liệu</span></a>
+<a href="${pageContext.request.contextPath}/lifecycle/contracts"><span class="lc-nav-icon" aria-hidden="true">▤</span><span>Hợp đồng lao động</span></a>
+<a href="${pageContext.request.contextPath}/lifecycle/accounts"><span class="lc-nav-icon" aria-hidden="true">◇</span><span>Tài khoản nhân viên</span></a>
+<a href="${pageContext.request.contextPath}/lifecycle/organization"><span class="lc-nav-icon" aria-hidden="true">⌘</span><span>Sơ đồ tổ chức</span></a>
+</div></section><section class="lc-nav-group" data-nav-group="organization"><button type="button" class="lc-group-toggle" aria-controls="lc-organization-links" aria-expanded="true">CƠ CẤU TỔ CHỨC</button><div class="lc-nav-links" id="lc-organization-links">
+<a href="${pageContext.request.contextPath}/department/department-list"><span class="lc-nav-icon" aria-hidden="true">▦</span><span>Phòng ban</span></a>
+<a href="${pageContext.request.contextPath}/position/position-list"><span class="lc-nav-icon" aria-hidden="true">▣</span><span>Chức danh</span></a>
+<a href="${pageContext.request.contextPath}/responsibility-level/responsibility-level-list"><span class="lc-nav-icon" aria-hidden="true">≋</span><span>Cấp trách nhiệm</span></a>
+</div></section><section class="lc-nav-group" data-nav-group="other"><button type="button" class="lc-group-toggle" aria-controls="lc-other-links" aria-expanded="true">NGHIỆP VỤ KHÁC</button><div class="lc-nav-links" id="lc-other-links">
+<a href="${pageContext.request.contextPath}/attendance/company-attendance"><span class="lc-nav-icon" aria-hidden="true">◷</span><span>Chấm công</span></a>
+<a href="${pageContext.request.contextPath}/leave/all-requests"><span class="lc-nav-icon" aria-hidden="true">▢</span><span>Nghỉ phép</span></a>
+</div></section></nav><a class="lc-signout" href="${pageContext.request.contextPath}/logout" aria-label="Đăng xuất"><span class="lc-nav-icon" aria-hidden="true">↪</span><span>Đăng xuất</span></a></aside>
+<header class="lc-topbar"><span>Quản trị nhân sự <span class="lc-muted">/ Quy trình nhân sự</span></span><span class="lc-workspace" title="<c:out value='${sessionScope.tenantPrincipal.companyName}'/>">Workspace · <c:out value="${sessionScope.tenantPrincipal.workspaceCode}" default="—"/></span></header>
+<%@ include file="/WEB-INF/views/common/appearance.jspf" %>

@@ -2,74 +2,57 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Department Form</title>
-    <link rel="stylesheet" href="../css/employee.css">
+    <title>Thông tin phòng ban</title>
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/lifecycle.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/organization.css">
 </head>
-<body data-page="department-form">
-<div class="shell">
-    <aside class="sidebar">
-        <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
-        <div class="nav-label">Phân hệ quản trị</div>
-        <a class="nav-link" href="../employee/employee-list">Quản lý Nhân sự</a>
-        <a class="nav-link active" href="department-list">Quản lý Phòng ban</a>
-        <a class="nav-link" href="../position/position-list">Quản lý Chức danh</a>
-        <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
-    </aside>
-
-    <main class="content">
+<body class="lc" data-page="department-form">
+<%@ include file="/WEB-INF/views/common/lifecycle-shell.jspf" %>
+    <main class="lc-main content">
+        <div class="lc-breadcrumb">Quản trị nhân sự / Cơ cấu tổ chức</div>
 
         <div class="page-header">
             <div>
-                <h1 id="departmentFormTitle" class="page-title">Add Department</h1>
+                <h1 id="departmentFormTitle" class="page-title">Thêm phòng ban</h1>
             </div>
-            <a class="button secondary" href="department-list">Cancel</a>
+            <a class="button secondary" href="department-list">Hủy</a>
         </div>
 
         <div id="message" class="message"></div>
+        <p class="page-subtitle">Phòng ban chứa các chức danh. Ngừng hoạt động sẽ chặn phân công mới, không xóa nhân viên hoặc lịch sử hiện có.</p>
+        <div id="departmentPositionLinks"></div>
+        <button type="button" id="departmentInitialAssignment" hidden>Phân công nhân viên</button>
 
         <form id="departmentForm" class="panel">
             <input type="hidden" name="departmentId">
             <div class="form-grid">
                 <div>
-                    <label>Department Code</label>
-                    <input name="departmentCode" required>
+                    <label>Mã phòng ban</label>
+                    <input name="departmentCode" maxlength="50" required>
                 </div>
                 <div>
-                    <label>Department Name</label>
-                    <input name="departmentName" required>
+                    <label>Tên phòng ban</label>
+                    <input name="departmentName" maxlength="150" required>
                 </div>
             </div>
             <div class="form-actions">
-                <button type="submit">Save</button>
-                <a class="button secondary" href="department-list">Cancel</a>
+                <button type="submit">Lưu</button>
+                <a class="button secondary" href="department-list">Hủy</a>
             </div>
         </form>
 
         <section id="departmentMembersPanel" class="panel hidden">
             <div class="document-toolbar">
-                <div>
-                    <h2>Department Members</h2>
-                    <p class="page-subtitle">Chọn trưởng phòng và nhiều nhân viên cho phòng ban này.</p>
-                </div>
+                <h2>Nhân viên trong phòng ban <span id="departmentMemberCount" class="lc-count">0</span></h2>
             </div>
-            <form id="departmentMembersForm">
-                <input type="hidden" name="departmentId">
-                <div class="form-grid">
-                    <div>
-                        <label>Trưởng phòng</label>
-                        <select name="managerId" required></select>
-                    </div>
-                </div>
-                <div id="departmentEmployeeOptions" class="member-picker"></div>
-                <div class="form-actions">
-                    <button type="submit">Save Department Members</button>
-                </div>
-            </form>
+            <div id="departmentMemberList" aria-live="polite"></div>
         </section>
     </main>
-</div>
-<script src="../js/department.js"></script>
+<script src="../js/department.js?v=<%= application.getResource("/js/department.js").openConnection().getLastModified() %>"></script>
+<%@ include file="/WEB-INF/views/common/initial-assignment.jspf" %>
+<script src="${pageContext.request.contextPath}/js/organization-shell.js" defer></script>
 </body>
 </html>

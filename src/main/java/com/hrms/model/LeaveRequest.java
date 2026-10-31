@@ -48,4 +48,38 @@ public class LeaveRequest {
 	public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 	public LocalDateTime getUpdatedAt() { return updatedAt; }
 	public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+	// Display helper fields populated from joined queries
+	private String employeeCode;
+	private String employeeFullName;
+	private String departmentName;
+	private String leaveTypeCode;
+	private String leaveTypeName;
+	private Boolean isPaid;
+	private String approverDisplayName;
+	private String managerName;
+
+	public String getEmployeeCode() { return employeeCode; }
+	public void setEmployeeCode(String employeeCode) { this.employeeCode = employeeCode; }
+
+	public String getEmployeeFullName() { return employeeFullName; }
+	public void setEmployeeFullName(String employeeFullName) { this.employeeFullName = employeeFullName; }
+
+	public String getDepartmentName() { return departmentName; }
+	public void setDepartmentName(String departmentName) { this.departmentName = departmentName; }
+
+	public String getLeaveTypeCode() { return leaveTypeCode; }
+	public void setLeaveTypeCode(String leaveTypeCode) { this.leaveTypeCode = leaveTypeCode; }
+
+	public String getLeaveTypeName() { return leaveTypeName; }
+	public void setLeaveTypeName(String leaveTypeName) { this.leaveTypeName = leaveTypeName; }
+
+	public Boolean getIsPaid() { return isPaid; }
+	public void setIsPaid(Boolean isPaid) { this.isPaid = isPaid; }
+
+	public String getApproverDisplayName() { return approverDisplayName; }
+	public void setApproverDisplayName(String approverDisplayName) { this.approverDisplayName = approverDisplayName; }
+
+	public String getManagerName() { return managerName; }
+	public void setManagerName(String managerName) { this.managerName = managerName; }
 }

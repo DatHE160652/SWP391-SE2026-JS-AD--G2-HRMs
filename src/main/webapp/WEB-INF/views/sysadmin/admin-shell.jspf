@@ -2,18 +2,18 @@
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <c:set var="icons" value="${pageContext.request.contextPath}/images/admin-icons.svg"/>
 <a class="skip-link" href="#main-content">Đến nội dung chính</a>
-<aside class="admin-sidebar" id="admin-navigation" aria-label="Điều hướng System Admin">
+<aside class="admin-sidebar" id="admin-navigation" aria-label="Điều hướng Quản trị viên hệ thống">
     <a class="brand" href="${pageContext.request.contextPath}/systemadmin/dashboard">
         <img src="${pageContext.request.contextPath}/images/hrms-admin.svg" alt="HRMs.Admin" width="144" height="36">
     </a>
     <nav class="sidebar-nav" aria-label="Menu chính">
-        <p class="nav-label">OVERVIEW</p>
-        <a aria-label="Dashboard" class="nav-link ${activeNav == 'dashboard' ? 'active' : ''}" aria-current="${activeNav == 'dashboard' ? 'page' : 'false'}" href="${pageContext.request.contextPath}/systemadmin/dashboard">
-            <svg class="icon" aria-hidden="true"><use href="${icons}#grid"/></svg><span>Dashboard</span>
+        <p class="nav-label">TỔNG QUAN</p>
+        <a aria-label="Bảng điều khiển" class="nav-link ${activeNav == 'dashboard' ? 'active' : ''}" aria-current="${activeNav == 'dashboard' ? 'page' : 'false'}" href="${pageContext.request.contextPath}/systemadmin/dashboard">
+            <svg class="icon" aria-hidden="true"><use href="${icons}#grid"/></svg><span>Bảng điều khiển</span>
         </a>
-        <p class="nav-label">TENANT MANAGEMENT</p>
-        <a aria-label="Registration Requests" class="nav-link ${activeNav == 'requests' ? 'active' : ''}" aria-current="${activeNav == 'requests' ? 'page' : 'false'}" href="${pageContext.request.contextPath}/systemadmin/registration-request">
-            <svg class="icon" aria-hidden="true"><use href="${icons}#requests"/></svg><span>Registration Requests</span>
+        <p class="nav-label">QUẢN LÝ DOANH NGHIỆP</p>
+        <a aria-label="Yêu cầu đăng ký" class="nav-link ${activeNav == 'requests' ? 'active' : ''}" aria-current="${activeNav == 'requests' ? 'page' : 'false'}" href="${pageContext.request.contextPath}/systemadmin/registration-request">
+            <svg class="icon" aria-hidden="true"><use href="${icons}#requests"/></svg><span>Yêu cầu đăng ký</span>
             <c:if test="${pendingCount > 0}"><span class="nav-count" aria-label="${pendingCount} yêu cầu cần xử lý"><c:out value="${pendingCount}"/></span></c:if>
         </a>
         <a aria-label="Doanh nghiệp" class="nav-link ${activeNav == 'companies' ? 'active' : ''}" aria-current="${activeNav == 'companies' ? 'page' : 'false'}" href="${pageContext.request.contextPath}/systemadmin/company">
@@ -23,7 +23,7 @@
     <div class="sidebar-footer">
         <div class="user-card">
             <span class="avatar"><svg class="icon" aria-hidden="true"><use href="${icons}#user"/></svg></span>
-            <div class="user-copy"><strong><c:out value="${sessionScope.systemAdminPrincipal.displayName}"/></strong><span>System Admin</span></div>
+            <div class="user-copy"><strong><c:out value="${sessionScope.systemAdminPrincipal.displayName}"/></strong><span>Quản trị viên hệ thống</span></div>
             <form method="post" action="${pageContext.request.contextPath}/systemadmin/logout">
                 <input type="hidden" name="csrfToken" value="<c:out value='${sessionScope.systemAdminCsrfToken}'/>">
                 <button class="icon-button logout-button" type="submit" aria-label="Đăng xuất" title="Đăng xuất">
@@ -45,7 +45,7 @@
         <input id="global-search" name="q" type="search" maxlength="150" placeholder="${companyNavigation ? 'Tìm doanh nghiệp, workspace, email admin...' : 'Tìm doanh nghiệp, email, mã yêu cầu...'}" value="<c:out value='${filter.q}'/>">
         <button class="search-shortcut" type="submit" aria-label="Tìm kiếm">↵</button>
     </form>
-    <span class="portal-badge"><svg class="icon" aria-hidden="true"><use href="${icons}#shield"/></svg>System Admin Portal</span>
-    <div class="header-profile"><span class="avatar"><svg class="icon" aria-hidden="true"><use href="${icons}#user"/></svg></span><div class="user-copy"><strong>Admin Portal</strong><span>SuperAdmin Access</span></div></div>
+    <span class="portal-badge"><svg class="icon" aria-hidden="true"><use href="${icons}#shield"/></svg>Cổng quản trị hệ thống</span>
+    <div class="header-profile"><span class="avatar"><svg class="icon" aria-hidden="true"><use href="${icons}#user"/></svg></span><div class="user-copy"><strong>Cổng quản trị</strong><span>Quyền quản trị hệ thống</span></div></div>
 </header>
 <script src="${pageContext.request.contextPath}/js/system-admin.js" defer></script>

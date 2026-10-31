@@ -1,7 +1,8 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <!DOCTYPE html>
 <html lang="vi">
-    <head>
+<head>
+    <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>
@@ -15,7 +16,7 @@
             <section class="hero public-container">
                 <div class="hero-copy">
                     <span class="eyebrow">
-                        NỀN TẢNG HR SaaS CHO DOANH NGHIỆP
+                        NỀN TẢNG nhân sự trực tuyến CHO DOANH NGHIỆP
                     </span>
                     <h1>
                         Vận hành nhân sự rõ ràng hơn cùng
@@ -53,7 +54,7 @@
                             Tối đa 20 tài khoản
                         </li>
                         <li>
-                            1 Company Admin và tối đa 3 Manager
+                            1 Quản trị viên công ty và tối đa 3 quản lý
                         </li>
                         <li>
                             Đầy đủ e-HRM, chấm công, tính lương, ESS
@@ -113,7 +114,7 @@
                                 04
                             </span>
                             <h3>
-                                Employee Self-Service
+                                Cổng tự phục vụ nhân viên
                             </h3>
                             <p>
                                 Nhân viên chủ động theo dõi thông tin và tương tác với doanh nghiệp.
@@ -132,7 +133,7 @@
                             Trao đổi với chuyên viên HRMs Cloud
                         </h2>
                         <p>
-                            Gửi 5 thông tin cơ bản. Hệ thống tiếp nhận yêu cầu ở trạng thái NEW để đội ngũ tư vấn liên hệ.
+                            Gửi 5 thông tin cơ bản. Hệ thống tiếp nhận yêu cầu ở trạng thái mới tiếp nhận để đội ngũ tư vấn liên hệ.
                         </p>
                     </div>
                     <a class="button button-primary" href="${pageContext.request.contextPath}/consultation-request">
@@ -142,7 +143,7 @@
             </section>
         </main>
         <%@ include file="public-footer.jspf" %>
-        <script src="${pageContext.request.contextPath}/js/public-portal.js" defer>
+        <script src="${pageContext.request.contextPath}/js/public-portal.js?v=<%= application.getResource("/js/public-portal.js").openConnection().getLastModified() %>" defer>
         </script>
     </body>
 </html>

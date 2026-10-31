@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Báo cáo Chấm công - HRMs Cloud</title>
@@ -15,6 +16,7 @@
         <div class="nav-label">Phân hệ Chấm công</div>
         <a class="nav-link" href="../employee/my-profile?nav=manager">Hồ sơ cá nhân</a>
         <a class="nav-link" href="manager-attendance">Điểm danh Nhân sự</a>
+        <a class="nav-link" href="manager-attendance?view=list">Danh sách chấm công</a>
         <a class="nav-link" href="manager-personal-attendance">Chấm công Cá nhân</a>
         <a class="nav-link active" href="attendance-report">Báo cáo Chấm công</a>
         <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
@@ -81,7 +83,7 @@
             </div>
             <div class="summary-card">
                 <div class="summary-label">Tổng giờ làm việc tích lũy</div>
-                <div id="reportTotalHours" class="summary-number text-success">0 hrs</div>
+                <div id="reportTotalHours" class="summary-number text-success">0 giờ</div>
             </div>
             <div class="summary-card">
                 <div class="summary-label">Tỉ lệ đúng giờ trung bình</div>
@@ -115,6 +117,6 @@
         </section>
     </main>
 </div>
-<script src="../js/attendance.js"></script>
+<script src="../js/attendance.js?v=<%= application.getResource("/js/attendance.js").openConnection().getLastModified() %>"></script>
 </body>
 </html>

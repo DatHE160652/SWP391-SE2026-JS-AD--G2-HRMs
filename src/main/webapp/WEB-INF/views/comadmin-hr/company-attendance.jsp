@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Giám sát Chấm công Toàn Công ty - HRMs Cloud</title>
@@ -46,10 +47,10 @@
                     <label for="statusFilter">Trạng thái:</label>
                     <select id="statusFilter">
                         <option value="ALL">-- Tất cả trạng thái --</option>
-                        <option value="Present">Present (Có mặt)</option>
-                        <option value="Late">Late (Đi muộn)</option>
-                        <option value="Early Leave">Early Leave (Về sớm)</option>
-                        <option value="Absent">Absent (Vắng mặt)</option>
+                        <option value="Present">Có mặt</option>
+                        <option value="Late">Đi muộn</option>
+                        <option value="Early Leave">Về sớm</option>
+                        <option value="Absent">Vắng mặt</option>
                         <option value="On Leave">On Leave (Nghỉ phép)</option>
                     </select>
                 </div>
@@ -105,6 +106,6 @@
         </section>
     </main>
 </div>
-<script src="../js/attendance.js"></script>
+<script src="../js/attendance.js?v=<%= application.getResource("/js/attendance.js").openConnection().getLastModified() %>"></script>
 </body>
 </html>

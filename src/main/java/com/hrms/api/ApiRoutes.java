@@ -57,6 +57,45 @@ public final class ApiRoutes {
     public static final String MANAGER_COMPANY_ATTENDANCE_HTML = "/manager/company-attendance.html";
     public static final String MANAGER_ATTENDANCE_REPORT_HTML = "/manager/attendance-report.html";
 
+    // --- Leave Approval Management Flow (BF-05) ---
+    public static final String LEAVE_PREFIX = "/leave";
+
+    // Leave View Page Routes
+    public static final String LEAVE_PAGE_TYPES = LEAVE_PREFIX + "/types";
+    public static final String LEAVE_PAGE_MY_BALANCES = LEAVE_PREFIX + "/my-balances";
+    public static final String LEAVE_PAGE_MY_REQUESTS = LEAVE_PREFIX + "/my-requests";
+    public static final String LEAVE_PAGE_SUBMIT = LEAVE_PREFIX + "/submit";
+    public static final String LEAVE_PAGE_PENDING_APPROVALS = LEAVE_PREFIX + "/pending-approvals";
+    public static final String LEAVE_PAGE_ALL_REQUESTS = LEAVE_PREFIX + "/all-requests";
+    public static final String LEAVE_PAGE_CALENDAR = LEAVE_PREFIX + "/calendar";
+    public static final String LEAVE_PAGE_REPORT = LEAVE_PREFIX + "/report";
+
+    // Leave JSP Views
+    public static final String VIEW_LEAVE_TYPE_LIST = "/WEB-INF/views/comadmin-hr/leave-type-list.jsp";
+    public static final String VIEW_LEAVE_MY_BALANCES = "/WEB-INF/views/employee/leave-balance.jsp";
+    public static final String VIEW_LEAVE_MY_REQUESTS = "/WEB-INF/views/employee/leave-my-requests.jsp";
+    public static final String VIEW_LEAVE_SUBMIT = "/WEB-INF/views/employee/leave-submit.jsp";
+    public static final String VIEW_LEAVE_PENDING_APPROVALS = "/WEB-INF/views/manager/leave-pending.jsp";
+    public static final String VIEW_LEAVE_ALL_REQUESTS = "/WEB-INF/views/comadmin-hr/leave-all-requests.jsp";
+    public static final String VIEW_LEAVE_CALENDAR_COMPANY = "/WEB-INF/views/comadmin-hr/leave-calendar.jsp";
+    public static final String VIEW_LEAVE_CALENDAR_EMPLOYEE = "/WEB-INF/views/employee/leave-calendar.jsp";
+    public static final String VIEW_LEAVE_REPORT = "/WEB-INF/views/comadmin-hr/leave-report.jsp";
+
+    // Leave API Endpoints
+    public static final String LEAVE_API_TYPES = LEAVE_PREFIX + "/api/types";
+    public static final String LEAVE_API_MY_BALANCES = LEAVE_PREFIX + "/api/my-balances";
+    public static final String LEAVE_API_MY_REQUESTS = LEAVE_PREFIX + "/api/my-requests";
+    public static final String LEAVE_API_SUBMIT = LEAVE_PREFIX + "/api/submit";
+    public static final String LEAVE_API_CANCEL = LEAVE_PREFIX + "/api/cancel";
+    public static final String LEAVE_API_PENDING_APPROVALS = LEAVE_PREFIX + "/api/pending-approvals";
+    public static final String LEAVE_API_APPROVE = LEAVE_PREFIX + "/api/approve";
+    public static final String LEAVE_API_REJECT = LEAVE_PREFIX + "/api/reject";
+    public static final String LEAVE_API_ALL_REQUESTS = LEAVE_PREFIX + "/api/all-requests";
+    public static final String LEAVE_API_CALENDAR_EVENTS = LEAVE_PREFIX + "/api/calendar-events";
+    public static final String LEAVE_API_REPORT = LEAVE_PREFIX + "/api/report";
+    public static final String LEAVE_EXPORT_EXCEL = LEAVE_PREFIX + "/export-excel";
+    public static final String LEAVE_API_CALCULATE_DAYS = LEAVE_PREFIX + "/api/calculate-days";
+
     private ApiRoutes() {
     }
 }

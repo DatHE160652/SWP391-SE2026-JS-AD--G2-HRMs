@@ -3,6 +3,11 @@ package com.hrms.model;
 import java.time.LocalDateTime;
 
 public class Department {
+    private boolean active = true;
+
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
+
 	private Integer departmentId;
 	private Integer companyId;
 	private String departmentCode;

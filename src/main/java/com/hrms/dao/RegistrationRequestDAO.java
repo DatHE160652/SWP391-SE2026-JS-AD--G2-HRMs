@@ -127,7 +127,7 @@ public class RegistrationRequestDAO {
                     statement.setString(5, request.getRegion());
                     statement.setNString(6, request.getCompanyName().toLowerCase(java.util.Locale.ROOT));
                     try (ResultSet result = statement.executeQuery()) {
-                        if (!result.next()) throw new SQLException("Registration request was not created.");
+                        if (!result.next()) throw new SQLException("Không tạo được yêu cầu đăng ký.");
                         requestId = result.getInt("RegistrationRequestId");
                         Timestamp timestamp = result.getTimestamp("CreatedAt");
                         createdAt = timestamp == null ? null : timestamp.toLocalDateTime();
@@ -146,7 +146,7 @@ public class RegistrationRequestDAO {
                     statement.setString(2, request.getEmail());
                     statement.executeUpdate();
                     try (ResultSet keys = statement.getGeneratedKeys()) {
-                        if (!keys.next()) throw new SQLException("Email attempt was not created.");
+                        if (!keys.next()) throw new SQLException("Không thể ghi nhận lần gửi thư.");
                         attemptId = keys.getLong(1);
                     }
                 }
@@ -166,7 +166,7 @@ public class RegistrationRequestDAO {
 
     public void markEmailAttempt(long attemptId, String status, String errorCode) throws SQLException {
         if (!List.of("ACCEPTED", "FAILED", "UNKNOWN").contains(status)) {
-            throw new IllegalArgumentException("Invalid email attempt status.");
+            throw new IllegalArgumentException("Trạng thái gửi thư không hợp lệ.");
         }
         String sql = """
                 UPDATE EmailAttempts

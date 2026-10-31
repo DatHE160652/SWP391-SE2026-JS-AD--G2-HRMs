@@ -325,6 +325,22 @@ CREATE TABLE Employees (
     CONSTRAINT CK_Employees_Position_RequiresDepartment CHECK (PositionId IS NULL OR DepartmentId IS NOT NULL)
 );
 
+CREATE TABLE ProfileUpdatePeriods (
+    PeriodId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    CompanyId INT NOT NULL,
+    Title NVARCHAR(150) NOT NULL,
+    StartsAt DATETIME2 NOT NULL,
+    EndsAt DATETIME2 NOT NULL,
+    ClosedAt DATETIME2 NULL,
+    CreatedByUserId INT NOT NULL,
+    CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT FK_ProfileUpdatePeriods_Companies FOREIGN KEY (CompanyId) REFERENCES Companies(CompanyId),
+    CONSTRAINT FK_ProfileUpdatePeriods_Users FOREIGN KEY (CreatedByUserId) REFERENCES Users(UserId),
+    CONSTRAINT CK_ProfileUpdatePeriods_Dates CHECK (EndsAt > StartsAt)
+);
+CREATE INDEX IX_ProfileUpdatePeriods_CompanyDates
+    ON ProfileUpdatePeriods (CompanyId, ClosedAt, StartsAt, EndsAt);
+
 -- ========================================================================
 -- PHẦN 4: THEO DÕI CHẤM CÔNG HÀNG NGÀY
 -- Workflow 3: Attendance Management

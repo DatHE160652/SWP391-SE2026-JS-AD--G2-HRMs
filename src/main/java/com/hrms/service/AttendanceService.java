@@ -27,6 +27,50 @@ public class AttendanceService {
         this.attendanceDAO = attendanceDAO;
     }
 
+    public void requireEmployee(int companyId, int employeeId) throws SQLException {
+        attendanceDAO.requireEmployee(companyId, employeeId);
+    }
+
+    public AttendanceDTO checkIn(int companyId, int employeeId, LocalDate date, LocalTime time) throws SQLException {
+        requireEmployee(companyId, employeeId);
+        return checkIn(employeeId, date, time);
+    }
+
+    public AttendanceDTO checkOut(int companyId, int employeeId, LocalDate date, LocalTime time) throws SQLException {
+        requireEmployee(companyId, employeeId);
+        return checkOut(employeeId, date, time);
+    }
+
+    public List<AttendanceDTO> getPersonalAttendance(int companyId, int employeeId, int month, int year) throws SQLException {
+        requireEmployee(companyId, employeeId);
+        return getPersonalAttendance(employeeId, month, year);
+    }
+
+    public AttendanceSummaryDAO getPersonalSummary(int companyId, int employeeId, int month, int year) throws SQLException {
+        requireEmployee(companyId, employeeId);
+        return getPersonalSummary(employeeId, month, year);
+    }
+
+    public List<AttendanceDTO> getTeamAttendance(int companyId, int managerId, LocalDate date) throws SQLException {
+        requireEmployee(companyId, managerId);
+        return attendanceDAO.getTeamAttendance(companyId, managerId, date == null ? LocalDate.now() : date);
+    }
+
+    public List<AttendanceDTO> getAllAttendanceByDate(int companyId, LocalDate date) throws SQLException {
+        requireCompany(companyId);
+        return attendanceDAO.getAllAttendanceByDate(companyId, date == null ? LocalDate.now() : date);
+    }
+
+    public List<AttendanceReportDAO> getManagerAttendanceReport(int companyId, int managerId, Integer departmentId,
+                                                               int month, int year) throws SQLException {
+        requireEmployee(companyId, managerId);
+        return attendanceDAO.getAttendanceReportForManager(companyId, managerId, departmentId, month, year);
+    }
+
+    private void requireCompany(Integer companyId) {
+        if (companyId == null || companyId <= 0) throw new SecurityException("Vui lòng đăng nhập vào workspace.");
+    }
+
     /**
      * UC29: Manager performs Check-in for an employee
      */
@@ -122,20 +166,11 @@ public class AttendanceService {
     }
 
     /**
-     * View all employees attendance by date for comprehensive check-in / check-out
-     */
-    public List<AttendanceDTO> getAllAttendanceByDate(LocalDate date) throws SQLException {
-        if (date == null) {
-            date = LocalDate.now();
-        }
-        return attendanceDAO.getAllAttendanceByDate(date);
-    }
-
-    /**
      * UC33: Monitor and search company-wide attendance (HR / Company Admin)
      */
     public List<AttendanceDTO> searchCompanyAttendance(Integer companyId, Integer departmentId, String status,
                                                       LocalDate fromDate, LocalDate toDate, String keyword) throws SQLException {
+        requireCompany(companyId);
         return attendanceDAO.searchCompanyAttendance(companyId, departmentId, status, fromDate, toDate, keyword);
     }
 
@@ -143,6 +178,7 @@ public class AttendanceService {
      * UC36: Generate attendance reports by department / company
      */
     public List<AttendanceReportDAO> getAttendanceReport(Integer companyId, Integer departmentId, int month, int year) throws SQLException {
+        requireCompany(companyId);
         return attendanceDAO.getAttendanceReport(companyId, departmentId, month, year);
     }
 

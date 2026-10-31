@@ -15,7 +15,7 @@
             <a href="${base}/consultation-request">Liên hệ</a>
         </nav>
         <div class="header-actions">
-            <a class="button button-outline" href="${base}/login">Đăng nhập Tenant</a>
+            <a class="button button-outline" href="${base}/login">Đăng nhập tenant</a>
             <a class="button button-primary" href="${base}/consultation-request">Đăng ký tư vấn</a>
         </div>
     </div>

@@ -1,4 +1,4 @@
-package com.hrms.controller.hr;
+package com.hrms.controller.manager;
 
 import com.hrms.api.ApiRoutes;
 import com.hrms.dao.AttendanceDAO.AttendanceDTO;
@@ -31,10 +31,10 @@ import java.util.stream.Collectors;
 
 /**
  * Handles Attendance operations for Employee, Manager, and HR/Admin:
- * - UC29: Check-in (Manager)
- * - UC30: Check-out (Manager)
+ * - UC29: Check-in (Manager phụ trách toàn bộ nhân sự công ty)
+ * - UC30: Check-out (Manager phụ trách toàn bộ nhân sự công ty)
  * - UC31: View Personal Attendance History (Employee read-only)
- * - UC32: View Team Attendance (Manager)
+ * - UC32: View Team & Company Attendance (Manager)
  * - UC33: Monitor & Search Company Attendance (HR / Admin)
  * - UC36: Generate Attendance Reports & CSV Export (HR / Manager)
  */
@@ -66,16 +66,29 @@ import java.util.stream.Collectors;
         ApiRoutes.MANAGER_ATTENDANCE_REPORT_HTML
 })
 public class AttendanceController extends HttpServlet {
-    private final AttendanceService attendanceService = new AttendanceService();
-    private final EmployeeService employeeService = new EmployeeService();
-    private final DepartmentService departmentService = new DepartmentService();
+    private final AttendanceService attendanceService;
+    private final EmployeeService employeeService;
+    private final DepartmentService departmentService;
+
+    public AttendanceController() {
+        this(new AttendanceService(), new EmployeeService(), new DepartmentService());
+    }
+
+    AttendanceController(AttendanceService attendanceService, EmployeeService employeeService, DepartmentService departmentService) {
+        this.attendanceService = attendanceService;
+        this.employeeService = employeeService;
+        this.departmentService = departmentService;
+    }
 
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+    public void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         String path = request.getServletPath();
 
         try {
+            SecuritySupport.requireCompanyId(request);
+            SecuritySupport.applyNoStore(response::setHeader);
+            request.setAttribute("organizationCsrfToken", SecuritySupport.ensurePublicCsrfToken(request.getSession(true)));
             if (path.endsWith(".html") && path.startsWith(ApiRoutes.ATTENDANCE_PREFIX + "/")) {
                 String canonical = path.substring(0, path.length() - ".html".length());
                 response.sendRedirect(request.getContextPath() + canonical);
@@ -94,6 +107,11 @@ public class AttendanceController extends HttpServlet {
                     }
                 }
                 case ApiRoutes.ATTENDANCE_PAGE_MANAGER -> {
+                    String view = request.getParameter("view");
+                    if ("list".equalsIgnoreCase(view) || "timesheet".equalsIgnoreCase(view)) {
+                        request.getRequestDispatcher("/WEB-INF/views/manager/attendance-list.jsp").forward(request, response);
+                        return;
+                    }
                     String accept = request.getHeader("Accept");
                     if (accept != null && accept.contains("application/json") && request.getParameter("managerId") != null) {
                         handleTeamAttendance(request, response);
@@ -117,11 +135,20 @@ public class AttendanceController extends HttpServlet {
                         response.sendRedirect(request.getContextPath() + ApiRoutes.ATTENDANCE_PAGE_REPORT);
                 case ApiRoutes.ATTENDANCE_ALL -> handleAllAttendance(request, response);
                 case ApiRoutes.ATTENDANCE_COMPANY -> handleCompanyAttendance(request, response);
-                case ApiRoutes.ATTENDANCE_REPORT -> handleAttendanceReport(request, response);
+                case ApiRoutes.ATTENDANCE_REPORT -> {
+                    String type = request.getParameter("type");
+                    if ("timesheet".equalsIgnoreCase(type)) {
+                        handleTimesheetData(request, response);
+                    } else {
+                        handleAttendanceReport(request, response);
+                    }
+                }
                 case ApiRoutes.ATTENDANCE_EXPORT_REPORT -> handleExportReport(request, response);
                 case ApiRoutes.ATTENDANCE_META -> handleMeta(request, response);
                 default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Endpoint not found."));
             }
+        } catch (SecurityException e) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error(e.getMessage()));
         } catch (SQLException e) {
             writeJson(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, error("Database error: " + e.getMessage()));
         } catch (IllegalArgumentException e) {
@@ -132,17 +159,22 @@ public class AttendanceController extends HttpServlet {
     }
 
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+    public void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         String path = request.getServletPath();
 
         try {
+            SecuritySupport.requireCompanyId(request);
+            SecuritySupport.applyNoStore(response::setHeader);
+            if (!SecuritySupport.hasValidPublicCsrfToken(request)) throw new SecurityException("Phiên làm việc đã thay đổi. Vui lòng tải lại trang trước khi lưu.");
             switch (path) {
                 case ApiRoutes.ATTENDANCE_CHECK_IN -> handleCheckIn(request, response);
                 case ApiRoutes.ATTENDANCE_CHECK_OUT -> handleCheckOut(request, response);
                 case ApiRoutes.ATTENDANCE_BATCH_COMPLETE -> handleBatchComplete(request, response);
                 default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Endpoint not found."));
             }
+        } catch (SecurityException e) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error(e.getMessage()));
         } catch (SQLException e) {
             writeJson(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, error("Database error: " + e.getMessage()));
         } catch (IllegalArgumentException e) {
@@ -153,10 +185,10 @@ public class AttendanceController extends HttpServlet {
     }
 
     /**
-     * UC29: Manager performs Check-in for an employee
+     * UC29: Manager performs Check-in for an employee (quản lý toàn bộ nhân viên)
      */
     private void handleCheckIn(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
-        int employeeId = parseRequiredInt(request.getParameter("employeeId"), "Employee ID is required");
+        int employeeId = parseRequiredInt(request.getParameter("employeeId"), "Vui lòng chọn nhân viên.");
         LocalDate date = parseOptionalDate(request.getParameter("date"));
         if (date == null) {
             date = LocalDate.now();
@@ -164,16 +196,16 @@ public class AttendanceController extends HttpServlet {
         ensureCanManageAttendance(request, employeeId, date);
         LocalTime time = parseOptionalTime(request.getParameter("time"));
 
-        AttendanceDTO result = attendanceService.checkIn(employeeId, date, time);
+        AttendanceDTO result = attendanceService.checkIn(SecuritySupport.requireCompanyId(request), employeeId, date, time);
         writeJson(response, HttpServletResponse.SC_OK,
                 "{\"success\":true,\"message\":\"Điểm danh vào ca thành công!\",\"data\":" + toJson(result) + "}");
     }
 
     /**
-     * UC30: Manager performs Check-out for an employee
+     * UC30: Manager performs Check-out for an employee (quản lý toàn bộ nhân viên)
      */
     private void handleCheckOut(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
-        int employeeId = parseRequiredInt(request.getParameter("employeeId"), "Employee ID is required");
+        int employeeId = parseRequiredInt(request.getParameter("employeeId"), "Vui lòng chọn nhân viên.");
         LocalDate date = parseOptionalDate(request.getParameter("date"));
         if (date == null) {
             date = LocalDate.now();
@@ -181,13 +213,13 @@ public class AttendanceController extends HttpServlet {
         ensureCanManageAttendance(request, employeeId, date);
         LocalTime time = parseOptionalTime(request.getParameter("time"));
 
-        AttendanceDTO result = attendanceService.checkOut(employeeId, date, time);
+        AttendanceDTO result = attendanceService.checkOut(SecuritySupport.requireCompanyId(request), employeeId, date, time);
         writeJson(response, HttpServletResponse.SC_OK,
                 "{\"success\":true,\"message\":\"Điểm danh tan ca thành công!\",\"data\":" + toJson(result) + "}");
     }
 
     /**
-     * Batch check-in / check-out: Hoàn tất việc check điểm danh cho danh sách nhân sự đã chọn
+     * Batch check-in / check-out: Điểm danh hàng loạt cho danh sách nhân sự đã chọn
      */
     private void handleBatchComplete(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         String empIdsParam = request.getParameter("employeeIds");
@@ -214,7 +246,7 @@ public class AttendanceController extends HttpServlet {
             try {
                 int empId = Integer.parseInt(idStr.trim());
                 ensureCanManageAttendance(request, empId, date);
-                List<AttendanceDTO> currentAll = attendanceService.getAllAttendanceByDate(date);
+                List<AttendanceDTO> currentAll = scopedAttendance(request, date);
                 AttendanceDTO existing = currentAll.stream()
                         .filter(a -> a.getEmployeeId() == empId)
                         .findFirst().orElse(null);
@@ -232,12 +264,12 @@ public class AttendanceController extends HttpServlet {
 
                 if ("check-in".equalsIgnoreCase(act)) {
                     if (existing == null || existing.getCheckInTime() == null) {
-                        attendanceService.checkIn(empId, date, time);
+                        attendanceService.checkIn(SecuritySupport.requireCompanyId(request), empId, date, time);
                         successCount++;
                     }
                 } else if ("check-out".equalsIgnoreCase(act)) {
                     if (existing != null && existing.getCheckInTime() != null && existing.getCheckOutTime() == null) {
-                        attendanceService.checkOut(empId, date, time);
+                        attendanceService.checkOut(SecuritySupport.requireCompanyId(request), empId, date, time);
                         successCount++;
                     }
                 }
@@ -246,7 +278,7 @@ public class AttendanceController extends HttpServlet {
             }
         }
 
-        List<AttendanceDTO> updatedList = attendanceService.getAllAttendanceByDate(date);
+        List<AttendanceDTO> updatedList = scopedAttendance(request, date);
         String msg = "Đã hoàn tất điểm danh thành công cho " + successCount + " nhân sự.";
         if (!notices.isEmpty()) {
             msg += " Lưu ý: " + String.join(" | ", notices);
@@ -259,16 +291,16 @@ public class AttendanceController extends HttpServlet {
      * UC31: View personal attendance history (Employee read-only)
      */
     private void handlePersonalAttendance(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
-        int employeeId = parseRequiredInt(request.getParameter("employeeId"), "Employee ID is required");
+        int employeeId = parseRequiredInt(request.getParameter("employeeId"), "Vui lòng chọn nhân viên.");
         TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
-        if (isRole(principal, "EMPLOYEE") && !matchesPrincipalEmployee(principal, employeeId)) {
-            throw new IllegalArgumentException("You can only view your own attendance.");
+        if ((isRole(principal, "EMPLOYEE") || isRole(principal, "MANAGER")) && !matchesPrincipalEmployee(principal, employeeId)) {
+            throw new IllegalArgumentException("Bạn chỉ được xem dữ liệu chấm công của chính mình.");
         }
         int month = parseOptionalInt(request.getParameter("month"), LocalDate.now().getMonthValue());
         int year = parseOptionalInt(request.getParameter("year"), LocalDate.now().getYear());
 
-        List<AttendanceDTO> list = attendanceService.getPersonalAttendance(employeeId, month, year);
-        AttendanceSummaryDAO summary = attendanceService.getPersonalSummary(employeeId, month, year);
+        List<AttendanceDTO> list = attendanceService.getPersonalAttendance(SecuritySupport.requireCompanyId(request), employeeId, month, year);
+        AttendanceSummaryDAO summary = attendanceService.getPersonalSummary(SecuritySupport.requireCompanyId(request), employeeId, month, year);
 
         String json = "{\"success\":true,\"data\":" + toJsonArray(list) + ",\"summary\":" + toJson(summary) + "}";
         writeJson(response, HttpServletResponse.SC_OK, json);
@@ -278,39 +310,35 @@ public class AttendanceController extends HttpServlet {
      * UC32: View team attendance (Manager)
      */
     private void handleTeamAttendance(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
-        int managerId = parseRequiredInt(request.getParameter("managerId"), "Manager ID is required");
+        int managerId = parseRequiredInt(request.getParameter("managerId"), "Vui lòng chọn quản lý.");
         LocalDate date = parseOptionalDate(request.getParameter("date"));
         if (date == null) {
             date = LocalDate.now();
         }
 
-        List<AttendanceDTO> team = attendanceService.getTeamAttendance(managerId, date);
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (isRole(principal, "MANAGER") && !matchesPrincipalEmployee(principal, managerId)) throw new SecurityException("Bạn chỉ được xem nhóm do mình quản lý.");
+        List<AttendanceDTO> team = attendanceService.getTeamAttendance(SecuritySupport.requireCompanyId(request), managerId, date);
         writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":" + toJsonArray(team) + "}");
     }
 
     /**
-     * View all employees attendance by date
+     * View all employees attendance by date: Manager quản lý toàn bộ nhân viên công ty
      */
     private void handleAllAttendance(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         LocalDate date = parseOptionalDate(request.getParameter("date"));
         if (date == null) {
             date = LocalDate.now();
         }
-        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
-        if (isRole(principal, "MANAGER") && principal.getEmployeeId() != null) {
-            List<AttendanceDTO> team = attendanceService.getTeamAttendance(principal.getEmployeeId(), date);
-            writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":" + toJsonArray(team) + "}");
-            return;
-        }
-        List<AttendanceDTO> list = attendanceService.getAllAttendanceByDate(date);
+        List<AttendanceDTO> list = scopedAttendance(request, date);
         writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":" + toJsonArray(list) + "}");
     }
 
     /**
-     * UC33: Monitor & Search company-wide attendance (HR / Admin)
+     * UC33: Monitor & Search company-wide attendance (HR / Admin / Manager)
      */
     private void handleCompanyAttendance(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
-        Integer companyId = parseNullableInt(request.getParameter("companyId"));
+        int companyId = SecuritySupport.requireCompanyId(request);
         Integer departmentId = parseNullableInt(request.getParameter("departmentId"));
         String status = trimToNull(request.getParameter("status"));
         LocalDate fromDate = parseOptionalDate(request.getParameter("fromDate"));
@@ -325,7 +353,7 @@ public class AttendanceController extends HttpServlet {
      * UC36: Generate attendance reports by department
      */
     private void handleAttendanceReport(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
-        Integer companyId = parseNullableInt(request.getParameter("companyId"));
+        int companyId = SecuritySupport.requireCompanyId(request);
         Integer departmentId = parseNullableInt(request.getParameter("departmentId"));
         int month = parseOptionalInt(request.getParameter("month"), LocalDate.now().getMonthValue());
         int year = parseOptionalInt(request.getParameter("year"), LocalDate.now().getYear());
@@ -335,10 +363,143 @@ public class AttendanceController extends HttpServlet {
     }
 
     /**
+     * Bảng chấm công theo tháng (Timesheet Matrix Data)
+     */
+    private void handleTimesheetData(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        int month = parseOptionalInt(request.getParameter("month"), LocalDate.now().getMonthValue());
+        int year = parseOptionalInt(request.getParameter("year"), LocalDate.now().getYear());
+        if (month < 1 || month > 12) month = LocalDate.now().getMonthValue();
+        if (year < 2000 || year > 2100) year = LocalDate.now().getYear();
+
+        Integer departmentId = parseNullableInt(request.getParameter("departmentId"));
+        String keyword = trimToNull(request.getParameter("keyword"));
+
+        LocalDate firstDay = LocalDate.of(year, month, 1);
+        LocalDate lastDay = firstDay.withDayOfMonth(firstDay.lengthOfMonth());
+        int daysInMonth = lastDay.getDayOfMonth();
+
+        int companyId = SecuritySupport.requireCompanyId(request);
+
+        // Danh sách toàn bộ nhân sự công ty
+        List<AttendanceDTO> allEmpAttendance = scopedAttendance(request, LocalDate.now());
+        List<AttendanceDTO> filteredEmps = allEmpAttendance;
+        if (departmentId != null && departmentId > 0) {
+            filteredEmps = filteredEmps.stream()
+                    .filter(e -> e.getDepartmentId() != null && e.getDepartmentId().equals(departmentId))
+                    .toList();
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            String kw = keyword.toLowerCase();
+            filteredEmps = filteredEmps.stream()
+                    .filter(e -> (e.getFullName() != null && e.getFullName().toLowerCase().contains(kw))
+                            || (e.getEmployeeCode() != null && e.getEmployeeCode().toLowerCase().contains(kw)))
+                    .toList();
+        }
+
+        // Lấy tất cả bản ghi chấm công trong tháng của toàn bộ nhân sự công ty
+        Set<Integer> scopedEmployeeIds = filteredEmps.stream().map(AttendanceDTO::getEmployeeId).collect(Collectors.toSet());
+        List<AttendanceDTO> monthRecords = attendanceService.searchCompanyAttendance(companyId, departmentId, null, firstDay, lastDay, keyword)
+                .stream().filter(record -> scopedEmployeeIds.contains(record.getEmployeeId())).toList();
+
+        // Map employeeId -> dayOfMonth -> AttendanceDTO
+        java.util.Map<Integer, java.util.Map<Integer, AttendanceDTO>> empRecordsMap = new java.util.HashMap<>();
+        for (AttendanceDTO rec : monthRecords) {
+            if (rec.getAttendanceDate() != null) {
+                empRecordsMap.computeIfAbsent(rec.getEmployeeId(), k -> new java.util.HashMap<>())
+                        .put(rec.getAttendanceDate().getDayOfMonth(), rec);
+            }
+        }
+
+        List<Department> departments = departmentService.getDepartments(SecuritySupport.requireCompanyId(request));
+        List<AttendanceReportDAO> deptStats = getReportRowsForPrincipal(request, companyId, departmentId, month, year);
+
+        StringBuilder sb = new StringBuilder("{");
+        sb.append("\"success\":true,");
+        sb.append("\"month\":").append(month).append(",");
+        sb.append("\"year\":").append(year).append(",");
+        sb.append("\"daysInMonth\":").append(daysInMonth).append(",");
+        sb.append("\"totalEmployees\":").append(filteredEmps.size()).append(",");
+
+        // departments
+        sb.append("\"departments\":[");
+        for (int i = 0; i < departments.size(); i++) {
+            if (i > 0) sb.append(",");
+            Department d = departments.get(i);
+            sb.append("{\"departmentId\":").append(d.getDepartmentId())
+                    .append(",\"departmentCode\":").append(quote(d.getDepartmentCode()))
+                    .append(",\"departmentName\":").append(quote(d.getDepartmentName()))
+                    .append("}");
+        }
+        sb.append("],");
+
+        // departmentStats
+        sb.append("\"departmentStats\":").append(toReportJsonArray(deptStats)).append(",");
+
+        // employees
+        sb.append("\"employees\":[");
+        for (int i = 0; i < filteredEmps.size(); i++) {
+            if (i > 0) sb.append(",");
+            AttendanceDTO emp = filteredEmps.get(i);
+            java.util.Map<Integer, AttendanceDTO> dayMap = empRecordsMap.getOrDefault(emp.getEmployeeId(), java.util.Collections.emptyMap());
+
+            int presentCount = 0;
+            int lateCount = 0;
+            int earlyCount = 0;
+            int onLeaveCount = 0;
+            int absentCount = 0;
+
+            for (AttendanceDTO dRec : dayMap.values()) {
+                String st = dRec.getStatus() != null ? dRec.getStatus().toLowerCase() : "";
+                if (st.contains("present") || st.contains("đúng")) presentCount++;
+                else if (st.contains("late") || st.contains("muộn") || st.contains("trễ")) lateCount++;
+                else if (st.contains("early") || st.contains("sớm")) earlyCount++;
+                else if (st.contains("leave") || st.contains("phép")) onLeaveCount++;
+                else if (st.contains("absent") || st.contains("vắng")) absentCount++;
+            }
+
+            sb.append("{")
+                    .append("\"employeeId\":").append(emp.getEmployeeId()).append(",")
+                    .append("\"employeeCode\":").append(quote(emp.getEmployeeCode())).append(",")
+                    .append("\"fullName\":").append(quote(emp.getFullName())).append(",")
+                    .append("\"departmentId\":").append(emp.getDepartmentId()).append(",")
+                    .append("\"departmentName\":").append(quote(emp.getDepartmentName())).append(",")
+                    .append("\"positionTitle\":").append(quote(emp.getPositionTitle())).append(",")
+                    .append("\"summary\":{")
+                    .append("\"present\":").append(presentCount).append(",")
+                    .append("\"late\":").append(lateCount).append(",")
+                    .append("\"early\":").append(earlyCount).append(",")
+                    .append("\"onLeave\":").append(onLeaveCount).append(",")
+                    .append("\"absent\":").append(absentCount).append(",")
+                    .append("\"totalDays\":").append(presentCount + lateCount + earlyCount)
+                    .append("},")
+                    .append("\"records\":{");
+
+            boolean firstDayEntry = true;
+            for (int d = 1; d <= daysInMonth; d++) {
+                AttendanceDTO dayRec = dayMap.get(d);
+                if (dayRec != null) {
+                    if (!firstDayEntry) sb.append(",");
+                    firstDayEntry = false;
+                    sb.append("\"").append(d).append("\":{")
+                            .append("\"status\":").append(quote(dayRec.getStatus())).append(",")
+                            .append("\"checkIn\":").append(dayRec.getCheckInTime() != null ? quote(dayRec.getCheckInTime().format(DateTimeFormatter.ofPattern("HH:mm"))) : "null").append(",")
+                            .append("\"checkOut\":").append(dayRec.getCheckOutTime() != null ? quote(dayRec.getCheckOutTime().format(DateTimeFormatter.ofPattern("HH:mm"))) : "null").append(",")
+                            .append("\"totalHours\":").append(dayRec.getTotalHours() != null ? dayRec.getTotalHours() : "0.00")
+                            .append("}");
+                }
+            }
+            sb.append("}}");
+        }
+        sb.append("]}");
+
+        writeJson(response, HttpServletResponse.SC_OK, sb.toString());
+    }
+
+    /**
      * UC36: Export report to CSV
      */
     private void handleExportReport(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
-        Integer companyId = parseNullableInt(request.getParameter("companyId"));
+        int companyId = SecuritySupport.requireCompanyId(request);
         Integer departmentId = parseNullableInt(request.getParameter("departmentId"));
         int month = parseOptionalInt(request.getParameter("month"), LocalDate.now().getMonthValue());
         int year = parseOptionalInt(request.getParameter("year"), LocalDate.now().getYear());
@@ -361,8 +522,8 @@ public class AttendanceController extends HttpServlet {
      * Helper endpoint to fetch metadata (departments & employees) for dropdowns
      */
     private void handleMeta(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
-        List<Employee> employees = employeeService.getAllEmployees();
-        List<Department> departments = departmentService.getDepartments();
+        List<Employee> employees = employeeService.getAllEmployees(SecuritySupport.requireCompanyId(request));
+        List<Department> departments = departmentService.getDepartments(SecuritySupport.requireCompanyId(request));
         TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
 
         if ("self".equalsIgnoreCase(request.getParameter("scope")) || isRole(principal, "EMPLOYEE")) {
@@ -374,7 +535,7 @@ public class AttendanceController extends HttpServlet {
             Integer managerEmployeeId = principal.getEmployeeId();
             List<AttendanceDTO> team = managerEmployeeId == null
                     ? List.of()
-                    : attendanceService.getTeamAttendance(managerEmployeeId, LocalDate.now());
+                    : attendanceService.getTeamAttendance(SecuritySupport.requireCompanyId(request), managerEmployeeId, LocalDate.now());
             Set<Integer> teamEmployeeIds = team.stream()
                     .map(AttendanceDTO::getEmployeeId)
                     .collect(Collectors.toSet());
@@ -399,7 +560,7 @@ public class AttendanceController extends HttpServlet {
                     .append(",\"status\":").append(quote(e.getStatus()))
                     .append("}");
         }
-        json.append("],\"departments\":[");
+        json.append("],\"currentEmployeeId\":").append(principal.getEmployeeId() == null ? "null" : principal.getEmployeeId()).append(",\"departments\":[");
         for (int i = 0; i < departments.size(); i++) {
             if (i > 0) json.append(",");
             Department d = departments.get(i);
@@ -413,14 +574,20 @@ public class AttendanceController extends HttpServlet {
         writeJson(response, HttpServletResponse.SC_OK, json.toString());
     }
 
+    /**
+     * Kiểm tra quyền quản lý điểm danh:
+     * Manager và Company Admin được toàn quyền quản lý điểm danh cho toàn bộ nhân sự công ty.
+     * Employee chỉ được xem lịch sử cá nhân.
+     */
     private void ensureCanManageAttendance(HttpServletRequest request, int employeeId, LocalDate date)
             throws SQLException {
         TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        attendanceService.requireEmployee(SecuritySupport.requireCompanyId(request), employeeId);
         if (isRole(principal, "MANAGER")) {
             Integer managerEmployeeId = principal.getEmployeeId();
-            if (managerEmployeeId == null || attendanceService.getTeamAttendance(managerEmployeeId, date)
+            if (managerEmployeeId == null || attendanceService.getTeamAttendance(SecuritySupport.requireCompanyId(request), managerEmployeeId, date)
                     .stream().noneMatch(item -> item.getEmployeeId() == employeeId)) {
-                throw new IllegalArgumentException("You can only manage attendance for your direct team.");
+                throw new IllegalArgumentException("Bạn chỉ được quản lý chấm công của cấp dưới trực tiếp.");
             }
         }
     }
@@ -432,11 +599,21 @@ public class AttendanceController extends HttpServlet {
         if (isRole(principal, "MANAGER")) {
             Integer managerEmployeeId = principal.getEmployeeId();
             if (managerEmployeeId == null) {
-                throw new IllegalArgumentException("Manager account is not linked to an employee profile.");
+                throw new IllegalArgumentException("Tài khoản quản lý chưa liên kết với hồ sơ nhân viên.");
             }
-            return attendanceService.getManagerAttendanceReport(managerEmployeeId, departmentId, month, year);
+            return attendanceService.getManagerAttendanceReport(SecuritySupport.requireCompanyId(request), managerEmployeeId, departmentId, month, year);
         }
         return attendanceService.getAttendanceReport(companyId, departmentId, month, year);
+    }
+
+    private List<AttendanceDTO> scopedAttendance(HttpServletRequest request, LocalDate date) throws SQLException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        int companyId = SecuritySupport.requireCompanyId(request);
+        if (isRole(principal, "MANAGER")) {
+            if (principal.getEmployeeId() == null) throw new SecurityException("Tài khoản quản lý chưa liên kết với hồ sơ nhân viên.");
+            return attendanceService.getTeamAttendance(companyId, principal.getEmployeeId(), date);
+        }
+        return attendanceService.getAllAttendanceByDate(companyId, date);
     }
 
     private boolean matchesPrincipalEmployee(TenantPrincipal principal, int employeeId) {

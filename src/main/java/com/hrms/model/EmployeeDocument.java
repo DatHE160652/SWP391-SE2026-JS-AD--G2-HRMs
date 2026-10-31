@@ -12,6 +12,13 @@ public class EmployeeDocument {
     private Integer uploadedBy;
     private Timestamp uploadedDate;
     private String status;
+    private String mimeType;
+    private Long fileSizeBytes;
+
+    public String getMimeType() { return mimeType; }
+    public void setMimeType(String value) { mimeType=value; }
+    public Long getFileSizeBytes() { return fileSizeBytes; }
+    public void setFileSizeBytes(Long value) { fileSizeBytes=value; }
 
     public EmployeeDocument() {
     }

@@ -11,23 +11,26 @@ const DepartmentApi = {
                 'Accept': 'application/json',
                 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
             },
-            body: new URLSearchParams(data)
+            body: new URLSearchParams({ ...data, csrfToken: data.csrfToken || document.querySelector('meta[name="organization-csrf-token"]')?.content || '' })
         });
         return handleDepartmentResponse(response);
     }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+    document.querySelector('#statusFilter')?.addEventListener('change', loadDepartments);
     const page = document.body.dataset.page;
     if (page === 'department-list') {
         loadDepartments();
     }
     if (page === 'department-form') {
-        setupDepartmentForm();
+        setupDepartmentForm().catch(error => showDepartmentMessage(error.message, 'error'));
     }
 });
 
 async function loadDepartments() {
+    const message = sessionStorage.getItem('departmentMessage');
+    if (message) { showDepartmentMessage(message); sessionStorage.removeItem('departmentMessage'); }
     try {
         const payload = await DepartmentApi.get('/departments');
         renderDepartmentRows(payload.data);
@@ -42,10 +45,20 @@ async function setupDepartmentForm() {
     const form = document.querySelector('#departmentForm');
 
     if (departmentId) {
-        document.querySelector('#departmentFormTitle').textContent = 'Update Department';
+        document.querySelector('#departmentFormTitle').textContent = 'Cập nhật phòng ban';
         const payload = await DepartmentApi.get(`/departments/detail?id=${departmentId}`);
         fillDepartmentForm(form, payload.data);
-        await setupDepartmentMembersForm(departmentId);
+        const assignButton = document.querySelector('#departmentInitialAssignment');
+        if (assignButton && payload.data.isActive) { assignButton.hidden = false; assignButton.dataset.initialDepartment = departmentId; }
+        const links = document.querySelector('#departmentPositionLinks');
+        const view = document.createElement('a');
+        view.href = '../position/position-list?departmentId=' + encodeURIComponent(departmentId);
+        view.textContent = 'Xem chức danh';
+        const create = document.createElement('a');
+        create.href = '../position/position-form?departmentId=' + encodeURIComponent(departmentId);
+        create.textContent = ' Thêm chức danh';
+        links.replaceChildren(view, create);
+        await loadDepartmentMembers(departmentId);
     }
 
     form.addEventListener('submit', async event => {
@@ -58,123 +71,60 @@ async function setupDepartmentForm() {
     });
 }
 
-async function setupDepartmentMembersForm(departmentId) {
+async function loadDepartmentMembers(departmentId) {
     const panel = document.querySelector('#departmentMembersPanel');
-    const form = document.querySelector('#departmentMembersForm');
-    if (!panel || !form) {
-        return;
-    }
+    const list = document.querySelector('#departmentMemberList');
+    if (!panel || !list) return;
     panel.classList.remove('hidden');
-    form.departmentId.value = departmentId;
-
-    const payload = await DepartmentApi.get(`/departments/members?departmentId=${departmentId}`);
-    renderDepartmentMemberOptions(form, payload.data || []);
-
-    if (form.dataset.bound !== 'true') {
-        form.dataset.bound = 'true';
-        form.addEventListener('submit', async event => {
-            event.preventDefault();
-            await saveDepartmentMembers(form);
-        });
-    }
-}
-
-function renderDepartmentMemberOptions(form, employees) {
-    const managerSelect = form.managerId;
-    const departmentId = String(form.departmentId.value);
-    const managers = employees.filter(employee =>
-        String(employee.departmentId || '') === departmentId
-        && String(employee.roleCode || '').toUpperCase() === 'MANAGER'
-    );
-    managerSelect.innerHTML = '<option value="">Select Department Manager</option>' + managers.map(employee => `
-        <option value="${employee.employeeId}">${safeDepartmentValue(employee.employeeCode)} - ${safeDepartmentValue(employee.fullName)}</option>
-    `).join('');
-
-    const currentManager = employees.find(employee =>
-        employee.roleCode === 'MANAGER' && employee.selected && (!employee.managerId || employee.managerId === employee.employeeId));
-    if (currentManager) {
-        managerSelect.value = currentManager.employeeId;
-    }
-
-    const picker = document.querySelector('#departmentEmployeeOptions');
-    if (!employees.length) {
-        picker.innerHTML = '<p class="page-subtitle">No employees found.</p>';
-        return;
-    }
-
-    picker.innerHTML = employees.map(employee => {
-        const belongsOtherDepartment = employee.departmentId && String(employee.departmentId) !== departmentId;
-        const disabled = belongsOtherDepartment ? 'disabled' : '';
-        const checked = employee.selected && !belongsOtherDepartment ? 'checked' : '';
-        const note = belongsOtherDepartment ? ` | Đang thuộc phòng #${employee.departmentId}` : '';
-        return `
-        <label class="member-option">
-            <input type="checkbox" name="employeeIds" value="${employee.employeeId}" ${checked} ${disabled}>
-            <span>
-                <strong>${safeDepartmentValue(employee.employeeCode)} - ${safeDepartmentValue(employee.fullName)}</strong>
-                <span>${safeDepartmentValue(employee.positionTitle)} | Role: ${safeDepartmentValue(employee.roleCode)}${note}</span>
-            </span>
-        </label>
-    `;
-    }).join('');
-
-    managerSelect.addEventListener('change', () => {
-        picker.querySelectorAll('input[name="employeeIds"]').forEach(input => {
-            if (input.value === managerSelect.value) {
-                input.checked = false;
-                input.disabled = true;
-            } else {
-                input.disabled = false;
-            }
-        });
-    });
-    managerSelect.dispatchEvent(new Event('change'));
-}
-
-async function saveDepartmentMembers(form) {
-    const employeeIds = Array.from(form.querySelectorAll('input[name="employeeIds"]:checked'))
-        .map(input => input.value)
-        .join(',');
-
+    list.innerHTML = '<div class="lc-spinner">Đang tải nhân viên…</div>';
+    document.querySelector('#departmentMemberCount').textContent = '—';
     try {
-        const payload = await DepartmentApi.post('/departments/assign-members', {
-            departmentId: form.departmentId.value,
-            managerId: form.managerId.value,
-            employeeIds
-        });
-        showDepartmentMessage(payload.message);
-        await setupDepartmentMembersForm(form.departmentId.value);
+        const payload = await DepartmentApi.get('/departments/members?departmentId=' + encodeURIComponent(departmentId));
+        const employees = (payload.data || []).filter(employee => String(employee.departmentId) === String(departmentId));
+        document.querySelector('#departmentMemberCount').textContent = String(employees.length);
+        list.innerHTML = employees.length ? '<div class="lc-table-wrap"><table data-pagination="department-members"><thead><tr>'
+            + '<th>Mã nhân viên</th><th>Họ tên</th><th>Chức danh</th><th>Quản lý trực tiếp</th></tr></thead><tbody>'
+            + employees.map(employee => '<tr><td>' + safeDepartmentValue(employee.employeeCode) + '</td><td>'
+                + safeDepartmentValue(employee.fullName) + '</td><td>' + safeDepartmentValue(employee.positionTitle || 'Chưa phân công')
+                + '</td><td>' + safeDepartmentValue(employee.managerName || 'Chưa có quản lý') + '</td></tr>').join('')
+            + '</tbody></table></div>' : '<div class="lc-empty">Phòng ban chưa có nhân viên.</div>';
     } catch (error) {
-        showDepartmentMessage(error.message, 'error');
+        document.querySelector('#departmentMemberCount').textContent = '—';
+        list.textContent = error.message;
     }
 }
 
 async function createDepartment(form) {
     try {
         const payload = await DepartmentApi.post('/departments/create', readDepartmentForm(form));
-        showDepartmentMessage(payload.message);
-        form.reset();
+        sessionStorage.setItem('departmentMessage', payload.message);
+        location.assign('department-list');
     } catch (error) {
-        showDepartmentMessage(error.message, 'error');
+        if (!FormValidation.showErrors(form, error)) {
+            showDepartmentMessage(error.message, 'error');
+        }
     }
 }
 
 async function updateDepartment(form) {
     try {
         const payload = await DepartmentApi.post('/departments/update', readDepartmentForm(form));
-        showDepartmentMessage(payload.message);
+        sessionStorage.setItem('departmentMessage', payload.message);
+        location.assign('department-list');
     } catch (error) {
-        showDepartmentMessage(error.message, 'error');
+        if (!FormValidation.showErrors(form, error)) {
+            showDepartmentMessage(error.message, 'error');
+        }
     }
 }
 
-async function deleteDepartment(departmentId) {
-    if (!confirm('Delete this department?')) {
+async function setDepartmentActive(departmentId, active) {
+    if (!confirm(active ? 'Kích hoạt lại bản ghi này?' : 'Vô hiệu hóa bản ghi này?')) {
         return;
     }
 
     try {
-        const payload = await DepartmentApi.post('/departments/delete', { departmentId });
+        const payload = await DepartmentApi.post(active ? '/departments/activate' : '/departments/deactivate', { departmentId });
         showDepartmentMessage(payload.message);
         await loadDepartments();
     } catch (error) {
@@ -183,9 +133,11 @@ async function deleteDepartment(departmentId) {
 }
 
 function renderDepartmentRows(departments) {
+    const status = document.querySelector('#statusFilter')?.value || '';
+    departments = departments.filter(item => !status || (item.isActive) === (status === 'Active'));
     const tbody = document.querySelector('#departmentRows');
     if (!departments.length) {
-        tbody.innerHTML = '<tr><td colspan="4">No departments found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5">Chưa có phòng ban.</td></tr>';
         return;
     }
 
@@ -193,10 +145,14 @@ function renderDepartmentRows(departments) {
         <tr>
             <td><strong>${safeDepartmentValue(department.departmentCode)}</strong></td>
             <td>${safeDepartmentValue(department.departmentName)}</td>
-            <td>${safeDepartmentValue(department.createdAt)}</td>
+            <td>${department.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}</td>
+            <td>${department.createdAt ? safeDepartmentValue(new Date(department.createdAt).toLocaleDateString('vi-VN')) : '-'}</td>
             <td class="actions">
-                <a href="department-form?id=${department.departmentId}">Edit</a>
-                <button class="danger" onclick="deleteDepartment(${department.departmentId})">Delete</button>
+                ${department.isActive ? `<button type="button" data-initial-department="${department.departmentId}">Phân công</button>` : ''}
+                <a href="department-form?id=${department.departmentId}">Xem / Sửa</a>
+                <a href="../position/position-list?departmentId=${department.departmentId}">Chức danh</a>
+                <a href="../position/position-form?departmentId=${department.departmentId}">Thêm chức danh</a>
+                <button class="danger" onclick="setDepartmentActive(${department.departmentId}, ${!department.isActive})">${department.isActive ? 'Vô hiệu hóa' : 'Kích hoạt lại'}</button>
             </td>
         </tr>
     `).join('');
@@ -223,7 +179,7 @@ function departmentApiUrl(url) {
 async function handleDepartmentResponse(response) {
     const payload = await response.json();
     if (!response.ok || payload.success === false) {
-        throw new Error(payload.message || 'Request failed.');
+        throw FormValidation.responseError(payload);
     }
     return payload;
 }
@@ -235,5 +191,5 @@ function showDepartmentMessage(message, type = 'success') {
 }
 
 function safeDepartmentValue(value) {
-    return value === null || value === undefined || value === '' ? '-' : String(value);
+    return value === null || value === undefined || value === '' ? '-' : String(value).replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
 }

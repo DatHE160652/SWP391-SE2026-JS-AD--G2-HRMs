@@ -60,7 +60,7 @@
                 Yêu cầu tư vấn
             </a>
             <a href="${base}/login">
-                Tenant Portal
+                Cổng đăng nhập tenant
             </a>
         </div>
         <div>
