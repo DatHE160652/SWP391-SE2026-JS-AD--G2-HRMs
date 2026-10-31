@@ -245,31 +245,6 @@ CREATE TABLE EmailAttempts (
 -- UNKNOWN: timeout/crash, không xác định kết quả; không retry mật khẩu cũ.
 -- Credential được lưu trực tiếp trong Users.Password cho đồ án local/demo; UC11 sinh mật khẩu mới.
 
--- ------------------------------------------------------------------------
--- WF1: FAQ công khai; tạo chủ đề/bình luận yêu cầu đăng nhập ở backend
--- ------------------------------------------------------------------------
-CREATE TABLE FaqTopics (
-    TopicId INT IDENTITY(1,1) PRIMARY KEY,
-    Title NVARCHAR(200) NOT NULL,
-    Content NVARCHAR(MAX) NOT NULL,
-    AuthorUserId INT NOT NULL,
-    CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
-    CONSTRAINT FK_FaqTopics_Author FOREIGN KEY (AuthorUserId) REFERENCES Users(UserId),
-    CONSTRAINT CK_FaqTopics_Title CHECK (LEN(LTRIM(RTRIM(Title))) > 0),
-    CONSTRAINT CK_FaqTopics_Content CHECK (LEN(LTRIM(RTRIM(Content))) > 0)
-);
-
-CREATE TABLE FaqComments (
-    CommentId BIGINT IDENTITY(1,1) PRIMARY KEY,
-    TopicId INT NOT NULL,
-    Content NVARCHAR(MAX) NOT NULL,
-    AuthorUserId INT NOT NULL,
-    CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
-    CONSTRAINT FK_FaqComments_Topic FOREIGN KEY (TopicId) REFERENCES FaqTopics(TopicId),
-    CONSTRAINT FK_FaqComments_Author FOREIGN KEY (AuthorUserId) REFERENCES Users(UserId),
-    CONSTRAINT CK_FaqComments_Content CHECK (LEN(LTRIM(RTRIM(Content))) > 0)
-);
-
 -- ========================================================================
 -- PHẦN 3: CƠ CẤU TỔ CHỨC VÀ HỒ SƠ NHÂN SỰ
 -- Workflow 2: Employee Management
@@ -617,7 +592,6 @@ CREATE UNIQUE INDEX UX_RegistrationRequests_ConvertedCompany
 CREATE INDEX IX_RegistrationRequests_Status_CreatedAt ON RegistrationRequests(Status, CreatedAt);
 CREATE INDEX IX_EmailAttempts_Request_CreatedAt ON EmailAttempts(RegistrationRequestId, CreatedAt);
 CREATE INDEX IX_EmailAttempts_User_CreatedAt ON EmailAttempts(UserId, CreatedAt);
-CREATE INDEX IX_FaqComments_Topic_CreatedAt ON FaqComments(TopicId, CreatedAt);
 -- Index không thay chính sách đăng ký lại sau DELETED (chưa chốt), cũng không
 -- thay kiểm tra/khóa chống trùng xuyên RegistrationRequests, Users và Companies.
 GO

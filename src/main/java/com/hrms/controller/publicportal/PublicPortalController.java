@@ -3,11 +3,9 @@ package com.hrms.controller.publicportal;
 import com.hrms.api.ApiRoutes;
 import com.hrms.service.security.TenantPrincipal;
 import com.hrms.model.publicportal.ConsultationSubmission;
-import com.hrms.model.publicportal.FaqTopic;
 import com.hrms.service.TenantAuthService;
 import com.hrms.service.EmployeeHistoryService;
 import com.hrms.service.publicportal.ConsultationRequestService;
-import com.hrms.service.publicportal.FaqService;
 import com.hrms.util.SecuritySupport;
 
 import jakarta.servlet.ServletException;
@@ -18,7 +16,6 @@ import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -27,18 +24,16 @@ public class PublicPortalController extends HttpServlet {
     private static final String FLASH_SUCCESS = "publicConsultationSuccess";
     private static final String FLASH_EMAIL_WARNING = "publicConsultationEmailWarning";
     private final ConsultationRequestService consultationService;
-    private final FaqService faqService;
     private final TenantAuthService tenantAuthService;
     private final EmployeeHistoryService employeeHistoryService = new EmployeeHistoryService();
 
     public PublicPortalController() {
-        this(new ConsultationRequestService(), new FaqService(), new TenantAuthService());
+        this(new ConsultationRequestService(), new TenantAuthService());
     }
 
-    PublicPortalController(ConsultationRequestService consultationService, FaqService faqService,
+    PublicPortalController(ConsultationRequestService consultationService,
                            TenantAuthService tenantAuthService) {
         this.consultationService = consultationService;
-        this.faqService = faqService;
         this.tenantAuthService = tenantAuthService;
     }
 
@@ -69,8 +64,6 @@ public class PublicPortalController extends HttpServlet {
         String path = request.getServletPath();
         if (ApiRoutes.PUBLIC_CONSULTATION.equals(path)) {
             submitConsultation(request, response);
-        } else if (ApiRoutes.PUBLIC_FAQ_TOPICS.equals(path) || ApiRoutes.PUBLIC_FAQ_COMMENTS.equals(path)) {
-            submitFaqMutation(request, response, path);
         } else if (ApiRoutes.TENANT_LOGIN.equals(path)) {
             submitTenantLogin(request, response);
         } else if (ApiRoutes.TENANT_LOGOUT.equals(path)) {
@@ -254,47 +247,7 @@ public class PublicPortalController extends HttpServlet {
 
     private void showFaq(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        try {
-            List<FaqTopic> topics = faqService.getTopics();
-            request.setAttribute("faqTopics", topics);
-            request.setAttribute("faqCsrfToken", SecuritySupport.ensurePublicCsrfToken(request.getSession(true)));
-        } catch (SQLException exception) {
-            getServletContext().log("Public FAQ read failed; SQLState=" + exception.getSQLState());
-            request.setAttribute("faqTopics", List.of());
-            request.setAttribute("faqReadError", "Chưa thể tải thảo luận. Vui lòng thử lại sau.");
-        }
         render(request, response, "faqs.jsp");
-    }
-
-    private void submitFaqMutation(HttpServletRequest request, HttpServletResponse response, String path)
-            throws ServletException, IOException {
-        if (!SecuritySupport.hasValidPublicCsrfToken(request)) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Phiên thao tác không hợp lệ.");
-            return;
-        }
-        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
-        if (principal == null || principal.getUserId() == null || principal.getUserId() <= 0) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Vui lòng đăng nhập để tạo chủ đề hoặc bình luận.");
-            return;
-        }
-        try {
-            int userId = principal.getUserId();
-            if (!faqService.isTenantUserActive(userId)) {
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Phiên đăng nhập tenant không còn hợp lệ.");
-                return;
-            }
-            if (ApiRoutes.PUBLIC_FAQ_TOPICS.equals(path)) {
-                faqService.createTopic(userId, request.getParameter("title"), request.getParameter("content"));
-            } else {
-                faqService.createComment(userId, parsePositiveId(request.getParameter("topicId")), request.getParameter("content"));
-            }
-            response.sendRedirect(request.getContextPath() + ApiRoutes.PUBLIC_FAQ);
-        } catch (IllegalArgumentException exception) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, exception.getMessage());
-        } catch (SQLException exception) {
-            getServletContext().log("FAQ mutation failed; SQLState=" + exception.getSQLState());
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Không thể lưu thao tác FAQ.");
-        }
     }
 
     private void renderConsultationError(HttpServletRequest request, HttpServletResponse response,
@@ -324,16 +277,6 @@ public class PublicPortalController extends HttpServlet {
             if (!allowed.contains(parameterName)) return true;
         }
         return false;
-    }
-
-    private int parsePositiveId(String value) {
-        try {
-            int id = Integer.parseInt(value == null ? "" : value);
-            if (id <= 0) throw new NumberFormatException();
-            return id;
-        } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException("Chủ đề không hợp lệ.");
-        }
     }
 
     private Object consumeFlash(HttpServletRequest request, String key) {

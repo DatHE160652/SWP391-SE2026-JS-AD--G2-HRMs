@@ -8,8 +8,6 @@ public final class ApiRoutes {
     public static final String PUBLIC_PRICING = "/Pricing";
     public static final String PUBLIC_FAQ = "/faqs";
     public static final String PUBLIC_CONSULTATION = "/consultation-request";
-    public static final String PUBLIC_FAQ_TOPICS = "/faqs/topics";
-    public static final String PUBLIC_FAQ_COMMENTS = "/faqs/comments";
     public static final String SYSTEM_ADMIN_PREFIX = "/systemadmin";
     public static final String SYSTEM_ADMIN_LOGIN = SYSTEM_ADMIN_PREFIX + "/login";
     public static final String SYSTEM_ADMIN_LOGOUT = SYSTEM_ADMIN_PREFIX + "/logout";
