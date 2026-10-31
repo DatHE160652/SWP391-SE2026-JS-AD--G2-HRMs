@@ -14,7 +14,6 @@ import java.util.Base64;
 public final class SecuritySupport {
     public static final String PRINCIPAL_ATTRIBUTE = "systemAdminPrincipal";
     public static final String CSRF_ATTRIBUTE = "systemAdminCsrfToken";
-    public static final String PUBLIC_CSRF_ATTRIBUTE = "publicFaqCsrfToken";
     public static final String TENANT_PRINCIPAL_ATTRIBUTE = "tenantPrincipal";
     public static final String TENANT_CSRF_ATTRIBUTE = "tenantPasswordCsrfToken";
 
@@ -29,14 +28,6 @@ public final class SecuritySupport {
 
     public static boolean hasValidCsrfToken(HttpServletRequest request) {
         return hasValidToken(request, CSRF_ATTRIBUTE);
-    }
-
-    public static String ensurePublicCsrfToken(HttpSession session) {
-        return ensureToken(session, PUBLIC_CSRF_ATTRIBUTE);
-    }
-
-    public static boolean hasValidPublicCsrfToken(HttpServletRequest request) {
-        return hasValidToken(request, PUBLIC_CSRF_ATTRIBUTE);
     }
 
     public static boolean isSystemAdmin(HttpServletRequest request) {

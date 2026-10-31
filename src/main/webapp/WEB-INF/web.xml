@@ -58,8 +58,6 @@
         <url-pattern>/Pricing</url-pattern>
         <url-pattern>/faqs</url-pattern>
         <url-pattern>/consultation-request</url-pattern>
-        <url-pattern>/faqs/topics</url-pattern>
-        <url-pattern>/faqs/comments</url-pattern>
         <url-pattern>/login</url-pattern>
         <url-pattern>/logout</url-pattern>
         <url-pattern>/change-password</url-pattern>
