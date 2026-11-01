@@ -102,12 +102,19 @@ public class TenantAuthorizationFilter implements Filter {
             return principal.getEmployeeId() != null && (isGet(request.getMethod())
                     || isPost(request.getMethod()) && payrollPath.equals("/payslips/api/read"));
         }
-        if (principal.isCompanyAdministrator()) {
-            return true;
-        }
-
         String path = request.getServletPath();
         String method = request.getMethod();
+
+        if (principal.isCompanyAdministrator()) {
+            if (isPost(method) && (
+                    path.equals("/attendance/check-in")
+                    || path.equals("/attendance/check-out")
+                    || path.equals("/attendance/batch-complete")
+                    || path.equals("/attendance/manual-adjust"))) {
+                return false;
+            }
+            return true;
+        }
 
         if ("MANAGER".equals(role)) {
             return isManagerAllowed(path, method);
@@ -146,7 +153,12 @@ public class TenantAuthorizationFilter implements Filter {
                         || path.equals("/attendance/team")
                         || path.equals("/attendance/report")
                         || path.equals("/attendance/export-report")
-                        || path.equals("/attendance/meta"))) {
+                        || path.equals("/attendance/export-timesheet")
+                        || path.equals("/attendance/meta")
+                        || path.equals("/attendance/shift-setting")
+                        || path.equals("/attendance/explanation/pending")
+                        || path.equals("/attendance/explanation/my-requests")
+                        || path.equals("/attendance/timesheet-lock"))) {
             return true;
         }
 
@@ -164,7 +176,13 @@ public class TenantAuthorizationFilter implements Filter {
         return isPost(method) && (
                 path.equals("/attendance/check-in")
                         || path.equals("/attendance/check-out")
-                        || path.equals("/attendance/batch-complete"));
+                        || path.equals("/attendance/batch-complete")
+                        || path.equals("/attendance/shift-setting")
+                        || path.equals("/attendance/manual-adjust")
+                        || path.equals("/attendance/explanation/submit")
+                        || path.equals("/attendance/explanation/cancel")
+                        || path.equals("/attendance/explanation/review")
+                        || path.equals("/attendance/timesheet-lock"));
     }
 
     private boolean isEmployeeAllowed(HttpServletRequest request, TenantPrincipal principal,
@@ -179,11 +197,17 @@ public class TenantAuthorizationFilter implements Filter {
                         || path.equals("/documents/me/download")
                         || path.equals("/attendance/employee-attendance")
                         || path.equals("/attendance/employee-attendance.html")
-                        || path.equals("/attendance/meta"))) {
+                        || path.equals("/attendance/meta")
+                        || path.equals("/attendance/shift-setting")
+                        || path.equals("/attendance/explanation/my-requests")
+                        || path.equals("/attendance/timesheet-lock"))) {
             return true;
         }
 
-        if (isPost(method) && path.equals("/employees/me/update-profile")) {
+        if (isPost(method) && (
+                path.equals("/employees/me/update-profile")
+                || path.equals("/attendance/explanation/submit")
+                || path.equals("/attendance/explanation/cancel"))) {
             return true;
         }
 

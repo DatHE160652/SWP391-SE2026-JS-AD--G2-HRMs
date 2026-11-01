@@ -21,8 +21,17 @@ public final class SecuritySupport {
     }
     public static final String PRINCIPAL_ATTRIBUTE = "systemAdminPrincipal";
     public static final String CSRF_ATTRIBUTE = "systemAdminCsrfToken";
+    public static final String PUBLIC_CSRF_ATTRIBUTE = "publicFaqCsrfToken";
     public static final String TENANT_PRINCIPAL_ATTRIBUTE = "tenantPrincipal";
     public static final String PAYROLL_CSRF_ATTRIBUTE = "payrollCsrfToken";
+
+    public static String ensurePublicCsrfToken(HttpSession session) {
+        return ensureToken(session, PUBLIC_CSRF_ATTRIBUTE);
+    }
+
+    public static boolean hasValidPublicCsrfToken(HttpServletRequest request) {
+        return hasValidToken(request, PUBLIC_CSRF_ATTRIBUTE);
+    }
 
     public static String ensurePayrollCsrfToken(HttpSession session) {
         return ensureToken(session, PAYROLL_CSRF_ATTRIBUTE);

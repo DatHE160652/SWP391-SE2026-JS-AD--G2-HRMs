@@ -10,7 +10,7 @@
 <main class="lc-main">
 <div class="lc-breadcrumb">Quản trị nhân sự &nbsp; / &nbsp; Hồ sơ nhân viên</div>
 <div class="lc-heading"><div><h1>Hồ sơ nhân viên</h1><p>Quản lý thông tin và quá trình công tác của nhân viên</p></div>
-<div class="lc-actions"><button id="lc-add">＋ Thêm nhân viên</button></div></div>
+<div class="lc-actions"><button id="lc-add">＋ Thêm nhân viên</button><button id="lc-export-employees" type="button" class="secondary" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">Xuất Excel</button></div></div>
 <div id="lc-error" class="lc-alert" role="alert"></div>
 <div class="lc-master-detail">
 <section class="lc-card"><div class="lc-list-head"><h3>Danh sách nhân viên <span id="lc-count" class="lc-count">—</span></h3>

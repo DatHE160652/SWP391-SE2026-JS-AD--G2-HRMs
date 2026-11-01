@@ -19,6 +19,15 @@ const PositionApi = {
 
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('#statusFilter')?.addEventListener('change', loadPositions);
+    document.querySelector('#btnExportPositions')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        const status = document.querySelector('#statusFilter')?.value || '';
+        const dept = document.querySelector('#departmentFilter')?.value || '';
+        const params = new URLSearchParams();
+        if (status) params.set('status', status);
+        if (dept) params.set('departmentId', dept);
+        window.location.href = positionApiUrl(`/positions/export?${params.toString()}`);
+    });
     const page = document.body.dataset.page;
     if (page === 'position-list') {
         setupPositionList().catch(error => showPositionMessage(error.message, 'error'));
