@@ -153,6 +153,7 @@ public class TenantAuthorizationFilter implements Filter {
                         || path.equals("/attendance/team")
                         || path.equals("/attendance/report")
                         || path.equals("/attendance/export-report")
+                        || path.equals("/attendance/export-timesheet")
                         || path.equals("/attendance/meta")
                         || path.equals("/attendance/shift-setting"))) {
             return true;

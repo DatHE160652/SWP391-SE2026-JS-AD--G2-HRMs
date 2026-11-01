@@ -1671,55 +1671,17 @@ function renderDepartmentStats(stats) {
 }
 
 function exportTimesheetToExcel() {
-    if (!currentTimesheetData || !currentTimesheetData.employees) {
-        showMessage('Chưa có dữ liệu để xuất file Excel.', 'error');
-        return;
-    }
+    const deptSelect = document.getElementById('timesheetDeptSelect');
+    const searchInput = document.getElementById('timesheetSearchInput');
+    const departmentId = deptSelect ? deptSelect.value : '';
+    const keyword = searchInput ? searchInput.value.trim() : '';
 
-    const data = currentTimesheetData;
-    const daysInMonth = data.daysInMonth || 30;
-    const employees = data.employees;
-
-    let csv = `\uFEFFBẢNG CHẤM CÔNG THÁNG ${data.month}/${data.year}\n\n`;
-
-    // Headers
-    let header = 'Mã NV,Họ và Tên,Phòng ban';
-    for (let d = 1; d <= daysInMonth; d++) {
-        header += `,Ngày ${d}`;
-    }
-    header += ',Tổng ngày đi làm,Đúng giờ,Đi muộn,Về sớm,Nghỉ phép,Vắng\n';
-    csv += header;
-
-    // Rows
-    employees.forEach(e => {
-        let row = `"${e.employeeCode || ''}","${e.fullName || ''}","${e.departmentName || '-'}"`;
-        const recs = e.records || {};
-        for (let d = 1; d <= daysInMonth; d++) {
-            const rec = recs[String(d)];
-            if (rec) {
-                const st = (rec.status || '').toLowerCase();
-                if (st.includes('late') || st.includes('muộn') || st.includes('trễ')) row += ',Đi muộn (L)';
-                else if (st.includes('early') || st.includes('sớm')) row += ',Về sớm (S)';
-                else if (st.includes('leave') || st.includes('phép')) row += ',Nghỉ phép (P)';
-                else if (st.includes('absent') || st.includes('vắng')) row += ',Vắng (V)';
-                else if (st.includes('present') || st.includes('đúng') || rec.checkIn) row += ',Đúng giờ (✓)';
-                else row += `,${safe(rec.status)}`;
-            } else {
-                row += ',-';
-            }
-        }
-        const s = e.summary || {};
-        row += `,${s.totalDays || 0},${s.present || 0},${s.late || 0},${s.early || 0},${s.onLeave || 0},${s.absent || 0}\n`;
-        csv += row;
+    const params = new URLSearchParams({
+        month: currentTimesheetMonth,
+        year: currentTimesheetYear
     });
+    if (departmentId) params.append('departmentId', departmentId);
+    if (keyword) params.append('keyword', keyword);
 
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `Bang_Cham_Cong_Thang_${data.month}_${data.year}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    window.location.href = withContext(`/attendance/export-timesheet?${params.toString()}`);
 }

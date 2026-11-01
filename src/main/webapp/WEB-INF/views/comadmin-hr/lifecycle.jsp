@@ -7,7 +7,7 @@
 <body class="lc" data-lifecycle="<c:out value='${lifecycleResource}'/>" data-context="${pageContext.request.contextPath}" data-role="<c:out value='${sessionScope.tenantPrincipal.roleCode}'/>">
 <%@ include file="/WEB-INF/views/common/lifecycle-shell.jspf" %>
 <main class="lc-main"><div class="lc-breadcrumb">Quản trị nhân sự &nbsp; / &nbsp; <span id="lc-page-label"></span></div>
-<div class="lc-heading"><div><h1 id="lc-page-title">Đang tải…</h1><p id="lc-page-subtitle"></p></div><div class="lc-actions"><button id="lc-page-add" hidden>＋ Tạo hợp đồng</button></div></div>
+<div class="lc-heading"><div><h1 id="lc-page-title">Đang tải…</h1><p id="lc-page-subtitle"></p></div><div class="lc-actions"><button id="lc-page-add" hidden>＋ Tạo hợp đồng</button><button id="lc-page-export" class="secondary" hidden style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">Xuất Excel</button></div></div>
 <div id="lc-error" class="lc-alert" role="alert"></div><div id="lc-page-content"><div class="lc-spinner">Đang tải dữ liệu…</div></div></main>
 <dialog id="lc-employee-contracts" class="lc-modal lc-employee-contracts" aria-labelledby="lc-employee-contracts-title">
 <div class="lc-modal-header"><div><h2 id="lc-employee-contracts-title">Hợp đồng của nhân viên</h2><p id="lc-employee-contracts-summary" class="lc-muted"></p></div><button class="lc-close" type="button" data-close aria-label="Đóng danh sách hợp đồng">×</button></div>

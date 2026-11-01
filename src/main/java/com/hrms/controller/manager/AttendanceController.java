@@ -10,6 +10,7 @@ import com.hrms.model.Employee;
 import com.hrms.service.AttendanceService;
 import com.hrms.service.DepartmentService;
 import com.hrms.service.EmployeeService;
+import com.hrms.service.TimesheetExcelService;
 import com.hrms.service.security.TenantPrincipal;
 import com.hrms.util.SecuritySupport;
 
@@ -26,7 +27,10 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -59,6 +63,7 @@ import java.util.stream.Collectors;
         ApiRoutes.ATTENDANCE_COMPANY,
         ApiRoutes.ATTENDANCE_REPORT,
         ApiRoutes.ATTENDANCE_EXPORT_REPORT,
+        ApiRoutes.ATTENDANCE_EXPORT_TIMESHEET,
         ApiRoutes.ATTENDANCE_META,
         ApiRoutes.ATTENDANCE_SHIFT_SETTING,
         ApiRoutes.ATTENDANCE_MANUAL_ADJUST,
@@ -72,15 +77,21 @@ public class AttendanceController extends HttpServlet {
     private final AttendanceService attendanceService;
     private final EmployeeService employeeService;
     private final DepartmentService departmentService;
+    private final TimesheetExcelService timesheetExcelService;
 
     public AttendanceController() {
-        this(new AttendanceService(), new EmployeeService(), new DepartmentService());
+        this(new AttendanceService(), new EmployeeService(), new DepartmentService(), new TimesheetExcelService());
     }
 
     public AttendanceController(AttendanceService attendanceService, EmployeeService employeeService, DepartmentService departmentService) {
+        this(attendanceService, employeeService, departmentService, new TimesheetExcelService());
+    }
+
+    public AttendanceController(AttendanceService attendanceService, EmployeeService employeeService, DepartmentService departmentService, TimesheetExcelService timesheetExcelService) {
         this.attendanceService = attendanceService;
         this.employeeService = employeeService;
         this.departmentService = departmentService;
+        this.timesheetExcelService = timesheetExcelService != null ? timesheetExcelService : new TimesheetExcelService();
     }
 
     @Override
@@ -158,6 +169,7 @@ public class AttendanceController extends HttpServlet {
                     }
                 }
                 case ApiRoutes.ATTENDANCE_EXPORT_REPORT -> handleExportReport(request, response);
+                case ApiRoutes.ATTENDANCE_EXPORT_TIMESHEET -> handleExportTimesheet(request, response);
                 case ApiRoutes.ATTENDANCE_META -> handleMeta(request, response);
                 case ApiRoutes.ATTENDANCE_SHIFT_SETTING -> handleGetShiftSetting(request, response);
                 default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Endpoint not found."));
@@ -578,6 +590,74 @@ public class AttendanceController extends HttpServlet {
             os.write(bytes);
             os.flush();
         }
+    }
+
+    /**
+     * UC32: Export Timesheet Matrix to formatted Excel (.xlsx) file
+     */
+    private void handleExportTimesheet(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        int month = parseOptionalInt(request.getParameter("month"), LocalDate.now().getMonthValue());
+        int year = parseOptionalInt(request.getParameter("year"), LocalDate.now().getYear());
+        if (month < 1 || month > 12) month = LocalDate.now().getMonthValue();
+        if (year < 2000 || year > 2100) year = LocalDate.now().getYear();
+
+        Integer departmentId = parseNullableInt(request.getParameter("departmentId"));
+        String keyword = trimToNull(request.getParameter("keyword"));
+
+        LocalDate firstDay = LocalDate.of(year, month, 1);
+        LocalDate lastDay = firstDay.withDayOfMonth(firstDay.lengthOfMonth());
+        int daysInMonth = lastDay.getDayOfMonth();
+
+        int companyId = SecuritySupport.requireCompanyId(request);
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        String companyName = principal != null && principal.getCompanyName() != null ? principal.getCompanyName() : "HRMs Cloud";
+
+        // Scoped employees
+        List<AttendanceDTO> allEmpAttendance = scopedAttendance(request, LocalDate.now());
+        List<AttendanceDTO> filteredEmps = allEmpAttendance;
+        if (departmentId != null && departmentId > 0) {
+            filteredEmps = filteredEmps.stream()
+                    .filter(e -> e.getDepartmentId() != null && e.getDepartmentId().equals(departmentId))
+                    .toList();
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            String kw = keyword.toLowerCase();
+            filteredEmps = filteredEmps.stream()
+                    .filter(e -> (e.getFullName() != null && e.getFullName().toLowerCase().contains(kw))
+                            || (e.getEmployeeCode() != null && e.getEmployeeCode().toLowerCase().contains(kw)))
+                    .toList();
+        }
+
+        Set<Integer> scopedEmployeeIds = filteredEmps.stream().map(AttendanceDTO::getEmployeeId).collect(Collectors.toSet());
+        List<AttendanceDTO> monthRecords = attendanceService.searchCompanyAttendance(companyId, departmentId, null, firstDay, lastDay, keyword)
+                .stream().filter(record -> scopedEmployeeIds.contains(record.getEmployeeId())).toList();
+
+        Map<Integer, Map<Integer, AttendanceDTO>> empRecordsMap = new HashMap<>();
+        for (AttendanceDTO rec : monthRecords) {
+            if (rec.getAttendanceDate() != null) {
+                empRecordsMap.computeIfAbsent(rec.getEmployeeId(), k -> new HashMap<>())
+                        .put(rec.getAttendanceDate().getDayOfMonth(), rec);
+            }
+        }
+
+        List<TimesheetExcelService.TimesheetEmpData> empDataList = new ArrayList<>();
+        for (AttendanceDTO emp : filteredEmps) {
+            Map<Integer, AttendanceDTO> records = empRecordsMap.getOrDefault(emp.getEmployeeId(), Map.of());
+            empDataList.add(new TimesheetExcelService.TimesheetEmpData(
+                    emp.getEmployeeId(),
+                    emp.getEmployeeCode(),
+                    emp.getFullName(),
+                    emp.getDepartmentName(),
+                    emp.getPositionTitle(),
+                    records
+            ));
+        }
+
+        String filename = String.format("Bang_Cham_Cong_Thang_%02d_%d.xlsx", month, year);
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+
+        timesheetExcelService.exportTimesheet(companyName, month, year, daysInMonth, empDataList, response.getOutputStream());
     }
 
     /**
