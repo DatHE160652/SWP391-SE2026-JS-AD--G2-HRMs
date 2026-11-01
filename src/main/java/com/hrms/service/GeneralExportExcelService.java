@@ -1,7 +1,9 @@
 package com.hrms.service;
 
+import com.hrms.model.Department;
 import com.hrms.model.Employee;
 import com.hrms.model.LeaveRequest;
+import com.hrms.model.Position;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -240,6 +242,126 @@ public class GeneralExportExcelService {
         }
     }
 
+    // ==========================================
+    // 4. XUẤT DANH SÁCH PHÒNG BAN
+    // ==========================================
+    public void exportDepartments(String companyName, List<Department> departments, OutputStream os) throws IOException {
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet("Danh sach phong ban");
+            sheet.setDisplayGridlines(true);
+
+            CellStyle titleStyle = createTitleStyle(wb, IndexedColors.DARK_BLUE);
+            CellStyle subtitleStyle = createSubtitleStyle(wb);
+            CellStyle headerStyle = createHeaderStyle(wb, IndexedColors.ROYAL_BLUE);
+            CellStyle dataStyle = createDataStyle(wb);
+            CellStyle centerStyle = createCenterStyle(wb);
+
+            // Title
+            Row r0 = sheet.createRow(0);
+            Cell c0 = r0.createCell(0);
+            c0.setCellValue("DANH SÁCH PHÒNG BAN");
+            c0.setCellStyle(titleStyle);
+
+            Row r1 = sheet.createRow(1);
+            Cell c1 = r1.createCell(0);
+            c1.setCellValue("Công ty: " + (companyName != null ? companyName : "HRMs Cloud") + " | Ngày xuất: " + LocalDate.now().format(DATE_FMT));
+            c1.setCellStyle(subtitleStyle);
+
+            String[] headers = {
+                    "STT", "Mã phòng ban", "Tên phòng ban", "Trạng thái", "Ngày tạo"
+            };
+
+            Row headerRow = sheet.createRow(3);
+            headerRow.setHeightInPoints(26);
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            int rowIdx = 4;
+            int stt = 1;
+            for (Department d : departments) {
+                Row row = sheet.createRow(rowIdx++);
+                row.setHeightInPoints(20);
+
+                createCell(row, 0, String.valueOf(stt++), centerStyle);
+                createCell(row, 1, d.getDepartmentCode(), centerStyle);
+                createCell(row, 2, d.getDepartmentName(), dataStyle);
+                createCell(row, 3, d.isActive() ? "Đang hoạt động" : "Ngừng hoạt động", centerStyle);
+                createCell(row, 4, d.getCreatedAt() != null ? d.getCreatedAt().format(DATETIME_FMT) : "-", centerStyle);
+            }
+
+            autoSizeColumns(sheet, headers.length);
+            wb.write(os);
+        }
+    }
+
+    // ==========================================
+    // 5. XUẤT DANH SÁCH CHỨC DANH
+    // ==========================================
+    public void exportPositions(String companyName, List<Position> positions, OutputStream os) throws IOException {
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet("Danh sach chuc danh");
+            sheet.setDisplayGridlines(true);
+
+            CellStyle titleStyle = createTitleStyle(wb, IndexedColors.DARK_BLUE);
+            CellStyle subtitleStyle = createSubtitleStyle(wb);
+            CellStyle headerStyle = createHeaderStyle(wb, IndexedColors.ROYAL_BLUE);
+            CellStyle dataStyle = createDataStyle(wb);
+            CellStyle centerStyle = createCenterStyle(wb);
+            CellStyle currencyStyle = createCurrencyStyle(wb);
+
+            // Title
+            Row r0 = sheet.createRow(0);
+            Cell c0 = r0.createCell(0);
+            c0.setCellValue("DANH SÁCH CHỨC DANH CÔNG VIỆC");
+            c0.setCellStyle(titleStyle);
+
+            Row r1 = sheet.createRow(1);
+            Cell c1 = r1.createCell(0);
+            c1.setCellValue("Công ty: " + (companyName != null ? companyName : "HRMs Cloud") + " | Ngày xuất: " + LocalDate.now().format(DATE_FMT));
+            c1.setCellStyle(subtitleStyle);
+
+            String[] headers = {
+                    "STT", "Tên chức danh", "Phòng ban", "Cấp trách nhiệm",
+                    "Phụ cấp chức danh (VND)", "Quyền quản lý", "Trạng thái", "Mô tả công việc"
+            };
+
+            Row headerRow = sheet.createRow(3);
+            headerRow.setHeightInPoints(26);
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            int rowIdx = 4;
+            int stt = 1;
+            for (Position p : positions) {
+                Row row = sheet.createRow(rowIdx++);
+                row.setHeightInPoints(20);
+
+                createCell(row, 0, String.valueOf(stt++), centerStyle);
+                createCell(row, 1, p.getPositionTitle(), dataStyle);
+                createCell(row, 2, p.getDepartmentName() != null ? p.getDepartmentName() : "-", dataStyle);
+                createCell(row, 3, p.getResponsibilityLevelName() != null ? p.getResponsibilityLevelName() : "-", centerStyle);
+
+                // Phụ cấp chức danh
+                Cell allowanceCell = row.createCell(4);
+                BigDecimal allowance = p.getEffectiveAllowance() != null ? p.getEffectiveAllowance() : p.getPositionAllowance();
+                allowanceCell.setCellValue(parseNumeric(allowance));
+                allowanceCell.setCellStyle(currencyStyle);
+
+                createCell(row, 5, p.isCanManageEmployees() ? "Có (Quản lý)" : "Không", centerStyle);
+                createCell(row, 6, p.isActive() ? "Đang hoạt động" : "Ngừng hoạt động", centerStyle);
+                createCell(row, 7, p.getDescription() != null ? p.getDescription() : "-", dataStyle);
+            }
+
+            autoSizeColumns(sheet, headers.length);
+            wb.write(os);
+        }
+    }
     // ==========================================
     // HELPER STYLES & METHODS
     // ==========================================

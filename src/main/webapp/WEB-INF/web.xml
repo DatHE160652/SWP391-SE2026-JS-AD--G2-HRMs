@@ -425,6 +425,8 @@
         <url-pattern>/employees/export</url-pattern>
         <url-pattern>/leave/export-requests</url-pattern>
         <url-pattern>/lifecycle/contracts/export</url-pattern>
+        <url-pattern>/departments/export</url-pattern>
+        <url-pattern>/positions/export</url-pattern>
     </servlet-mapping>
 
     <jsp-config>

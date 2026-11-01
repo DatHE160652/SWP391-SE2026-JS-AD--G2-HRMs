@@ -1,11 +1,15 @@
 package com.hrms.controller.export;
 
+import com.hrms.model.Department;
 import com.hrms.model.Employee;
 import com.hrms.model.LeaveRequest;
+import com.hrms.model.Position;
+import com.hrms.service.DepartmentService;
 import com.hrms.service.EmployeeLifecycleService;
 import com.hrms.service.EmployeeService;
 import com.hrms.service.GeneralExportExcelService;
 import com.hrms.service.LeaveService;
+import com.hrms.service.PositionService;
 import com.hrms.service.security.TenantPrincipal;
 import com.hrms.util.SecuritySupport;
 import jakarta.servlet.ServletException;
@@ -26,28 +30,43 @@ import java.util.Map;
  * 1. /employees/export : Danh sách nhân sự
  * 2. /leave/export-requests : Danh sách đơn nghỉ phép
  * 3. /lifecycle/contracts/export : Danh sách hợp đồng lao động
+ * 4. /departments/export : Danh sách phòng ban
+ * 5. /positions/export : Danh sách chức danh
  */
 @WebServlet(name = "DataExportController", urlPatterns = {
         "/employees/export",
         "/leave/export-requests",
-        "/lifecycle/contracts/export"
+        "/lifecycle/contracts/export",
+        "/departments/export",
+        "/positions/export"
 })
 public class DataExportController extends HttpServlet {
 
     private final EmployeeService employeeService;
     private final LeaveService leaveService;
     private final EmployeeLifecycleService lifecycleService;
+    private final DepartmentService departmentService;
+    private final PositionService positionService;
     private final GeneralExportExcelService exportExcelService;
 
     public DataExportController() {
-        this(new EmployeeService(), new LeaveService(), new EmployeeLifecycleService(), new GeneralExportExcelService());
+        this(new EmployeeService(), new LeaveService(), new EmployeeLifecycleService(),
+                new DepartmentService(), new PositionService(), new GeneralExportExcelService());
     }
 
     public DataExportController(EmployeeService employeeService, LeaveService leaveService,
                                 EmployeeLifecycleService lifecycleService, GeneralExportExcelService exportExcelService) {
+        this(employeeService, leaveService, lifecycleService, new DepartmentService(), new PositionService(), exportExcelService);
+    }
+
+    public DataExportController(EmployeeService employeeService, LeaveService leaveService,
+                                EmployeeLifecycleService lifecycleService, DepartmentService departmentService,
+                                PositionService positionService, GeneralExportExcelService exportExcelService) {
         this.employeeService = employeeService;
         this.leaveService = leaveService;
         this.lifecycleService = lifecycleService;
+        this.departmentService = departmentService;
+        this.positionService = positionService;
         this.exportExcelService = exportExcelService;
     }
 
@@ -62,6 +81,8 @@ public class DataExportController extends HttpServlet {
                 case "/employees/export" -> handleExportEmployees(request, response);
                 case "/leave/export-requests" -> handleExportLeaveRequests(request, response);
                 case "/lifecycle/contracts/export" -> handleExportContracts(request, response);
+                case "/departments/export" -> handleExportDepartments(request, response);
+                case "/positions/export" -> handleExportPositions(request, response);
                 default -> response.sendError(HttpServletResponse.SC_NOT_FOUND);
             }
         } catch (SecurityException e) {
@@ -136,7 +157,6 @@ public class DataExportController extends HttpServlet {
         LocalDate toDate = parseOptionalDate(request.getParameter("toDate"));
         String keyword = trimToNull(request.getParameter("keyword"));
 
-        // Truy vấn tất cả bản ghi khớp bộ lọc (không phân trang cho export)
         List<LeaveRequest> list = leaveService.getLeaveRequestDAO().getAllRequestsByCompany(
                 principal.getCompanyId(), status, departmentId, leaveTypeId, fromDate, toDate, keyword, 0, 100000);
 
@@ -191,6 +211,57 @@ public class DataExportController extends HttpServlet {
         exportExcelService.exportContracts(companyName, contracts, response.getOutputStream());
     }
 
+    /**
+     * 4. Xuất danh sách phòng ban
+     */
+    private void handleExportDepartments(HttpServletRequest request, HttpServletResponse response)
+            throws SQLException, IOException {
+        int companyId = SecuritySupport.requireCompanyId(request);
+        SecuritySupport.requireOrganizationEditor(request);
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        String companyName = principal != null && principal.getCompanyName() != null ? principal.getCompanyName() : "HRMs Cloud";
+
+        String status = trimToNull(request.getParameter("status"));
+        List<Department> list = departmentService.getDepartments(companyId);
+        if ("Active".equalsIgnoreCase(status)) {
+            list = list.stream().filter(Department::isActive).toList();
+        } else if ("Inactive".equalsIgnoreCase(status)) {
+            list = list.stream().filter(d -> !d.isActive()).toList();
+        }
+
+        String filename = "Danh_Sach_Phong_Ban_" + LocalDate.now().format(DateTimeFormatter.ofPattern("dd_MM_yyyy")) + ".xlsx";
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+
+        exportExcelService.exportDepartments(companyName, list, response.getOutputStream());
+    }
+
+    /**
+     * 5. Xuất danh sách chức danh
+     */
+    private void handleExportPositions(HttpServletRequest request, HttpServletResponse response)
+            throws SQLException, IOException {
+        int companyId = SecuritySupport.requireCompanyId(request);
+        SecuritySupport.requireOrganizationEditor(request);
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        String companyName = principal != null && principal.getCompanyName() != null ? principal.getCompanyName() : "HRMs Cloud";
+
+        Integer departmentId = parseNullableInt(request.getParameter("departmentId"));
+        String status = trimToNull(request.getParameter("status"));
+        boolean activeOnly = "Active".equalsIgnoreCase(status);
+
+        List<Position> list = positionService.getPositions(companyId, departmentId, activeOnly);
+        if ("Inactive".equalsIgnoreCase(status)) {
+            list = list.stream().filter(p -> !p.isActive()).toList();
+        }
+
+        String filename = "Danh_Sach_Chuc_Danh_" + LocalDate.now().format(DateTimeFormatter.ofPattern("dd_MM_yyyy")) + ".xlsx";
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+
+        exportExcelService.exportPositions(companyName, list, response.getOutputStream());
+    }
+
     private Integer parseNullableInt(String value) {
         if (value == null || value.isBlank()) return null;
         try {
@@ -215,4 +286,3 @@ public class DataExportController extends HttpServlet {
         return trimmed.isEmpty() ? null : trimmed;
     }
 }
-
