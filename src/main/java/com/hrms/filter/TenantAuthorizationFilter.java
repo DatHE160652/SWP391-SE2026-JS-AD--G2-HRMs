@@ -155,7 +155,10 @@ public class TenantAuthorizationFilter implements Filter {
                         || path.equals("/attendance/export-report")
                         || path.equals("/attendance/export-timesheet")
                         || path.equals("/attendance/meta")
-                        || path.equals("/attendance/shift-setting"))) {
+                        || path.equals("/attendance/shift-setting")
+                        || path.equals("/attendance/explanation/pending")
+                        || path.equals("/attendance/explanation/my-requests")
+                        || path.equals("/attendance/timesheet-lock"))) {
             return true;
         }
 
@@ -175,7 +178,11 @@ public class TenantAuthorizationFilter implements Filter {
                         || path.equals("/attendance/check-out")
                         || path.equals("/attendance/batch-complete")
                         || path.equals("/attendance/shift-setting")
-                        || path.equals("/attendance/manual-adjust"));
+                        || path.equals("/attendance/manual-adjust")
+                        || path.equals("/attendance/explanation/submit")
+                        || path.equals("/attendance/explanation/cancel")
+                        || path.equals("/attendance/explanation/review")
+                        || path.equals("/attendance/timesheet-lock"));
     }
 
     private boolean isEmployeeAllowed(HttpServletRequest request, TenantPrincipal principal,
@@ -191,11 +198,16 @@ public class TenantAuthorizationFilter implements Filter {
                         || path.equals("/attendance/employee-attendance")
                         || path.equals("/attendance/employee-attendance.html")
                         || path.equals("/attendance/meta")
-                        || path.equals("/attendance/shift-setting"))) {
+                        || path.equals("/attendance/shift-setting")
+                        || path.equals("/attendance/explanation/my-requests")
+                        || path.equals("/attendance/timesheet-lock"))) {
             return true;
         }
 
-        if (isPost(method) && path.equals("/employees/me/update-profile")) {
+        if (isPost(method) && (
+                path.equals("/employees/me/update-profile")
+                || path.equals("/attendance/explanation/submit")
+                || path.equals("/attendance/explanation/cancel"))) {
             return true;
         }
 

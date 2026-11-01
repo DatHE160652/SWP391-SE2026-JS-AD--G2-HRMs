@@ -291,6 +291,12 @@
         <url-pattern>/attendance/meta</url-pattern>
         <url-pattern>/attendance/shift-setting</url-pattern>
         <url-pattern>/attendance/manual-adjust</url-pattern>
+        <url-pattern>/attendance/explanation/submit</url-pattern>
+        <url-pattern>/attendance/explanation/my-requests</url-pattern>
+        <url-pattern>/attendance/explanation/cancel</url-pattern>
+        <url-pattern>/attendance/explanation/pending</url-pattern>
+        <url-pattern>/attendance/explanation/review</url-pattern>
+        <url-pattern>/attendance/timesheet-lock</url-pattern>
         <!-- Compatibility / Legacy manager routes -->
         <url-pattern>/manager/team-attendance</url-pattern>
         <url-pattern>/manager/employee-attendance</url-pattern>

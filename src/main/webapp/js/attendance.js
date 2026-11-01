@@ -42,15 +42,34 @@ async function initEmployeeAttendance() {
     populateEmployeeSelect('employeeSelect', meta.employees, meta.currentEmployeeId);
 
     const today = new Date();
+    let defEmpMonth = today.getMonth() + 1;
+    let defEmpYear = today.getFullYear();
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('month')) {
+        defEmpMonth = parseInt(urlParams.get('month'), 10);
+    } else if (today.getDate() <= 10) {
+        defEmpMonth--;
+        if (defEmpMonth < 1) { defEmpMonth = 12; defEmpYear--; }
+    }
+    if (urlParams.has('year')) {
+        defEmpYear = parseInt(urlParams.get('year'), 10);
+    }
     const mSelect = document.getElementById('monthSelect');
-    if (mSelect) mSelect.value = today.getMonth() + 1;
+    if (mSelect) mSelect.value = defEmpMonth;
     const ySelect = document.getElementById('yearSelect');
-    if (ySelect) ySelect.value = today.getFullYear();
+    if (ySelect) ySelect.value = defEmpYear;
 
     const btnFilter = document.getElementById('btnFilter');
     if (btnFilter) btnFilter.addEventListener('click', loadPersonalAttendance);
     const empSelect = document.getElementById('employeeSelect');
     if (empSelect) empSelect.addEventListener('change', loadPersonalAttendance);
+
+    document.getElementById('btnMyExplanations')?.addEventListener('click', openMyExplanationsModal);
+    document.getElementById('btnCloseSubmitExp')?.addEventListener('click', closeSubmitExplanationModal);
+    document.getElementById('btnCancelSubmitExp')?.addEventListener('click', closeSubmitExplanationModal);
+    document.getElementById('btnCloseMyExp')?.addEventListener('click', closeMyExplanationsModal);
+    document.getElementById('btnCloseMyExpBottom')?.addEventListener('click', closeMyExplanationsModal);
+    document.getElementById('formSubmitExplanation')?.addEventListener('submit', handleExplanationSubmit);
 
     await loadPersonalAttendance();
 }
@@ -255,9 +274,24 @@ function renderPersonalRows(records) {
                 <td>${creditBadgeHtml}</td>
                 <td>${badgeHtml}</td>
                 <td><span class="text-muted">${safe(r.note)}</span></td>
+                <td style="text-align:center;">
+                    <button class="button small secondary btn-open-exp-modal" data-date="${safe(r.attendanceDate)}" data-in="${r.checkInTime || '08:30:00'}" data-out="${r.checkOutTime || '17:30:00'}" style="padding:4px 8px;font-size:12px;display:inline-flex;align-items:center;gap:4px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                        Giải trình
+                    </button>
+                </td>
             </tr>
         `;
     }).join('');
+
+    document.querySelectorAll('.btn-open-exp-modal').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const date = btn.dataset.date;
+            const inTime = (btn.dataset.in || '08:30:00').substring(0, 5);
+            const outTime = (btn.dataset.out || '17:30:00').substring(0, 5);
+            openSubmitExplanationModal(date, inTime, outTime);
+        });
+    });
 }
 
 /* =========================================================================
@@ -365,6 +399,12 @@ async function initManagerAttendance() {
     if (btnBatchOut) {
         btnBatchOut.addEventListener('click', () => performBatchAttendanceAction('check-out'));
     }
+
+    // Modal Duyệt giải trình công (UC87)
+    document.getElementById('btnOpenExplanationsModal')?.addEventListener('click', openManagerExplanationsModal);
+    document.getElementById('btnCloseExplanationsModal')?.addEventListener('click', closeManagerExplanationsModal);
+    document.getElementById('btnCloseExplanationsBottom')?.addEventListener('click', closeManagerExplanationsModal);
+    loadPendingExplanationsCount();
 
     // Modal Cài đặt ca làm việc công ty
     document.getElementById('btnOpenShiftSetting')?.addEventListener('click', openShiftModal);
@@ -1201,8 +1241,22 @@ async function initAttendanceReport() {
     populateDepartmentSelect('reportDept', meta.departments);
 
     const today = new Date();
-    document.getElementById('reportMonth').value = today.getMonth() + 1;
-    document.getElementById('reportYear').value = today.getFullYear();
+    let repMonth = today.getMonth() + 1;
+    let repYear = today.getFullYear();
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('month')) {
+        repMonth = parseInt(urlParams.get('month'), 10);
+    } else if (today.getDate() <= 10) {
+        repMonth--;
+        if (repMonth < 1) { repMonth = 12; repYear--; }
+    }
+    if (urlParams.has('year')) {
+        repYear = parseInt(urlParams.get('year'), 10);
+    }
+    const rMonth = document.getElementById('reportMonth');
+    if (rMonth) rMonth.value = repMonth;
+    const rYear = document.getElementById('reportYear');
+    if (rYear) rYear.value = repYear;
 
     document.getElementById('btnLoadReport').addEventListener('click', loadAttendanceReport);
     document.getElementById('btnExportCsv').addEventListener('click', exportReportCsv);
@@ -1365,15 +1419,103 @@ function escapeAttr(val) {
 /* =========================================================================
    Danh sách Chấm công (Monthly Timesheet Matrix) - Matching Image 2
    ========================================================================= */
-let currentTimesheetMonth = new Date().getMonth() + 1;
-let currentTimesheetYear = new Date().getFullYear();
+function getInitialTimesheetPeriod() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const pMonth = parseInt(urlParams.get('month'), 10);
+    const pYear = parseInt(urlParams.get('year'), 10);
+    if (!isNaN(pMonth) && pMonth >= 1 && pMonth <= 12 && !isNaN(pYear) && pYear >= 2000 && pYear <= 2100) {
+        return { month: pMonth, year: pYear };
+    }
+
+    const sMonth = parseInt(sessionStorage.getItem('hr_timesheet_month'), 10);
+    const sYear = parseInt(sessionStorage.getItem('hr_timesheet_year'), 10);
+    if (!isNaN(sMonth) && sMonth >= 1 && sMonth <= 12 && !isNaN(sYear) && sYear >= 2000 && sYear <= 2100) {
+        return { month: sMonth, year: sYear };
+    }
+
+    const now = new Date();
+    let m = now.getMonth() + 1;
+    let y = now.getFullYear();
+    // Trong quản lý nhân sự, vào những ngày đầu tháng (<= 10),
+    // quản lý thường cần xem, chốt công, khóa công và xuất bảng công của THÁNG TRƯỚC đã hoàn thành.
+    if (now.getDate() <= 10) {
+        m--;
+        if (m < 1) {
+            m = 12;
+            y--;
+        }
+    }
+    return { month: m, year: y };
+}
+
+function persistTimesheetPeriod() {
+    try {
+        sessionStorage.setItem('hr_timesheet_month', currentTimesheetMonth);
+        sessionStorage.setItem('hr_timesheet_year', currentTimesheetYear);
+        if (window.location && window.location.href) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('view', 'list');
+            url.searchParams.set('month', currentTimesheetMonth);
+            url.searchParams.set('year', currentTimesheetYear);
+            window.history.replaceState({}, '', url.toString());
+        }
+    } catch (e) {
+        // Safe fallback in test or headless env
+    }
+}
+
+let currentTimesheetMonth = 10;
+let currentTimesheetYear = 2026;
 let currentTimesheetData = null;
 let currentTimesheetActiveTab = 'grid'; // 'grid' | 'department'
 let currentTimesheetSearch = '';
 let currentTimesheetDept = '';
 
 async function initTimesheetPage() {
+    const initPeriod = getInitialTimesheetPeriod();
+    currentTimesheetMonth = initPeriod.month;
+    currentTimesheetYear = initPeriod.year;
+    persistTimesheetPeriod();
     updateMonthBadgeUI();
+
+    // Month & Year Dropdown Selectors
+    const monthSelect = document.getElementById('timesheetMonthSelect');
+    if (monthSelect) {
+        monthSelect.value = String(currentTimesheetMonth);
+        monthSelect.addEventListener('change', async (e) => {
+            currentTimesheetMonth = parseInt(e.target.value, 10);
+            persistTimesheetPeriod();
+            await loadTimesheetData();
+        });
+    }
+
+    const yearSelect = document.getElementById('timesheetYearSelect');
+    if (yearSelect) {
+        yearSelect.value = String(currentTimesheetYear);
+        yearSelect.addEventListener('change', async (e) => {
+            currentTimesheetYear = parseInt(e.target.value, 10);
+            persistTimesheetPeriod();
+            await loadTimesheetData();
+        });
+    }
+
+    // Quick jump to previous month button
+    const btnQuickPrev = document.getElementById('btnTimesheetQuickPrev');
+    if (btnQuickPrev) {
+        btnQuickPrev.addEventListener('click', async () => {
+            const now = new Date();
+            let m = now.getMonth(); // 0..11, so current month index is actually previous month number!
+            let y = now.getFullYear();
+            if (m === 0) {
+                m = 12;
+                y--;
+            }
+            currentTimesheetMonth = m;
+            currentTimesheetYear = y;
+            persistTimesheetPeriod();
+            await loadTimesheetData();
+        });
+    }
 
     // Previous month button
     const btnPrev = document.getElementById('btnPrevMonth');
@@ -1384,6 +1526,7 @@ async function initTimesheetPage() {
                 currentTimesheetMonth = 12;
                 currentTimesheetYear--;
             }
+            persistTimesheetPeriod();
             await loadTimesheetData();
         });
     }
@@ -1397,6 +1540,7 @@ async function initTimesheetPage() {
                 currentTimesheetMonth = 1;
                 currentTimesheetYear++;
             }
+            persistTimesheetPeriod();
             await loadTimesheetData();
         });
     }
@@ -1453,6 +1597,12 @@ async function initTimesheetPage() {
         btnExport.addEventListener('click', exportTimesheetToExcel);
     }
 
+    // Toggle Timesheet Lock button (UC88)
+    const btnToggleLock = document.getElementById('btnToggleTimesheetLock');
+    if (btnToggleLock) {
+        btnToggleLock.addEventListener('click', toggleTimesheetLock);
+    }
+
     // Load initial data
     await loadTimesheetData();
 }
@@ -1462,10 +1612,19 @@ function updateMonthBadgeUI() {
     if (badge) {
         badge.textContent = `T${currentTimesheetMonth}/${currentTimesheetYear}`;
     }
+    const monthSelect = document.getElementById('timesheetMonthSelect');
+    if (monthSelect) {
+        monthSelect.value = String(currentTimesheetMonth);
+    }
+    const yearSelect = document.getElementById('timesheetYearSelect');
+    if (yearSelect) {
+        yearSelect.value = String(currentTimesheetYear);
+    }
 }
 
 async function loadTimesheetData() {
     updateMonthBadgeUI();
+    checkTimesheetLockStatus(currentTimesheetMonth, currentTimesheetYear);
     const tbody = document.getElementById('timesheetRows');
     if (tbody) {
         tbody.innerHTML = '<tr><td colspan="32" style="text-align:center; padding:36px; color:#667085;">Đang tải bảng chấm công...</td></tr>';
@@ -1684,4 +1843,309 @@ function exportTimesheetToExcel() {
     if (keyword) params.append('keyword', keyword);
 
     window.location.href = withContext(`/attendance/export-timesheet?${params.toString()}`);
+}
+
+/* =========================================================================
+   UC86 & UC87: Attendance Explanation Functions
+   ========================================================================= */
+function openSubmitExplanationModal(date, inTime, outTime) {
+    const modal = document.getElementById('modalSubmitExplanation');
+    if (!modal) return;
+    const dateInput = document.getElementById('expAttendanceDate');
+    if (dateInput && date) dateInput.value = date;
+    const inInput = document.getElementById('expProposedCheckIn');
+    if (inInput) inInput.value = inTime || '08:30';
+    const outInput = document.getElementById('expProposedCheckOut');
+    if (outInput) outInput.value = outTime || '17:30';
+    modal.classList.add('active');
+}
+
+function closeSubmitExplanationModal() {
+    const modal = document.getElementById('modalSubmitExplanation');
+    if (modal) modal.classList.remove('active');
+}
+
+async function handleExplanationSubmit(e) {
+    e.preventDefault();
+    const date = document.getElementById('expAttendanceDate')?.value;
+    const reasonType = document.getElementById('expReasonType')?.value;
+    const inTime = document.getElementById('expProposedCheckIn')?.value;
+    const outTime = document.getElementById('expProposedCheckOut')?.value;
+    const detail = document.getElementById('expReasonDetail')?.value;
+
+    if (!date) {
+        alert('Vui lòng chọn ngày cần giải trình.');
+        return;
+    }
+    if (!detail || !detail.trim()) {
+        alert('Vui lòng nhập lý do chi tiết.');
+        return;
+    }
+
+    try {
+        const payload = await AttendanceApi.post('/attendance/explanation/submit', {
+            attendanceDate: date,
+            reasonType: reasonType || 'OTHER',
+            proposedCheckIn: inTime || '',
+            proposedCheckOut: outTime || '',
+            reasonDetail: detail.trim()
+        });
+        if (payload && payload.success) {
+            alert(payload.message || 'Gửi đơn giải trình chấm công thành công!');
+            closeSubmitExplanationModal();
+            document.getElementById('formSubmitExplanation')?.reset();
+        } else {
+            alert((payload && payload.message) ? payload.message : 'Không thể gửi đơn giải trình.');
+        }
+    } catch (err) {
+        alert('Lỗi: ' + (err.message || 'Không thể kết nối đến máy chủ.'));
+    }
+}
+
+async function openMyExplanationsModal() {
+    const modal = document.getElementById('modalMyExplanations');
+    if (!modal) return;
+    modal.classList.add('active');
+    await loadMyExplanations();
+}
+
+function closeMyExplanationsModal() {
+    const modal = document.getElementById('modalMyExplanations');
+    if (modal) modal.classList.remove('active');
+}
+
+async function loadMyExplanations() {
+    const tbody = document.getElementById('myExplanationsRows');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#667085;">Đang tải danh sách...</td></tr>';
+
+    try {
+        const payload = await AttendanceApi.get('/attendance/explanation/my-requests');
+        const list = (payload && payload.data) ? payload.data : [];
+        if (list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#667085;">Bạn chưa có đơn giải trình nào.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = list.map(item => {
+            let statusBadge = '';
+            if (item.status === 'PENDING') {
+                statusBadge = '<span class="badge" style="background:#fffaeb;color:#b54708;font-weight:700;">Chờ duyệt</span>';
+            } else if (item.status === 'APPROVED') {
+                statusBadge = '<span class="badge" style="background:#ecfdf3;color:#027a48;font-weight:700;">Đã duyệt</span>';
+            } else if (item.status === 'REJECTED') {
+                statusBadge = '<span class="badge" style="background:#fef3f2;color:#b42318;font-weight:700;">Từ chối</span>';
+            } else {
+                statusBadge = '<span class="badge" style="background:#f2f4f7;color:#667085;">Đã hủy</span>';
+            }
+
+            const inOut = (item.proposedCheckIn || '--:--') + ' - ' + (item.proposedCheckOut || '--:--');
+            const cancelBtn = item.status === 'PENDING'
+                ? `<button class="button small secondary" onclick="cancelMyExplanation(${item.explanationId})" style="padding:3px 8px;font-size:12px;color:#b42318;">Hủy đơn</button>`
+                : '-';
+
+            return `
+                <tr style="border-bottom:1px solid #f2f4f7;">
+                    <td style="padding:10px 8px;"><strong>${safe(item.attendanceDate)}</strong></td>
+                    <td style="padding:10px 8px;">${safe(item.reasonTypeDisplay || item.reasonType)}</td>
+                    <td style="padding:10px 8px;">${safe(inOut)}</td>
+                    <td style="padding:10px 8px;">${statusBadge}</td>
+                    <td style="padding:10px 8px;font-size:12px;color:#475467;">${item.reviewerComment ? safe(item.reviewerComment) : '-'}</td>
+                    <td style="padding:10px 8px;text-align:center;">${cancelBtn}</td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#b42318;padding:20px;">Lỗi tải dữ liệu: ${safe(err.message)}</td></tr>`;
+    }
+}
+
+async function cancelMyExplanation(id) {
+    if (!confirm('Bạn có chắc muốn hủy đơn giải trình này không?')) return;
+    try {
+        const payload = await AttendanceApi.post('/attendance/explanation/cancel', { explanationId: id });
+        if (payload && payload.success) {
+            alert('Hủy đơn thành công!');
+            await loadMyExplanations();
+        } else {
+            alert((payload && payload.message) ? payload.message : 'Không thể hủy đơn.');
+        }
+    } catch (err) {
+        alert('Lỗi: ' + (err.message || 'Không thể hủy đơn.'));
+    }
+}
+
+async function openManagerExplanationsModal() {
+    const modal = document.getElementById('modalExplanations');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+    await loadPendingExplanations();
+}
+
+function closeManagerExplanationsModal() {
+    const modal = document.getElementById('modalExplanations');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+}
+
+async function loadPendingExplanationsCount() {
+    try {
+        const payload = await AttendanceApi.get('/attendance/explanation/pending');
+        const count = (payload && payload.data) ? payload.data.length : 0;
+        const badge = document.getElementById('badgePendingExplanations');
+        if (badge) {
+            if (count > 0) {
+                badge.textContent = count;
+                badge.style.display = 'inline-block';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+    } catch (err) {
+        console.warn('Could not load pending explanations count:', err);
+    }
+}
+
+async function loadPendingExplanations() {
+    const tbody = document.getElementById('pendingExplanationsRows');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#667085;">Đang tải danh sách chờ duyệt...</td></tr>';
+
+    try {
+        const payload = await AttendanceApi.get('/attendance/explanation/pending');
+        const list = (payload && payload.data) ? payload.data : [];
+        const badge = document.getElementById('badgePendingExplanations');
+        if (badge) {
+            badge.textContent = list.length;
+            badge.style.display = list.length > 0 ? 'inline-block' : 'none';
+        }
+
+        if (list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#667085;">Không có đơn giải trình nào đang chờ duyệt.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = list.map(item => {
+            const inOut = (item.proposedCheckIn || '--:--') + ' - ' + (item.proposedCheckOut || '--:--');
+            return `
+                <tr style="border-bottom:1px solid #f2f4f7;">
+                    <td style="padding:10px 8px;">
+                        <strong>${safe(item.employeeFullName)}</strong>
+                        <div style="font-size:12px;color:#667085;">${safe(item.employeeCode)} · ${safe(item.departmentName || 'Chung')}</div>
+                    </td>
+                    <td style="padding:10px 8px;"><strong>${safe(item.attendanceDate)}</strong></td>
+                    <td style="padding:10px 8px;"><span class="badge" style="background:#f4ebff;color:#6941c6;font-size:11px;">${safe(item.reasonTypeDisplay || item.reasonType)}</span></td>
+                    <td style="padding:10px 8px;">${safe(inOut)}</td>
+                    <td style="padding:10px 8px;max-width:240px;font-size:12px;color:#344054;">${safe(item.reasonDetail)}</td>
+                    <td style="padding:10px 8px;text-align:center;">
+                        <button class="button small" onclick="reviewExplanation(${item.explanationId}, 'APPROVE')" style="background:#059669;border-color:#059669;color:#fff;padding:4px 8px;font-size:12px;margin-right:4px;">Duyệt</button>
+                        <button class="button small secondary" onclick="reviewExplanation(${item.explanationId}, 'REJECT')" style="color:#b42318;padding:4px 8px;font-size:12px;">Từ chối</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#b42318;padding:20px;">Lỗi tải dữ liệu: ${safe(err.message)}</td></tr>`;
+    }
+}
+
+async function reviewExplanation(id, decision) {
+    const isApprove = decision === 'APPROVE';
+    const actionText = isApprove ? 'Duyệt đơn giải trình và tự động cập nhật ngày công' : 'Từ chối đơn giải trình';
+    const comment = prompt(`Nhập phản hồi/ghi chú cho nhân viên (${actionText}):`, isApprove ? 'Đồng ý bổ sung công' : 'Không đủ căn cứ giải trình');
+    if (comment === null) return;
+
+    try {
+        const payload = await AttendanceApi.post('/attendance/explanation/review', {
+            explanationId: id,
+            decision: decision,
+            comment: comment
+        });
+        if (payload && payload.success) {
+            alert(payload.message || 'Đã xử lý đơn thành công!');
+            await loadPendingExplanations();
+            if (typeof loadTeamAttendanceData === 'function') {
+                await loadTeamAttendanceData();
+            }
+        } else {
+            alert((payload && payload.message) ? payload.message : 'Không thể xử lý đơn giải trình.');
+        }
+    } catch (err) {
+        alert('Lỗi: ' + (err.message || 'Không thể xử lý đơn.'));
+    }
+}
+
+/* =========================================================================
+   UC88: Timesheet Locking Functions
+   ========================================================================= */
+let isCurrentTimesheetLocked = false;
+
+async function checkTimesheetLockStatus(month, year) {
+    const badge = document.getElementById('lockStatusBadge');
+    const btn = document.getElementById('btnToggleTimesheetLock');
+    const btnText = document.getElementById('btnLockText');
+    if (!badge || !btn) return;
+
+    try {
+        const payload = await AttendanceApi.get(`/attendance/timesheet-lock?month=${month}&year=${year}`);
+        isCurrentTimesheetLocked = payload && payload.isLocked;
+
+        badge.style.display = 'inline-flex';
+        btn.style.display = 'inline-flex';
+
+        if (isCurrentTimesheetLocked) {
+            badge.style.background = '#fef3f2';
+            badge.style.color = '#b42318';
+            badge.style.border = '1px solid #fecdca';
+            badge.innerHTML = `🔒 Đã khóa chốt lương`;
+
+            btn.style.background = '#f9fafb';
+            btn.style.borderColor = '#d0d5dd';
+            btn.style.color = '#344054';
+            if (btnText) btnText.textContent = 'Mở khóa công';
+        } else {
+            badge.style.background = '#ecfdf3';
+            badge.style.color = '#027a48';
+            badge.style.border = '1px solid #a6f4c5';
+            badge.innerHTML = `🔓 Chưa khóa`;
+
+            btn.style.background = '#f79009';
+            btn.style.borderColor = '#f79009';
+            btn.style.color = '#ffffff';
+            if (btnText) btnText.textContent = 'Khóa công tháng';
+        }
+    } catch (err) {
+        console.warn('Could not check timesheet lock status:', err);
+    }
+}
+
+async function toggleTimesheetLock() {
+    const action = isCurrentTimesheetLocked ? 'UNLOCK' : 'LOCK';
+    const actionText = isCurrentTimesheetLocked
+        ? `Mở khóa bảng chấm công tháng ${currentTimesheetMonth}/${currentTimesheetYear}? (Sau khi mở khóa, quản lý có thể sửa đổi hoặc duyệt công bù)`
+        : `Khóa bảng chấm công tháng ${currentTimesheetMonth}/${currentTimesheetYear}? (Sau khi khóa, mọi thao tác sửa công hoặc duyệt giải trình của tháng này sẽ bị chặn để chốt lương)`;
+
+    if (!confirm(actionText)) return;
+
+    const notes = isCurrentTimesheetLocked ? '' : (prompt('Nhập ghi chú chốt kỳ công (không bắt buộc):', 'Chốt công tháng phục vụ tính lương') || '');
+
+    try {
+        const payload = await AttendanceApi.post('/attendance/timesheet-lock', {
+            month: currentTimesheetMonth,
+            year: currentTimesheetYear,
+            action: action,
+            notes: notes
+        });
+
+        if (payload && payload.success) {
+            alert(payload.message || 'Thao tác thành công!');
+            await checkTimesheetLockStatus(currentTimesheetMonth, currentTimesheetYear);
+        } else {
+            alert((payload && payload.message) ? payload.message : 'Thao tác không thành công.');
+        }
+    } catch (err) {
+        alert('Lỗi: ' + (err.message || 'Không thể thực hiện khóa/mở khóa.'));
+    }
 }

@@ -4,7 +4,9 @@ import com.hrms.api.ApiRoutes;
 import com.hrms.dao.AttendanceDAO.AttendanceDTO;
 import com.hrms.dao.AttendanceReportDAO;
 import com.hrms.dao.AttendanceSummaryDAO;
+import com.hrms.model.AttendanceExplanation;
 import com.hrms.model.CompanyShiftSetting;
+import com.hrms.model.TimesheetLock;
 import com.hrms.model.Department;
 import com.hrms.model.Employee;
 import com.hrms.service.AttendanceService;
@@ -172,12 +174,17 @@ public class AttendanceController extends HttpServlet {
                 case ApiRoutes.ATTENDANCE_EXPORT_TIMESHEET -> handleExportTimesheet(request, response);
                 case ApiRoutes.ATTENDANCE_META -> handleMeta(request, response);
                 case ApiRoutes.ATTENDANCE_SHIFT_SETTING -> handleGetShiftSetting(request, response);
+                case ApiRoutes.ATTENDANCE_EXPLANATION_MY -> handleMyExplanations(request, response);
+                case ApiRoutes.ATTENDANCE_EXPLANATION_PENDING -> handlePendingExplanations(request, response);
+                case ApiRoutes.ATTENDANCE_TIMESHEET_LOCK -> handleGetTimesheetLock(request, response);
                 default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Endpoint not found."));
             }
         } catch (SecurityException e) {
             writeJson(response, HttpServletResponse.SC_FORBIDDEN, error(e.getMessage()));
         } catch (SQLException e) {
             writeJson(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, error("Database error: " + e.getMessage()));
+        } catch (IllegalStateException e) {
+            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error(e.getMessage()));
         } catch (IllegalArgumentException e) {
             writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error(e.getMessage()));
         } catch (Exception e) {
@@ -214,12 +221,18 @@ public class AttendanceController extends HttpServlet {
                 case ApiRoutes.ATTENDANCE_BATCH_COMPLETE -> handleBatchComplete(request, response);
                 case ApiRoutes.ATTENDANCE_SHIFT_SETTING -> handleSaveShiftSetting(request, response);
                 case ApiRoutes.ATTENDANCE_MANUAL_ADJUST -> handleManualAdjust(request, response);
+                case ApiRoutes.ATTENDANCE_EXPLANATION_SUBMIT -> handleSubmitExplanation(request, response);
+                case ApiRoutes.ATTENDANCE_EXPLANATION_CANCEL -> handleCancelExplanation(request, response);
+                case ApiRoutes.ATTENDANCE_EXPLANATION_REVIEW -> handleReviewExplanation(request, response);
+                case ApiRoutes.ATTENDANCE_TIMESHEET_LOCK -> handleSetTimesheetLock(request, response);
                 default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Endpoint not found."));
             }
         } catch (SecurityException e) {
             writeJson(response, HttpServletResponse.SC_FORBIDDEN, error(e.getMessage()));
         } catch (SQLException e) {
             writeJson(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, error("Database error: " + e.getMessage()));
+        } catch (IllegalStateException e) {
+            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error(e.getMessage()));
         } catch (IllegalArgumentException e) {
             writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error(e.getMessage()));
         } catch (Exception e) {
@@ -455,7 +468,7 @@ public class AttendanceController extends HttpServlet {
         int companyId = SecuritySupport.requireCompanyId(request);
 
         // Danh sách toàn bộ nhân sự công ty
-        List<AttendanceDTO> allEmpAttendance = scopedAttendance(request, LocalDate.now());
+        List<AttendanceDTO> allEmpAttendance = scopedAttendance(request, firstDay);
         List<AttendanceDTO> filteredEmps = allEmpAttendance;
         if (departmentId != null && departmentId > 0) {
             filteredEmps = filteredEmps.stream()
@@ -613,7 +626,7 @@ public class AttendanceController extends HttpServlet {
         String companyName = principal != null && principal.getCompanyName() != null ? principal.getCompanyName() : "HRMs Cloud";
 
         // Scoped employees
-        List<AttendanceDTO> allEmpAttendance = scopedAttendance(request, LocalDate.now());
+        List<AttendanceDTO> allEmpAttendance = scopedAttendance(request, firstDay);
         List<AttendanceDTO> filteredEmps = allEmpAttendance;
         if (departmentId != null && departmentId > 0) {
             filteredEmps = filteredEmps.stream()
@@ -983,5 +996,172 @@ public class AttendanceController extends HttpServlet {
             return null;
         }
         return value.trim();
+    }
+
+    // =========================================================================
+    // UC86 & UC87: Attendance Explanation Handlers
+    // =========================================================================
+    private void handleMyExplanations(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (principal == null || principal.getEmployeeId() == null) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Tài khoản chưa liên kết với hồ sơ nhân viên."));
+            return;
+        }
+        int companyId = SecuritySupport.requireCompanyId(request);
+        Integer month = parseNullableInt(request.getParameter("month"));
+        Integer year = parseNullableInt(request.getParameter("year"));
+
+        List<AttendanceExplanation> list = attendanceService.getMyExplanations(companyId, principal.getEmployeeId(), month, year);
+        writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":" + toJsonExplanations(list) + "}");
+    }
+
+    private void handlePendingExplanations(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (principal == null) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Vui lòng đăng nhập."));
+            return;
+        }
+        int companyId = SecuritySupport.requireCompanyId(request);
+        Integer managerEmployeeId = null;
+        if (!principal.isCompanyAdministrator() && !"HR".equals(principal.getRoleCode())) {
+            managerEmployeeId = principal.getEmployeeId();
+        }
+
+        List<AttendanceExplanation> list = attendanceService.getPendingExplanations(companyId, managerEmployeeId);
+        writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":" + toJsonExplanations(list) + "}");
+    }
+
+    private void handleSubmitExplanation(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (principal == null || principal.getEmployeeId() == null) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Tài khoản chưa liên kết với hồ sơ nhân viên."));
+            return;
+        }
+        int companyId = SecuritySupport.requireCompanyId(request);
+        LocalDate date = parseOptionalDate(request.getParameter("attendanceDate"));
+        if (date == null) {
+            throw new IllegalArgumentException("Vui lòng chọn ngày cần giải trình.");
+        }
+        LocalTime inTime = parseOptionalTime(request.getParameter("proposedCheckIn"));
+        LocalTime outTime = parseOptionalTime(request.getParameter("proposedCheckOut"));
+        String reasonType = trimToNull(request.getParameter("reasonType"));
+        String reasonDetail = trimToNull(request.getParameter("reasonDetail"));
+
+        AttendanceExplanation exp = new AttendanceExplanation(companyId, principal.getEmployeeId(), date, inTime, outTime,
+                reasonType != null ? reasonType : "OTHER", reasonDetail);
+        attendanceService.submitExplanation(exp);
+        writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"message\":\"Gửi đơn giải trình chấm công thành công! Vui lòng chờ quản lý phê duyệt.\"}");
+    }
+
+    private void handleCancelExplanation(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (principal == null || principal.getEmployeeId() == null) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Không có quyền thực hiện."));
+            return;
+        }
+        int explanationId = parseRequiredInt(request.getParameter("explanationId"), "Mã đơn không hợp lệ.");
+        boolean cancelled = attendanceService.cancelExplanation(explanationId, principal.getEmployeeId());
+        if (cancelled) {
+            writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"message\":\"Hủy đơn giải trình thành công.\"}");
+        } else {
+            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error("Không thể hủy đơn (đơn đã được duyệt hoặc không tồn tại)."));
+        }
+    }
+
+    private void handleReviewExplanation(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (principal == null) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Vui lòng đăng nhập."));
+            return;
+        }
+        int companyId = SecuritySupport.requireCompanyId(request);
+        int explanationId = parseRequiredInt(request.getParameter("explanationId"), "Mã đơn không hợp lệ.");
+        String decision = request.getParameter("decision");
+        String comment = request.getParameter("comment");
+
+        boolean approve = "APPROVE".equalsIgnoreCase(decision);
+        attendanceService.reviewExplanation(explanationId, principal.getUserId(), principal.getEmployeeId(), approve, comment, companyId);
+        writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"message\":" + (approve ? "\"Đã duyệt giải trình và tự động cập nhật ngày công!\"" : "\"Đã từ chối đơn giải trình.\"") + "}");
+    }
+
+    // =========================================================================
+    // UC88: Timesheet Locking Handlers
+    // =========================================================================
+    private void handleGetTimesheetLock(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        int companyId = SecuritySupport.requireCompanyId(request);
+        int month = parseRequiredInt(request.getParameter("month"), "Vui lòng chọn tháng.");
+        int year = parseRequiredInt(request.getParameter("year"), "Vui lòng chọn năm.");
+
+        TimesheetLock lock = attendanceService.getTimesheetLock(companyId, month, year);
+        boolean isLocked = lock != null && lock.isLocked();
+        writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"isLocked\":" + isLocked + ",\"data\":" + toJson(lock) + "}");
+    }
+
+    private void handleSetTimesheetLock(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (principal == null) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Vui lòng đăng nhập."));
+            return;
+        }
+        int companyId = SecuritySupport.requireCompanyId(request);
+        int month = parseRequiredInt(request.getParameter("month"), "Vui lòng chọn tháng.");
+        int year = parseRequiredInt(request.getParameter("year"), "Vui lòng chọn năm.");
+        String action = request.getParameter("action");
+        String notes = request.getParameter("notes");
+        boolean lock = "LOCK".equalsIgnoreCase(action);
+
+        attendanceService.setTimesheetLock(companyId, month, year, lock, principal.getUserId(), notes);
+        writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"isLocked\":" + lock + ",\"message\":" + (lock ? "\"Đã khóa bảng chấm công tháng " + month + "/" + year + "!\"" : "\"Đã mở khóa bảng chấm công tháng " + month + "/" + year + "!\"") + "}");
+    }
+
+    private String toJson(TimesheetLock l) {
+        if (l == null) return "null";
+        return "{"
+                + "\"lockId\":" + l.getLockId() + ","
+                + "\"companyId\":" + l.getCompanyId() + ","
+                + "\"month\":" + l.getMonth() + ","
+                + "\"year\":" + l.getYear() + ","
+                + "\"isLocked\":" + l.isLocked() + ","
+                + "\"lockedByUserId\":" + l.getLockedByUserId() + ","
+                + "\"lockedByUserName\":" + quote(l.getLockedByUserName()) + ","
+                + "\"lockedAt\":" + (l.getLockedAt() != null ? quote(l.getLockedAt().toString()) : "null") + ","
+                + "\"notes\":" + quote(l.getNotes())
+                + "}";
+    }
+
+    private String toJson(AttendanceExplanation e) {
+        if (e == null) return "null";
+        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm:ss");
+        return "{"
+                + "\"explanationId\":" + e.getExplanationId() + ","
+                + "\"companyId\":" + e.getCompanyId() + ","
+                + "\"employeeId\":" + e.getEmployeeId() + ","
+                + "\"employeeCode\":" + quote(e.getEmployeeCode()) + ","
+                + "\"employeeFullName\":" + quote(e.getEmployeeFullName()) + ","
+                + "\"departmentName\":" + quote(e.getDepartmentName()) + ","
+                + "\"attendanceDate\":" + (e.getAttendanceDate() != null ? quote(e.getAttendanceDate().toString()) : "null") + ","
+                + "\"proposedCheckIn\":" + (e.getProposedCheckIn() != null ? quote(e.getProposedCheckIn().format(timeFmt)) : "null") + ","
+                + "\"proposedCheckOut\":" + (e.getProposedCheckOut() != null ? quote(e.getProposedCheckOut().format(timeFmt)) : "null") + ","
+                + "\"reasonType\":" + quote(e.getReasonType()) + ","
+                + "\"reasonTypeDisplay\":" + quote(e.getReasonTypeDisplay()) + ","
+                + "\"reasonDetail\":" + quote(e.getReasonDetail()) + ","
+                + "\"status\":" + quote(e.getStatus()) + ","
+                + "\"reviewerId\":" + (e.getReviewerId() != null ? e.getReviewerId() : "null") + ","
+                + "\"reviewerComment\":" + quote(e.getReviewerComment()) + ","
+                + "\"reviewerDisplayName\":" + quote(e.getReviewerDisplayName()) + ","
+                + "\"reviewedAt\":" + (e.getReviewedAt() != null ? quote(e.getReviewedAt().toString()) : "null") + ","
+                + "\"createdAt\":" + (e.getCreatedAt() != null ? quote(e.getCreatedAt().toString()) : "null")
+                + "}";
+    }
+
+    private String toJsonExplanations(List<AttendanceExplanation> list) {
+        if (list == null) return "[]";
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < list.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append(toJson(list.get(i)));
+        }
+        sb.append("]");
+        return sb.toString();
     }
 }

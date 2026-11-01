@@ -10,6 +10,59 @@
     <link rel="stylesheet" href="../css/employee.css">
     <link rel="stylesheet" href="../css/attendance.css">
     <link rel="stylesheet" href="../css/employee-navigation.css?v=<%= application.getResource("/css/employee-navigation.css").openConnection().getLastModified() %>">
+    <style>
+        .exp-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(16, 24, 40, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .exp-modal-overlay.active {
+            display: flex;
+        }
+        .exp-modal-box {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+            width: 100%;
+            max-width: 580px;
+            overflow: hidden;
+            animation: modalFadeIn 0.2s ease-out;
+        }
+        .exp-modal-box.wide {
+            max-width: 820px;
+        }
+        .exp-modal-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid #eaecf0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .exp-modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+            color: #101828;
+        }
+        .exp-modal-body {
+            padding: 24px;
+            max-height: 75vh;
+            overflow-y: auto;
+        }
+        .exp-modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #eaecf0;
+            background: #f9fafb;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+    </style>
 </head>
 <body data-page="employee-attendance" data-profile-role="<c:out value='${sessionScope.tenantPrincipal.roleCode}'/>">
 <c:set var="employeeNavPage" value="attendance"/>
@@ -27,10 +80,21 @@
 
     <main class="content">
 
-        <div class="page-header">
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
             <div>
                 <h1 class="page-title">Bảng chấm công cá nhân</h1>
-                <p class="page-subtitle">Nhân viên xem lịch sử chấm công theo tháng. Điểm danh vào ca/tan ca do quản lý phụ trách.</p>
+                <p class="page-subtitle">Nhân viên xem lịch sử chấm công theo tháng và gửi giải trình nếu có sai sót/quên bấm vân tay.</p>
+            </div>
+            <div class="header-actions">
+                <button class="button" id="btnMyExplanations" style="background:#4338ca; border-color:#4338ca; color:#fff; display:inline-flex; align-items:center; gap:6px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                    </svg>
+                    Đơn giải trình của tôi
+                </button>
             </div>
         </div>
 
@@ -39,7 +103,7 @@
                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
             </svg>
             <div>
-                <strong>Lưu ý:</strong> Chế độ xem dành riêng cho nhân viên. Nhân viên chỉ được xem dữ liệu chấm công của chính mình.
+                <strong>Lưu ý:</strong> Chế độ xem dành riêng cho nhân viên. Nếu bạn quên chấm công hoặc đi công tác bên ngoài, vui lòng bấm nút <strong>"Giải trình"</strong> tại dòng ngày tương ứng để gửi yêu cầu cho quản lý duyệt bù công.
             </div>
         </div>
 
@@ -128,15 +192,92 @@
                     <th>Số công</th>
                     <th>Trạng thái</th>
                     <th>Ghi chú</th>
+                    <th style="text-align:center;">Thao tác</th>
                 </tr>
                 </thead>
                 <tbody id="attendanceRows">
-                    <tr><td colspan="8" style="text-align:center;color:#667085;padding:24px;">Đang tải dữ liệu...</td></tr>
+                    <tr><td colspan="9" style="text-align:center;color:#667085;padding:24px;">Đang tải dữ liệu...</td></tr>
                 </tbody>
             </table>
         </section>
     </main>
 </div>
+
+<!-- Modal UC86: Gửi đơn giải trình chấm công -->
+<div id="modalSubmitExplanation" class="exp-modal-overlay">
+    <div class="exp-modal-box">
+        <div class="exp-modal-header">
+            <h3>Đơn giải trình / Xin bù công</h3>
+            <button type="button" class="btn-close" id="btnCloseSubmitExp" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
+        </div>
+        <form id="formSubmitExplanation">
+            <div class="exp-modal-body">
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label style="font-weight:600;display:block;margin-bottom:6px;">Ngày giải trình <span class="text-danger">*</span></label>
+                    <input type="date" id="expAttendanceDate" class="form-control" required style="width:100%;padding:8px 12px;border:1px solid #d0d5dd;border-radius:6px;">
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label style="font-weight:600;display:block;margin-bottom:6px;">Loại lý do <span class="text-danger">*</span></label>
+                    <select id="expReasonType" class="form-control" required style="width:100%;padding:8px 12px;border:1px solid #d0d5dd;border-radius:6px;">
+                        <option value="FORGOT_PUNCH">Quên bấm chấm công</option>
+                        <option value="BUSINESS_TRIP">Đi công tác / Ra ngoài gặp đối tác</option>
+                        <option value="TECHNICAL_ISSUE">Lỗi máy chấm công / Lỗi mạng</option>
+                        <option value="OTHER">Lý do chính đáng khác</option>
+                    </select>
+                </div>
+                <div style="display:flex;gap:16px;margin-bottom:16px;">
+                    <div style="flex:1;">
+                        <label style="font-weight:600;display:block;margin-bottom:6px;">Giờ vào thực tế đề xuất</label>
+                        <input type="time" id="expProposedCheckIn" value="08:30" class="form-control" style="width:100%;padding:8px 12px;border:1px solid #d0d5dd;border-radius:6px;">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-weight:600;display:block;margin-bottom:6px;">Giờ tan ca thực tế đề xuất</label>
+                        <input type="time" id="expProposedCheckOut" value="17:30" class="form-control" style="width:100%;padding:8px 12px;border:1px solid #d0d5dd;border-radius:6px;">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label style="font-weight:600;display:block;margin-bottom:6px;">Lý do giải trình chi tiết <span class="text-danger">*</span></label>
+                    <textarea id="expReasonDetail" rows="3" required placeholder="Ghi rõ lý do tại sao không bấm công đúng giờ hoặc vắng mặt..." style="width:100%;padding:8px 12px;border:1px solid #d0d5dd;border-radius:6px;"></textarea>
+                </div>
+            </div>
+            <div class="exp-modal-footer">
+                <button type="button" class="button secondary" id="btnCancelSubmitExp">Đóng</button>
+                <button type="submit" class="button" style="background:#4338ca;border-color:#4338ca;color:#fff;">Gửi đơn duyệt</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal UC86: Danh sách đơn giải trình của tôi -->
+<div id="modalMyExplanations" class="exp-modal-overlay">
+    <div class="exp-modal-box wide">
+        <div class="exp-modal-header">
+            <h3>Danh sách đơn giải trình của tôi</h3>
+            <button type="button" class="btn-close" id="btnCloseMyExp" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
+        </div>
+        <div class="exp-modal-body">
+            <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                    <tr style="border-bottom:2px solid #eaecf0;text-align:left;font-size:13px;color:#475467;">
+                        <th style="padding:10px 8px;">Ngày công</th>
+                        <th style="padding:10px 8px;">Loại lý do</th>
+                        <th style="padding:10px 8px;">Giờ đề xuất</th>
+                        <th style="padding:10px 8px;">Trạng thái</th>
+                        <th style="padding:10px 8px;">Phản hồi</th>
+                        <th style="padding:10px 8px;text-align:center;">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="myExplanationsRows">
+                    <tr><td colspan="6" style="text-align:center;color:#667085;padding:20px;">Đang tải danh sách...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="exp-modal-footer">
+            <button type="button" class="button secondary" id="btnCloseMyExpBottom">Đóng</button>
+        </div>
+    </div>
+</div>
+
 <script src="../js/attendance.js?v=<%= application.getResource("/js/attendance.js").openConnection().getLastModified() %>"></script>
 <script src="../js/payroll-notifications.js"></script>
 </body>

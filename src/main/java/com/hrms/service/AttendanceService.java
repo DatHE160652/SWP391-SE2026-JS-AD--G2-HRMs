@@ -2,10 +2,14 @@ package com.hrms.service;
 
 import com.hrms.dao.AttendanceDAO;
 import com.hrms.dao.AttendanceDAO.AttendanceDTO;
+import com.hrms.dao.AttendanceExplanationDAO;
 import com.hrms.dao.AttendanceReportDAO;
 import com.hrms.dao.AttendanceSummaryDAO;
 import com.hrms.dao.CompanyShiftSettingDAO;
+import com.hrms.dao.TimesheetLockDAO;
+import com.hrms.model.AttendanceExplanation;
 import com.hrms.model.CompanyShiftSetting;
+import com.hrms.model.TimesheetLock;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -18,21 +22,30 @@ import java.util.List;
 public class AttendanceService {
     private final AttendanceDAO attendanceDAO;
     private final CompanyShiftSettingDAO shiftSettingDAO;
+    private final AttendanceExplanationDAO explanationDAO;
+    private final TimesheetLockDAO timesheetLockDAO;
 
     public static final LocalTime SHIFT_START = CompanyShiftSetting.DEFAULT_SHIFT_START;
     public static final LocalTime SHIFT_END = CompanyShiftSetting.DEFAULT_SHIFT_END;
 
     public AttendanceService() {
-        this(new AttendanceDAO(), new CompanyShiftSettingDAO());
+        this(new AttendanceDAO(), new CompanyShiftSettingDAO(), new AttendanceExplanationDAO(), new TimesheetLockDAO());
     }
 
     public AttendanceService(AttendanceDAO attendanceDAO) {
-        this(attendanceDAO, new CompanyShiftSettingDAO());
+        this(attendanceDAO, new CompanyShiftSettingDAO(), new AttendanceExplanationDAO(), new TimesheetLockDAO());
     }
 
     public AttendanceService(AttendanceDAO attendanceDAO, CompanyShiftSettingDAO shiftSettingDAO) {
+        this(attendanceDAO, shiftSettingDAO, new AttendanceExplanationDAO(), new TimesheetLockDAO());
+    }
+
+    public AttendanceService(AttendanceDAO attendanceDAO, CompanyShiftSettingDAO shiftSettingDAO,
+                             AttendanceExplanationDAO explanationDAO, TimesheetLockDAO timesheetLockDAO) {
         this.attendanceDAO = attendanceDAO;
-        this.shiftSettingDAO = shiftSettingDAO;
+        this.shiftSettingDAO = shiftSettingDAO != null ? shiftSettingDAO : new CompanyShiftSettingDAO();
+        this.explanationDAO = explanationDAO != null ? explanationDAO : new AttendanceExplanationDAO();
+        this.timesheetLockDAO = timesheetLockDAO != null ? timesheetLockDAO : new TimesheetLockDAO();
     }
 
     public void requireEmployee(int companyId, int employeeId) throws SQLException {
@@ -88,6 +101,12 @@ public class AttendanceService {
         shiftSettingDAO.saveShiftSetting(setting);
     }
 
+    private void checkTimesheetNotLocked(int companyId, LocalDate date) throws SQLException {
+        if (date != null && timesheetLockDAO.isMonthLocked(companyId, date.getMonthValue(), date.getYear())) {
+            throw new IllegalStateException("Bảng chấm công tháng " + date.getMonthValue() + "/" + date.getYear() + " đã bị khóa để chốt lương. Không thể chỉnh sửa.");
+        }
+    }
+
     /**
      * Điểm danh bổ sung / Điều chỉnh công thủ công cho bất kỳ ngày nào
      */
@@ -98,6 +117,8 @@ public class AttendanceService {
         if (date == null) {
             throw new IllegalArgumentException("Vui lòng chọn ngày điểm danh bổ sung.");
         }
+        checkTimesheetNotLocked(companyId, date);
+
         if (checkInTime == null && checkOutTime == null) {
             throw new IllegalArgumentException("Vui lòng nhập giờ vào ca hoặc giờ tan ca.");
         }
@@ -159,6 +180,8 @@ public class AttendanceService {
         if (date == null) {
             date = LocalDate.now();
         }
+        checkTimesheetNotLocked(companyId, date);
+
         if (checkInTime == null) {
             checkInTime = LocalTime.now().withNano(0);
         }
@@ -193,6 +216,8 @@ public class AttendanceService {
         if (date == null) {
             date = LocalDate.now();
         }
+        checkTimesheetNotLocked(companyId, date);
+
         if (checkOutTime == null) {
             checkOutTime = LocalTime.now().withNano(0);
         }
@@ -306,5 +331,111 @@ public class AttendanceService {
     private String escapeCsv(String value) {
         if (value == null) return "";
         return value.replace("\"", "\"\"");
+    }
+
+    // =========================================================================
+    // UC86: Attendance Explanations / Correction Requests (Employee)
+    // =========================================================================
+    public boolean submitExplanation(AttendanceExplanation exp) throws SQLException {
+        if (exp == null) {
+            throw new IllegalArgumentException("Thông tin giải trình không hợp lệ.");
+        }
+        requireCompany(exp.getCompanyId());
+        requireEmployee(exp.getCompanyId(), exp.getEmployeeId());
+
+        if (exp.getAttendanceDate() == null) {
+            throw new IllegalArgumentException("Vui lòng chọn ngày cần giải trình công.");
+        }
+        if (exp.getAttendanceDate().isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("Không thể gửi giải trình cho ngày trong tương lai.");
+        }
+        checkTimesheetNotLocked(exp.getCompanyId(), exp.getAttendanceDate());
+
+        if (explanationDAO.hasPendingExplanation(exp.getCompanyId(), exp.getEmployeeId(), exp.getAttendanceDate())) {
+            throw new IllegalStateException("Đã có yêu cầu giải trình đang chờ duyệt cho ngày này.");
+        }
+        if (exp.getReasonDetail() == null || exp.getReasonDetail().isBlank()) {
+            throw new IllegalArgumentException("Vui lòng nhập lý do giải trình chi tiết.");
+        }
+        if (exp.getProposedCheckIn() != null && exp.getProposedCheckOut() != null &&
+                exp.getProposedCheckOut().isBefore(exp.getProposedCheckIn())) {
+            throw new IllegalArgumentException("Thời gian tan ca không thể sớm hơn thời gian vào ca.");
+        }
+
+        return explanationDAO.createExplanation(exp);
+    }
+
+    public List<AttendanceExplanation> getMyExplanations(int companyId, int employeeId, Integer month, Integer year) throws SQLException {
+        requireCompany(companyId);
+        requireEmployee(companyId, employeeId);
+        return explanationDAO.getExplanationsByEmployee(companyId, employeeId, month, year);
+    }
+
+    public boolean cancelExplanation(int explanationId, int employeeId) throws SQLException {
+        return explanationDAO.cancelExplanation(explanationId, employeeId);
+    }
+
+    // =========================================================================
+    // UC87: Review & Approve Attendance Explanations (Manager / Admin)
+    // =========================================================================
+    public List<AttendanceExplanation> getPendingExplanations(int companyId, Integer managerEmployeeId) throws SQLException {
+        requireCompany(companyId);
+        return explanationDAO.getPendingExplanations(companyId, managerEmployeeId);
+    }
+
+    public boolean reviewExplanation(int explanationId, int reviewerUserId, Integer reviewerEmployeeId,
+                                     boolean approve, String comment, int companyId) throws SQLException {
+        requireCompany(companyId);
+        AttendanceExplanation exp = explanationDAO.getExplanationById(explanationId);
+        if (exp == null || exp.getCompanyId() != companyId) {
+            throw new IllegalArgumentException("Không tìm thấy đơn giải trình chấm công này.");
+        }
+        if (!"PENDING".equalsIgnoreCase(exp.getStatus())) {
+            throw new IllegalStateException("Đơn giải trình này đã được xử lý trước đó.");
+        }
+        checkTimesheetNotLocked(companyId, exp.getAttendanceDate());
+
+        if (approve) {
+            boolean updated = explanationDAO.updateStatus(explanationId, "APPROVED", reviewerUserId,
+                    comment != null && !comment.isBlank() ? comment.trim() : "Chấp thuận giải trình");
+            if (updated) {
+                // Tự động đồng bộ sang bảng Attendances
+                LocalTime in = exp.getProposedCheckIn();
+                LocalTime out = exp.getProposedCheckOut();
+                if (in == null && out == null) {
+                    CompanyShiftSetting shift = shiftSettingDAO.getShiftSetting(companyId);
+                    in = shift.getShiftStartTime();
+                    out = shift.getShiftEndTime();
+                }
+                manualAdjustAttendance(companyId, exp.getEmployeeId(), exp.getAttendanceDate(),
+                        in, out, "Duyệt giải trình: " + exp.getReasonDetail(), reviewerUserId);
+            }
+            return updated;
+        } else {
+            return explanationDAO.updateStatus(explanationId, "REJECTED", reviewerUserId,
+                    comment != null && !comment.isBlank() ? comment.trim() : "Từ chối giải trình");
+        }
+    }
+
+    // =========================================================================
+    // UC88: Timesheet Locking for Payroll Finalization (Manager / Admin)
+    // =========================================================================
+    public boolean isMonthLocked(int companyId, int month, int year) throws SQLException {
+        return timesheetLockDAO.isMonthLocked(companyId, month, year);
+    }
+
+    public TimesheetLock getTimesheetLock(int companyId, int month, int year) throws SQLException {
+        return timesheetLockDAO.getLock(companyId, month, year);
+    }
+
+    public boolean setTimesheetLock(int companyId, int month, int year, boolean isLocked, int userId, String notes) throws SQLException {
+        requireCompany(companyId);
+        if (month < 1 || month > 12) {
+            throw new IllegalArgumentException("Tháng không hợp lệ (1-12).");
+        }
+        if (year < 2000 || year > 2100) {
+            throw new IllegalArgumentException("Năm không hợp lệ.");
+        }
+        return timesheetLockDAO.setLock(companyId, month, year, isLocked, userId, notes != null ? notes.trim() : null);
     }
 }

@@ -288,6 +288,16 @@
                     </svg>
                     Cài đặt ca làm việc
                 </button>
+                <button class="button" id="btnOpenExplanationsModal" style="background:#059669; border-color:#059669; color:#fff; display:inline-flex; align-items:center; gap:6px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                    </svg>
+                    Duyệt giải trình công
+                    <span id="badgePendingExplanations" style="display:none; background:#ef4444; color:#fff; font-size:11px; font-weight:700; padding:2px 6px; border-radius:10px;">0</span>
+                </button>
             </div>
         </div>
 
@@ -566,6 +576,48 @@
                         </svg>
                         Lưu điểm danh bổ sung
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal UC87: Quản lý Duyệt Đơn Giải Trình Chấm Công -->
+        <div id="modalExplanations" class="shift-modal-overlay" style="display:none;">
+            <div class="shift-modal-box" style="max-width: 900px; width: 95%;">
+                <div class="shift-modal-header" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h3 class="shift-modal-title" style="margin:0 0 4px; font-size:18px; font-weight:700; color:#059669;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:middle;margin-right:4px;">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                            </svg>
+                            Duyệt đơn giải trình chấm công
+                        </h3>
+                        <div style="font-size:13px; color:#475467;">Xem xét và phê duyệt các yêu cầu xin bổ sung/giải trình công từ nhân viên cấp dưới.</div>
+                    </div>
+                    <button type="button" class="btn-close" id="btnCloseExplanationsModal" style="background:none; border:none; font-size:24px; cursor:pointer; color:#667085;">&times;</button>
+                </div>
+                <div class="shift-modal-body" style="padding: 20px; max-height: 65vh; overflow-y: auto;">
+                    <div id="explanationAlertBox" style="display:none; padding:10px 14px; border-radius:8px; margin-bottom:14px;"></div>
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead>
+                            <tr style="border-bottom:2px solid #eaecf0; text-align:left; font-size:13px; color:#475467;">
+                                <th style="padding:10px 8px;">Nhân viên</th>
+                                <th style="padding:10px 8px;">Ngày giải trình</th>
+                                <th style="padding:10px 8px;">Lý do</th>
+                                <th style="padding:10px 8px;">Giờ đề xuất</th>
+                                <th style="padding:10px 8px;">Chi tiết lý do</th>
+                                <th style="padding:10px 8px; text-align:center;">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pendingExplanationsRows">
+                            <tr><td colspan="6" style="text-align:center; color:#667085; padding:24px;">Đang tải danh sách chờ duyệt...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="shift-modal-footer" style="padding: 14px 20px; background:#f9fafb; border-top:1px solid #eaecf0; display:flex; justify-content:flex-end;">
+                    <button type="button" class="btn-shift-cancel" id="btnCloseExplanationsBottom">Đóng</button>
                 </div>
             </div>
         </div>

@@ -420,10 +420,11 @@
 .month-navigator {
     display: inline-flex;
     align-items: center;
+    gap: 6px;
     background: #ffffff;
     border: 1px solid #d0d5dd;
     border-radius: 8px;
-    padding: 3px 6px;
+    padding: 4px 8px;
     box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
 }
 
@@ -431,19 +432,48 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    border: none;
-    background: transparent;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    border: 1px solid #d0d5dd;
+    background: #f9fafb;
     border-radius: 6px;
-    color: #475467;
+    color: #344054;
     cursor: pointer;
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1;
+    padding: 0;
     transition: all 0.15s ease;
 }
 
 .month-nav-btn:hover {
-    background: #f2f4f7;
+    background: #eaecf0;
     color: #101828;
+    border-color: #98a2b3;
+}
+
+.timesheet-period-select {
+    width: 125px;
+    min-width: 125px;
+    height: 34px;
+    border: 1px solid #d0d5dd;
+    background: #ffffff;
+    font-weight: 700;
+    font-size: 14px;
+    color: #101828;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    outline: none;
+    box-sizing: border-box;
+    transition: all 0.15s ease;
+}
+
+.timesheet-period-select:hover,
+.timesheet-period-select:focus {
+    background: #f8f9fa;
+    border-color: #465fff;
 }
 
 .month-badge-display {
