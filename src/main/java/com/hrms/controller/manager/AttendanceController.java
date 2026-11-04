@@ -4,11 +4,15 @@ import com.hrms.api.ApiRoutes;
 import com.hrms.dao.AttendanceDAO.AttendanceDTO;
 import com.hrms.dao.AttendanceReportDAO;
 import com.hrms.dao.AttendanceSummaryDAO;
+import com.hrms.model.AttendanceExplanation;
+import com.hrms.model.CompanyShiftSetting;
+import com.hrms.model.TimesheetLock;
 import com.hrms.model.Department;
 import com.hrms.model.Employee;
 import com.hrms.service.AttendanceService;
 import com.hrms.service.DepartmentService;
 import com.hrms.service.EmployeeService;
+import com.hrms.service.TimesheetExcelService;
 import com.hrms.service.security.TenantPrincipal;
 import com.hrms.util.SecuritySupport;
 
@@ -25,7 +29,10 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -58,7 +65,10 @@ import java.util.stream.Collectors;
         ApiRoutes.ATTENDANCE_COMPANY,
         ApiRoutes.ATTENDANCE_REPORT,
         ApiRoutes.ATTENDANCE_EXPORT_REPORT,
+        ApiRoutes.ATTENDANCE_EXPORT_TIMESHEET,
         ApiRoutes.ATTENDANCE_META,
+        ApiRoutes.ATTENDANCE_SHIFT_SETTING,
+        ApiRoutes.ATTENDANCE_MANUAL_ADJUST,
         ApiRoutes.MANAGER_TEAM_ATTENDANCE,
         ApiRoutes.MANAGER_EMPLOYEE_ATTENDANCE,
         ApiRoutes.MANAGER_EMPLOYEE_ATTENDANCE_HTML,
@@ -69,15 +79,21 @@ public class AttendanceController extends HttpServlet {
     private final AttendanceService attendanceService;
     private final EmployeeService employeeService;
     private final DepartmentService departmentService;
+    private final TimesheetExcelService timesheetExcelService;
 
     public AttendanceController() {
-        this(new AttendanceService(), new EmployeeService(), new DepartmentService());
+        this(new AttendanceService(), new EmployeeService(), new DepartmentService(), new TimesheetExcelService());
     }
 
-    AttendanceController(AttendanceService attendanceService, EmployeeService employeeService, DepartmentService departmentService) {
+    public AttendanceController(AttendanceService attendanceService, EmployeeService employeeService, DepartmentService departmentService) {
+        this(attendanceService, employeeService, departmentService, new TimesheetExcelService());
+    }
+
+    public AttendanceController(AttendanceService attendanceService, EmployeeService employeeService, DepartmentService departmentService, TimesheetExcelService timesheetExcelService) {
         this.attendanceService = attendanceService;
         this.employeeService = employeeService;
         this.departmentService = departmentService;
+        this.timesheetExcelService = timesheetExcelService != null ? timesheetExcelService : new TimesheetExcelService();
     }
 
     @Override
@@ -92,6 +108,17 @@ public class AttendanceController extends HttpServlet {
             if (path.endsWith(".html") && path.startsWith(ApiRoutes.ATTENDANCE_PREFIX + "/")) {
                 String canonical = path.substring(0, path.length() - ".html".length());
                 response.sendRedirect(request.getContextPath() + canonical);
+                return;
+            }
+
+            TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+            boolean isCompanyAdmin = principal != null && principal.isCompanyAdministrator();
+            if (isCompanyAdmin && (
+                    path.equals(ApiRoutes.ATTENDANCE_PAGE_MANAGER)
+                    || path.equals(ApiRoutes.ATTENDANCE_PAGE_MANAGER_PERSONAL)
+                    || path.equals(ApiRoutes.ATTENDANCE_PAGE_EMPLOYEE)
+                    || path.equals(ApiRoutes.MANAGER_TEAM_ATTENDANCE))) {
+                response.sendRedirect(request.getContextPath() + ApiRoutes.ATTENDANCE_PAGE_COMPANY);
                 return;
             }
 
@@ -144,13 +171,20 @@ public class AttendanceController extends HttpServlet {
                     }
                 }
                 case ApiRoutes.ATTENDANCE_EXPORT_REPORT -> handleExportReport(request, response);
+                case ApiRoutes.ATTENDANCE_EXPORT_TIMESHEET -> handleExportTimesheet(request, response);
                 case ApiRoutes.ATTENDANCE_META -> handleMeta(request, response);
+                case ApiRoutes.ATTENDANCE_SHIFT_SETTING -> handleGetShiftSetting(request, response);
+                case ApiRoutes.ATTENDANCE_EXPLANATION_MY -> handleMyExplanations(request, response);
+                case ApiRoutes.ATTENDANCE_EXPLANATION_PENDING -> handlePendingExplanations(request, response);
+                case ApiRoutes.ATTENDANCE_TIMESHEET_LOCK -> handleGetTimesheetLock(request, response);
                 default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Endpoint not found."));
             }
         } catch (SecurityException e) {
             writeJson(response, HttpServletResponse.SC_FORBIDDEN, error(e.getMessage()));
         } catch (SQLException e) {
             writeJson(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, error("Database error: " + e.getMessage()));
+        } catch (IllegalStateException e) {
+            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error(e.getMessage()));
         } catch (IllegalArgumentException e) {
             writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error(e.getMessage()));
         } catch (Exception e) {
@@ -167,16 +201,38 @@ public class AttendanceController extends HttpServlet {
             SecuritySupport.requireCompanyId(request);
             SecuritySupport.applyNoStore(response::setHeader);
             if (!SecuritySupport.hasValidPublicCsrfToken(request)) throw new SecurityException("Phiên làm việc đã thay đổi. Vui lòng tải lại trang trước khi lưu.");
+
+            TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+            if (principal != null && principal.isCompanyAdministrator()) {
+                switch (path) {
+                    case ApiRoutes.ATTENDANCE_CHECK_IN,
+                         ApiRoutes.ATTENDANCE_CHECK_OUT,
+                         ApiRoutes.ATTENDANCE_BATCH_COMPLETE,
+                         ApiRoutes.ATTENDANCE_MANUAL_ADJUST -> {
+                        writeJson(response, HttpServletResponse.SC_FORBIDDEN,
+                                error("Tài khoản Quản trị Công ty chỉ có quyền giám sát và xem báo cáo tổng hợp chấm công. Thao tác điểm danh chỉ dành cho Quản lý phòng ban."));
+                        return;
+                    }
+                }
+            }
             switch (path) {
                 case ApiRoutes.ATTENDANCE_CHECK_IN -> handleCheckIn(request, response);
                 case ApiRoutes.ATTENDANCE_CHECK_OUT -> handleCheckOut(request, response);
                 case ApiRoutes.ATTENDANCE_BATCH_COMPLETE -> handleBatchComplete(request, response);
+                case ApiRoutes.ATTENDANCE_SHIFT_SETTING -> handleSaveShiftSetting(request, response);
+                case ApiRoutes.ATTENDANCE_MANUAL_ADJUST -> handleManualAdjust(request, response);
+                case ApiRoutes.ATTENDANCE_EXPLANATION_SUBMIT -> handleSubmitExplanation(request, response);
+                case ApiRoutes.ATTENDANCE_EXPLANATION_CANCEL -> handleCancelExplanation(request, response);
+                case ApiRoutes.ATTENDANCE_EXPLANATION_REVIEW -> handleReviewExplanation(request, response);
+                case ApiRoutes.ATTENDANCE_TIMESHEET_LOCK -> handleSetTimesheetLock(request, response);
                 default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Endpoint not found."));
             }
         } catch (SecurityException e) {
             writeJson(response, HttpServletResponse.SC_FORBIDDEN, error(e.getMessage()));
         } catch (SQLException e) {
             writeJson(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, error("Database error: " + e.getMessage()));
+        } catch (IllegalStateException e) {
+            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error(e.getMessage()));
         } catch (IllegalArgumentException e) {
             writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error(e.getMessage()));
         } catch (Exception e) {
@@ -288,6 +344,37 @@ public class AttendanceController extends HttpServlet {
     }
 
     /**
+     * Manager/Admin thực hiện điểm danh bổ sung / điều chỉnh công thủ công cho bất kỳ ngày nào
+     */
+    private void handleManualAdjust(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (isRole(principal, "EMPLOYEE")) {
+            throw new SecurityException("Bạn không có quyền thực hiện điểm danh bổ sung.");
+        }
+
+        int companyId = SecuritySupport.requireCompanyId(request);
+        int employeeId = parseRequiredInt(request.getParameter("employeeId"), "Vui lòng chọn nhân viên cần điểm danh bổ sung.");
+        LocalDate date = parseOptionalDate(request.getParameter("date"));
+        if (date == null) {
+            throw new IllegalArgumentException("Vui lòng chọn ngày cần điểm danh bổ sung.");
+        }
+
+        ensureCanManageAttendance(request, employeeId, date);
+
+        LocalTime checkInTime = parseOptionalTime(request.getParameter("checkInTime"));
+        LocalTime checkOutTime = parseOptionalTime(request.getParameter("checkOutTime"));
+        String note = trimToNull(request.getParameter("note"));
+        Integer adjustedByUserId = principal != null ? principal.getUserId() : null;
+
+        AttendanceDTO result = attendanceService.manualAdjustAttendance(
+                companyId, employeeId, date, checkInTime, checkOutTime, note, adjustedByUserId
+        );
+
+        writeJson(response, HttpServletResponse.SC_OK,
+                "{\"success\":true,\"message\":\"Điểm danh bổ sung thành công!\",\"data\":" + toJson(result) + "}");
+    }
+
+    /**
      * UC31: View personal attendance history (Employee read-only)
      */
     private void handlePersonalAttendance(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
@@ -381,7 +468,7 @@ public class AttendanceController extends HttpServlet {
         int companyId = SecuritySupport.requireCompanyId(request);
 
         // Danh sách toàn bộ nhân sự công ty
-        List<AttendanceDTO> allEmpAttendance = scopedAttendance(request, LocalDate.now());
+        List<AttendanceDTO> allEmpAttendance = scopedAttendance(request, firstDay);
         List<AttendanceDTO> filteredEmps = allEmpAttendance;
         if (departmentId != null && departmentId > 0) {
             filteredEmps = filteredEmps.stream()
@@ -519,6 +606,74 @@ public class AttendanceController extends HttpServlet {
     }
 
     /**
+     * UC32: Export Timesheet Matrix to formatted Excel (.xlsx) file
+     */
+    private void handleExportTimesheet(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        int month = parseOptionalInt(request.getParameter("month"), LocalDate.now().getMonthValue());
+        int year = parseOptionalInt(request.getParameter("year"), LocalDate.now().getYear());
+        if (month < 1 || month > 12) month = LocalDate.now().getMonthValue();
+        if (year < 2000 || year > 2100) year = LocalDate.now().getYear();
+
+        Integer departmentId = parseNullableInt(request.getParameter("departmentId"));
+        String keyword = trimToNull(request.getParameter("keyword"));
+
+        LocalDate firstDay = LocalDate.of(year, month, 1);
+        LocalDate lastDay = firstDay.withDayOfMonth(firstDay.lengthOfMonth());
+        int daysInMonth = lastDay.getDayOfMonth();
+
+        int companyId = SecuritySupport.requireCompanyId(request);
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        String companyName = principal != null && principal.getCompanyName() != null ? principal.getCompanyName() : "HRMs Cloud";
+
+        // Scoped employees
+        List<AttendanceDTO> allEmpAttendance = scopedAttendance(request, firstDay);
+        List<AttendanceDTO> filteredEmps = allEmpAttendance;
+        if (departmentId != null && departmentId > 0) {
+            filteredEmps = filteredEmps.stream()
+                    .filter(e -> e.getDepartmentId() != null && e.getDepartmentId().equals(departmentId))
+                    .toList();
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            String kw = keyword.toLowerCase();
+            filteredEmps = filteredEmps.stream()
+                    .filter(e -> (e.getFullName() != null && e.getFullName().toLowerCase().contains(kw))
+                            || (e.getEmployeeCode() != null && e.getEmployeeCode().toLowerCase().contains(kw)))
+                    .toList();
+        }
+
+        Set<Integer> scopedEmployeeIds = filteredEmps.stream().map(AttendanceDTO::getEmployeeId).collect(Collectors.toSet());
+        List<AttendanceDTO> monthRecords = attendanceService.searchCompanyAttendance(companyId, departmentId, null, firstDay, lastDay, keyword)
+                .stream().filter(record -> scopedEmployeeIds.contains(record.getEmployeeId())).toList();
+
+        Map<Integer, Map<Integer, AttendanceDTO>> empRecordsMap = new HashMap<>();
+        for (AttendanceDTO rec : monthRecords) {
+            if (rec.getAttendanceDate() != null) {
+                empRecordsMap.computeIfAbsent(rec.getEmployeeId(), k -> new HashMap<>())
+                        .put(rec.getAttendanceDate().getDayOfMonth(), rec);
+            }
+        }
+
+        List<TimesheetExcelService.TimesheetEmpData> empDataList = new ArrayList<>();
+        for (AttendanceDTO emp : filteredEmps) {
+            Map<Integer, AttendanceDTO> records = empRecordsMap.getOrDefault(emp.getEmployeeId(), Map.of());
+            empDataList.add(new TimesheetExcelService.TimesheetEmpData(
+                    emp.getEmployeeId(),
+                    emp.getEmployeeCode(),
+                    emp.getFullName(),
+                    emp.getDepartmentName(),
+                    emp.getPositionTitle(),
+                    records
+            ));
+        }
+
+        String filename = String.format("Bang_Cham_Cong_Thang_%02d_%d.xlsx", month, year);
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+
+        timesheetExcelService.exportTimesheet(companyName, month, year, daysInMonth, empDataList, response.getOutputStream());
+    }
+
+    /**
      * Helper endpoint to fetch metadata (departments & employees) for dropdowns
      */
     private void handleMeta(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
@@ -649,6 +804,7 @@ public class AttendanceController extends HttpServlet {
                 + "\"checkInTime\":" + (a.getCheckInTime() != null ? quote(a.getCheckInTime().format(DateTimeFormatter.ofPattern("HH:mm:ss"))) : "null") + ","
                 + "\"checkOutTime\":" + (a.getCheckOutTime() != null ? quote(a.getCheckOutTime().format(DateTimeFormatter.ofPattern("HH:mm:ss"))) : "null") + ","
                 + "\"totalHours\":" + (a.getTotalHours() != null ? a.getTotalHours() : "0.00") + ","
+                + "\"workCredit\":" + (a.getWorkCredit() != null ? a.getWorkCredit() : "0.0") + ","
                 + "\"status\":" + quote(a.getStatus()) + ","
                 + "\"note\":" + quote(a.getNote()) + ","
                 + "\"manualAdjusted\":" + (a.getManualAdjusted() != null && a.getManualAdjusted()) + ","
@@ -662,6 +818,7 @@ public class AttendanceController extends HttpServlet {
         if (s == null) return "{}";
         return "{"
                 + "\"totalWorkingDays\":" + s.getTotalWorkingDays() + ","
+                + "\"totalWorkCredits\":" + (s.getTotalWorkCredits() != null ? s.getTotalWorkCredits() : "0.0") + ","
                 + "\"totalHours\":" + (s.getTotalHours() != null ? s.getTotalHours() : "0.00") + ","
                 + "\"presentDays\":" + s.getPresentDays() + ","
                 + "\"lateDays\":" + s.getLateDays() + ","
@@ -702,6 +859,73 @@ public class AttendanceController extends HttpServlet {
                     .append("}");
         }
         return sb.append("]").toString();
+    }
+
+
+    private void handleGetShiftSetting(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        int companyId = SecuritySupport.requireCompanyId(request);
+        CompanyShiftSetting setting = attendanceService.getCompanyShiftSetting(companyId);
+        writeJson(response, HttpServletResponse.SC_OK,
+                "{\"success\":true,\"data\":" + toJson(setting) + "}");
+    }
+
+    private void handleSaveShiftSetting(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (isRole(principal, "EMPLOYEE")) {
+            throw new SecurityException("Bạn không có quyền thay đổi cài đặt ca làm việc của công ty.");
+        }
+
+        int companyId = SecuritySupport.requireCompanyId(request);
+        LocalTime startTime = parseOptionalTime(request.getParameter("shiftStartTime"));
+        if (startTime == null) {
+            throw new IllegalArgumentException("Vui lòng chọn giờ bắt đầu ca làm việc.");
+        }
+        LocalTime endTime = parseOptionalTime(request.getParameter("shiftEndTime"));
+        if (endTime == null) {
+            throw new IllegalArgumentException("Vui lòng chọn giờ kết thúc ca làm việc.");
+        }
+        if (!endTime.isAfter(startTime)) {
+            throw new IllegalArgumentException("Giờ kết thúc ca làm việc phải sau giờ bắt đầu ca.");
+        }
+
+        int lunchBreakMinutes = parseOptionalInt(request.getParameter("lunchBreakMinutes"), CompanyShiftSetting.DEFAULT_LUNCH_BREAK_MINUTES);
+        if (lunchBreakMinutes < 0 || lunchBreakMinutes > 240) {
+            throw new IllegalArgumentException("Thời gian nghỉ trưa phải từ 0 đến 240 phút.");
+        }
+
+        int gracePeriodMinutes = parseOptionalInt(request.getParameter("gracePeriodMinutes"), CompanyShiftSetting.DEFAULT_GRACE_PERIOD_MINUTES);
+        if (gracePeriodMinutes < 0 || gracePeriodMinutes > 120) {
+            throw new IllegalArgumentException("Thời gian ân hạn phải từ 0 đến 120 phút.");
+        }
+
+        CompanyShiftSetting setting = new CompanyShiftSetting();
+        setting.setCompanyId(companyId);
+        setting.setShiftStartTime(startTime);
+        setting.setShiftEndTime(endTime);
+        setting.setLunchBreakMinutes(lunchBreakMinutes);
+        setting.setGracePeriodMinutes(gracePeriodMinutes);
+        setting.setUpdatedByUserId(principal.getUserId());
+
+        attendanceService.updateCompanyShiftSetting(setting);
+
+        CompanyShiftSetting updated = attendanceService.getCompanyShiftSetting(companyId);
+        writeJson(response, HttpServletResponse.SC_OK,
+                "{\"success\":true,\"message\":\"Cập nhật giờ giấc làm việc thành công!\",\"data\":" + toJson(updated) + "}");
+    }
+
+    private String toJson(CompanyShiftSetting s) {
+        if (s == null) return "null";
+        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm:ss");
+        return "{"
+                + "\"companyId\":" + s.getCompanyId() + ","
+                + "\"shiftStartTime\":" + (s.getShiftStartTime() != null ? quote(s.getShiftStartTime().format(timeFmt)) : "null") + ","
+                + "\"shiftEndTime\":" + (s.getShiftEndTime() != null ? quote(s.getShiftEndTime().format(timeFmt)) : "null") + ","
+                + "\"lunchBreakMinutes\":" + s.getLunchBreakMinutes() + ","
+                + "\"gracePeriodMinutes\":" + s.getGracePeriodMinutes() + ","
+                + "\"updatedAt\":" + (s.getUpdatedAt() != null ? quote(s.getUpdatedAt().toString()) : "null") + ","
+                + "\"updatedByUserId\":" + s.getUpdatedByUserId() + ","
+                + "\"updatedByName\":" + quote(s.getUpdatedByName())
+                + "}";
     }
 
     private String quote(String value) {
@@ -772,5 +996,172 @@ public class AttendanceController extends HttpServlet {
             return null;
         }
         return value.trim();
+    }
+
+    // =========================================================================
+    // UC86 & UC87: Attendance Explanation Handlers
+    // =========================================================================
+    private void handleMyExplanations(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (principal == null || principal.getEmployeeId() == null) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Tài khoản chưa liên kết với hồ sơ nhân viên."));
+            return;
+        }
+        int companyId = SecuritySupport.requireCompanyId(request);
+        Integer month = parseNullableInt(request.getParameter("month"));
+        Integer year = parseNullableInt(request.getParameter("year"));
+
+        List<AttendanceExplanation> list = attendanceService.getMyExplanations(companyId, principal.getEmployeeId(), month, year);
+        writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":" + toJsonExplanations(list) + "}");
+    }
+
+    private void handlePendingExplanations(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (principal == null) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Vui lòng đăng nhập."));
+            return;
+        }
+        int companyId = SecuritySupport.requireCompanyId(request);
+        Integer managerEmployeeId = null;
+        if (!principal.isCompanyAdministrator() && !"HR".equals(principal.getRoleCode())) {
+            managerEmployeeId = principal.getEmployeeId();
+        }
+
+        List<AttendanceExplanation> list = attendanceService.getPendingExplanations(companyId, managerEmployeeId);
+        writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":" + toJsonExplanations(list) + "}");
+    }
+
+    private void handleSubmitExplanation(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (principal == null || principal.getEmployeeId() == null) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Tài khoản chưa liên kết với hồ sơ nhân viên."));
+            return;
+        }
+        int companyId = SecuritySupport.requireCompanyId(request);
+        LocalDate date = parseOptionalDate(request.getParameter("attendanceDate"));
+        if (date == null) {
+            throw new IllegalArgumentException("Vui lòng chọn ngày cần giải trình.");
+        }
+        LocalTime inTime = parseOptionalTime(request.getParameter("proposedCheckIn"));
+        LocalTime outTime = parseOptionalTime(request.getParameter("proposedCheckOut"));
+        String reasonType = trimToNull(request.getParameter("reasonType"));
+        String reasonDetail = trimToNull(request.getParameter("reasonDetail"));
+
+        AttendanceExplanation exp = new AttendanceExplanation(companyId, principal.getEmployeeId(), date, inTime, outTime,
+                reasonType != null ? reasonType : "OTHER", reasonDetail);
+        attendanceService.submitExplanation(exp);
+        writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"message\":\"Gửi đơn giải trình chấm công thành công! Vui lòng chờ quản lý phê duyệt.\"}");
+    }
+
+    private void handleCancelExplanation(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (principal == null || principal.getEmployeeId() == null) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Không có quyền thực hiện."));
+            return;
+        }
+        int explanationId = parseRequiredInt(request.getParameter("explanationId"), "Mã đơn không hợp lệ.");
+        boolean cancelled = attendanceService.cancelExplanation(explanationId, principal.getEmployeeId());
+        if (cancelled) {
+            writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"message\":\"Hủy đơn giải trình thành công.\"}");
+        } else {
+            writeJson(response, HttpServletResponse.SC_BAD_REQUEST, error("Không thể hủy đơn (đơn đã được duyệt hoặc không tồn tại)."));
+        }
+    }
+
+    private void handleReviewExplanation(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (principal == null) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Vui lòng đăng nhập."));
+            return;
+        }
+        int companyId = SecuritySupport.requireCompanyId(request);
+        int explanationId = parseRequiredInt(request.getParameter("explanationId"), "Mã đơn không hợp lệ.");
+        String decision = request.getParameter("decision");
+        String comment = request.getParameter("comment");
+
+        boolean approve = "APPROVE".equalsIgnoreCase(decision);
+        attendanceService.reviewExplanation(explanationId, principal.getUserId(), principal.getEmployeeId(), approve, comment, companyId);
+        writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"message\":" + (approve ? "\"Đã duyệt giải trình và tự động cập nhật ngày công!\"" : "\"Đã từ chối đơn giải trình.\"") + "}");
+    }
+
+    // =========================================================================
+    // UC88: Timesheet Locking Handlers
+    // =========================================================================
+    private void handleGetTimesheetLock(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        int companyId = SecuritySupport.requireCompanyId(request);
+        int month = parseRequiredInt(request.getParameter("month"), "Vui lòng chọn tháng.");
+        int year = parseRequiredInt(request.getParameter("year"), "Vui lòng chọn năm.");
+
+        TimesheetLock lock = attendanceService.getTimesheetLock(companyId, month, year);
+        boolean isLocked = lock != null && lock.isLocked();
+        writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"isLocked\":" + isLocked + ",\"data\":" + toJson(lock) + "}");
+    }
+
+    private void handleSetTimesheetLock(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (principal == null) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Vui lòng đăng nhập."));
+            return;
+        }
+        int companyId = SecuritySupport.requireCompanyId(request);
+        int month = parseRequiredInt(request.getParameter("month"), "Vui lòng chọn tháng.");
+        int year = parseRequiredInt(request.getParameter("year"), "Vui lòng chọn năm.");
+        String action = request.getParameter("action");
+        String notes = request.getParameter("notes");
+        boolean lock = "LOCK".equalsIgnoreCase(action);
+
+        attendanceService.setTimesheetLock(companyId, month, year, lock, principal.getUserId(), notes);
+        writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"isLocked\":" + lock + ",\"message\":" + (lock ? "\"Đã khóa bảng chấm công tháng " + month + "/" + year + "!\"" : "\"Đã mở khóa bảng chấm công tháng " + month + "/" + year + "!\"") + "}");
+    }
+
+    private String toJson(TimesheetLock l) {
+        if (l == null) return "null";
+        return "{"
+                + "\"lockId\":" + l.getLockId() + ","
+                + "\"companyId\":" + l.getCompanyId() + ","
+                + "\"month\":" + l.getMonth() + ","
+                + "\"year\":" + l.getYear() + ","
+                + "\"isLocked\":" + l.isLocked() + ","
+                + "\"lockedByUserId\":" + l.getLockedByUserId() + ","
+                + "\"lockedByUserName\":" + quote(l.getLockedByUserName()) + ","
+                + "\"lockedAt\":" + (l.getLockedAt() != null ? quote(l.getLockedAt().toString()) : "null") + ","
+                + "\"notes\":" + quote(l.getNotes())
+                + "}";
+    }
+
+    private String toJson(AttendanceExplanation e) {
+        if (e == null) return "null";
+        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm:ss");
+        return "{"
+                + "\"explanationId\":" + e.getExplanationId() + ","
+                + "\"companyId\":" + e.getCompanyId() + ","
+                + "\"employeeId\":" + e.getEmployeeId() + ","
+                + "\"employeeCode\":" + quote(e.getEmployeeCode()) + ","
+                + "\"employeeFullName\":" + quote(e.getEmployeeFullName()) + ","
+                + "\"departmentName\":" + quote(e.getDepartmentName()) + ","
+                + "\"attendanceDate\":" + (e.getAttendanceDate() != null ? quote(e.getAttendanceDate().toString()) : "null") + ","
+                + "\"proposedCheckIn\":" + (e.getProposedCheckIn() != null ? quote(e.getProposedCheckIn().format(timeFmt)) : "null") + ","
+                + "\"proposedCheckOut\":" + (e.getProposedCheckOut() != null ? quote(e.getProposedCheckOut().format(timeFmt)) : "null") + ","
+                + "\"reasonType\":" + quote(e.getReasonType()) + ","
+                + "\"reasonTypeDisplay\":" + quote(e.getReasonTypeDisplay()) + ","
+                + "\"reasonDetail\":" + quote(e.getReasonDetail()) + ","
+                + "\"status\":" + quote(e.getStatus()) + ","
+                + "\"reviewerId\":" + (e.getReviewerId() != null ? e.getReviewerId() : "null") + ","
+                + "\"reviewerComment\":" + quote(e.getReviewerComment()) + ","
+                + "\"reviewerDisplayName\":" + quote(e.getReviewerDisplayName()) + ","
+                + "\"reviewedAt\":" + (e.getReviewedAt() != null ? quote(e.getReviewedAt().toString()) : "null") + ","
+                + "\"createdAt\":" + (e.getCreatedAt() != null ? quote(e.getCreatedAt().toString()) : "null")
+                + "}";
+    }
+
+    private String toJsonExplanations(List<AttendanceExplanation> list) {
+        if (list == null) return "[]";
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < list.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append(toJson(list.get(i)));
+        }
+        sb.append("]");
+        return sb.toString();
     }
 }

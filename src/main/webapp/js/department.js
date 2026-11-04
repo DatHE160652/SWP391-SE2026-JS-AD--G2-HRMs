@@ -19,6 +19,11 @@ const DepartmentApi = {
 
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('#statusFilter')?.addEventListener('change', loadDepartments);
+    document.querySelector('#btnExportDepartments')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        const status = document.querySelector('#statusFilter')?.value || '';
+        window.location.href = departmentApiUrl(`/departments/export?status=${encodeURIComponent(status)}`);
+    });
     const page = document.body.dataset.page;
     if (page === 'department-list') {
         loadDepartments();

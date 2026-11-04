@@ -528,6 +528,16 @@ const LeaveApp = (() => {
         if (statusFilter) statusFilter.addEventListener("change", () => loadAll(1));
         if (deptFilter) deptFilter.addEventListener("change", () => loadAll(1));
         window.LeaveAppReloadAll = () => loadAll(currentPage);
+        window.exportLeaveRequests = () => {
+            const params = new URLSearchParams({
+                status: statusFilter ? statusFilter.value : "ALL",
+                departmentId: deptFilter ? deptFilter.value : "",
+                fromDate: fromDate ? fromDate.value : "",
+                toDate: toDate ? toDate.value : "",
+                keyword: keywordInput ? keywordInput.value : ""
+            });
+            window.location.href = `../leave/export-requests?${params.toString()}`;
+        };
         loadAll(1);
     }
 

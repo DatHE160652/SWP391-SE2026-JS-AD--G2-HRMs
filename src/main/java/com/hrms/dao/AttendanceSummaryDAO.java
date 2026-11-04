@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 
 public class AttendanceSummaryDAO {
     private int totalWorkingDays;
+    private BigDecimal totalWorkCredits;
     private BigDecimal totalHours;
     private int presentDays;
     private int lateDays;
@@ -13,6 +14,7 @@ public class AttendanceSummaryDAO {
 
     public AttendanceSummaryDAO() {
         this.totalWorkingDays = 0;
+        this.totalWorkCredits = BigDecimal.ZERO;
         this.totalHours = BigDecimal.ZERO;
         this.presentDays = 0;
         this.lateDays = 0;
@@ -23,6 +25,9 @@ public class AttendanceSummaryDAO {
 
     public int getTotalWorkingDays() { return totalWorkingDays; }
     public void setTotalWorkingDays(int totalWorkingDays) { this.totalWorkingDays = totalWorkingDays; }
+
+    public BigDecimal getTotalWorkCredits() { return totalWorkCredits != null ? totalWorkCredits : BigDecimal.ZERO; }
+    public void setTotalWorkCredits(BigDecimal totalWorkCredits) { this.totalWorkCredits = totalWorkCredits; }
 
     public BigDecimal getTotalHours() { return totalHours; }
     public void setTotalHours(BigDecimal totalHours) { this.totalHours = totalHours; }

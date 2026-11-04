@@ -8,8 +8,6 @@ public final class ApiRoutes {
     public static final String PUBLIC_PRICING = "/Pricing";
     public static final String PUBLIC_FAQ = "/faqs";
     public static final String PUBLIC_CONSULTATION = "/consultation-request";
-    public static final String PUBLIC_FAQ_TOPICS = "/faqs/topics";
-    public static final String PUBLIC_FAQ_COMMENTS = "/faqs/comments";
     public static final String SYSTEM_ADMIN_PREFIX = "/systemadmin";
     public static final String SYSTEM_ADMIN_LOGIN = SYSTEM_ADMIN_PREFIX + "/login";
     public static final String SYSTEM_ADMIN_LOGOUT = SYSTEM_ADMIN_PREFIX + "/logout";
@@ -38,7 +36,16 @@ public final class ApiRoutes {
     public static final String ATTENDANCE_COMPANY = ATTENDANCE_PREFIX + "/company";
     public static final String ATTENDANCE_REPORT = ATTENDANCE_PREFIX + "/report";
     public static final String ATTENDANCE_EXPORT_REPORT = ATTENDANCE_PREFIX + "/export-report";
+    public static final String ATTENDANCE_EXPORT_TIMESHEET = ATTENDANCE_PREFIX + "/export-timesheet";
     public static final String ATTENDANCE_META = ATTENDANCE_PREFIX + "/meta";
+    public static final String ATTENDANCE_SHIFT_SETTING = ATTENDANCE_PREFIX + "/shift-setting";
+    public static final String ATTENDANCE_MANUAL_ADJUST = ATTENDANCE_PREFIX + "/manual-adjust";
+    public static final String ATTENDANCE_EXPLANATION_SUBMIT = ATTENDANCE_PREFIX + "/explanation/submit";
+    public static final String ATTENDANCE_EXPLANATION_MY = ATTENDANCE_PREFIX + "/explanation/my-requests";
+    public static final String ATTENDANCE_EXPLANATION_CANCEL = ATTENDANCE_PREFIX + "/explanation/cancel";
+    public static final String ATTENDANCE_EXPLANATION_PENDING = ATTENDANCE_PREFIX + "/explanation/pending";
+    public static final String ATTENDANCE_EXPLANATION_REVIEW = ATTENDANCE_PREFIX + "/explanation/review";
+    public static final String ATTENDANCE_TIMESHEET_LOCK = ATTENDANCE_PREFIX + "/timesheet-lock";
 
     // Attendance View Pages (Canonical routes)
     public static final String ATTENDANCE_PAGE_MANAGER = ATTENDANCE_PREFIX + "/manager-attendance";

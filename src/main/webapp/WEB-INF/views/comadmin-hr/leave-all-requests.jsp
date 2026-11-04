@@ -41,8 +41,12 @@
                 <h1 class="page-title">Quản lý Đơn nghỉ phép Toàn công ty</h1>
                 <p class="page-subtitle">Giám sát toàn bộ các đơn xin nghỉ phép trong doanh nghiệp, tìm kiếm và phân loại theo trạng thái hoặc phòng ban.</p>
             </div>
-            <div class="header-actions">
+            <div class="header-actions" style="display:flex;gap:10px;">
                 <button class="button secondary" onclick="window.LeaveAppReloadAll()">Làm mới</button>
+                <button class="button" style="background:#107c41;color:#fff;display:inline-flex;align-items:center;gap:6px;border:none;cursor:pointer;" onclick="window.exportLeaveRequests()">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Xuất Excel
+                </button>
             </div>
         </div>
 

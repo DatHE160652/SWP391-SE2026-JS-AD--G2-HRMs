@@ -71,8 +71,6 @@
         <url-pattern>/Pricing</url-pattern>
         <url-pattern>/faqs</url-pattern>
         <url-pattern>/consultation-request</url-pattern>
-        <url-pattern>/faqs/topics</url-pattern>
-        <url-pattern>/faqs/comments</url-pattern>
         <url-pattern>/login</url-pattern>
         <url-pattern>/logout</url-pattern>
         <url-pattern>/change-password</url-pattern>
@@ -289,7 +287,16 @@
         <url-pattern>/attendance/company</url-pattern>
         <url-pattern>/attendance/report</url-pattern>
         <url-pattern>/attendance/export-report</url-pattern>
+        <url-pattern>/attendance/export-timesheet</url-pattern>
         <url-pattern>/attendance/meta</url-pattern>
+        <url-pattern>/attendance/shift-setting</url-pattern>
+        <url-pattern>/attendance/manual-adjust</url-pattern>
+        <url-pattern>/attendance/explanation/submit</url-pattern>
+        <url-pattern>/attendance/explanation/my-requests</url-pattern>
+        <url-pattern>/attendance/explanation/cancel</url-pattern>
+        <url-pattern>/attendance/explanation/pending</url-pattern>
+        <url-pattern>/attendance/explanation/review</url-pattern>
+        <url-pattern>/attendance/timesheet-lock</url-pattern>
         <!-- Compatibility / Legacy manager routes -->
         <url-pattern>/manager/team-attendance</url-pattern>
         <url-pattern>/manager/employee-attendance</url-pattern>
@@ -413,6 +420,19 @@
         <url-pattern>/lifecycle/api/changes/request</url-pattern>
         <url-pattern>/lifecycle/api/changes/transition</url-pattern>
         <url-pattern>/lifecycle/api/terminate</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>DataExportController</servlet-name>
+        <servlet-class>com.hrms.controller.export.DataExportController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>DataExportController</servlet-name>
+        <url-pattern>/employees/export</url-pattern>
+        <url-pattern>/leave/export-requests</url-pattern>
+        <url-pattern>/lifecycle/contracts/export</url-pattern>
+        <url-pattern>/departments/export</url-pattern>
+        <url-pattern>/positions/export</url-pattern>
     </servlet-mapping>
 
     <jsp-config>

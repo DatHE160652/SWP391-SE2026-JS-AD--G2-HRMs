@@ -419,50 +419,6 @@ main {
     display:grid;
     gap:12px
 }
-.faq-create-card {
-    padding:24px;
-    border:1px solid #bfdbfe;
-    border-radius:12px;
-    background:#fff
-}
-.faq-create-card h2 {
-    margin:0 0 16px;
-    font-size:20px
-}
-.faq-form,.faq-comment-form {
-    display:grid;
-    gap:8px
-}
-.faq-form label {
-    font-size:13px;
-    font-weight:700
-}
-.faq-form input,.faq-form textarea,.faq-comment-form textarea {
-    width:100%;
-    padding:10px 12px;
-    border:1px solid #cbd5e1;
-    border-radius:8px;
-    background:#fff;
-    color:var(--navy);
-    font:inherit
-}
-.faq-form textarea,.faq-comment-form textarea {
-    min-height:92px;
-    resize:vertical
-}
-.faq-form input:focus,.faq-form textarea:focus,.faq-comment-form textarea:focus {
-    border-color:var(--primary);
-    outline:0;
-    box-shadow:0 0 0 3px rgba(37,99,235,.15)
-}
-.faq-comment-form {
-    margin-top:18px;
-    padding-top:16px;
-    border-top:1px solid var(--border)
-}
-.faq-comment-form .button {
-    justify-self:start
-}
 .faq-topic {
     overflow:hidden;
     border:1px solid var(--border);
@@ -500,31 +456,6 @@ main {
 }
 .faq-answer p {
     margin:0 0 12px
-}
-.faq-meta,.comment span,.muted {
-    color:#64748b;
-    font-size:13px
-}
-.comments {
-    display:grid;
-    gap:9px;
-    margin-top:18px
-}
-.comment {
-    padding:12px 14px;
-    border-left:3px solid #bfdbfe;
-    background:#fff
-}
-.comment p {
-    margin:0 0 4px
-}
-.login-notice {
-    margin-top:18px;
-    padding:12px 14px;
-    border-radius:8px;
-    background:#eff6ff;
-    color:#1e40af;
-    font-size:13px
 }
 .info-card {
     position:sticky;
@@ -788,9 +719,60 @@ main {
 .tenant-login-links a:hover {
     text-decoration:underline
 }
+.faq-page-hero {
+    padding-top:64px;
+    padding-bottom:60px
+}
+.faq-section {
+    padding-top:68px;
+    padding-bottom:68px
+}
+.faq-section > .public-container {
+    max-width:1020px
+}
+.faq-layout {
+    grid-template-columns:minmax(0,1fr) 255px;
+    gap:22px
+}
+.faq-list {
+    gap:10px
+}
+.faq-question {
+    padding:16px;
+    font-size:14px
+}
+.faq-answer {
+    padding:0 16px 16px;
+    font-size:14px
+}
+.info-card {
+    padding:20px;
+    top:92px
+}
+.info-card h2 {
+    margin:16px 0 10px;
+    font-size:18px
+}
+.info-card .button {
+    margin-top:20px
+}
 @media(max-width:700px) {
     .public-container {
         width:min(100% - 32px,1280px)
+    }
+    .faq-page-hero {
+        padding-top:52px;
+        padding-bottom:48px
+    }
+    .faq-section {
+        padding-top:48px;
+        padding-bottom:48px
+    }
+    .faq-layout {
+        grid-template-columns:1fr
+    }
+    .info-card {
+        position:static
     }
     .public-header-inner {
         min-height:64px;

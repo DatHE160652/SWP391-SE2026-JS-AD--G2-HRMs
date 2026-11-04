@@ -25,6 +25,14 @@ public final class SecuritySupport {
     public static final String TENANT_PRINCIPAL_ATTRIBUTE = "tenantPrincipal";
     public static final String PAYROLL_CSRF_ATTRIBUTE = "payrollCsrfToken";
 
+    public static String ensurePublicCsrfToken(HttpSession session) {
+        return ensureToken(session, PUBLIC_CSRF_ATTRIBUTE);
+    }
+
+    public static boolean hasValidPublicCsrfToken(HttpServletRequest request) {
+        return hasValidToken(request, PUBLIC_CSRF_ATTRIBUTE);
+    }
+
     public static String ensurePayrollCsrfToken(HttpSession session) {
         return ensureToken(session, PAYROLL_CSRF_ATTRIBUTE);
     }
@@ -49,14 +57,6 @@ public final class SecuritySupport {
 
     public static boolean hasValidCsrfToken(HttpServletRequest request) {
         return hasValidToken(request, CSRF_ATTRIBUTE);
-    }
-
-    public static String ensurePublicCsrfToken(HttpSession session) {
-        return ensureToken(session, PUBLIC_CSRF_ATTRIBUTE);
-    }
-
-    public static boolean hasValidPublicCsrfToken(HttpServletRequest request) {
-        return hasValidToken(request, PUBLIC_CSRF_ATTRIBUTE);
     }
 
     public static boolean isSystemAdmin(HttpServletRequest request) {

@@ -225,6 +225,14 @@
         select('#lc-department-filter').addEventListener('change',resetEmployeePage);
         select('#lc-employees').addEventListener('click',event => { const target = event.target.closest('[data-employee]'); if (target) chooseEmployee(Number(target.dataset.employee)).catch(error); });
         select('#lc-add').addEventListener('click',() => employeeModal(false).catch(error));
+        select('#lc-export-employees')?.addEventListener('click', () => {
+            const dept = select('#lc-department-filter')?.value || '';
+            const q = select('#lc-search')?.value || '';
+            const params = new URLSearchParams();
+            if (dept) params.set('departmentId', dept);
+            if (q) params.set('keyword', q);
+            window.location.href = `${context}/employees/export?${params.toString()}`;
+        });
         select('#lc-employee-form').addEventListener('submit',async event => {
             event.preventDefault();
             const form = event.currentTarget;
@@ -496,6 +504,21 @@
             select('#lc-page-add').hidden = false;
             select('#lc-page-add').textContent = 'Tạo hợp đồng mới';
             select('#lc-page-add').addEventListener('click',() => contractModal(null).catch(error));
+            if (select('#lc-page-export')) {
+                select('#lc-page-export').hidden = false;
+                select('#lc-page-export').addEventListener('click', () => {
+                    const status = select('#lc-resource-status')?.value || '';
+                    const type = select('#lc-resource-type')?.value || '';
+                    const q = select('#lc-resource-search')?.value || '';
+                    const requestedEmployeeId = new URLSearchParams(location.search).get('employeeId') || '';
+                    const params = new URLSearchParams();
+                    if (status) params.set('status', status);
+                    if (type) params.set('type', type);
+                    if (q) params.set('keyword', q);
+                    if (requestedEmployeeId) params.set('employeeId', requestedEmployeeId);
+                    window.location.href = `${context}/lifecycle/contracts/export?${params.toString()}`;
+                });
+            }
             const signedButton = document.createElement('button');
             signedButton.type = 'button'; signedButton.className = 'secondary';
             signedButton.textContent = 'Ghi nhận hợp đồng đã ký';

@@ -420,10 +420,11 @@
 .month-navigator {
     display: inline-flex;
     align-items: center;
+    gap: 6px;
     background: #ffffff;
     border: 1px solid #d0d5dd;
     border-radius: 8px;
-    padding: 3px 6px;
+    padding: 4px 8px;
     box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
 }
 
@@ -431,19 +432,48 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    border: none;
-    background: transparent;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    border: 1px solid #d0d5dd;
+    background: #f9fafb;
     border-radius: 6px;
-    color: #475467;
+    color: #344054;
     cursor: pointer;
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1;
+    padding: 0;
     transition: all 0.15s ease;
 }
 
 .month-nav-btn:hover {
-    background: #f2f4f7;
+    background: #eaecf0;
     color: #101828;
+    border-color: #98a2b3;
+}
+
+.timesheet-period-select {
+    width: 125px;
+    min-width: 125px;
+    height: 34px;
+    border: 1px solid #d0d5dd;
+    background: #ffffff;
+    font-weight: 700;
+    font-size: 14px;
+    color: #101828;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    outline: none;
+    box-sizing: border-box;
+    transition: all 0.15s ease;
+}
+
+.timesheet-period-select:hover,
+.timesheet-period-select:focus {
+    background: #f8f9fa;
+    border-color: #465fff;
 }
 
 .month-badge-display {
@@ -819,3 +849,320 @@
     font-size: 13px;
     border-bottom: 1px solid #eaecf0;
 }
+
+
+/* Modal Overlay and Dialog Styles for Shift Settings */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(16, 24, 40, 0.55);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 16px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+    display: flex !important;
+}
+
+.modal-box {
+    background: #ffffff;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 540px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+    transform: translateY(10px);
+    transition: transform 0.2s ease-in-out;
+}
+
+.modal-overlay.active .modal-box {
+    transform: translateY(0);
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--line, #e5e9f5);
+}
+
+.modal-title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--navy, #062579);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    line-height: 1;
+    color: #98a2b3;
+    cursor: pointer;
+    padding: 0;
+}
+
+.modal-close:hover {
+    color: #344054;
+}
+
+.modal-body {
+    padding: 20px 24px;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 24px;
+    border-top: 1px solid #eaecf0;
+    background: #fafbfc;
+}
+
+/* Enhanced Shift Modal Styles */
+.shift-modal-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(15, 23, 42, 0.65) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    z-index: 99999 !important;
+    display: none;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 16px !important;
+    box-sizing: border-box !important;
+}
+
+.shift-modal-overlay.active {
+    display: flex !important;
+}
+
+.shift-modal-box {
+    background: #ffffff !important;
+    border: 1px solid #d5dbeb !important;
+    border-radius: 16px !important;
+    width: 100% !important;
+    max-width: 560px !important;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(15, 23, 42, 0.05) !important;
+    overflow: hidden !important;
+    margin: auto !important;
+}
+
+.shift-modal-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 18px 24px !important;
+    border-bottom: 1px solid #eaecf0 !important;
+    background: #ffffff !important;
+}
+
+.shift-modal-title {
+    margin: 0 !important;
+    font-size: 17px !important;
+    font-weight: 800 !important;
+    color: #062579 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+.shift-modal-close {
+    background: transparent !important;
+    border: none !important;
+    color: #98a2b3 !important;
+    font-size: 26px !important;
+    line-height: 1 !important;
+    cursor: pointer !important;
+    padding: 4px 8px !important;
+    border-radius: 6px !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    box-shadow: none !important;
+}
+
+.shift-modal-close:hover {
+    color: #1d2939 !important;
+    background: #f2f4f7 !important;
+}
+
+.shift-modal-body {
+    padding: 22px 24px !important;
+    background: #ffffff !important;
+    max-height: calc(85vh - 140px) !important;
+    overflow-y: auto !important;
+}
+
+.shift-modal-footer {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 12px !important;
+    padding: 16px 24px !important;
+    border-top: 1px solid #eaecf0 !important;
+    background: #f8fafc !important;
+}
+
+/* Manual Attendance Adjustments */
+.badge.badge-manual {
+    color: #5925dc !important;
+    background: #f4ebff !important;
+    border: 1px solid #d6bbfb !important;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.button.btn-adjust {
+    background: #f9f5ff !important;
+    border: 1px solid #d6bbfb !important;
+    color: #6941c6 !important;
+    font-weight: 600;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+}
+
+.button.btn-adjust:hover {
+    background: #f4ebff !important;
+    border-color: #b692f6 !important;
+    color: #53389e !important;
+}
+
+/* Quota & Violation Alert Banner for Late/Early Leave */
+.attendance-quota-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px 20px;
+    border-radius: 12px;
+    box-sizing: border-box;
+    box-shadow: 0 2px 6px rgba(16, 24, 40, 0.05);
+    margin-bottom: 20px;
+    transition: all 0.2s ease;
+    animation: fadeInSlide 0.25s ease-out;
+}
+
+@keyframes fadeInSlide {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.attendance-quota-banner.safe {
+    background: #f0fdf4;
+    border: 1.5px solid #bbf7d0;
+    color: #166534;
+}
+
+.attendance-quota-banner.warning {
+    background: #fffbeb;
+    border: 1.5px solid #fde68a;
+    color: #92400e;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.12);
+}
+
+.attendance-quota-banner.danger {
+    background: #fef2f2;
+    border: 1.5px solid #fecaca;
+    color: #991b1b;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+
+.attendance-quota-icon {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.attendance-quota-banner.safe .attendance-quota-icon {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.attendance-quota-banner.warning .attendance-quota-icon {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.attendance-quota-banner.danger .attendance-quota-icon {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.attendance-quota-content {
+    flex: 1;
+}
+
+.attendance-quota-title {
+    font-size: 15px;
+    font-weight: 800;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.attendance-quota-desc {
+    font-size: 13.5px;
+    line-height: 1.55;
+    margin-bottom: 8px;
+}
+
+.attendance-quota-progress-track {
+    width: 100%;
+    max-width: 340px;
+    height: 8px;
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: 99px;
+    overflow: hidden;
+    margin-top: 6px;
+}
+
+.attendance-quota-progress-bar {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.3s ease;
+}
+
+.attendance-quota-banner.safe .attendance-quota-progress-bar {
+    background: #22c55e;
+}
+
+.attendance-quota-banner.warning .attendance-quota-progress-bar {
+    background: #f59e0b;
+}
+
+.attendance-quota-banner.danger .attendance-quota-progress-bar {
+    background: #ef4444;
+}
+
