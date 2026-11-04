@@ -1,4 +1,4 @@
-USE HRMsDB;
+﻿USE HRMsDB;
 GO
 
 -- ========================================================================
@@ -37,7 +37,7 @@ DECLARE @CompanyId INT = (SELECT TOP 1 CompanyId FROM Companies);
 IF @CompanyId IS NULL
 BEGIN
     INSERT INTO Companies (WorkspaceCode, CompanyName, CompanyNameNormalized, Region, ContactEmail)
-    VALUES ('technova', N'TechNova JSC', N'technova jsc', 'NORTH', 'contact@technova.vn');
+    VALUES ('anphat', N'Công ty Cổ phần Công Nghệ An Phát', N'công ty cổ phần công nghệ an phát', 'NORTH', 'contact@anphat.vn');
     SET @CompanyId = SCOPE_IDENTITY();
 END
 
@@ -205,7 +205,7 @@ SET NOCOUNT ON;
 -- An toàn, có kiểm tra trùng lặp (Idempotent), chạy nhiều lần không lỗi.
 -- ========================================================================
 DECLARE @CompanyId INT;
-SELECT TOP 1 @CompanyId = CompanyId FROM Companies WHERE WorkspaceCode = 'technova';
+SELECT TOP 1 @CompanyId = CompanyId FROM Companies WHERE WorkspaceCode = 'anphat';
 IF @CompanyId IS NULL SELECT TOP 1 @CompanyId = CompanyId FROM Companies;
 IF @CompanyId IS NULL
 BEGIN
