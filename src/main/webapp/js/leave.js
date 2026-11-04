@@ -426,7 +426,7 @@ const LeaveApp = (() => {
                         tableBody.appendChild(tr);
                     });
 
-                    renderPagination(paginationContainer, data.total, data.page, data.pageSize, loadPending);
+                    // renderPagination(paginationContainer, data.total, data.page, data.pageSize, loadPending);
                 })
                 .catch(() => {
                     tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #b42318; padding: 24px;">Lỗi khi tải danh sách chờ duyệt.</td></tr>';

@@ -104,7 +104,6 @@
                 </tbody>
             </table>
 
-            <div id="paginationBar" class="pagination-bar"></div>
         </section>
     </main>
 </div>
