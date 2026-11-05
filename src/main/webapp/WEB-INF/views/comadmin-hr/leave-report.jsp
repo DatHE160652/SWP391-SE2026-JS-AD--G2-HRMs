@@ -13,7 +13,7 @@
 <body data-page="leave-report">
 <div class="shell">
     <aside class="sidebar">
-        <div class="brand">HRMs Cloud<span>TechNova JSC</span></div>
+        <div class="brand">HRMs Cloud<span><c:out value="${not empty sessionScope.tenantPrincipal.companyName ? sessionScope.tenantPrincipal.companyName : 'Doanh nghiệp'}"/></span></div>
         <div class="nav-label">Phân hệ Quản trị</div>
         <a class="nav-link" href="../employee/employee-list">Quản lý Nhân sự</a>
         <a class="nav-link" href="../department/department-list">Quản lý Phòng ban</a>
