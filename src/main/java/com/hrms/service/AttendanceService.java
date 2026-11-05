@@ -52,6 +52,7 @@ public class AttendanceService {
         attendanceDAO.requireEmployee(companyId, employeeId);
     }
 
+    // CheckIn Service
     public AttendanceDTO checkIn(int companyId, int employeeId, LocalDate date, LocalTime time) throws SQLException {
         requireEmployee(companyId, employeeId);
         return checkInInternal(companyId, employeeId, date, time);
