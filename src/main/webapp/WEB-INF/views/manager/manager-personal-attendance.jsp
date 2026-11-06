@@ -7,30 +7,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chấm công cá nhân - HRMs Cloud</title>
-    <link rel="stylesheet" href="../css/employee.css">
-    <link rel="stylesheet" href="../css/attendance.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/lifecycle.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/organization.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/attendance.css?v=<%= application.getResource("/css/attendance.css").openConnection().getLastModified() %>">
 </head>
-<body data-page="employee-attendance" data-personal-scope="self">
-<div class="shell">
-    <aside class="sidebar">
-        <div class="brand">HRMs Cloud<span><c:out value="${not empty sessionScope.tenantPrincipal.companyName ? sessionScope.tenantPrincipal.companyName : 'TechNova JSC'}"/></span></div>
-        <div class="nav-label">Phân hệ Chấm công</div>
-        <a class="nav-link" href="../employee/my-profile?nav=manager">Hồ sơ cá nhân</a>
-        <a class="nav-link" href="manager-attendance">Điểm danh Nhân sự</a>
-        <a class="nav-link" href="manager-attendance?view=list">Danh sách chấm công</a>
-        <a class="nav-link active" href="manager-personal-attendance">Chấm công Cá nhân</a>
-        <a class="nav-link" href="attendance-report">Báo cáo Chấm công</a>
-        <a class="nav-link" href="../payslips">Phiếu lương của tôi</a>
-        <a class="nav-link" href="${pageContext.request.contextPath}/payroll">Quản lý lương</a>
-        <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
-    </aside>
+<body class="lc" data-page="employee-attendance" data-personal-scope="self">
+<c:set var="managerNavPage" value="personal-attendance"/>
+<c:set var="managerNavTitle" value="Chấm công Cá nhân"/>
+<%@ include file="/WEB-INF/views/common/manager-shell.jspf" %>
 
-    <main class="content">
+    <main class="lc-main content">
+        <div class="lc-breadcrumb">Cổng quản lý &nbsp; / &nbsp; Chấm công Cá nhân</div>
 
         <div class="page-header">
             <div>
                 <h1 class="page-title">Bảng chấm công cá nhân</h1>
-                <p class="page-subtitle">Quản lý xem lịch sử chấm công cá nhân theo tháng.</p>
+                <p class="page-subtitle">Quản lý xem lịch sử chấm công cá nhân theo từng tháng.</p>
             </div>
         </div>
 
@@ -66,25 +58,20 @@
                     </select>
                 </div>
                 <div class="filter-actions">
-                    <button class="button" id="btnFilter">Xem bảng công</button>
+                    <button class="button" id="btnFilter" type="button">Xem bảng công</button>
                 </div>
             </div>
         </section>
-
-        <!-- Notification Banner: Tình trạng đi muộn / về sớm (Tối đa 5 buổi/tháng) -->
-        <div id="violationNoticeBanner" style="display:none;"></div>
 
         <section class="summary-grid" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));">
             <div class="summary-card"><div class="summary-label">Số ngày đi làm</div><div id="totalWorkingDays" class="summary-number">0</div></div>
             <div class="summary-card"><div class="summary-label">Số ngày công</div><div id="totalWorkCredits" class="summary-number text-success" style="font-size: 24px;">0 công</div></div>
             <div class="summary-card"><div class="summary-label">Tổng giờ làm</div><div id="totalHours" class="summary-number text-success" style="font-size: 24px;">0 giờ</div></div>
             <div class="summary-card"><div class="summary-label">Đúng giờ</div><div id="presentDays" class="summary-number text-success">0</div></div>
-            <div class="summary-card"><div class="summary-label">Đi muộn</div><div id="lateDays" class="summary-number text-warning">0</div></div>
-            <div class="summary-card"><div class="summary-label">Về sớm</div><div id="earlyLeaveDays" class="summary-number" style="color: #3538cd;">0</div></div>
             <div class="summary-card"><div class="summary-label">Vắng / Nghỉ phép</div><div id="absentDays" class="summary-number text-danger" style="font-size: 22px;">0</div></div>
         </section>
 
-        <div id="message" class="message" style="margin: 0 28px 16px;"></div>
+        <div id="message" class="message"></div>
 
         <section class="panel">
             <table>
@@ -101,12 +88,12 @@
                 </tr>
                 </thead>
                 <tbody id="attendanceRows">
-                <tr><td colspan="8" style="text-align:center;color:#667085;padding:24px;">Đang tải dữ liệu...</td></tr>
+                    <tr><td colspan="8" style="text-align:center;color:#667085;padding:24px;">Đang tải dữ liệu...</td></tr>
                 </tbody>
             </table>
         </section>
     </main>
-</div>
+
 <script src="../js/attendance.js?v=<%= application.getResource("/js/attendance.js").openConnection().getLastModified() %>"></script>
 <script src="../js/payroll-notifications.js"></script>
 </body>

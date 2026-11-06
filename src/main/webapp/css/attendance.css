@@ -3,7 +3,7 @@
 .filter-bar {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 14px;
     align-items: flex-end;
     margin-bottom: 20px;
     padding: 16px;
@@ -19,25 +19,66 @@
 }
 
 .filter-group label {
-    margin-bottom: 4px;
-    font-size: 12px;
-    font-weight: 700;
-    color: #475467;
+    margin: 0 0 6px 0 !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: #475467 !important;
+    display: block !important;
+    line-height: 1.4 !important;
 }
 
 .filter-group input,
-.filter-group select {
-    padding: 8px 12px;
-    border: 1px solid #d5dbeb;
-    border-radius: 6px;
-    background: #fff;
-    font-size: 13px;
+.filter-group select,
+.filter-bar input,
+.filter-bar select,
+.filter-group #statusFilter,
+.filter-bar #statusFilter,
+.lc .content .filter-bar #statusFilter,
+.lc .content .filter-group #statusFilter {
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 8px 12px !important;
+    border: 1.5px solid #d0d5dd !important;
+    border-radius: 8px !important;
+    background: #ffffff !important;
+    font-size: 13.5px !important;
+    color: #101828 !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    margin-bottom: 0 !important;
+    width: 100% !important;
+    outline: none !important;
+    transition: all 0.15s ease !important;
+}
+
+.filter-group input:focus,
+.filter-group select:focus,
+.filter-bar input:focus,
+.filter-bar select:focus {
+    border-color: #4f46e5 !important;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
 }
 
 .filter-actions {
     display: flex;
     gap: 8px;
     align-items: center;
+    margin-bottom: 0 !important;
+}
+
+.filter-actions .button,
+.filter-actions button {
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 9px 18px !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    border-radius: 8px !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 /* Modern Status Badges with explicit distinct colors */
@@ -290,6 +331,64 @@
     background: #98a2b3 !important;
     border-color: #98a2b3 !important;
     opacity: 0.65;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+}
+
+.btn-batch-checkin {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #12b76a !important;
+    border: 1px solid #039855 !important;
+    color: #ffffff !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    padding: 8px 16px !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 4px rgba(18, 183, 106, 0.25) !important;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-batch-checkin:hover:not(:disabled) {
+    background: #027a48 !important;
+    box-shadow: 0 3px 6px rgba(2, 122, 72, 0.3) !important;
+}
+
+.btn-batch-checkin:disabled {
+    background: #98a2b3 !important;
+    border-color: #98a2b3 !important;
+    opacity: 0.6;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+}
+
+.btn-batch-checkout {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #d97706 !important;
+    border: 1px solid #b45309 !important;
+    color: #ffffff !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    padding: 8px 16px !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 4px rgba(217, 119, 6, 0.25) !important;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-batch-checkout:hover:not(:disabled) {
+    background: #b45309 !important;
+    box-shadow: 0 3px 6px rgba(180, 83, 9, 0.3) !important;
+}
+
+.btn-batch-checkout:disabled {
+    background: #98a2b3 !important;
+    border-color: #98a2b3 !important;
+    opacity: 0.6;
     cursor: not-allowed !important;
     box-shadow: none !important;
 }
@@ -1054,115 +1153,497 @@
     color: #53389e !important;
 }
 
-/* Quota & Violation Alert Banner for Late/Early Leave */
-.attendance-quota-banner {
-    display: flex;
-    align-items: flex-start;
-    gap: 16px;
-    padding: 16px 20px;
-    border-radius: 12px;
-    box-sizing: border-box;
-    box-shadow: 0 2px 6px rgba(16, 24, 40, 0.05);
-    margin-bottom: 20px;
-    transition: all 0.2s ease;
-    animation: fadeInSlide 0.25s ease-out;
+/* =========================================================================
+   Unified Shift & Explanation Modal System (Moved from inline styles)
+   ========================================================================= */
+#modalShiftSetting,
+#modalManualAttendance,
+#modalExplanations {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(15, 23, 42, 0.65) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    z-index: 99999 !important;
+    display: none;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 16px !important;
+    box-sizing: border-box !important;
 }
 
-@keyframes fadeInSlide {
-    from { opacity: 0; transform: translateY(-6px); }
-    to { opacity: 1; transform: translateY(0); }
+#modalShiftSetting.active,
+#modalManualAttendance.active,
+#modalExplanations.active {
+    display: flex !important;
 }
 
-.attendance-quota-banner.safe {
-    background: #f0fdf4;
-    border: 1.5px solid #bbf7d0;
-    color: #166534;
+.shift-modal-overlay .shift-section-title {
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    color: #475467 !important;
+    margin-bottom: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
 }
 
-.attendance-quota-banner.warning {
-    background: #fffbeb;
-    border: 1.5px solid #fde68a;
-    color: #92400e;
-    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.12);
+.shift-modal-overlay .shift-input-card {
+    background: #f8faff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 10px !important;
+    padding: 14px !important;
+    margin-bottom: 16px !important;
 }
 
-.attendance-quota-banner.danger {
-    background: #fef2f2;
-    border: 1.5px solid #fecaca;
-    color: #991b1b;
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+.shift-modal-overlay .shift-grid-2 {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 14px !important;
 }
 
-.attendance-quota-icon {
-    flex-shrink: 0;
-    width: 44px;
-    height: 44px;
-    border-radius: 10px;
-    display: flex;
+.shift-modal-overlay .shift-field-group {
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.shift-modal-overlay .shift-field-group label {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    color: #344054 !important;
+    margin-bottom: 6px !important;
+    display: block !important;
+}
+
+.shift-modal-overlay .shift-field-group input,
+.shift-modal-overlay .shift-field-group select {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    height: 40px !important;
+    padding: 8px 12px !important;
+    border: 1.5px solid #d0d5dd !important;
+    border-radius: 8px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: #101828 !important;
+    background: #ffffff !important;
+    transition: all 0.15s ease !important;
+}
+
+.shift-modal-overlay .shift-field-group input:focus,
+.shift-modal-overlay .shift-field-group select:focus {
+    border-color: #062579 !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(6, 37, 121, 0.12) !important;
+}
+
+.shift-modal-overlay #inputCutoffDay {
+    width: 110px !important;
+    min-width: 110px !important;
+    text-align: center !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
+}
+
+.shift-modal-overlay .shift-field-hint {
+    font-size: 11.5px !important;
+    color: #667085 !important;
+    margin-top: 5px !important;
+    line-height: 1.4 !important;
+}
+
+.shift-modal-overlay .shift-summary-box {
+    background: #eff8ff !important;
+    border: 1px solid #b2ddff !important;
+    border-radius: 8px !important;
+    padding: 12px 14px !important;
+    font-size: 12.5px !important;
+    color: #175cd3 !important;
+    line-height: 1.5 !important;
+    margin-top: 4px !important;
+}
+
+.shift-modal-overlay .shift-meta-box {
+    font-size: 12px !important;
+    color: #475467 !important;
+    background: #f8fafc !important;
+    border: 1px solid #eaecf0 !important;
+    border-radius: 8px !important;
+    padding: 10px 14px !important;
+    margin-top: 14px !important;
+}
+
+.btn-shift-cancel {
+    background: #ffffff !important;
+    border: 1px solid #d0d5dd !important;
+    color: #344054 !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    padding: 9px 18px !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05) !important;
+    transition: all 0.15s ease !important;
+    width: auto !important;
+    height: auto !important;
+}
+
+.btn-shift-cancel:hover {
+    background: #f9fafb !important;
+    color: #1d2939 !important;
+}
+
+.btn-shift-save {
+    background: #062579 !important;
+    border: 1px solid #062579 !important;
+    color: #ffffff !important;
+    font-size: 13.5px !important;
+    font-weight: 700 !important;
+    padding: 9px 22px !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    box-shadow: 0 1px 3px rgba(6, 37, 121, 0.25) !important;
+    transition: all 0.15s ease !important;
+    width: auto !important;
+    height: auto !important;
+}
+
+.btn-shift-save:hover {
+    background: #082f9c !important;
+    border-color: #082f9c !important;
+}
+
+.btn-shift-save:disabled {
+    opacity: 0.65 !important;
+    cursor: not-allowed !important;
+}
+
+/* Explanation Modals for Employee Attendance */
+.exp-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(16, 24, 40, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
     align-items: center;
     justify-content: center;
 }
-
-.attendance-quota-banner.safe .attendance-quota-icon {
-    background: #dcfce7;
-    color: #15803d;
+.exp-modal-overlay.active {
+    display: flex;
 }
-
-.attendance-quota-banner.warning .attendance-quota-icon {
-    background: #fef3c7;
-    color: #b45309;
+.exp-modal-box {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+    width: 100%;
+    max-width: 580px;
+    overflow: hidden;
+    animation: modalFadeIn 0.2s ease-out;
 }
-
-.attendance-quota-banner.danger .attendance-quota-icon {
-    background: #fee2e2;
-    color: #b91c1c;
+.exp-modal-box.wide {
+    max-width: 820px;
 }
-
-.attendance-quota-content {
-    flex: 1;
-}
-
-.attendance-quota-title {
-    font-size: 15px;
-    font-weight: 800;
-    margin-bottom: 4px;
+.exp-modal-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid #eaecf0;
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+    justify-content: space-between;
+}
+.exp-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #101828;
+}
+.exp-modal-body {
+    padding: 24px;
+    max-height: 75vh;
+    overflow-y: auto;
+}
+.exp-modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #eaecf0;
+    background: #f9fafb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
 }
 
-.attendance-quota-desc {
-    font-size: 13.5px;
-    line-height: 1.55;
-    margin-bottom: 8px;
+/* Harmonization for body.lc layout */
+body.lc .content .panel {
+    margin: 0 0 24px 0 !important;
+}
+body.lc .content .summary-grid {
+    display: grid !important;
+    gap: 16px !important;
+    margin: 0 0 22px 0 !important;
+}
+body.lc .content .summary-card {
+    min-width: 0 !important;
+}
+body.lc .content .info-banner {
+    margin: 0 0 20px 0 !important;
+}
+body.lc .content .message {
+    margin: 0 0 18px 0 !important;
 }
 
-.attendance-quota-progress-track {
-    width: 100%;
-    max-width: 340px;
-    height: 8px;
-    background: rgba(0, 0, 0, 0.08);
-    border-radius: 99px;
-    overflow: hidden;
-    margin-top: 6px;
+/* Scoped button resets for body.lc */
+.lc .role-tab {
+    min-height: 0 !important;
+    background: transparent !important;
+    color: #475467 !important;
+    border: none !important;
+    padding: 6px 14px !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
 }
 
-.attendance-quota-progress-bar {
-    height: 100%;
-    border-radius: 99px;
-    transition: width 0.3s ease;
+.lc .role-tab:hover {
+    color: #062579 !important;
+    background: rgba(255, 255, 255, 0.6) !important;
 }
 
-.attendance-quota-banner.safe .attendance-quota-progress-bar {
-    background: #22c55e;
+.lc .role-tab.active {
+    background: #ffffff !important;
+    color: #062579 !important;
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1), 0 1px 2px rgba(16, 24, 40, 0.06) !important;
 }
 
-.attendance-quota-banner.warning .attendance-quota-progress-bar {
-    background: #f59e0b;
+.lc .month-nav-btn {
+    min-height: 32px !important;
+    height: 32px !important;
+    width: 32px !important;
+    min-width: 32px !important;
+    padding: 0 !important;
+    background: #f9fafb !important;
+    border: 1px solid #d0d5dd !important;
+    color: #344054 !important;
+    border-radius: 6px !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    box-shadow: none !important;
 }
 
-.attendance-quota-banner.danger .attendance-quota-progress-bar {
-    background: #ef4444;
+.lc .month-nav-btn:hover {
+    background: #eaecf0 !important;
+    color: #101828 !important;
 }
 
+.lc .timesheet-nav-tab {
+    min-height: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 10px 4px 14px !important;
+    border-radius: 0 !important;
+    color: #667085 !important;
+    box-shadow: none !important;
+}
+
+.lc .timesheet-nav-tab:hover {
+    color: #101828 !important;
+}
+
+.lc .timesheet-nav-tab.active {
+    background: transparent !important;
+    color: #00866b !important;
+}
+
+.lc .btn-close,
+.lc .shift-modal-close {
+    min-height: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* =========================================================================
+   Center Modal Dialogs for Attendance Module (Alert / Confirm / Prompt)
+   Replaces native browser popups with beautiful centered dialogs
+   ========================================================================= */
+@keyframes attCenterFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes attCenterPopIn {
+    from {
+        opacity: 0;
+        transform: scale(0.92) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.att-center-modal-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(16, 24, 40, 0.65) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    z-index: 9999999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 20px !important;
+    box-sizing: border-box !important;
+    animation: attCenterFadeIn 0.2s ease-out;
+}
+
+.att-center-modal-box {
+    background: #ffffff !important;
+    border-radius: 16px !important;
+    box-shadow: 0 20px 45px -10px rgba(16, 24, 40, 0.3), 0 0 0 1px rgba(16, 24, 40, 0.08) !important;
+    width: 100% !important;
+    max-width: 440px !important;
+    padding: 28px 24px 22px !important;
+    text-align: center !important;
+    box-sizing: border-box !important;
+    animation: attCenterPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative !important;
+}
+
+.att-center-modal-icon-wrapper {
+    width: 56px !important;
+    height: 56px !important;
+    border-radius: 50% !important;
+    margin: 0 auto 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.att-center-modal-icon-wrapper.error {
+    background: #fee4e2 !important;
+    border: 8px solid #fef3f2 !important;
+    color: #d92d20 !important;
+}
+
+.att-center-modal-icon-wrapper.success {
+    background: #dcfae6 !important;
+    border: 8px solid #ecfdf3 !important;
+    color: #079455 !important;
+}
+
+.att-center-modal-icon-wrapper.warning {
+    background: #fef0c7 !important;
+    border: 8px solid #fffaeb !important;
+    color: #dc6803 !important;
+}
+
+.att-center-modal-icon-wrapper.info,
+.att-center-modal-icon-wrapper.confirm {
+    background: #e0eaff !important;
+    border: 8px solid #f4f7ff !important;
+    color: #062579 !important;
+}
+
+.att-center-modal-title {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #101828 !important;
+    margin: 0 0 8px 0 !important;
+    line-height: 1.35 !important;
+}
+
+.att-center-modal-desc {
+    font-size: 14px !important;
+    color: #475467 !important;
+    line-height: 1.55 !important;
+    margin: 0 0 24px 0 !important;
+    white-space: pre-line !important;
+    word-break: break-word !important;
+}
+
+.att-center-modal-input {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 10px 14px !important;
+    border: 1.5px solid #d0d5dd !important;
+    border-radius: 8px !important;
+    font-size: 14px !important;
+    color: #101828 !important;
+    background: #ffffff !important;
+    margin-bottom: 20px !important;
+    outline: none !important;
+    font-family: inherit !important;
+    transition: border-color 0.15s, box-shadow 0.15s !important;
+}
+
+.att-center-modal-input:focus {
+    border-color: #062579 !important;
+    box-shadow: 0 0 0 3px rgba(6, 37, 121, 0.12) !important;
+}
+
+.att-center-modal-actions {
+    display: flex !important;
+    gap: 12px !important;
+    width: 100% !important;
+}
+
+.att-center-btn {
+    flex: 1 !important;
+    min-height: 42px !important;
+    padding: 10px 18px !important;
+    border-radius: 8px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.15s ease !important;
+    outline: none !important;
+}
+
+.att-center-btn-primary {
+    background: #062579 !important;
+    border: 1px solid #062579 !important;
+    color: #ffffff !important;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05) !important;
+}
+
+.att-center-btn-primary:hover {
+    background: #082f9c !important;
+    border-color: #082f9c !important;
+}
+
+.att-center-btn-danger {
+    background: #d92d20 !important;
+    border: 1px solid #d92d20 !important;
+    color: #ffffff !important;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05) !important;
+}
+
+.att-center-btn-danger:hover {
+    background: #b42318 !important;
+    border-color: #b42318 !important;
+}
+
+.att-center-btn-secondary {
+    background: #ffffff !important;
+    border: 1px solid #d0d5dd !important;
+    color: #344054 !important;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05) !important;
+}
+
+.att-center-btn-secondary:hover {
+    background: #f9fafb !important;
+    color: #1d2939 !important;
+}

@@ -7,86 +7,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chấm công cá nhân - HRMs Cloud</title>
-    <link rel="stylesheet" href="../css/employee.css">
-    <link rel="stylesheet" href="../css/attendance.css">
-    <link rel="stylesheet" href="../css/employee-navigation.css?v=<%= application.getResource("/css/employee-navigation.css").openConnection().getLastModified() %>">
-    <style>
-        .exp-modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(16, 24, 40, 0.6);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-        .exp-modal-overlay.active {
-            display: flex;
-        }
-        .exp-modal-box {
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
-            width: 100%;
-            max-width: 580px;
-            overflow: hidden;
-            animation: modalFadeIn 0.2s ease-out;
-        }
-        .exp-modal-box.wide {
-            max-width: 820px;
-        }
-        .exp-modal-header {
-            padding: 16px 24px;
-            border-bottom: 1px solid #eaecf0;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .exp-modal-header h3 {
-            margin: 0;
-            font-size: 18px;
-            font-weight: 700;
-            color: #101828;
-        }
-        .exp-modal-body {
-            padding: 24px;
-            max-height: 75vh;
-            overflow-y: auto;
-        }
-        .exp-modal-footer {
-            padding: 16px 24px;
-            border-top: 1px solid #eaecf0;
-            background: #f9fafb;
-            display: flex;
-            justify-content: flex-end;
-            gap: 12px;
-        }
-    </style>
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/lifecycle.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/organization.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/employee-navigation.css?v=<%= application.getResource("/css/employee-navigation.css").openConnection().getLastModified() %>">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/attendance.css?v=<%= application.getResource("/css/attendance.css").openConnection().getLastModified() %>">
 </head>
-<body data-page="employee-attendance" data-profile-role="<c:out value='${sessionScope.tenantPrincipal.roleCode}'/>">
+<body class="lc" data-page="employee-attendance" data-profile-role="<c:out value='${sessionScope.tenantPrincipal.roleCode}'/>">
 <c:set var="employeeNavPage" value="attendance"/>
-<%@ include file="/WEB-INF/views/common/employee-navigation.jspf" %>
-<div class="shell">
-    <aside class="sidebar">
-        <div class="brand">HRMs Cloud<span><c:out value="${not empty sessionScope.tenantPrincipal.companyName ? sessionScope.tenantPrincipal.companyName : 'Cổng nhân viên'}"/></span></div>
-        <div class="nav-label">Chức năng cá nhân</div>
-        <a class="nav-link" href="../employee/my-profile">Hồ sơ cá nhân</a>
-        <a class="nav-link active" href="employee-attendance">Chấm công cá nhân</a>
+<c:set var="employeeNavTitle" value="Chấm công cá nhân"/>
+<%@ include file="/WEB-INF/views/common/employee-shell.jspf" %>
 
-        <a class="nav-link" href="../payslips">Phiếu lương của tôi</a>
-        <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
-    </aside>
-
-    <main class="content">
+    <main class="lc-main content">
+        <div class="lc-breadcrumb">Cổng nhân viên &nbsp; / &nbsp; Chấm công cá nhân</div>
 
         <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
             <div>
                 <h1 class="page-title">Bảng chấm công cá nhân</h1>
-                <p class="page-subtitle">Nhân viên xem lịch sử chấm công theo tháng và gửi giải trình nếu có sai sót/quên bấm vân tay.</p>
+                <p class="page-subtitle">Xem lịch sử chấm công theo tháng, số công làm việc và gửi đơn giải trình nếu có sai sót hoặc quên quẹt thẻ.</p>
             </div>
             <div class="header-actions">
-                <button class="button" id="btnMyExplanations" style="background:#4338ca; border-color:#4338ca; color:#fff; display:inline-flex; align-items:center; gap:6px;">
+                <button class="button" id="btnMyExplanations" type="button" style="background:#4338ca; border-color:#4338ca; color:#fff; display:inline-flex; align-items:center; gap:6px;">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                         <polyline points="14 2 14 8 20 8"></polyline>
@@ -98,7 +38,7 @@
             </div>
         </div>
 
-        <div class="info-banner" style="margin: 0 28px 16px;">
+        <div class="info-banner">
             <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20" style="flex-shrink:0;">
                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
             </svg>
@@ -139,13 +79,10 @@
                     </select>
                 </div>
                 <div class="filter-actions">
-                    <button class="button" id="btnFilter">Xem bảng công</button>
+                    <button class="button" id="btnFilter" type="button">Xem bảng công</button>
                 </div>
             </div>
         </section>
-
-        <!-- Notification Banner: Tình trạng đi muộn / về sớm (Tối đa 5 buổi/tháng) -->
-        <div id="violationNoticeBanner" style="display:none;"></div>
 
         <section class="summary-grid" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));">
             <div class="summary-card">
@@ -165,20 +102,12 @@
                 <div id="presentDays" class="summary-number text-success">0</div>
             </div>
             <div class="summary-card">
-                <div class="summary-label">Đi muộn</div>
-                <div id="lateDays" class="summary-number text-warning">0</div>
-            </div>
-            <div class="summary-card">
-                <div class="summary-label">Về sớm</div>
-                <div id="earlyLeaveDays" class="summary-number" style="color: #3538cd;">0</div>
-            </div>
-            <div class="summary-card">
                 <div class="summary-label">Vắng / Nghỉ phép</div>
                 <div id="absentDays" class="summary-number text-danger" style="font-size: 22px;">0</div>
             </div>
         </section>
 
-        <div id="message" class="message" style="margin: 0 28px 16px;"></div>
+        <div id="message" class="message"></div>
 
         <section class="panel">
             <table>
@@ -201,7 +130,6 @@
             </table>
         </section>
     </main>
-</div>
 
 <!-- Modal UC86: Gửi đơn giải trình chấm công -->
 <div id="modalSubmitExplanation" class="exp-modal-overlay">

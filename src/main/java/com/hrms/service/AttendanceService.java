@@ -65,22 +65,57 @@ public class AttendanceService {
 
     public List<AttendanceDTO> getPersonalAttendance(int companyId, int employeeId, int month, int year) throws SQLException {
         requireEmployee(companyId, employeeId);
-        return getPersonalAttendance(employeeId, month, year);
+        List<AttendanceDTO> list = attendanceDAO.getPersonalAttendance(employeeId, month, year);
+        CompanyShiftSetting setting = shiftSettingDAO != null ? shiftSettingDAO.getShiftSetting(companyId) : null;
+        if (setting != null && list != null) {
+            for (AttendanceDTO dto : list) {
+                dto.setWorkCredit(setting.calculateWorkCredit(dto.getTotalHours()));
+            }
+        }
+        return list;
     }
 
     public AttendanceSummaryDAO getPersonalSummary(int companyId, int employeeId, int month, int year) throws SQLException {
         requireEmployee(companyId, employeeId);
-        return getPersonalSummary(employeeId, month, year);
+        AttendanceSummaryDAO summary = attendanceDAO.getPersonalSummary(employeeId, month, year);
+        CompanyShiftSetting setting = shiftSettingDAO != null ? shiftSettingDAO.getShiftSetting(companyId) : null;
+        if (setting != null && summary != null) {
+            List<AttendanceDTO> records = attendanceDAO.getPersonalAttendance(employeeId, month, year);
+            if (records != null && !records.isEmpty()) {
+                BigDecimal credits = BigDecimal.ZERO;
+                for (AttendanceDTO r : records) {
+                    if (r.getTotalHours() != null && ("Present".equalsIgnoreCase(r.getStatus()) || "Late".equalsIgnoreCase(r.getStatus()) || "Early Leave".equalsIgnoreCase(r.getStatus()))) {
+                        credits = credits.add(setting.calculateWorkCredit(r.getTotalHours()));
+                    }
+                }
+                summary.setTotalWorkCredits(credits);
+            }
+        }
+        return summary;
     }
 
     public List<AttendanceDTO> getTeamAttendance(int companyId, int managerId, LocalDate date) throws SQLException {
         requireEmployee(companyId, managerId);
-        return attendanceDAO.getTeamAttendance(companyId, managerId, date == null ? LocalDate.now() : date);
+        List<AttendanceDTO> list = attendanceDAO.getTeamAttendance(companyId, managerId, date == null ? LocalDate.now() : date);
+        CompanyShiftSetting setting = shiftSettingDAO != null ? shiftSettingDAO.getShiftSetting(companyId) : null;
+        if (setting != null && list != null) {
+            for (AttendanceDTO dto : list) {
+                dto.setWorkCredit(setting.calculateWorkCredit(dto.getTotalHours()));
+            }
+        }
+        return list;
     }
 
     public List<AttendanceDTO> getAllAttendanceByDate(int companyId, LocalDate date) throws SQLException {
         requireCompany(companyId);
-        return attendanceDAO.getAllAttendanceByDate(companyId, date == null ? LocalDate.now() : date);
+        List<AttendanceDTO> list = attendanceDAO.getAllAttendanceByDate(companyId, date == null ? LocalDate.now() : date);
+        CompanyShiftSetting setting = shiftSettingDAO != null ? shiftSettingDAO.getShiftSetting(companyId) : null;
+        if (setting != null && list != null) {
+            for (AttendanceDTO dto : list) {
+                dto.setWorkCredit(setting.calculateWorkCredit(dto.getTotalHours()));
+            }
+        }
+        return list;
     }
 
     public List<AttendanceReportDAO> getManagerAttendanceReport(int companyId, int managerId, Integer departmentId,
@@ -103,7 +138,7 @@ public class AttendanceService {
     }
 
     private void checkTimesheetNotLocked(int companyId, LocalDate date) throws SQLException {
-        if (date != null && timesheetLockDAO.isMonthLocked(companyId, date.getMonthValue(), date.getYear())) {
+        if (date != null && isMonthLocked(companyId, date.getMonthValue(), date.getYear())) {
             throw new IllegalStateException("Bảng chấm công tháng " + date.getMonthValue() + "/" + date.getYear() + " đã bị khóa để chốt lương. Không thể chỉnh sửa.");
         }
     }
@@ -162,7 +197,11 @@ public class AttendanceService {
         String finalNote = note != null && !note.isBlank() ? note.trim() : "Điểm danh bổ sung";
 
         attendanceDAO.upsertManualAdjustment(companyId, employeeId, date, checkInTime, checkOutTime, totalHours, status, finalNote, adjustedByUserId);
-        return attendanceDAO.getAttendanceByEmployeeAndDate(employeeId, date);
+        AttendanceDTO adjusted = attendanceDAO.getAttendanceByEmployeeAndDate(employeeId, date);
+        if (adjusted != null && shiftSetting != null) {
+            adjusted.setWorkCredit(shiftSetting.calculateWorkCredit(adjusted.getTotalHours()));
+        }
+        return adjusted;
     }
 
     private void requireCompany(Integer companyId) {
@@ -202,7 +241,11 @@ public class AttendanceService {
             attendanceDAO.insertCheckIn(employeeId, companyId, date, checkInTime, status);
         }
 
-        return attendanceDAO.getAttendanceByEmployeeAndDate(employeeId, date);
+        AttendanceDTO checkedIn = attendanceDAO.getAttendanceByEmployeeAndDate(employeeId, date);
+        if (checkedIn != null && shiftSetting != null) {
+            checkedIn.setWorkCredit(shiftSetting.calculateWorkCredit(checkedIn.getTotalHours()));
+        }
+        return checkedIn;
     }
 
     /**
@@ -256,7 +299,11 @@ public class AttendanceService {
         }
 
         attendanceDAO.updateCheckOut(existing.getAttendanceId(), checkOutTime, totalHours, status);
-        return attendanceDAO.getAttendanceByEmployeeAndDate(employeeId, date);
+        AttendanceDTO checkedIn = attendanceDAO.getAttendanceByEmployeeAndDate(employeeId, date);
+        if (checkedIn != null && shiftSetting != null) {
+            checkedIn.setWorkCredit(shiftSetting.calculateWorkCredit(checkedIn.getTotalHours()));
+        }
+        return checkedIn;
     }
 
     /**
@@ -286,7 +333,14 @@ public class AttendanceService {
     public List<AttendanceDTO> searchCompanyAttendance(Integer companyId, Integer departmentId, String status,
                                                       LocalDate fromDate, LocalDate toDate, String keyword) throws SQLException {
         requireCompany(companyId);
-        return attendanceDAO.searchCompanyAttendance(companyId, departmentId, status, fromDate, toDate, keyword);
+        List<AttendanceDTO> list = attendanceDAO.searchCompanyAttendance(companyId, departmentId, status, fromDate, toDate, keyword);
+        CompanyShiftSetting setting = shiftSettingDAO != null ? shiftSettingDAO.getShiftSetting(companyId) : null;
+        if (setting != null && list != null) {
+            for (AttendanceDTO dto : list) {
+                dto.setWorkCredit(setting.calculateWorkCredit(dto.getTotalHours()));
+            }
+        }
+        return list;
     }
 
     /**
@@ -418,15 +472,74 @@ public class AttendanceService {
         }
     }
 
+    public AttendanceExplanation getPendingExplanationByEmployeeAndDate(int companyId, int employeeId, LocalDate date) throws SQLException {
+        if (explanationDAO == null) return null;
+        return explanationDAO.getPendingExplanationByEmployeeAndDate(companyId, employeeId, date);
+    }
+
+    public boolean approveExplanationDirectly(int explanationId, Integer reviewerUserId, String comment) throws SQLException {
+        if (explanationDAO == null) return false;
+        return explanationDAO.updateStatus(explanationId, "APPROVED", reviewerUserId,
+                comment != null && !comment.isBlank() ? comment.trim() : "Chấp thuận giải trình");
+    }
+
     // =========================================================================
     // UC88: Timesheet Locking for Payroll Finalization (Manager / Admin)
     // =========================================================================
     public boolean isMonthLocked(int companyId, int month, int year) throws SQLException {
-        return timesheetLockDAO.isMonthLocked(companyId, month, year);
+        // 1. Kiểm tra nếu có bản ghi khóa thủ công rõ ràng hoặc DAO ghi nhận
+        if (timesheetLockDAO != null && timesheetLockDAO.isMonthLocked(companyId, month, year)) {
+            return true;
+        }
+        TimesheetLock manualLock = timesheetLockDAO != null ? timesheetLockDAO.getLock(companyId, month, year) : null;
+        if (manualLock != null) {
+            return manualLock.isLocked();
+        }
+
+        // 2. Cơ chế tự động khóa ngầm theo Ngày chốt công hàng tháng (TimesheetCutoffDay)
+        CompanyShiftSetting setting = getCompanyShiftSetting(companyId);
+        int cutoffDay = setting != null ? setting.getTimesheetCutoffDay() : CompanyShiftSetting.DEFAULT_CUTOFF_DAY;
+
+        LocalDate today = LocalDate.now();
+        int currentYear = today.getYear();
+        int currentMonth = today.getMonthValue();
+        int currentDay = today.getDayOfMonth();
+
+        // Tháng trong tương lai hoặc tháng hiện tại đang làm việc -> Chưa khóa
+        if (year > currentYear || (year == currentYear && month >= currentMonth)) {
+            return false;
+        }
+
+        LocalDate targetMonthStart = LocalDate.of(year, month, 1);
+        LocalDate currentMonthStart = LocalDate.of(currentYear, currentMonth, 1);
+
+        // Các tháng cũ hơn tháng trước liền kề (T-2, T-3...) -> Luôn luôn khóa
+        if (targetMonthStart.plusMonths(1).isBefore(currentMonthStart)) {
+            return true;
+        }
+
+        // Tháng trước liền kề (T-1, ví dụ tháng 10 khi hiện tại là tháng 11):
+        // Tự động khóa ngầm từ ngày chốt công trở đi (currentDay >= cutoffDay)
+        return currentDay >= cutoffDay;
     }
 
     public TimesheetLock getTimesheetLock(int companyId, int month, int year) throws SQLException {
-        return timesheetLockDAO.getLock(companyId, month, year);
+        TimesheetLock manualLock = timesheetLockDAO.getLock(companyId, month, year);
+        if (manualLock != null) {
+            return manualLock;
+        }
+
+        boolean autoLocked = isMonthLocked(companyId, month, year);
+        if (autoLocked) {
+            CompanyShiftSetting setting = getCompanyShiftSetting(companyId);
+            int cutoffDay = setting != null ? setting.getTimesheetCutoffDay() : CompanyShiftSetting.DEFAULT_CUTOFF_DAY;
+            TimesheetLock auto = new TimesheetLock(companyId, month, year, true, 0,
+                    "Tự động khóa theo ngày chốt công hàng tháng (Ngày " + cutoffDay + ")");
+            auto.setLockedByUserName("Hệ thống (Tự động)");
+            return auto;
+        }
+
+        return null;
     }
 
     public boolean setTimesheetLock(int companyId, int month, int year, boolean isLocked, int userId, String notes) throws SQLException {

@@ -19,6 +19,240 @@ const AttendanceApi = {
     }
 };
 
+/* =========================================================================
+   Center Modal Dialogs for Attendance Flow (Alert / Confirm / Prompt)
+   Replaces native browser popups with clean, centered modals
+   ========================================================================= */
+function getCenterModalIconSvg(type) {
+    if (type === 'error') {
+        return `
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+        `;
+    }
+    if (type === 'success') {
+        return `
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+        `;
+    }
+    if (type === 'warning') {
+        return `
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+        `;
+    }
+    // info / confirm
+    return `
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+    `;
+}
+
+function showAttendanceAlert(message, type = 'info', title = null) {
+    return new Promise((resolve) => {
+        const existing = document.getElementById('attendanceCenterModal');
+        if (existing) existing.remove();
+
+        let displayTitle = title;
+        if (!displayTitle) {
+            if (type === 'error') displayTitle = 'Thông báo lỗi';
+            else if (type === 'success') displayTitle = 'Thao tác thành công';
+            else if (type === 'warning') displayTitle = 'Cảnh báo';
+            else displayTitle = 'Thông báo';
+        }
+
+        let displayMessage = message || '';
+        if (typeof displayMessage === 'string' && displayMessage.startsWith('Lỗi: ')) {
+            displayMessage = displayMessage.substring(5).trim();
+        }
+
+        const overlay = document.createElement('div');
+        overlay.id = 'attendanceCenterModal';
+        overlay.className = 'att-center-modal-overlay';
+        overlay.innerHTML = `
+            <div class="att-center-modal-box" role="dialog" aria-modal="true">
+                <div class="att-center-modal-icon-wrapper ${type}">
+                    ${getCenterModalIconSvg(type)}
+                </div>
+                <h3 class="att-center-modal-title">${safe(displayTitle)}</h3>
+                <div class="att-center-modal-desc">${safe(displayMessage)}</div>
+                <div class="att-center-modal-actions">
+                    <button type="button" class="att-center-btn att-center-btn-primary" id="btnAttCenterOk">Đã hiểu</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const okBtn = overlay.querySelector('#btnAttCenterOk');
+        const cleanup = () => {
+            document.removeEventListener('keydown', handleKey);
+            overlay.remove();
+            resolve();
+        };
+
+        const handleKey = (e) => {
+            if (e.key === 'Escape' || e.key === 'Enter') {
+                e.preventDefault();
+                cleanup();
+            }
+        };
+
+        document.addEventListener('keydown', handleKey);
+        okBtn.addEventListener('click', cleanup);
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) cleanup();
+        });
+
+        setTimeout(() => okBtn.focus(), 50);
+    });
+}
+
+function showAttendanceConfirm(message, options = {}) {
+    return new Promise((resolve) => {
+        const existing = document.getElementById('attendanceCenterModal');
+        if (existing) existing.remove();
+
+        const title = options.title || 'Xác nhận thao tác';
+        const type = options.type || 'confirm';
+        const confirmText = options.confirmText || 'Xác nhận';
+        const cancelText = options.cancelText || 'Hủy bỏ';
+        const isDanger = options.isDanger || false;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'attendanceCenterModal';
+        overlay.className = 'att-center-modal-overlay';
+        overlay.innerHTML = `
+            <div class="att-center-modal-box" role="dialog" aria-modal="true">
+                <div class="att-center-modal-icon-wrapper ${type}">
+                    ${getCenterModalIconSvg(type)}
+                </div>
+                <h3 class="att-center-modal-title">${safe(title)}</h3>
+                <div class="att-center-modal-desc">${safe(message)}</div>
+                <div class="att-center-modal-actions">
+                    <button type="button" class="att-center-btn att-center-btn-secondary" id="btnAttCenterCancel">${safe(cancelText)}</button>
+                    <button type="button" class="att-center-btn ${isDanger ? 'att-center-btn-danger' : 'att-center-btn-primary'}" id="btnAttCenterConfirm">${safe(confirmText)}</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const confirmBtn = overlay.querySelector('#btnAttCenterConfirm');
+        const cancelBtn = overlay.querySelector('#btnAttCenterCancel');
+
+        const cleanup = (result) => {
+            document.removeEventListener('keydown', handleKey);
+            overlay.remove();
+            resolve(result);
+        };
+
+        const handleKey = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                cleanup(false);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                cleanup(true);
+            }
+        };
+
+        document.addEventListener('keydown', handleKey);
+        confirmBtn.addEventListener('click', () => cleanup(true));
+        cancelBtn.addEventListener('click', () => cleanup(false));
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) cleanup(false);
+        });
+
+        setTimeout(() => confirmBtn.focus(), 50);
+    });
+}
+
+function showAttendancePrompt(message, defaultValue = '', options = {}) {
+    return new Promise((resolve) => {
+        const existing = document.getElementById('attendanceCenterModal');
+        if (existing) existing.remove();
+
+        const title = options.title || 'Nhập thông tin';
+        const placeholder = options.placeholder || 'Nhập nội dung...';
+        const confirmText = options.confirmText || 'Đồng ý';
+        const cancelText = options.cancelText || 'Hủy bỏ';
+        const multiline = options.multiline || false;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'attendanceCenterModal';
+        overlay.className = 'att-center-modal-overlay';
+        overlay.innerHTML = `
+            <div class="att-center-modal-box" role="dialog" aria-modal="true">
+                <div class="att-center-modal-icon-wrapper info">
+                    ${getCenterModalIconSvg('info')}
+                </div>
+                <h3 class="att-center-modal-title">${safe(title)}</h3>
+                <div class="att-center-modal-desc" style="margin-bottom:14px;">${safe(message)}</div>
+                ${multiline
+                    ? `<textarea class="att-center-modal-input" id="inputAttPrompt" rows="3" placeholder="${safe(placeholder)}">${safe(defaultValue)}</textarea>`
+                    : `<input type="text" class="att-center-modal-input" id="inputAttPrompt" value="${escapeAttr(defaultValue)}" placeholder="${safe(placeholder)}">`
+                }
+                <div class="att-center-modal-actions">
+                    <button type="button" class="att-center-btn att-center-btn-secondary" id="btnAttPromptCancel">${safe(cancelText)}</button>
+                    <button type="button" class="att-center-btn att-center-btn-primary" id="btnAttPromptConfirm">${safe(confirmText)}</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const input = overlay.querySelector('#inputAttPrompt');
+        const confirmBtn = overlay.querySelector('#btnAttPromptConfirm');
+        const cancelBtn = overlay.querySelector('#btnAttPromptCancel');
+
+        const cleanup = (result) => {
+            document.removeEventListener('keydown', handleKey);
+            overlay.remove();
+            resolve(result);
+        };
+
+        const handleKey = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                cleanup(null);
+            } else if (e.key === 'Enter' && !multiline) {
+                e.preventDefault();
+                cleanup(input.value);
+            }
+        };
+
+        document.addEventListener('keydown', handleKey);
+        confirmBtn.addEventListener('click', () => cleanup(input.value));
+        cancelBtn.addEventListener('click', () => cleanup(null));
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) cleanup(null);
+        });
+
+        setTimeout(() => {
+            input.focus();
+            input.select();
+        }, 50);
+    });
+}
+
+// Override window.alert for attendance flow so any popup call is centered
+window.alert = function(msg) {
+    showAttendanceAlert(msg);
+};
+
 document.addEventListener('DOMContentLoaded', async () => {
     const page = document.body.dataset.page;
     if (page === 'employee-attendance') {
@@ -111,8 +345,14 @@ async function loadPersonalAttendance() {
 
 function calculateWorkCredit(hours) {
     const h = parseFloat(hours) || 0;
-    if (h >= 7.0) return 1.0;
-    if (h >= 3.5) return 0.5;
+    const minFull = (currentShiftSetting && currentShiftSetting.minHoursFullDay !== undefined && currentShiftSetting.minHoursFullDay !== null)
+        ? parseFloat(currentShiftSetting.minHoursFullDay)
+        : 6.0;
+    const minHalf = (currentShiftSetting && currentShiftSetting.minHoursHalfDay !== undefined && currentShiftSetting.minHoursHalfDay !== null)
+        ? parseFloat(currentShiftSetting.minHoursHalfDay)
+        : 4.0;
+    if (h >= minFull) return 1.0;
+    if (h >= minHalf) return 0.5;
     return 0.0;
 }
 
@@ -415,6 +655,9 @@ async function initManagerAttendance() {
     document.getElementById('inputShiftEndTime')?.addEventListener('input', updateShiftLivePreview);
     document.getElementById('inputGracePeriodMinutes')?.addEventListener('input', updateShiftLivePreview);
     document.getElementById('inputLunchBreakMinutes')?.addEventListener('input', updateShiftLivePreview);
+    document.getElementById('inputCutoffDay')?.addEventListener('input', updateShiftLivePreview);
+    document.getElementById('inputMinHoursHalfDay')?.addEventListener('input', updateShiftLivePreview);
+    document.getElementById('inputMinHoursFullDay')?.addEventListener('input', updateShiftLivePreview);
 
     // Modal Điểm danh bổ sung / Điều chỉnh công cho bất kỳ ngày nào
     document.getElementById('btnOpenManualModal')?.addEventListener('click', openManualModal);
@@ -557,6 +800,10 @@ function renderAllAttendanceTable() {
             ? '<span class="badge RoleBadge Manager">Quản lý</span>'
             : '<span class="badge RoleBadge Employee">Nhân viên</span>';
 
+        const todayStr = new Date().toISOString().split('T')[0];
+        const isToday = (date === todayStr);
+        const isPast = (date && date < todayStr);
+
         // Action buttons per row: Tách riêng nút Vào ca và nút Tan ca
         let btnCheckInHtml = '';
         if (!hasCheckIn) {
@@ -600,16 +847,34 @@ function renderAllAttendanceTable() {
             ? '<span class="badge badge-manual" title="Điểm danh bổ sung thủ công" style="font-size:10.5px; padding:2px 5px;">Bổ sung</span>'
             : '';
 
-        const actionHtml = `
-            <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
-                ${btnCheckInHtml}
-                ${btnCheckOutHtml}
-                <button class="button btn-adjust" style="padding:5px 8px; font-size:11.5px; display:inline-flex; align-items:center; gap:3px;" onclick="openManualModalFor(${m.employeeId}, '${escapeAttr(m.fullName)}', '${escapeAttr(m.employeeCode)}', '${m.checkInTime || ''}', '${m.checkOutTime || ''}', '${escapeAttr(m.note || '')}')" title="Điểm danh bổ sung / Sửa công cho nhân sự này">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                    Bổ sung
-                </button>
-            </div>
-        `;
+        const expBadge = m.pendingExplanationId
+            ? `<span class="badge" style="background:#fef08a; color:#854d0e; font-size:10.5px; font-weight:700; border:1px solid #fde047;" title="Đơn giải trình: ${escapeAttr(m.explanationReason || '')}">Có giải trình</span>`
+            : '';
+
+        let actionHtml = '';
+        if (isToday) {
+            actionHtml = `
+                <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
+                    ${btnCheckInHtml}
+                    ${btnCheckOutHtml}
+                </div>
+            `;
+        } else if (isPast) {
+            if (m.pendingExplanationId) {
+                actionHtml = `
+                    <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
+                        <button class="button small" style="background:#059669; border-color:#059669; color:#fff; padding:4px 9px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:3px; border-radius:6px; cursor:pointer;" onclick="openExplanationsModal()" title="Nhân viên có đơn giải trình: ${escapeAttr(m.explanationReason || '')}. Bấm để mở duyệt đơn giải trình">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                            Duyệt giải trình
+                        </button>
+                    </div>
+                `;
+            } else {
+                actionHtml = `<span style="font-size:12px; color:#98a2b3; font-style:italic;">--</span>`;
+            }
+        } else {
+            actionHtml = `<span style="font-size:12px; color:#98a2b3;">Chưa đến ngày</span>`;
+        }
 
         const empStatusBadge = m.employeeStatus && m.employeeStatus !== 'Active'
             ? `<span class="badge" style="background:#fee4e2; color:#d92d20; font-size:10px; padding:2px 6px; font-weight:600;">${safe(m.employeeStatus)}</span>`
@@ -631,7 +896,7 @@ function renderAllAttendanceTable() {
                 <td>${m.checkInTime ? `<strong style="color:#027a48;">${m.checkInTime}</strong>` : '<span class="text-muted">--:--:--</span>'}</td>
                 <td>${m.checkOutTime ? `<strong style="color:#b54708;">${m.checkOutTime}</strong>` : '<span class="text-muted">--:--:--</span>'}</td>
                 <td><strong>${m.totalHours || '0.00'}</strong> hrs</td>
-                <td><div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">${statusBadge}${manualBadge}</div></td>
+                <td><div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">${statusBadge}${manualBadge}${expBadge}</div></td>
                 <td><span class="text-muted" style="font-size:12px;">${safe(m.note)}</span></td>
                 <td style="text-align:center;"><div class="actions" style="justify-content:center;">${actionHtml}</div></td>
             </tr>
@@ -645,22 +910,42 @@ function updateBatchButtonState() {
     const allCheckboxes = document.querySelectorAll('.emp-checkbox');
     const checked = document.querySelectorAll('.emp-checkbox:checked');
     const count = checked.length;
-    const btnComplete = document.getElementById('btnCompleteAttendance');
     const btnIn = document.getElementById('btnBatchCheckIn');
     const btnOut = document.getElementById('btnBatchCheckOut');
     const countDisplay = document.getElementById('selectedCountDisplay');
     const selectAll = document.getElementById('selectAllCheckbox');
     
     if (countDisplay) countDisplay.textContent = count;
-    if (btnComplete) {
-        btnComplete.disabled = (count === 0);
+
+    if (count === 0) {
+        if (btnIn) {
+            btnIn.disabled = true;
+            btnIn.title = 'Vui lòng tích chọn nhân sự để thực hiện Vào ca';
+        }
+        if (btnOut) {
+            btnOut.disabled = true;
+            btnOut.title = 'Vui lòng tích chọn nhân sự để thực hiện Tan ca';
+        }
+    } else {
+        const checkedIdSet = new Set(Array.from(checked).map(cb => Number(cb.value)));
+        const selectedMembers = (currentAttendanceList || []).filter(m => checkedIdSet.has(m.employeeId));
+        const needCheckIn = selectedMembers.filter(m => !m.checkInTime).length;
+        const needCheckOut = selectedMembers.filter(m => m.checkInTime && !m.checkOutTime).length;
+
+        if (btnIn) {
+            btnIn.disabled = (needCheckIn === 0);
+            btnIn.title = needCheckIn > 0
+                ? `Điểm danh Vào ca cho ${needCheckIn} nhân sự chưa vào ca (${selectedMembers.length - needCheckIn} nhân sự đã vào ca sẽ được giữ nguyên)`
+                : 'Tất cả nhân sự được chọn đã vào ca trước đó';
+        }
+        if (btnOut) {
+            btnOut.disabled = (needCheckOut === 0);
+            btnOut.title = needCheckOut > 0
+                ? `Điểm danh Tan ca cho ${needCheckOut} nhân sự đang làm việc`
+                : 'Không có nhân sự nào được chọn đang làm việc cần điểm danh Tan ca';
+        }
     }
-    if (btnIn) {
-        btnIn.disabled = (count === 0);
-    }
-    if (btnOut) {
-        btnOut.disabled = (count === 0);
-    }
+
     if (selectAll && allCheckboxes.length > 0) {
         selectAll.checked = (count === allCheckboxes.length);
         selectAll.indeterminate = (count > 0 && count < allCheckboxes.length);
@@ -681,6 +966,7 @@ async function performBatchAttendanceAction(action) {
     const checked = Array.from(document.querySelectorAll('.emp-checkbox:checked')).map(cb => cb.value);
     if (checked.length === 0) {
         showMessage(`Vui lòng tích chọn ít nhất một nhân sự để thực hiện điểm danh.`, 'error');
+        await showAttendanceAlert('Vui lòng tích chọn ít nhất một nhân sự để thực hiện điểm danh.', 'warning');
         return;
     }
 
@@ -689,39 +975,67 @@ async function performBatchAttendanceAction(action) {
 
     // Kiểm tra tính hợp lệ trước khi gửi yêu cầu
     const checkedIdSet = new Set(checked.map(id => Number(id)));
-    const selectedMembers = currentAttendanceList.filter(m => checkedIdSet.has(m.employeeId));
+    const selectedMembers = (currentAttendanceList || []).filter(m => checkedIdSet.has(m.employeeId));
 
-    let actionLabel = 'ĐIỂM DANH TỰ ĐỘNG';
+    let confirmPrompt = '';
+    let confirmTitle = 'Xác nhận điểm danh hàng loạt';
+    let confirmBtnText = 'Điểm danh ngay';
+
     if (action === 'check-in') {
-        actionLabel = 'VÀO CA';
+        confirmTitle = 'Xác nhận Vào ca hàng loạt (Check-in)';
+        confirmBtnText = 'Vào ca ngay';
         const eligible = selectedMembers.filter(m => !m.checkInTime);
+        const alreadyDone = selectedMembers.filter(m => !!m.checkInTime);
+
         if (eligible.length === 0) {
             showMessage('Tất cả các nhân sự được chọn đã được điểm danh Vào ca trước đó.', 'warning');
+            await showAttendanceAlert('Tất cả các nhân sự được chọn đã được điểm danh Vào ca trước đó.', 'warning');
             return;
+        }
+
+        if (alreadyDone.length > 0) {
+            confirmPrompt = `Xác nhận Vào ca (Check-in) cho [${eligible.length} nhân sự] chưa vào ca vào ngày ${date}?\n(${alreadyDone.length} nhân sự đã vào ca trước đó sẽ được giữ nguyên dữ liệu).`;
+        } else {
+            confirmPrompt = `Xác nhận Vào ca (Check-in) cho [${eligible.length} nhân sự] đã chọn vào ngày ${date}?`;
         }
     } else if (action === 'check-out') {
-        actionLabel = 'TAN CA';
+        confirmTitle = 'Xác nhận Tan ca hàng loạt (Check-out)';
+        confirmBtnText = 'Tan ca ngay';
         const eligible = selectedMembers.filter(m => m.checkInTime && !m.checkOutTime);
+        const notEligible = selectedMembers.filter(m => !m.checkInTime || !!m.checkOutTime);
+
         if (eligible.length === 0) {
             const noneCheckedIn = selectedMembers.every(m => !m.checkInTime);
-            if (noneCheckedIn) {
-                showMessage('Các nhân sự được chọn chưa điểm danh Vào ca nên chưa thể thực hiện Tan ca.', 'warning');
-            } else {
-                showMessage('Tất cả các nhân sự được chọn đã hoàn tất điểm danh Tan ca trước đó.', 'warning');
-            }
+            const msg = noneCheckedIn
+                ? 'Các nhân sự được chọn chưa điểm danh Vào ca nên chưa thể thực hiện Tan ca.'
+                : 'Tất cả các nhân sự được chọn đã hoàn tất điểm danh Tan ca trước đó.';
+            showMessage(msg, 'warning');
+            await showAttendanceAlert(msg, 'warning');
             return;
         }
-    } else { // 'auto'
+
+        if (notEligible.length > 0) {
+            confirmPrompt = `Xác nhận Tan ca (Check-out) cho [${eligible.length} nhân sự] đang làm việc vào ngày ${date}?\n(${notEligible.length} nhân sự chưa vào ca hoặc đã tan ca sẽ được bỏ qua).`;
+        } else {
+            confirmPrompt = `Xác nhận Tan ca (Check-out) cho [${eligible.length} nhân sự] đã chọn vào ngày ${date}?`;
+        }
+    } else { // 'auto' fallback
         action = 'auto';
-        actionLabel = 'HOÀN TẤT ĐIỂM DANH';
+        confirmTitle = 'Xác nhận hoàn tất điểm danh hàng loạt';
         const eligible = selectedMembers.filter(m => !m.checkInTime || !m.checkOutTime);
         if (eligible.length === 0) {
             showMessage('Tất cả các nhân sự được chọn đã hoàn thành cả Vào ca và Tan ca hôm nay.', 'warning');
+            await showAttendanceAlert('Tất cả các nhân sự được chọn đã hoàn thành cả Vào ca và Tan ca hôm nay.', 'warning');
             return;
         }
+        confirmPrompt = `Xác nhận điểm danh tự động cho [${checked.length} nhân sự] đã chọn vào ngày ${date}?`;
     }
 
-    if (!confirm(`Xác nhận ${actionLabel} cho [${checked.length} nhân sự] đã chọn vào ngày ${date}?`)) {
+    const confirmed = await showAttendanceConfirm(confirmPrompt, {
+        title: confirmTitle,
+        confirmText: confirmBtnText
+    });
+    if (!confirmed) {
         return;
     }
 
@@ -733,6 +1047,7 @@ async function performBatchAttendanceAction(action) {
         });
 
         showMessage(payload.message || `Điểm danh thành công!`, 'success');
+        await showAttendanceAlert(payload.message || 'Điểm danh hàng loạt thành công!', 'success');
         if (payload.data) {
             currentAttendanceList = payload.data;
             updateAllCounters(currentAttendanceList);
@@ -743,34 +1058,47 @@ async function performBatchAttendanceAction(action) {
         }
     } catch (err) {
         showMessage(err.message, 'error');
+        await showAttendanceAlert(err.message, 'error');
     }
 }
 
 // Single Check-In Action
 async function performSingleCheckIn(employeeId, date, name) {
-    if (!confirm(`Xác nhận ĐIỂM DANH VÀO CA (Check-in) cho [${name}] vào ngày ${date}?`)) {
+    const confirmed = await showAttendanceConfirm(`Xác nhận ĐIỂM DANH VÀO CA (Check-in) cho [${name}] vào ngày ${date}?`, {
+        title: 'Điểm danh Vào ca',
+        confirmText: 'Vào ca'
+    });
+    if (!confirmed) {
         return;
     }
     try {
         const payload = await AttendanceApi.post('/attendance/check-in', { employeeId, date });
         showMessage(payload.message || 'Vào ca thành công!', 'success');
+        await showAttendanceAlert(payload.message || 'Vào ca thành công!', 'success');
         await loadAllAttendance();
     } catch (err) {
         showMessage(err.message, 'error');
+        await showAttendanceAlert(err.message, 'error');
     }
 }
 
 // Single Check-Out Action
 async function performSingleCheckOut(employeeId, date, name) {
-    if (!confirm(`Xác nhận ĐIỂM DANH TAN CA (Check-out) cho [${name}] vào ngày ${date}?`)) {
+    const confirmed = await showAttendanceConfirm(`Xác nhận ĐIỂM DANH TAN CA (Check-out) cho [${name}] vào ngày ${date}?`, {
+        title: 'Điểm danh Tan ca',
+        confirmText: 'Tan ca'
+    });
+    if (!confirmed) {
         return;
     }
     try {
         const payload = await AttendanceApi.post('/attendance/check-out', { employeeId, date });
         showMessage(payload.message || 'Tan ca thành công!', 'success');
+        await showAttendanceAlert(payload.message || 'Tan ca thành công!', 'success');
         await loadAllAttendance();
     } catch (err) {
         showMessage(err.message, 'error');
+        await showAttendanceAlert(err.message, 'error');
     }
 }
 
@@ -806,9 +1134,13 @@ function updateShiftBanner(setting) {
     }
 }
 
-function openShiftModal() {
+async function openShiftModal() {
     const modal = document.getElementById('modalShiftSetting');
     if (!modal) return;
+
+    if (!currentShiftSetting) {
+        await loadShiftSetting();
+    }
 
     if (currentShiftSetting) {
         if (document.getElementById('inputShiftStartTime') && currentShiftSetting.shiftStartTime) {
@@ -822,6 +1154,15 @@ function openShiftModal() {
         }
         if (document.getElementById('inputLunchBreakMinutes')) {
             document.getElementById('inputLunchBreakMinutes').value = currentShiftSetting.lunchBreakMinutes ?? 60;
+        }
+        if (document.getElementById('inputCutoffDay')) {
+            document.getElementById('inputCutoffDay').value = currentShiftSetting.timesheetCutoffDay ?? 5;
+        }
+        if (document.getElementById('inputMinHoursHalfDay')) {
+            document.getElementById('inputMinHoursHalfDay').value = currentShiftSetting.minHoursHalfDay ?? 4.0;
+        }
+        if (document.getElementById('inputMinHoursFullDay')) {
+            document.getElementById('inputMinHoursFullDay').value = currentShiftSetting.minHoursFullDay ?? 6.0;
         }
         const metaEl = document.getElementById('shiftSettingMetaInfo');
         if (metaEl) {
@@ -854,6 +1195,9 @@ function updateShiftLivePreview() {
     const startVal = document.getElementById('inputShiftStartTime')?.value || '08:30';
     const endVal = document.getElementById('inputShiftEndTime')?.value || '17:30';
     const graceVal = parseInt(document.getElementById('inputGracePeriodMinutes')?.value || '0', 10);
+    const cutoffVal = parseInt(document.getElementById('inputCutoffDay')?.value || '5', 10);
+    const minHalfVal = parseFloat(document.getElementById('inputMinHoursHalfDay')?.value || '4.0');
+    const minFullVal = parseFloat(document.getElementById('inputMinHoursFullDay')?.value || '6.0');
 
     const [h, m] = startVal.split(':').map(Number);
     const totalM = (h * 60 + m) + (isNaN(graceVal) ? 0 : graceVal);
@@ -861,8 +1205,24 @@ function updateShiftLivePreview() {
 
     const previewStart = document.getElementById('previewLateThreshold');
     const previewEnd = document.getElementById('previewShiftEnd');
+    const previewCutoff = document.getElementById('previewCutoffDay');
+    const previewMinHalf = document.getElementById('previewMinHalf');
+    const previewMinFull = document.getElementById('previewMinFull');
+
     if (previewStart) previewStart.textContent = lateThresholdStr;
     if (previewEnd) previewEnd.textContent = endVal;
+    if (previewCutoff) previewCutoff.textContent = String(isNaN(cutoffVal) ? 5 : cutoffVal).padStart(2, '0');
+    if (previewMinHalf) previewMinHalf.textContent = (isNaN(minHalfVal) ? 4.0 : minHalfVal).toFixed(1);
+    if (previewMinFull) previewMinFull.textContent = (isNaN(minFullVal) ? 6.0 : minFullVal).toFixed(1);
+
+    const hintHalf = document.getElementById('hintHalfDay');
+    const hintHalf2 = document.getElementById('hintHalfDay2');
+    const hintFull = document.getElementById('hintFullDay');
+    const hintFull2 = document.getElementById('hintFullDay2');
+    if (hintHalf) hintHalf.textContent = (isNaN(minHalfVal) ? 4.0 : minHalfVal).toFixed(1);
+    if (hintHalf2) hintHalf2.textContent = (isNaN(minHalfVal) ? 4.0 : minHalfVal).toFixed(1);
+    if (hintFull) hintFull.textContent = (isNaN(minFullVal) ? 6.0 : minFullVal).toFixed(1);
+    if (hintFull2) hintFull2.textContent = (isNaN(minFullVal) ? 6.0 : minFullVal).toFixed(1);
 }
 
 async function saveShiftSetting() {
@@ -870,13 +1230,38 @@ async function saveShiftSetting() {
     const endTime = document.getElementById('inputShiftEndTime')?.value;
     const gracePeriodMinutes = document.getElementById('inputGracePeriodMinutes')?.value;
     const lunchBreakMinutes = document.getElementById('inputLunchBreakMinutes')?.value;
+    const cutoffDay = parseInt(document.getElementById('inputCutoffDay')?.value || '5', 10);
+    const minHoursHalfDay = parseFloat(document.getElementById('inputMinHoursHalfDay')?.value || '4.0');
+    const minHoursFullDay = parseFloat(document.getElementById('inputMinHoursFullDay')?.value || '6.0');
 
     if (!startTime || !endTime) {
-        showShiftModalMessage('Vui lòng nhập đầy đủ giờ vào ca và giờ tan ca.', 'error');
+        const msg = 'Vui lòng nhập đầy đủ giờ vào ca và giờ tan ca.';
+        showShiftModalMessage(msg, 'error');
+        await showAttendanceAlert(msg, 'warning');
         return;
     }
     if (endTime <= startTime) {
-        showShiftModalMessage('Giờ kết thúc ca làm việc phải sau giờ bắt đầu ca.', 'error');
+        const msg = 'Giờ kết thúc ca làm việc phải sau giờ bắt đầu ca.';
+        showShiftModalMessage(msg, 'error');
+        await showAttendanceAlert(msg, 'warning');
+        return;
+    }
+    if (isNaN(cutoffDay) || cutoffDay < 1 || cutoffDay > 31) {
+        const msg = 'Ngày chốt công hàng tháng phải từ ngày 1 đến ngày 31.';
+        showShiftModalMessage(msg, 'error');
+        await showAttendanceAlert(msg, 'warning');
+        return;
+    }
+    if (isNaN(minHoursHalfDay) || minHoursHalfDay <= 0 || minHoursHalfDay > 24) {
+        const msg = 'Mốc giờ tối thiểu tính nửa công (0.5 công) phải lớn hơn 0 và nhỏ hơn 24.';
+        showShiftModalMessage(msg, 'error');
+        await showAttendanceAlert(msg, 'warning');
+        return;
+    }
+    if (isNaN(minHoursFullDay) || minHoursFullDay <= minHoursHalfDay || minHoursFullDay > 24) {
+        const msg = 'Mốc giờ tính 1.0 công phải lớn hơn mốc tính nửa công (0.5 công).';
+        showShiftModalMessage(msg, 'error');
+        await showAttendanceAlert(msg, 'warning');
         return;
     }
 
@@ -891,18 +1276,27 @@ async function saveShiftSetting() {
             shiftStartTime: startTime.length === 5 ? startTime + ':00' : startTime,
             shiftEndTime: endTime.length === 5 ? endTime + ':00' : endTime,
             gracePeriodMinutes: gracePeriodMinutes || 0,
-            lunchBreakMinutes: lunchBreakMinutes || 60
+            lunchBreakMinutes: lunchBreakMinutes || 60,
+            timesheetCutoffDay: cutoffDay,
+            minHoursHalfDay: minHoursHalfDay,
+            minHoursFullDay: minHoursFullDay
         });
 
         if (payload && payload.data) {
             currentShiftSetting = payload.data;
             updateShiftBanner(currentShiftSetting);
         }
-        showMessage(payload.message || 'Cập nhật giờ giấc làm việc thành công!', 'success');
+        showMessage(payload.message || 'Cập nhật giờ giấc làm việc & ngày chốt công thành công!', 'success');
         closeShiftModal();
-        await loadAllAttendance();
+        await showAttendanceAlert(payload.message || 'Cập nhật cấu hình giờ giấc & ngày chốt công thành công!', 'success');
+        if (typeof searchCompanyAttendance === 'function' && document.getElementById('companyAttendanceRows')) {
+            await searchCompanyAttendance();
+        } else if (typeof loadAllAttendance === 'function' && document.getElementById('teamAttendanceRows')) {
+            await loadAllAttendance();
+        }
     } catch (err) {
         showShiftModalMessage(err.message || 'Lỗi khi lưu cài đặt.', 'error');
+        await showAttendanceAlert(err.message || 'Lỗi khi lưu cài đặt.', 'error');
     } finally {
         if (saveBtn) {
             saveBtn.disabled = false;
@@ -926,11 +1320,26 @@ function openManualModal() {
     const modal = document.getElementById('modalManualAttendance');
     if (!modal) return;
 
-    const dateInput = document.getElementById('teamDate');
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yyyy = today.getFullYear();
+    const formattedToday = `${dd}/${mm}/${yyyy}`;
+
     const manualDateInput = document.getElementById('manualDate');
     if (manualDateInput) {
-        manualDateInput.value = (dateInput && dateInput.value) ? dateInput.value : new Date().toISOString().split('T')[0];
+        manualDateInput.value = todayStr;
     }
+    const manualDateDisplay = document.getElementById('manualDateDisplay');
+    if (manualDateDisplay) {
+        manualDateDisplay.textContent = `Hôm nay (${formattedToday})`;
+    }
+
+    const inInput = document.getElementById('manualCheckInTime');
+    const outInput = document.getElementById('manualCheckOutTime');
+    const noteInput = document.getElementById('manualNote');
+    const msgEl = document.getElementById('manualModalMessage');
 
     const select = document.getElementById('manualEmployeeSelect');
     if (select) {
@@ -940,11 +1349,6 @@ function openManualModal() {
             }).join('');
         }
     }
-
-    const inInput = document.getElementById('manualCheckInTime');
-    const outInput = document.getElementById('manualCheckOutTime');
-    const noteInput = document.getElementById('manualNote');
-    const msgEl = document.getElementById('manualModalMessage');
 
     if (inInput) inInput.value = '';
     if (outInput) outInput.value = '';
@@ -1029,12 +1433,10 @@ function updateManualPreview() {
 
         const totalHours = (totalDuration / 60).toFixed(2);
         const hoursNum = parseFloat(totalHours);
-        let workCredit = 0;
-        if (hoursNum >= 7.0) {
-            workCredit = 1.0;
-        } else if (hoursNum >= 3.5) {
-            workCredit = 0.5;
-        }
+        const workCredit = calculateWorkCredit(hoursNum);
+        const minHalfDisplay = (currentShiftSetting && currentShiftSetting.minHoursHalfDay !== undefined && currentShiftSetting.minHoursHalfDay !== null)
+            ? parseFloat(currentShiftSetting.minHoursHalfDay).toFixed(1)
+            : '4.0';
 
         const isLate = inVal > lateThresholdStr;
         const isEarly = outVal < shiftEnd;
@@ -1052,7 +1454,7 @@ function updateManualPreview() {
         } else if (workCredit === 0.5) {
             creditBadge = '<strong style="color:#b54708;">0.5 ngày công (nửa công)</strong>';
         } else {
-            creditBadge = '<strong style="color:#667085;">0 công (&lt; 3.5 tiếng)</strong>';
+            creditBadge = `<strong style="color:#667085;">0 công (&lt; ${minHalfDisplay} tiếng)</strong>`;
         }
 
         previewEl.innerHTML = `
@@ -1079,25 +1481,29 @@ function updateManualPreview() {
 
 async function saveManualAttendance() {
     const employeeId = document.getElementById('manualEmployeeSelect')?.value;
-    const date = document.getElementById('manualDate')?.value;
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
     const checkInTime = document.getElementById('manualCheckInTime')?.value;
     const checkOutTime = document.getElementById('manualCheckOutTime')?.value;
     const note = document.getElementById('manualNote')?.value;
 
-    if (!date) {
-        showManualModalMessage('Vui lòng chọn ngày cần điểm danh bổ sung.', 'error');
-        return;
-    }
     if (!employeeId) {
-        showManualModalMessage('Vui lòng chọn nhân sự cần điểm danh bổ sung.', 'error');
+        const msg = 'Vui lòng chọn nhân sự cần điểm danh bổ sung.';
+        showManualModalMessage(msg, 'error');
+        await showAttendanceAlert(msg, 'warning');
         return;
     }
+
     if (!checkInTime && !checkOutTime) {
-        showManualModalMessage('Vui lòng nhập giờ vào ca hoặc giờ tan ca.', 'error');
+        const msg = 'Vui lòng nhập giờ vào ca hoặc giờ tan ca.';
+        showManualModalMessage(msg, 'error');
+        await showAttendanceAlert(msg, 'warning');
         return;
     }
     if (checkInTime && checkOutTime && checkOutTime <= checkInTime) {
-        showManualModalMessage('Thời gian tan ca không thể sớm hơn hoặc bằng thời gian vào ca.', 'error');
+        const msg = 'Thời gian tan ca không thể sớm hơn hoặc bằng thời gian vào ca.';
+        showManualModalMessage(msg, 'error');
+        await showAttendanceAlert(msg, 'warning');
         return;
     }
 
@@ -1110,7 +1516,7 @@ async function saveManualAttendance() {
     try {
         const payload = await AttendanceApi.post('/attendance/manual-adjust', {
             employeeId,
-            date,
+            date: todayStr,
             checkInTime: checkInTime ? (checkInTime.length === 5 ? checkInTime + ':00' : checkInTime) : '',
             checkOutTime: checkOutTime ? (checkOutTime.length === 5 ? checkOutTime + ':00' : checkOutTime) : '',
             note: note || ''
@@ -1118,13 +1524,18 @@ async function saveManualAttendance() {
 
         showMessage(payload.message || 'Điểm danh bổ sung thành công!', 'success');
         closeManualModal();
+        await showAttendanceAlert(payload.message || 'Điểm danh bổ sung thành công!', 'success');
 
         const currentDate = document.getElementById('teamDate')?.value;
-        if (currentDate === date) {
+        if (currentDate === todayStr) {
             await loadAllAttendance();
+        }
+        if (typeof loadPendingExplanations === 'function') {
+            await loadPendingExplanations();
         }
     } catch (err) {
         showManualModalMessage(err.message || 'Lỗi khi điểm danh bổ sung.', 'error');
+        await showAttendanceAlert(err.message || 'Lỗi khi điểm danh bổ sung.', 'error');
     } finally {
         if (saveBtn) {
             saveBtn.disabled = false;
@@ -1160,6 +1571,19 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
+// Delegated click listener to ensure Shift Setting button always responds
+document.addEventListener('click', (e) => {
+    const openBtn = e.target.closest('#btnOpenShiftSetting');
+    if (openBtn) {
+        e.preventDefault();
+        openShiftModal();
+    }
+    const closeBtn = e.target.closest('#btnCloseShiftModal, #btnCancelShiftModal');
+    if (closeBtn) {
+        e.preventDefault();
+        closeShiftModal();
+    }
+});
 
 /* =========================================================================
    UC33: Company Attendance Monitoring & Search (HR / Admin)
@@ -1168,16 +1592,36 @@ async function initCompanyAttendance() {
     const meta = await loadMeta();
     populateDepartmentSelect('deptFilter', meta.departments);
 
-    document.getElementById('btnSearch').addEventListener('click', searchCompanyAttendance);
-    document.getElementById('btnReset').addEventListener('click', () => {
-        document.getElementById('deptFilter').value = '';
-        document.getElementById('statusFilter').value = 'ALL';
-        document.getElementById('fromDate').value = '';
-        document.getElementById('toDate').value = '';
-        document.getElementById('keyword').value = '';
+    document.getElementById('btnSearch')?.addEventListener('click', searchCompanyAttendance);
+    document.getElementById('btnReset')?.addEventListener('click', () => {
+        const d = document.getElementById('deptFilter');
+        if (d) d.value = '';
+        const s = document.getElementById('statusFilter');
+        if (s) s.value = 'ALL';
+        const f = document.getElementById('fromDate');
+        if (f) f.value = '';
+        const t = document.getElementById('toDate');
+        if (t) t.value = '';
+        const k = document.getElementById('keyword');
+        if (k) k.value = '';
         searchCompanyAttendance();
     });
 
+    // Cài đặt ca làm việc & Ngày chốt công công ty
+    document.getElementById('btnOpenShiftSetting')?.addEventListener('click', openShiftModal);
+    document.getElementById('btnCloseShiftModal')?.addEventListener('click', closeShiftModal);
+    document.getElementById('btnCancelShiftModal')?.addEventListener('click', closeShiftModal);
+    document.getElementById('btnSaveShiftSetting')?.addEventListener('click', saveShiftSetting);
+    document.getElementById('inputShiftStartTime')?.addEventListener('input', updateShiftLivePreview);
+    document.getElementById('inputShiftEndTime')?.addEventListener('input', updateShiftLivePreview);
+    document.getElementById('inputGracePeriodMinutes')?.addEventListener('input', updateShiftLivePreview);
+    document.getElementById('inputLunchBreakMinutes')?.addEventListener('input', updateShiftLivePreview);
+    document.getElementById('inputCutoffDay')?.addEventListener('input', updateShiftLivePreview);
+    document.getElementById('inputMinHoursHalfDay')?.addEventListener('input', updateShiftLivePreview);
+    document.getElementById('inputMinHoursFullDay')?.addEventListener('input', updateShiftLivePreview);
+    document.getElementById('inputCutoffDay')?.addEventListener('input', updateShiftLivePreview);
+
+    await loadShiftSetting();
     await searchCompanyAttendance();
 }
 
@@ -1198,7 +1642,8 @@ async function searchCompanyAttendance() {
     try {
         const payload = await AttendanceApi.get(`/attendance/company?${params.toString()}`);
         renderCompanyRows(payload.data);
-        document.getElementById('totalRecords').textContent = payload.data ? payload.data.length : 0;
+        const elTotalRecords = document.getElementById('totalRecords');
+        if (elTotalRecords) elTotalRecords.textContent = payload.data ? payload.data.length : 0;
         showMessage(`Tìm thấy ${payload.data ? payload.data.length : 0} bản ghi chấm công.`, 'success');
     } catch (err) {
         showMessage(err.message, 'error');
@@ -1295,9 +1740,14 @@ function renderReportStats(reports) {
 
     const avgRate = totalEmployees > 0 ? (sumRate / totalEmployees).toFixed(1) : 0;
 
-    document.getElementById('reportTotalEmployees').textContent = totalEmployees;
-    document.getElementById('reportTotalHours').textContent = totalWorkHours.toFixed(1) + ' hrs';
-    document.getElementById('reportAvgPunctuality').textContent = avgRate + '%';
+    const elTotalEmployees = document.getElementById('reportTotalEmployees');
+    if (elTotalEmployees) elTotalEmployees.textContent = totalEmployees;
+
+    const elTotalHours = document.getElementById('reportTotalHours');
+    if (elTotalHours) elTotalHours.textContent = totalWorkHours.toFixed(1) + ' hrs';
+
+    const elAvgPunctuality = document.getElementById('reportAvgPunctuality');
+    if (elAvgPunctuality) elAvgPunctuality.textContent = avgRate + '%';
 }
 
 function renderReportRows(reports) {
@@ -1874,11 +2324,11 @@ async function handleExplanationSubmit(e) {
     const detail = document.getElementById('expReasonDetail')?.value;
 
     if (!date) {
-        alert('Vui lòng chọn ngày cần giải trình.');
+        await showAttendanceAlert('Vui lòng chọn ngày cần giải trình.', 'warning');
         return;
     }
     if (!detail || !detail.trim()) {
-        alert('Vui lòng nhập lý do chi tiết.');
+        await showAttendanceAlert('Vui lòng nhập lý do giải trình chi tiết.', 'warning');
         return;
     }
 
@@ -1891,14 +2341,17 @@ async function handleExplanationSubmit(e) {
             reasonDetail: detail.trim()
         });
         if (payload && payload.success) {
-            alert(payload.message || 'Gửi đơn giải trình chấm công thành công!');
             closeSubmitExplanationModal();
             document.getElementById('formSubmitExplanation')?.reset();
+            await showAttendanceAlert(payload.message || 'Gửi đơn giải trình chấm công thành công!', 'success');
+            if (typeof loadMyAttendanceData === 'function') {
+                await loadMyAttendanceData();
+            }
         } else {
-            alert((payload && payload.message) ? payload.message : 'Không thể gửi đơn giải trình.');
+            await showAttendanceAlert((payload && payload.message) ? payload.message : 'Không thể gửi đơn giải trình.', 'error');
         }
     } catch (err) {
-        alert('Lỗi: ' + (err.message || 'Không thể kết nối đến máy chủ.'));
+        await showAttendanceAlert(err.message || 'Không thể kết nối đến máy chủ.', 'error');
     }
 }
 
@@ -1961,17 +2414,28 @@ async function loadMyExplanations() {
 }
 
 async function cancelMyExplanation(id) {
-    if (!confirm('Bạn có chắc muốn hủy đơn giải trình này không?')) return;
+    const confirmed = await showAttendanceConfirm('Bạn có chắc chắn muốn hủy đơn giải trình chấm công này không?', {
+        title: 'Hủy đơn giải trình',
+        type: 'warning',
+        confirmText: 'Đồng ý hủy',
+        cancelText: 'Giữ lại',
+        isDanger: true
+    });
+    if (!confirmed) return;
+
     try {
         const payload = await AttendanceApi.post('/attendance/explanation/cancel', { explanationId: id });
         if (payload && payload.success) {
-            alert('Hủy đơn thành công!');
+            await showAttendanceAlert('Hủy đơn giải trình thành công!', 'success');
             await loadMyExplanations();
+            if (typeof loadMyAttendanceData === 'function') {
+                await loadMyAttendanceData();
+            }
         } else {
-            alert((payload && payload.message) ? payload.message : 'Không thể hủy đơn.');
+            await showAttendanceAlert((payload && payload.message) ? payload.message : 'Không thể hủy đơn.', 'error');
         }
     } catch (err) {
-        alert('Lỗi: ' + (err.message || 'Không thể hủy đơn.'));
+        await showAttendanceAlert(err.message || 'Không thể hủy đơn.', 'error');
     }
 }
 
@@ -2054,7 +2518,15 @@ async function loadPendingExplanations() {
 async function reviewExplanation(id, decision) {
     const isApprove = decision === 'APPROVE';
     const actionText = isApprove ? 'Duyệt đơn giải trình và tự động cập nhật ngày công' : 'Từ chối đơn giải trình';
-    const comment = prompt(`Nhập phản hồi/ghi chú cho nhân viên (${actionText}):`, isApprove ? 'Đồng ý bổ sung công' : 'Không đủ căn cứ giải trình');
+    const comment = await showAttendancePrompt(
+        `Nhập phản hồi/ghi chú cho nhân viên (${actionText}):`,
+        isApprove ? 'Đồng ý bổ sung công' : 'Không đủ căn cứ giải trình',
+        {
+            title: isApprove ? 'Duyệt giải trình công' : 'Từ chối giải trình công',
+            placeholder: 'Nhập ghi chú phản hồi...',
+            confirmText: isApprove ? 'Phê duyệt' : 'Xác nhận từ chối'
+        }
+    );
     if (comment === null) return;
 
     try {
@@ -2064,16 +2536,16 @@ async function reviewExplanation(id, decision) {
             comment: comment
         });
         if (payload && payload.success) {
-            alert(payload.message || 'Đã xử lý đơn thành công!');
+            await showAttendanceAlert(payload.message || 'Đã xử lý đơn thành công!', 'success');
             await loadPendingExplanations();
             if (typeof loadTeamAttendanceData === 'function') {
                 await loadTeamAttendanceData();
             }
         } else {
-            alert((payload && payload.message) ? payload.message : 'Không thể xử lý đơn giải trình.');
+            await showAttendanceAlert((payload && payload.message) ? payload.message : 'Không thể xử lý đơn giải trình.', 'error');
         }
     } catch (err) {
-        alert('Lỗi: ' + (err.message || 'Không thể xử lý đơn.'));
+        await showAttendanceAlert(err.message || 'Không thể xử lý đơn.', 'error');
     }
 }
 
@@ -2086,35 +2558,43 @@ async function checkTimesheetLockStatus(month, year) {
     const badge = document.getElementById('lockStatusBadge');
     const btn = document.getElementById('btnToggleTimesheetLock');
     const btnText = document.getElementById('btnLockText');
-    if (!badge || !btn) return;
+    if (!badge && !btn) return;
 
     try {
         const payload = await AttendanceApi.get(`/attendance/timesheet-lock?month=${month}&year=${year}`);
         isCurrentTimesheetLocked = payload && payload.isLocked;
 
-        badge.style.display = 'inline-flex';
-        btn.style.display = 'inline-flex';
+        if (badge) {
+            badge.style.display = 'inline-flex';
+            if (isCurrentTimesheetLocked) {
+                badge.style.background = '#fef3f2';
+                badge.style.color = '#b42318';
+                badge.style.border = '1px solid #fecdca';
+                const lockNote = (payload.data && payload.data.notes) ? payload.data.notes : 'Đã khóa chốt lương';
+                badge.innerHTML = `🔒 Đã khóa (Chốt lương)`;
+                badge.title = lockNote;
+            } else {
+                badge.style.background = '#ecfdf3';
+                badge.style.color = '#027a48';
+                badge.style.border = '1px solid #a6f4c5';
+                badge.innerHTML = `🟢 Chưa khóa (Đang mở)`;
+                badge.title = 'Bảng công đang mở cho kỳ này';
+            }
+        }
 
-        if (isCurrentTimesheetLocked) {
-            badge.style.background = '#fef3f2';
-            badge.style.color = '#b42318';
-            badge.style.border = '1px solid #fecdca';
-            badge.innerHTML = `🔒 Đã khóa chốt lương`;
-
-            btn.style.background = '#f9fafb';
-            btn.style.borderColor = '#d0d5dd';
-            btn.style.color = '#344054';
-            if (btnText) btnText.textContent = 'Mở khóa công';
-        } else {
-            badge.style.background = '#ecfdf3';
-            badge.style.color = '#027a48';
-            badge.style.border = '1px solid #a6f4c5';
-            badge.innerHTML = `🔓 Chưa khóa`;
-
-            btn.style.background = '#f79009';
-            btn.style.borderColor = '#f79009';
-            btn.style.color = '#ffffff';
-            if (btnText) btnText.textContent = 'Khóa công tháng';
+        if (btn) {
+            btn.style.display = 'inline-flex';
+            if (isCurrentTimesheetLocked) {
+                btn.style.background = '#f9fafb';
+                btn.style.borderColor = '#d0d5dd';
+                btn.style.color = '#344054';
+                if (btnText) btnText.textContent = 'Mở khóa công';
+            } else {
+                btn.style.background = '#f79009';
+                btn.style.borderColor = '#f79009';
+                btn.style.color = '#ffffff';
+                if (btnText) btnText.textContent = 'Khóa công tháng';
+            }
         }
     } catch (err) {
         console.warn('Could not check timesheet lock status:', err);
@@ -2124,12 +2604,30 @@ async function checkTimesheetLockStatus(month, year) {
 async function toggleTimesheetLock() {
     const action = isCurrentTimesheetLocked ? 'UNLOCK' : 'LOCK';
     const actionText = isCurrentTimesheetLocked
-        ? `Mở khóa bảng chấm công tháng ${currentTimesheetMonth}/${currentTimesheetYear}? (Sau khi mở khóa, quản lý có thể sửa đổi hoặc duyệt công bù)`
-        : `Khóa bảng chấm công tháng ${currentTimesheetMonth}/${currentTimesheetYear}? (Sau khi khóa, mọi thao tác sửa công hoặc duyệt giải trình của tháng này sẽ bị chặn để chốt lương)`;
+        ? `Mở khóa bảng chấm công tháng ${currentTimesheetMonth}/${currentTimesheetYear}?\n\n(Sau khi mở khóa, quản lý có thể sửa đổi hoặc duyệt công bù)`
+        : `Khóa bảng chấm công tháng ${currentTimesheetMonth}/${currentTimesheetYear}?\n\n(Sau khi khóa, mọi thao tác sửa công hoặc duyệt giải trình của tháng này sẽ bị chặn để chốt lương)`;
 
-    if (!confirm(actionText)) return;
+    const confirmed = await showAttendanceConfirm(actionText, {
+        title: isCurrentTimesheetLocked ? 'Mở khóa bảng chấm công' : 'Khóa bảng chấm công',
+        type: isCurrentTimesheetLocked ? 'info' : 'warning',
+        confirmText: isCurrentTimesheetLocked ? 'Mở khóa' : 'Khóa bảng công',
+        cancelText: 'Hủy bỏ'
+    });
+    if (!confirmed) return;
 
-    const notes = isCurrentTimesheetLocked ? '' : (prompt('Nhập ghi chú chốt kỳ công (không bắt buộc):', 'Chốt công tháng phục vụ tính lương') || '');
+    let notes = '';
+    if (!isCurrentTimesheetLocked) {
+        const inputNotes = await showAttendancePrompt(
+            'Nhập ghi chú chốt kỳ công (không bắt buộc):',
+            'Chốt công tháng phục vụ tính lương',
+            {
+                title: 'Ghi chú chốt kỳ công',
+                placeholder: 'Ví dụ: Đã đối soát bảng lương...'
+            }
+        );
+        if (inputNotes === null) return;
+        notes = inputNotes;
+    }
 
     try {
         const payload = await AttendanceApi.post('/attendance/timesheet-lock', {
@@ -2140,12 +2638,12 @@ async function toggleTimesheetLock() {
         });
 
         if (payload && payload.success) {
-            alert(payload.message || 'Thao tác thành công!');
+            await showAttendanceAlert(payload.message || 'Thao tác thành công!', 'success');
             await checkTimesheetLockStatus(currentTimesheetMonth, currentTimesheetYear);
         } else {
-            alert((payload && payload.message) ? payload.message : 'Thao tác không thành công.');
+            await showAttendanceAlert((payload && payload.message) ? payload.message : 'Thao tác không thành công.', 'error');
         }
     } catch (err) {
-        alert('Lỗi: ' + (err.message || 'Không thể thực hiện khóa/mở khóa.'));
+        await showAttendanceAlert(err.message || 'Không thể thực hiện khóa/mở khóa.', 'error');
     }
 }

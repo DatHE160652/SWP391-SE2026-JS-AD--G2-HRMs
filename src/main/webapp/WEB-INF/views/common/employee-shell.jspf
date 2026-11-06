@@ -1,0 +1,22 @@
+<%@ page pageEncoding="UTF-8" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ include file="/WEB-INF/views/common/employee-navigation.jspf" %>
+<aside class="lc-sidebar">
+    <a class="lc-brand" href="${pageContext.request.contextPath}/employee/my-profile">
+        <span class="lc-logo">H</span><span class="lc-brand-name">HRMs Cloud</span>
+    </a>
+    <div class="lc-nav-label">CỔNG NHÂN VIÊN</div>
+    <nav aria-label="Chức năng cá nhân">
+        <a class="${employeeNavPage == 'profile' ? 'active' : ''}" href="${pageContext.request.contextPath}/employee/my-profile"><span class="lc-nav-icon" aria-hidden="true">♙</span><span>Hồ sơ cá nhân</span></a>
+        <a class="${employeeNavPage == 'attendance' ? 'active' : ''}" href="${pageContext.request.contextPath}/attendance/employee-attendance"><span class="lc-nav-icon" aria-hidden="true">◷</span><span>Chấm công cá nhân</span></a>
+        <a class="${employeeNavPage == 'payslips' ? 'active' : ''}" href="${pageContext.request.contextPath}/payslips"><span class="lc-nav-icon" aria-hidden="true">▤</span><span>Phiếu lương của tôi</span></a>
+        <a class="${employeeNavPage == 'leave' ? 'active' : ''}" href="${pageContext.request.contextPath}/leave/my-requests"><span class="lc-nav-icon" aria-hidden="true">▢</span><span>Đơn nghỉ cá nhân</span></a>
+    </nav>
+    <a class="lc-signout" href="${pageContext.request.contextPath}/logout" aria-label="Đăng xuất"><span class="lc-nav-icon" aria-hidden="true">↪</span><span>Đăng xuất</span></a>
+</aside>
+<header class="lc-topbar">
+    <span>Cổng nhân viên <span class="lc-muted">/ <c:out value="${employeeNavTitle}" default="Chấm công cá nhân"/></span></span>
+    <span class="lc-workspace" title="<c:out value='${sessionScope.tenantPrincipal.companyName}'/>">Workspace · <c:out value="${sessionScope.tenantPrincipal.workspaceCode}" default="—"/></span>
+</header>
+<%@ include file="/WEB-INF/views/common/appearance.jspf" %>
+

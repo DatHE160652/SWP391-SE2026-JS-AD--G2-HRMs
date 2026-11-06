@@ -212,20 +212,24 @@ public class AttendanceDAO {
     public AttendanceSummaryDAO getPersonalSummary(int employeeId, int month, int year) throws SQLException {
         String sql = """
                 SELECT 
-                    COUNT(CASE WHEN Status IN ('Present', 'Late', 'Early Leave') THEN 1 END) AS TotalWorkingDays,
+                    COUNT(CASE WHEN a.Status IN ('Present', 'Late', 'Early Leave') THEN 1 END) AS TotalWorkingDays,
                     ISNULL(SUM(CASE 
-                        WHEN (Status IN ('Present', 'Late', 'Early Leave') OR Status LIKE '%Present%' OR Status LIKE '%Late%' OR Status LIKE '%Early%') AND TotalHours >= 7.0 THEN 1.0
-                        WHEN (Status IN ('Present', 'Late', 'Early Leave') OR Status LIKE '%Present%' OR Status LIKE '%Late%' OR Status LIKE '%Early%') AND TotalHours >= 3.5 THEN 0.5
+                        WHEN (a.Status IN ('Present', 'Late', 'Early Leave') OR a.Status LIKE '%Present%' OR a.Status LIKE '%Late%' OR a.Status LIKE '%Early%') 
+                             AND a.TotalHours >= ISNULL(s.MinHoursFullDay, 6.00) THEN 1.0
+                        WHEN (a.Status IN ('Present', 'Late', 'Early Leave') OR a.Status LIKE '%Present%' OR a.Status LIKE '%Late%' OR a.Status LIKE '%Early%') 
+                             AND a.TotalHours >= ISNULL(s.MinHoursHalfDay, 4.00) THEN 0.5
                         ELSE 0.0
                     END), 0.0) AS TotalWorkCredits,
-                    ISNULL(SUM(CASE WHEN Status IN ('Present', 'Late', 'Early Leave') THEN TotalHours ELSE 0 END), 0) AS TotalHours,
-                    COUNT(CASE WHEN Status = 'Present' THEN 1 END) AS PresentDays,
-                    COUNT(CASE WHEN Status = 'Late' THEN 1 END) AS LateDays,
-                    COUNT(CASE WHEN Status = 'Early Leave' THEN 1 END) AS EarlyLeaveDays,
-                    COUNT(CASE WHEN Status = 'Absent' THEN 1 END) AS AbsentDays,
-                    COUNT(CASE WHEN Status = 'On Leave' THEN 1 END) AS OnLeaveDays
-                FROM Attendances
-                WHERE EmployeeId = ? AND MONTH(AttendanceDate) = ? AND YEAR(AttendanceDate) = ?
+                    ISNULL(SUM(CASE WHEN a.Status IN ('Present', 'Late', 'Early Leave') THEN a.TotalHours ELSE 0 END), 0) AS TotalHours,
+                    COUNT(CASE WHEN a.Status = 'Present' THEN 1 END) AS PresentDays,
+                    COUNT(CASE WHEN a.Status = 'Late' THEN 1 END) AS LateDays,
+                    COUNT(CASE WHEN a.Status = 'Early Leave' THEN 1 END) AS EarlyLeaveDays,
+                    COUNT(CASE WHEN a.Status = 'Absent' THEN 1 END) AS AbsentDays,
+                    COUNT(CASE WHEN a.Status = 'On Leave' THEN 1 END) AS OnLeaveDays
+                FROM Attendances a
+                JOIN Employees e ON a.EmployeeId = e.EmployeeId
+                LEFT JOIN dbo.CompanyShiftSettings s ON e.CompanyId = s.CompanyId
+                WHERE a.EmployeeId = ? AND MONTH(a.AttendanceDate) = ? AND YEAR(a.AttendanceDate) = ?
                 """;
 
         AttendanceSummaryDAO summary = new AttendanceSummaryDAO();
@@ -262,12 +266,16 @@ public class AttendanceDAO {
                        ISNULL(a.IsManualAdjusted, 0) AS IsManualAdjusted, a.AdjustedByUserId,
                        e.EmployeeCode, e.FullName, e.DepartmentId, d.DepartmentName,
                        p.PositionTitle, e.ManagerId, m.FullName AS ManagerName,
-                       e.Status AS EmployeeStatus
+                       e.Status AS EmployeeStatus,
+                       ae.ExplanationId AS PendingExplanationId,
+                       ae.ReasonDetail AS ExplanationReason,
+                       ae.ProposedCheckIn, ae.ProposedCheckOut
                 FROM Employees e
                 LEFT JOIN Attendances a ON e.CompanyId=a.CompanyId AND e.EmployeeId = a.EmployeeId AND a.AttendanceDate = ?
                 LEFT JOIN Departments d ON e.CompanyId=d.CompanyId AND e.DepartmentId = d.DepartmentId
                 LEFT JOIN Positions p ON e.CompanyId=p.CompanyId AND e.PositionId = p.PositionId
                 LEFT JOIN Employees m ON e.CompanyId=m.CompanyId AND e.ManagerId = m.EmployeeId
+                LEFT JOIN AttendanceExplanations ae ON e.CompanyId = ae.CompanyId AND e.EmployeeId = ae.EmployeeId AND ae.AttendanceDate = ? AND ae.Status = 'PENDING'
                 WHERE e.ManagerId = ? AND e.CompanyId = ?
                 ORDER BY e.FullName ASC
                 """;
@@ -277,8 +285,9 @@ public class AttendanceDAO {
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setDate(1, Date.valueOf(date));
             ps.setDate(2, Date.valueOf(date));
-            ps.setInt(3, managerId);
-            ps.setInt(4, companyId);
+            ps.setDate(3, Date.valueOf(date));
+            ps.setInt(4, managerId);
+            ps.setInt(5, companyId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     list.add(mapAttendanceDTO(rs));
@@ -299,7 +308,10 @@ public class AttendanceDAO {
                        p.PositionTitle, e.ManagerId, m.FullName AS ManagerName,
                        ISNULL(r.RoleCode, 'EMPLOYEE') AS RoleCode,
                        ISNULL(r.RoleName, N'Nhân viên') AS RoleName,
-                       e.Status AS EmployeeStatus
+                       e.Status AS EmployeeStatus,
+                       ae.ExplanationId AS PendingExplanationId,
+                       ae.ReasonDetail AS ExplanationReason,
+                       ae.ProposedCheckIn, ae.ProposedCheckOut
                 FROM Employees e
                 LEFT JOIN Attendances a ON e.CompanyId=a.CompanyId AND e.EmployeeId = a.EmployeeId AND a.AttendanceDate = ?
                 LEFT JOIN Departments d ON e.CompanyId=d.CompanyId AND e.DepartmentId = d.DepartmentId
@@ -307,6 +319,7 @@ public class AttendanceDAO {
                 LEFT JOIN Employees m ON e.CompanyId=m.CompanyId AND e.ManagerId = m.EmployeeId
                 LEFT JOIN Users u ON e.CompanyId=u.CompanyId AND e.UserId = u.UserId
                 LEFT JOIN Roles r ON u.RoleId = r.RoleId
+                LEFT JOIN AttendanceExplanations ae ON e.CompanyId = ae.CompanyId AND e.EmployeeId = ae.EmployeeId AND ae.AttendanceDate = ? AND ae.Status = 'PENDING'
                 WHERE e.CompanyId=?
                 ORDER BY e.EmployeeId ASC
                 """;
@@ -316,7 +329,8 @@ public class AttendanceDAO {
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setDate(1, Date.valueOf(date));
             ps.setDate(2, Date.valueOf(date));
-            ps.setInt(3, companyId);
+            ps.setDate(3, Date.valueOf(date));
+            ps.setInt(4, companyId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     list.add(mapAttendanceDTO(rs));
@@ -615,6 +629,23 @@ public class AttendanceDAO {
         try {
             dto.setEmployeeStatus(rs.getString("EmployeeStatus"));
         } catch (SQLException ignored) {}
+        try {
+            int expId = rs.getInt("PendingExplanationId");
+            if (!rs.wasNull()) {
+                dto.setPendingExplanationId(expId);
+            }
+        } catch (SQLException ignored) {}
+        try {
+            dto.setExplanationReason(rs.getString("ExplanationReason"));
+        } catch (SQLException ignored) {}
+        try {
+            Time pIn = rs.getTime("ProposedCheckIn");
+            if (pIn != null) dto.setProposedCheckIn(pIn.toLocalTime());
+        } catch (SQLException ignored) {}
+        try {
+            Time pOut = rs.getTime("ProposedCheckOut");
+            if (pOut != null) dto.setProposedCheckOut(pOut.toLocalTime());
+        } catch (SQLException ignored) {}
         return dto;
     }
 
@@ -641,6 +672,10 @@ public class AttendanceDAO {
         private String roleCode;
         private String roleName;
         private String employeeStatus;
+        private Integer pendingExplanationId;
+        private String explanationReason;
+        private LocalTime proposedCheckIn;
+        private LocalTime proposedCheckOut;
 
         public Long getAttendanceId() { return attendanceId; }
         public void setAttendanceId(Long attendanceId) { this.attendanceId = attendanceId; }
@@ -685,10 +720,16 @@ public class AttendanceDAO {
         public void setTotalHours(BigDecimal totalHours) { this.totalHours = totalHours; }
 
         public static BigDecimal calculateWorkCredit(BigDecimal hours) {
+            return calculateWorkCredit(hours, BigDecimal.valueOf(3.5), BigDecimal.valueOf(7.0));
+        }
+
+        public static BigDecimal calculateWorkCredit(BigDecimal hours, BigDecimal minHalf, BigDecimal minFull) {
             if (hours == null) return BigDecimal.ZERO;
-            if (hours.compareTo(BigDecimal.valueOf(7.0)) >= 0) {
+            BigDecimal full = (minFull != null && minFull.compareTo(BigDecimal.ZERO) > 0) ? minFull : BigDecimal.valueOf(7.0);
+            BigDecimal half = (minHalf != null && minHalf.compareTo(BigDecimal.ZERO) > 0) ? minHalf : BigDecimal.valueOf(3.5);
+            if (hours.compareTo(full) >= 0) {
                 return BigDecimal.valueOf(1.0);
-            } else if (hours.compareTo(BigDecimal.valueOf(3.5)) >= 0) {
+            } else if (hours.compareTo(half) >= 0) {
                 return BigDecimal.valueOf(0.5);
             }
             return BigDecimal.ZERO;
@@ -725,5 +766,21 @@ public class AttendanceDAO {
 
         public String getEmployeeStatus() { return employeeStatus; }
         public void setEmployeeStatus(String employeeStatus) { this.employeeStatus = employeeStatus; }
+
+        public Integer getPendingExplanationId() { return pendingExplanationId; }
+        public void setPendingExplanationId(Integer pendingExplanationId) { this.pendingExplanationId = pendingExplanationId; }
+
+        public String getExplanationReason() { return explanationReason; }
+        public void setExplanationReason(String explanationReason) { this.explanationReason = explanationReason; }
+
+        public LocalTime getProposedCheckIn() { return proposedCheckIn; }
+        public void setProposedCheckIn(LocalTime proposedCheckIn) { this.proposedCheckIn = proposedCheckIn; }
+
+        public LocalTime getProposedCheckOut() { return proposedCheckOut; }
+        public void setProposedCheckOut(LocalTime proposedCheckOut) { this.proposedCheckOut = proposedCheckOut; }
+
+        public boolean hasPendingExplanation() {
+            return pendingExplanationId != null && pendingExplanationId > 0;
+        }
     }
 }
