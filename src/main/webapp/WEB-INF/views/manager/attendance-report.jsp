@@ -7,51 +7,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Báo cáo Chấm công - HRMs Cloud</title>
-    <link rel="stylesheet" href="../css/employee.css">
-    <link rel="stylesheet" href="../css/attendance.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/lifecycle.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/organization.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/attendance.css?v=<%= application.getResource("/css/attendance.css").openConnection().getLastModified() %>">
 </head>
-<body data-page="attendance-report">
-<div class="shell">
-    <aside class="sidebar">
-        <div class="brand">HRMs Cloud<span><c:out value="${not empty sessionScope.tenantPrincipal.companyName ? sessionScope.tenantPrincipal.companyName : 'TechNova JSC'}"/></span></div>
+<body class="lc" data-page="attendance-report">
+<c:choose>
+    <c:when test="${sessionScope.tenantPrincipal.companyAdministrator || sessionScope.tenantPrincipal.roleCode == 'HR'}">
+        <%@ include file="/WEB-INF/views/common/lifecycle-shell.jspf" %>
+    </c:when>
+    <c:otherwise>
+        <c:set var="managerNavPage" value="attendance-report"/>
+        <c:set var="managerNavTitle" value="Báo cáo Chấm công"/>
+        <%@ include file="/WEB-INF/views/common/manager-shell.jspf" %>
+    </c:otherwise>
+</c:choose>
+
+    <main class="lc-main content">
         <c:choose>
-            <c:when test="${sessionScope.tenantPrincipal.companyAdministrator}">
-                <div class="nav-label">Phân hệ Quản trị</div>
-                <a class="nav-link" href="../employee/employee-list">Quản lý Nhân sự</a>
-                <a class="nav-link" href="../department/department-list">Quản lý Phòng ban</a>
-                <a class="nav-link" href="../position/position-list">Quản lý Chức danh</a>
-
-                <div class="nav-label" style="margin-top: 18px;">Phân hệ Chấm công</div>
-                <a class="nav-link" href="company-attendance">Giám sát Công ty</a>
-                <a class="nav-link active" href="attendance-report">Báo cáo Chấm công</a>
-
-                <a class="nav-link" href="../payroll">Quản lý kỳ lương</a>
-                <a class="nav-link" href="../payroll/salaries">Lương cơ bản</a>
-                <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
-                <a class="nav-link" href="../employee/my-profile">Hồ sơ cá nhân</a>
+            <c:when test="${sessionScope.tenantPrincipal.companyAdministrator || sessionScope.tenantPrincipal.roleCode == 'HR'}">
+                <div class="lc-breadcrumb">Quản trị nhân sự &nbsp; / &nbsp; Nghiệp vụ khác &nbsp; / &nbsp; Báo cáo Chấm công</div>
             </c:when>
             <c:otherwise>
-                <div class="nav-label">Phân hệ Chấm công</div>
-                <a class="nav-link" href="../employee/my-profile?nav=manager">Hồ sơ cá nhân</a>
-                <a class="nav-link" href="manager-attendance">Điểm danh Nhân sự</a>
-                <a class="nav-link" href="manager-attendance?view=list">Danh sách chấm công</a>
-                <a class="nav-link" href="manager-personal-attendance">Chấm công Cá nhân</a>
-                <a class="nav-link active" href="attendance-report">Báo cáo Chấm công</a>
-                <a class="nav-link" href="../payslips">Phiếu lương của tôi</a>
-                <a class="nav-link" href="${pageContext.request.contextPath}/payroll">Quản lý lương</a>
-                <a class="nav-link logout-link" href="../logout">Đăng xuất</a>
+                <div class="lc-breadcrumb">Cổng quản lý &nbsp; / &nbsp; Báo cáo Chấm công</div>
             </c:otherwise>
         </c:choose>
-    </aside>
 
-    <main class="content">
         <div class="page-header">
             <div>
                 <h1 class="page-title">Báo cáo Tổng hợp Chấm công</h1>
+                <p class="page-subtitle">Tổng hợp chỉ số chuyên cần, tỷ lệ đi đúng giờ của nhân viên theo phòng ban và theo tháng.</p>
             </div>
-            <div class="actions">
-                <button class="button" id="btnExportCsv" style="background:#00866b;border-color:#00866b;">
-                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20" style="margin-right:6px;">
+            <div class="header-actions">
+                <button class="button" id="btnExportCsv" type="button" style="background:#00866b; border-color:#00866b; color:#fff; display:inline-flex; align-items:center; gap:6px;">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"></path>
                     </svg>
                     Xuất Báo cáo CSV (Excel)
@@ -92,20 +81,16 @@
                     </select>
                 </div>
                 <div class="filter-actions">
-                    <button class="button" id="btnLoadReport">Xem Báo Cáo</button>
+                    <button class="button" id="btnLoadReport" type="button">Xem Báo Cáo</button>
                 </div>
             </div>
         </section>
 
         <!-- Summary Grid -->
-        <section class="summary-grid" style="grid-template-columns: repeat(3, minmax(180px, 1fr));">
+        <section class="summary-grid" style="grid-template-columns: repeat(2, minmax(200px, 1fr));">
             <div class="summary-card">
                 <div class="summary-label">Tổng số nhân viên báo cáo</div>
                 <div id="reportTotalEmployees" class="summary-number">0</div>
-            </div>
-            <div class="summary-card">
-                <div class="summary-label">Tổng giờ làm việc tích lũy</div>
-                <div id="reportTotalHours" class="summary-number text-success">0 giờ</div>
             </div>
             <div class="summary-card">
                 <div class="summary-label">Tỉ lệ đúng giờ trung bình</div>
@@ -113,7 +98,7 @@
             </div>
         </section>
 
-        <div id="message" class="message" style="margin: 0 28px 16px;"></div>
+        <div id="message" class="message"></div>
 
         <!-- Report Table -->
         <section class="panel">
@@ -138,7 +123,7 @@
             </table>
         </section>
     </main>
-</div>
+
 <script src="../js/attendance.js?v=<%= application.getResource("/js/attendance.js").openConnection().getLastModified() %>"></script>
 <script src="../js/payroll-notifications.js"></script>
 </body>

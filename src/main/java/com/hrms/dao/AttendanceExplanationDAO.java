@@ -161,6 +161,31 @@ public class AttendanceExplanationDAO {
         }
     }
 
+    public AttendanceExplanation getPendingExplanationByEmployeeAndDate(int companyId, int employeeId, LocalDate date) throws SQLException {
+        String sql = """
+                SELECT ae.*, e.EmployeeCode, e.FullName AS EmployeeFullName,
+                       d.DepartmentName, u.Username AS ReviewerName
+                FROM dbo.AttendanceExplanations ae
+                JOIN dbo.Employees e ON ae.EmployeeId = e.EmployeeId
+                LEFT JOIN dbo.Departments d ON e.DepartmentId = d.DepartmentId
+                LEFT JOIN dbo.Users u ON ae.ReviewerId = u.UserId
+                WHERE ae.CompanyId = ? AND ae.EmployeeId = ? AND ae.AttendanceDate = ? AND ae.Status = 'PENDING'
+                """;
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, companyId);
+            ps.setInt(2, employeeId);
+            ps.setDate(3, Date.valueOf(date));
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapRow(rs);
+                }
+            }
+        }
+        return null;
+    }
+
     public boolean updateStatus(int explanationId, String status, Integer reviewerId, String reviewerComment) throws SQLException {
         String sql = """
                 UPDATE dbo.AttendanceExplanations

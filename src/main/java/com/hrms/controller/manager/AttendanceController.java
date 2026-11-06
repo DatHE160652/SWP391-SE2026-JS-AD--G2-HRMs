@@ -24,6 +24,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -36,15 +37,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * Handles Attendance operations for Employee, Manager, and HR/Admin:
- * - UC29: Check-in (Manager phụ trách toàn bộ nhân sự công ty)
- * - UC30: Check-out (Manager phụ trách toàn bộ nhân sự công ty)
- * - UC31: View Personal Attendance History (Employee read-only)
- * - UC32: View Team & Company Attendance (Manager)
- * - UC33: Monitor & Search Company Attendance (HR / Admin)
- * - UC36: Generate Attendance Reports & CSV Export (HR / Manager)
- */
 @WebServlet(name = "AttendanceController", urlPatterns = {
         ApiRoutes.ATTENDANCE_PERSONAL,
         ApiRoutes.ATTENDANCE_TEAM,
@@ -241,7 +233,7 @@ public class AttendanceController extends HttpServlet {
     }
 
     /**
-     * UC29: Manager performs Check-in for an employee (quản lý toàn bộ nhân viên)
+     * Checkin: Controller
      */
     private void handleCheckIn(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         int employeeId = parseRequiredInt(request.getParameter("employeeId"), "Vui lòng chọn nhân viên.");
@@ -258,7 +250,7 @@ public class AttendanceController extends HttpServlet {
     }
 
     /**
-     * UC30: Manager performs Check-out for an employee (quản lý toàn bộ nhân viên)
+     * Checkout
      */
     private void handleCheckOut(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         int employeeId = parseRequiredInt(request.getParameter("employeeId"), "Vui lòng chọn nhân viên.");
@@ -275,7 +267,7 @@ public class AttendanceController extends HttpServlet {
     }
 
     /**
-     * Batch check-in / check-out: Điểm danh hàng loạt cho danh sách nhân sự đã chọn
+     * Điểm danh hàng loạt cho nhân viên
      */
     private void handleBatchComplete(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         String empIdsParam = request.getParameter("employeeIds");
@@ -295,6 +287,7 @@ public class AttendanceController extends HttpServlet {
 
         String[] ids = empIdsParam.split(",");
         int successCount = 0;
+        int skippedCount = 0;
         List<String> notices = new java.util.ArrayList<>();
 
         for (String idStr : ids) {
@@ -314,6 +307,7 @@ public class AttendanceController extends HttpServlet {
                     } else if (existing.getCheckOutTime() == null) {
                         act = "check-out";
                     } else {
+                        skippedCount++;
                         continue; // Đã hoàn thành cả vào và tan ca
                     }
                 }
@@ -322,11 +316,17 @@ public class AttendanceController extends HttpServlet {
                     if (existing == null || existing.getCheckInTime() == null) {
                         attendanceService.checkIn(SecuritySupport.requireCompanyId(request), empId, date, time);
                         successCount++;
+                    } else {
+                        // Đã vào ca trước đó -> BẢO TOÀN DỮ LIỆU, KHÔNG CHECK-OUT
+                        skippedCount++;
                     }
                 } else if ("check-out".equalsIgnoreCase(act)) {
                     if (existing != null && existing.getCheckInTime() != null && existing.getCheckOutTime() == null) {
                         attendanceService.checkOut(SecuritySupport.requireCompanyId(request), empId, date, time);
                         successCount++;
+                    } else {
+                        // Chưa vào ca hoặc đã tan ca rồi -> BỎ QUA
+                        skippedCount++;
                     }
                 }
             } catch (Exception ex) {
@@ -335,7 +335,21 @@ public class AttendanceController extends HttpServlet {
         }
 
         List<AttendanceDTO> updatedList = scopedAttendance(request, date);
-        String msg = "Đã hoàn tất điểm danh thành công cho " + successCount + " nhân sự.";
+        String msg;
+        if ("check-in".equalsIgnoreCase(action)) {
+            msg = "Đã điểm danh Vào ca cho " + successCount + " nhân sự.";
+            if (skippedCount > 0) {
+                msg += " (" + skippedCount + " nhân sự đã vào ca trước đó được giữ nguyên).";
+            }
+        } else if ("check-out".equalsIgnoreCase(action)) {
+            msg = "Đã điểm danh Tan ca cho " + successCount + " nhân sự.";
+            if (skippedCount > 0) {
+                msg += " (" + skippedCount + " nhân sự chưa vào ca hoặc đã tan ca được bỏ qua).";
+            }
+        } else {
+            msg = "Đã hoàn tất điểm danh thành công cho " + successCount + " nhân sự.";
+        }
+
         if (!notices.isEmpty()) {
             msg += " Lưu ý: " + String.join(" | ", notices);
         }
@@ -344,7 +358,7 @@ public class AttendanceController extends HttpServlet {
     }
 
     /**
-     * Manager/Admin thực hiện điểm danh bổ sung / điều chỉnh công thủ công cho bất kỳ ngày nào
+     * Adjust Attendance Record: bố sung điểm danh
      */
     private void handleManualAdjust(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
@@ -361,6 +375,13 @@ public class AttendanceController extends HttpServlet {
 
         ensureCanManageAttendance(request, employeeId, date);
 
+        LocalDate today = LocalDate.now();
+        if (isRole(principal, "MANAGER")) {
+            if (!date.equals(today)) {
+                throw new IllegalArgumentException("Chức năng điểm danh bổ sung chỉ áp dụng cho ngày hôm nay. Đối với các ngày trước đó, vui lòng duyệt Đơn giải trình chấm công của nhân viên.");
+            }
+        }
+
         LocalTime checkInTime = parseOptionalTime(request.getParameter("checkInTime"));
         LocalTime checkOutTime = parseOptionalTime(request.getParameter("checkOutTime"));
         String note = trimToNull(request.getParameter("note"));
@@ -375,7 +396,7 @@ public class AttendanceController extends HttpServlet {
     }
 
     /**
-     * UC31: View personal attendance history (Employee read-only)
+     * View personal attendance history (Employee read-only)
      */
     private void handlePersonalAttendance(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         int employeeId = parseRequiredInt(request.getParameter("employeeId"), "Vui lòng chọn nhân viên.");
@@ -394,7 +415,7 @@ public class AttendanceController extends HttpServlet {
     }
 
     /**
-     * UC32: View team attendance (Manager)
+     * View team attendance(Manager)
      */
     private void handleTeamAttendance(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         int managerId = parseRequiredInt(request.getParameter("managerId"), "Vui lòng chọn quản lý.");
@@ -422,7 +443,7 @@ public class AttendanceController extends HttpServlet {
     }
 
     /**
-     * UC33: Monitor & Search company-wide attendance (HR / Admin / Manager)
+     * Monitor & Search company-wide attendance (HR / Admin / Manager)
      */
     private void handleCompanyAttendance(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         int companyId = SecuritySupport.requireCompanyId(request);
@@ -437,7 +458,7 @@ public class AttendanceController extends HttpServlet {
     }
 
     /**
-     * UC36: Generate attendance reports by department
+     * xuất file báo cáo điểm danh
      */
     private void handleAttendanceReport(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         int companyId = SecuritySupport.requireCompanyId(request);
@@ -583,7 +604,7 @@ public class AttendanceController extends HttpServlet {
     }
 
     /**
-     * UC36: Export report to CSV
+     * xuất báo cáo tổng kết chấm công
      */
     private void handleExportReport(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         int companyId = SecuritySupport.requireCompanyId(request);
@@ -606,7 +627,7 @@ public class AttendanceController extends HttpServlet {
     }
 
     /**
-     * UC32: Export Timesheet Matrix to formatted Excel (.xlsx) file
+     *  Xuất bảng ma trận chấm công 1 tháng
      */
     private void handleExportTimesheet(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         int month = parseOptionalInt(request.getParameter("month"), LocalDate.now().getMonthValue());
@@ -731,7 +752,7 @@ public class AttendanceController extends HttpServlet {
 
     /**
      * Kiểm tra quyền quản lý điểm danh:
-     * Manager và Company Admin được toàn quyền quản lý điểm danh cho toàn bộ nhân sự công ty.
+     * Manager được toàn quyền quản lý điểm danh cho toàn bộ nhân sự công ty.
      * Employee chỉ được xem lịch sử cá nhân.
      */
     private void ensureCanManageAttendance(HttpServletRequest request, int employeeId, LocalDate date)
@@ -810,7 +831,11 @@ public class AttendanceController extends HttpServlet {
                 + "\"manualAdjusted\":" + (a.getManualAdjusted() != null && a.getManualAdjusted()) + ","
                 + "\"roleCode\":" + quote(a.getRoleCode()) + ","
                 + "\"roleName\":" + quote(a.getRoleName()) + ","
-                + "\"employeeStatus\":" + quote(a.getEmployeeStatus())
+                + "\"employeeStatus\":" + quote(a.getEmployeeStatus()) + ","
+                + "\"pendingExplanationId\":" + a.getPendingExplanationId() + ","
+                + "\"explanationReason\":" + quote(a.getExplanationReason()) + ","
+                + "\"proposedCheckIn\":" + (a.getProposedCheckIn() != null ? quote(a.getProposedCheckIn().format(DateTimeFormatter.ofPattern("HH:mm:ss"))) : "null") + ","
+                + "\"proposedCheckOut\":" + (a.getProposedCheckOut() != null ? quote(a.getProposedCheckOut().format(DateTimeFormatter.ofPattern("HH:mm:ss"))) : "null")
                 + "}";
     }
 
@@ -861,7 +886,7 @@ public class AttendanceController extends HttpServlet {
         return sb.append("]").toString();
     }
 
-
+    // Configure Company Shift & Working Hours: setup time
     private void handleGetShiftSetting(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         int companyId = SecuritySupport.requireCompanyId(request);
         CompanyShiftSetting setting = attendanceService.getCompanyShiftSetting(companyId);
@@ -869,10 +894,11 @@ public class AttendanceController extends HttpServlet {
                 "{\"success\":true,\"data\":" + toJson(setting) + "}");
     }
 
+    // lưu time và ngày chốt công được setup với từng công ty (Chỉ Admin / HR)
     private void handleSaveShiftSetting(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
-        if (isRole(principal, "EMPLOYEE")) {
-            throw new SecurityException("Bạn không có quyền thay đổi cài đặt ca làm việc của công ty.");
+        if (principal == null || (!principal.isCompanyAdministrator() && !"HR".equalsIgnoreCase(principal.getRoleCode()))) {
+            throw new SecurityException("Chỉ Quản trị viên công ty (Company Admin / HR) mới có quyền cài đặt giờ làm việc và ngày chốt công.");
         }
 
         int companyId = SecuritySupport.requireCompanyId(request);
@@ -898,19 +924,37 @@ public class AttendanceController extends HttpServlet {
             throw new IllegalArgumentException("Thời gian ân hạn phải từ 0 đến 120 phút.");
         }
 
+        int cutoffDay = parseOptionalInt(request.getParameter("timesheetCutoffDay"), CompanyShiftSetting.DEFAULT_CUTOFF_DAY);
+        if (cutoffDay < 1 || cutoffDay > 31) {
+            throw new IllegalArgumentException("Ngày chốt công hàng tháng phải từ ngày 1 đến ngày 31.");
+        }
+
+        BigDecimal minHoursHalfDay = parseOptionalBigDecimal(request.getParameter("minHoursHalfDay"), CompanyShiftSetting.DEFAULT_MIN_HOURS_HALF_DAY);
+        if (minHoursHalfDay.compareTo(BigDecimal.ZERO) <= 0 || minHoursHalfDay.compareTo(BigDecimal.valueOf(24)) > 0) {
+            throw new IllegalArgumentException("Mốc giờ tối thiểu tính nửa công (0.5 công) phải lớn hơn 0 và nhỏ hơn 24.");
+        }
+
+        BigDecimal minHoursFullDay = parseOptionalBigDecimal(request.getParameter("minHoursFullDay"), CompanyShiftSetting.DEFAULT_MIN_HOURS_FULL_DAY);
+        if (minHoursFullDay.compareTo(minHoursHalfDay) <= 0 || minHoursFullDay.compareTo(BigDecimal.valueOf(24)) > 0) {
+            throw new IllegalArgumentException("Mốc giờ tính 1.0 công phải lớn hơn mốc tính nửa công (0.5 công).");
+        }
+
         CompanyShiftSetting setting = new CompanyShiftSetting();
         setting.setCompanyId(companyId);
         setting.setShiftStartTime(startTime);
         setting.setShiftEndTime(endTime);
         setting.setLunchBreakMinutes(lunchBreakMinutes);
         setting.setGracePeriodMinutes(gracePeriodMinutes);
+        setting.setTimesheetCutoffDay(cutoffDay);
+        setting.setMinHoursHalfDay(minHoursHalfDay);
+        setting.setMinHoursFullDay(minHoursFullDay);
         setting.setUpdatedByUserId(principal.getUserId());
 
         attendanceService.updateCompanyShiftSetting(setting);
 
         CompanyShiftSetting updated = attendanceService.getCompanyShiftSetting(companyId);
         writeJson(response, HttpServletResponse.SC_OK,
-                "{\"success\":true,\"message\":\"Cập nhật giờ giấc làm việc thành công!\",\"data\":" + toJson(updated) + "}");
+                "{\"success\":true,\"message\":\"Cập nhật cấu hình giờ giấc và ngày chốt công thành công!\",\"data\":" + toJson(updated) + "}");
     }
 
     private String toJson(CompanyShiftSetting s) {
@@ -922,6 +966,9 @@ public class AttendanceController extends HttpServlet {
                 + "\"shiftEndTime\":" + (s.getShiftEndTime() != null ? quote(s.getShiftEndTime().format(timeFmt)) : "null") + ","
                 + "\"lunchBreakMinutes\":" + s.getLunchBreakMinutes() + ","
                 + "\"gracePeriodMinutes\":" + s.getGracePeriodMinutes() + ","
+                + "\"timesheetCutoffDay\":" + s.getTimesheetCutoffDay() + ","
+                + "\"minHoursHalfDay\":" + s.getMinHoursHalfDay() + ","
+                + "\"minHoursFullDay\":" + s.getMinHoursFullDay() + ","
                 + "\"updatedAt\":" + (s.getUpdatedAt() != null ? quote(s.getUpdatedAt().toString()) : "null") + ","
                 + "\"updatedByUserId\":" + s.getUpdatedByUserId() + ","
                 + "\"updatedByName\":" + quote(s.getUpdatedByName())
@@ -951,6 +998,17 @@ public class AttendanceController extends HttpServlet {
         try {
             return Integer.parseInt(value.trim());
         } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    private BigDecimal parseOptionalBigDecimal(String value, BigDecimal defaultValue) {
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        try {
+            return new BigDecimal(value.trim());
+        } catch (Exception e) {
             return defaultValue;
         }
     }
@@ -998,10 +1056,8 @@ public class AttendanceController extends HttpServlet {
         return value.trim();
     }
 
-    // =========================================================================
-    // UC86 & UC87: Attendance Explanation Handlers
-    // =========================================================================
-    private void handleMyExplanations(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+    // xem đơn cá nhân
+     private void handleMyExplanations(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
         if (principal == null || principal.getEmployeeId() == null) {
             writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Tài khoản chưa liên kết với hồ sơ nhân viên."));
@@ -1015,6 +1071,7 @@ public class AttendanceController extends HttpServlet {
         writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":" + toJsonExplanations(list) + "}");
     }
 
+    // Manager lấy đơn pending
     private void handlePendingExplanations(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
         if (principal == null) {
@@ -1031,6 +1088,8 @@ public class AttendanceController extends HttpServlet {
         writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":" + toJsonExplanations(list) + "}");
     }
 
+    // Submit Attendance Explanation / Punch Request
+    // gửi đơn
     private void handleSubmitExplanation(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
         if (principal == null || principal.getEmployeeId() == null) {
@@ -1053,6 +1112,7 @@ public class AttendanceController extends HttpServlet {
         writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"message\":\"Gửi đơn giải trình chấm công thành công! Vui lòng chờ quản lý phê duyệt.\"}");
     }
 
+    // hủy đơn giải trình
     private void handleCancelExplanation(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
         if (principal == null || principal.getEmployeeId() == null) {
@@ -1068,6 +1128,7 @@ public class AttendanceController extends HttpServlet {
         }
     }
 
+    // Manager phê duyệt/từ chối đơn
     private void handleReviewExplanation(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
         if (principal == null) {
@@ -1084,9 +1145,7 @@ public class AttendanceController extends HttpServlet {
         writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"message\":" + (approve ? "\"Đã duyệt giải trình và tự động cập nhật ngày công!\"" : "\"Đã từ chối đơn giải trình.\"") + "}");
     }
 
-    // =========================================================================
-    // UC88: Timesheet Locking Handlers
-    // =========================================================================
+    // lock bảng điểm danh và bảng lương
     private void handleGetTimesheetLock(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         int companyId = SecuritySupport.requireCompanyId(request);
         int month = parseRequiredInt(request.getParameter("month"), "Vui lòng chọn tháng.");
@@ -1101,6 +1160,10 @@ public class AttendanceController extends HttpServlet {
         TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
         if (principal == null) {
             writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Vui lòng đăng nhập."));
+            return;
+        }
+        if (!principal.isCompanyAdministrator() && !"HR".equalsIgnoreCase(principal.getRoleCode())) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Chỉ Quản trị viên công ty (Company Admin / HR) mới có quyền khóa hoặc mở khóa bảng chấm công."));
             return;
         }
         int companyId = SecuritySupport.requireCompanyId(request);
