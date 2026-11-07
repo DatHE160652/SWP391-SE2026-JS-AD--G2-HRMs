@@ -16,7 +16,6 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.List;
 
 /** System Admin Company pages and guarded Subscription suspend/activate actions. */
 public class CompanyAdministrationController extends HttpServlet {
@@ -81,13 +80,13 @@ public class CompanyAdministrationController extends HttpServlet {
 
         SystemAdminPrincipal principal = SecuritySupport.getPrincipal(request);
         try {
+            String reason = request.getParameter("reason");
             if (ApiRoutes.SYSTEM_ADMIN_COMPANY_SUSPEND.equals(path)) {
-                companyService.suspend(companyId, principal.getUserId(), request.getParameter("reason"),
-                        request.getRemoteAddr());
+                companyService.suspend(companyId, principal.getUserId(), reason, request.getRemoteAddr());
                 request.getSession(true).setAttribute(FLASH_MESSAGE,
                         "Đã tạm ngưng Subscription. Workspace đã bị chặn cho mọi phiên tenant.");
             } else {
-                companyService.activate(companyId, principal.getUserId(), request.getRemoteAddr());
+                companyService.activate(companyId, principal.getUserId(), reason, request.getRemoteAddr());
                 request.getSession(true).setAttribute(FLASH_MESSAGE,
                         "Đã kích hoạt lại Subscription. Workspace có thể đăng nhập nếu Company và tài khoản vẫn hợp lệ.");
             }

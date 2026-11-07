@@ -38,21 +38,22 @@ public class CompanyAdministrationService {
     public void suspend(int companyId, int actorId, String reason, String ipAddress)
             throws SQLException, RequestActionException {
         if (companyId <= 0 || actorId <= 0) throw new IllegalArgumentException("Mã Company hoặc người thực hiện không hợp lệ.");
-        String normalizedReason = normalizeReason(reason);
+        String normalizedReason = normalizeReason(reason, "tạm ngưng");
         requireSuccess(companyDAO.suspend(companyId, actorId, normalizedReason, ipAddress));
     }
 
-    public void activate(int companyId, int actorId, String ipAddress)
+    public void activate(int companyId, int actorId, String reason, String ipAddress)
             throws SQLException, RequestActionException {
         if (companyId <= 0 || actorId <= 0) throw new IllegalArgumentException("Mã Company hoặc người thực hiện không hợp lệ.");
-        requireSuccess(companyDAO.activate(companyId, actorId, ipAddress));
+        String normalizedReason = normalizeReason(reason, "kích hoạt lại");
+        requireSuccess(companyDAO.activate(companyId, actorId, normalizedReason, ipAddress));
     }
 
-    private String normalizeReason(String reason) {
-        if (reason == null) throw new IllegalArgumentException("Lý do tạm ngưng là bắt buộc.");
+    private String normalizeReason(String reason, String action) {
+        if (reason == null) throw new IllegalArgumentException("Lý do " + action + " là bắt buộc.");
         String normalized = reason.trim().replaceAll("\\s+", " ");
-        if (normalized.isEmpty()) throw new IllegalArgumentException("Lý do tạm ngưng là bắt buộc.");
-        if (normalized.length() > 500) throw new IllegalArgumentException("Lý do tạm ngưng không được vượt quá 500 ký tự.");
+        if (normalized.isEmpty()) throw new IllegalArgumentException("Lý do " + action + " là bắt buộc.");
+        if (normalized.length() > 500) throw new IllegalArgumentException("Lý do " + action + " không được vượt quá 500 ký tự.");
         return normalized;
     }
 
