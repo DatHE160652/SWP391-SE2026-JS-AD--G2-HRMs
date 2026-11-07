@@ -135,7 +135,11 @@ public class CompanyAdministrationDAO {
     }
 
     public MutationResult activate(int companyId, int actorId, String ipAddress) throws SQLException {
-        return changeSubscriptionStatus(companyId, actorId, null, ipAddress, false);
+        return activate(companyId, actorId, null, ipAddress);
+    }
+
+    public MutationResult activate(int companyId, int actorId, String reason, String ipAddress) throws SQLException {
+        return changeSubscriptionStatus(companyId, actorId, reason, ipAddress, false);
     }
 
     private MutationResult changeSubscriptionStatus(int companyId, int actorId, String reason, String ipAddress,
