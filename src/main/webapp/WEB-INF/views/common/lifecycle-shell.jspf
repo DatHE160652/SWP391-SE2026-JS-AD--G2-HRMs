@@ -2,25 +2,25 @@
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <aside class="lc-sidebar">
 <a class="lc-brand" href="${pageContext.request.contextPath}/lifecycle/dashboard"><span class="lc-logo">H</span><span class="lc-brand-name">HRMs Cloud</span></a>
-<nav aria-label="Điều hướng nhân sự">
+<nav aria-label="<%= com.hrms.i18n.Language.text(request, "ui_0881b7408a9c", "Điều hướng nhân sự") %>">
 <section class="lc-nav-group" data-nav-group="workspace"><button type="button" class="lc-group-toggle" aria-controls="lc-workspace-links" aria-expanded="true">WORKSPACE</button><div class="lc-nav-links" id="lc-workspace-links">
-<a href="${pageContext.request.contextPath}/lifecycle/dashboard"><span class="lc-nav-icon" aria-hidden="true">◫</span><span>Tổng quan</span></a>
-<a href="${pageContext.request.contextPath}/employee/employee-list"><span class="lc-nav-icon" aria-hidden="true">♙</span><span>Hồ sơ nhân viên</span></a>
-<a href="${pageContext.request.contextPath}/employee/profile-update-periods"><span class="lc-nav-icon" aria-hidden="true">↻</span><span>Cập nhật hồ sơ</span></a>
-<a href="${pageContext.request.contextPath}/employee/document-update-periods"><span class="lc-nav-icon" aria-hidden="true">▱</span><span>Cập nhật tài liệu</span></a>
-<a href="${pageContext.request.contextPath}/lifecycle/contracts"><span class="lc-nav-icon" aria-hidden="true">▤</span><span>Hợp đồng lao động</span></a>
-<a href="${pageContext.request.contextPath}/lifecycle/accounts"><span class="lc-nav-icon" aria-hidden="true">◇</span><span>Tài khoản nhân viên</span></a>
-<a href="${pageContext.request.contextPath}/lifecycle/organization"><span class="lc-nav-icon" aria-hidden="true">⌘</span><span>Sơ đồ tổ chức</span></a>
-</div></section><section class="lc-nav-group" data-nav-group="organization"><button type="button" class="lc-group-toggle" aria-controls="lc-organization-links" aria-expanded="true">CƠ CẤU TỔ CHỨC</button><div class="lc-nav-links" id="lc-organization-links">
-<a href="${pageContext.request.contextPath}/department/department-list"><span class="lc-nav-icon" aria-hidden="true">▦</span><span>Phòng ban</span></a>
-<a href="${pageContext.request.contextPath}/position/position-list"><span class="lc-nav-icon" aria-hidden="true">▣</span><span>Chức danh</span></a>
-<a href="${pageContext.request.contextPath}/responsibility-level/responsibility-level-list"><span class="lc-nav-icon" aria-hidden="true">≋</span><span>Cấp trách nhiệm</span></a>
-</div></section><section class="lc-nav-group" data-nav-group="other"><button type="button" class="lc-group-toggle" aria-controls="lc-other-links" aria-expanded="true">NGHIỆP VỤ KHÁC</button><div class="lc-nav-links" id="lc-other-links">
-<a href="${pageContext.request.contextPath}/attendance/company-attendance"><span class="lc-nav-icon" aria-hidden="true">◷</span><span>Chấm công</span></a>
-<a href="${pageContext.request.contextPath}/leave/all-requests"><span class="lc-nav-icon" aria-hidden="true">▢</span><span>Nghỉ phép</span></a>
-<a href="${pageContext.request.contextPath}/payroll"><span class="lc-nav-icon" aria-hidden="true">▤</span><span>Quản lý kỳ lương</span></a>
-<a href="${pageContext.request.contextPath}/payroll/salaries"><span class="lc-nav-icon" aria-hidden="true">▤</span><span>Lương cơ bản</span></a>
-<a href="${pageContext.request.contextPath}/payslips"><span class="lc-nav-icon" aria-hidden="true">▤</span><span>Phiếu lương của tôi</span></a>
-</div></section></nav><a class="lc-signout" href="${pageContext.request.contextPath}/logout" aria-label="Đăng xuất"><span class="lc-nav-icon" aria-hidden="true">↪</span><span>Đăng xuất</span></a></aside>
-<header class="lc-topbar"><span>Quản trị nhân sự <span class="lc-muted">/ Quy trình nhân sự</span></span><span class="lc-workspace" title="<c:out value='${sessionScope.tenantPrincipal.companyName}'/>">Workspace · <c:out value="${sessionScope.tenantPrincipal.workspaceCode}" default="—"/></span></header>
+<a href="${pageContext.request.contextPath}/lifecycle/dashboard"><span class="lc-nav-icon" aria-hidden="true">◫</span><span><%= com.hrms.i18n.Language.text(request, "ui_286a38e3d5b6", "Tổng quan") %></span></a>
+<a href="${pageContext.request.contextPath}/employee/employee-list"><span class="lc-nav-icon" aria-hidden="true">♙</span><span><%= com.hrms.i18n.Language.text(request, "ui_56a31d8a7ea2", "Hồ sơ nhân viên") %></span></a>
+<a href="${pageContext.request.contextPath}/employee/profile-update-periods"><span class="lc-nav-icon" aria-hidden="true">↻</span><span><%= com.hrms.i18n.Language.text(request, "ui_207f4a0c2ac9", "Cập nhật hồ sơ") %></span></a>
+<a href="${pageContext.request.contextPath}/employee/document-update-periods"><span class="lc-nav-icon" aria-hidden="true">▱</span><span><%= com.hrms.i18n.Language.text(request, "ui_ab0720545cb2", "Cập nhật tài liệu") %></span></a>
+<a href="${pageContext.request.contextPath}/lifecycle/contracts"><span class="lc-nav-icon" aria-hidden="true">▤</span><span><%= com.hrms.i18n.Language.text(request, "ui_75714d4512f4", "Hợp đồng lao động") %></span></a>
+<a href="${pageContext.request.contextPath}/lifecycle/accounts"><span class="lc-nav-icon" aria-hidden="true">◇</span><span><%= com.hrms.i18n.Language.text(request, "ui_043148ab22ee", "Tài khoản nhân viên") %></span></a>
+<a href="${pageContext.request.contextPath}/lifecycle/organization"><span class="lc-nav-icon" aria-hidden="true">⌘</span><span><%= com.hrms.i18n.Language.text(request, "ui_964624eb861b", "Sơ đồ tổ chức") %></span></a>
+</div></section><section class="lc-nav-group" data-nav-group="organization"><button type="button" class="lc-group-toggle" aria-controls="lc-organization-links" aria-expanded="true"><%= com.hrms.i18n.Language.text(request, "ui_d4cb547171a2", "CƠ CẤU TỔ CHỨC") %></button><div class="lc-nav-links" id="lc-organization-links">
+<a href="${pageContext.request.contextPath}/department/department-list"><span class="lc-nav-icon" aria-hidden="true">▦</span><span><%= com.hrms.i18n.Language.text(request, "ui_6f358f848e2e", "Phòng ban") %></span></a>
+<a href="${pageContext.request.contextPath}/position/position-list"><span class="lc-nav-icon" aria-hidden="true">▣</span><span><%= com.hrms.i18n.Language.text(request, "ui_285d666f18b5", "Chức danh") %></span></a>
+<a href="${pageContext.request.contextPath}/responsibility-level/responsibility-level-list"><span class="lc-nav-icon" aria-hidden="true">≋</span><span><%= com.hrms.i18n.Language.text(request, "ui_a77b71180722", "Cấp trách nhiệm") %></span></a>
+</div></section><section class="lc-nav-group" data-nav-group="other"><button type="button" class="lc-group-toggle" aria-controls="lc-other-links" aria-expanded="true"><%= com.hrms.i18n.Language.text(request, "ui_9152aed90a13", "NGHIỆP VỤ KHÁC") %></button><div class="lc-nav-links" id="lc-other-links">
+<a href="${pageContext.request.contextPath}/attendance/company-attendance"><span class="lc-nav-icon" aria-hidden="true">◷</span><span><%= com.hrms.i18n.Language.text(request, "ui_fc355fff8378", "Chấm công") %></span></a>
+<a href="${pageContext.request.contextPath}/leave/all-requests"><span class="lc-nav-icon" aria-hidden="true">▢</span><span><%= com.hrms.i18n.Language.text(request, "ui_9d21ce1caf72", "Nghỉ phép") %></span></a>
+<a href="${pageContext.request.contextPath}/payroll"><span class="lc-nav-icon" aria-hidden="true">▤</span><span><%= com.hrms.i18n.Language.text(request, "ui_7dbe4ff1ea13", "Quản lý kỳ lương") %></span></a>
+<a href="${pageContext.request.contextPath}/payroll/salaries"><span class="lc-nav-icon" aria-hidden="true">▤</span><span><%= com.hrms.i18n.Language.text(request, "ui_f6195db41766", "Lương cơ bản") %></span></a>
+<a href="${pageContext.request.contextPath}/payslips"><span class="lc-nav-icon" aria-hidden="true">▤</span><span><%= com.hrms.i18n.Language.text(request, "ui_2e59daf63e47", "Phiếu lương của tôi") %></span></a>
+</div></section></nav><a class="lc-signout" href="${pageContext.request.contextPath}/logout" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_d513aac0be87", "Đăng xuất") %>"><span class="lc-nav-icon" aria-hidden="true">↪</span><span><%= com.hrms.i18n.Language.text(request, "ui_d513aac0be87", "Đăng xuất") %></span></a></aside>
+<header class="lc-topbar"><span><%= com.hrms.i18n.Language.text(request, "ui_a944931bd7b3", "Quản trị nhân sự") %> <span class="lc-muted"><%= com.hrms.i18n.Language.text(request, "ui_2c86e9370b5a", "/ Quy trình nhân sự") %></span></span><span class="lc-workspace" title="<c:out value='${sessionScope.tenantPrincipal.companyName}'/>">Workspace · <c:out value="${sessionScope.tenantPrincipal.workspaceCode}" default="—"/></span></header>
 <%@ include file="/WEB-INF/views/common/appearance.jspf" %>

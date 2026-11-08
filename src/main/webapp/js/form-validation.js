@@ -3,22 +3,22 @@ window.FormValidation = (() => {
     const initializedForms = new WeakSet();
     let errorSequence = 0;
     const labels = {
-        fullName: 'họ và tên', phone: 'số điện thoại', email: 'email',
-        employeeCode: 'mã nhân viên', identityNumber: 'mã định danh (CCCD)',
-        departmentCode: 'mã phòng ban', departmentName: 'tên phòng ban',
-        positionTitle: 'tên chức danh', departmentId: 'phòng ban', managerId: 'quản lý',
-        documentName: 'tên tài liệu', file: 'tài liệu', dateOfBirth: 'ngày sinh',
-        gender: 'giới tính', status: 'trạng thái', tenantDomain: 'workspace',
-        tenantEmail: 'email', tenantPassword: 'mật khẩu', identifier: 'tên đăng nhập / email',
-        password: 'mật khẩu', newPassword: 'mật khẩu mới', confirmPassword: 'mật khẩu xác nhận',
-        companyName: 'tên công ty', region: 'khu vực', reason: 'lý do',
-        startDate: 'ngày bắt đầu', endDate: 'ngày kết thúc', leaveTypeId: 'loại nghỉ phép',
-        typeCode: 'mã loại nghỉ phép', typeName: 'tên loại nghỉ phép',
-        defaultDaysPerYear: 'số ngày phép', title: 'tiêu đề', content: 'nội dung',
-        grossSalary: "lương trước khấu trừ", travelAllowance: 'phụ cấp đi lại',
-        positionId: 'chức danh', employeeId: 'nhân viên', contractCode: 'mã hợp đồng',
-        contractType: 'loại hợp đồng', effectiveDate: 'ngày hiệu lực',
-        startsAt: 'thời gian bắt đầu', endsAt: 'thời gian kết thúc'
+        fullName: HrmI18n.t('họ và tên'), phone: HrmI18n.t('số điện thoại'), email: 'email',
+        employeeCode: HrmI18n.t('mã nhân viên'), identityNumber: HrmI18n.t('mã định danh (CCCD)'),
+        departmentCode: HrmI18n.t('mã phòng ban'), departmentName: HrmI18n.t('tên phòng ban'),
+        positionTitle: HrmI18n.t('tên chức danh'), departmentId: HrmI18n.t('phòng ban'), managerId: HrmI18n.t('quản lý'),
+        documentName: HrmI18n.t('tên tài liệu'), file: HrmI18n.t('tài liệu'), dateOfBirth: HrmI18n.t('ngày sinh'),
+        gender: HrmI18n.t('giới tính'), status: HrmI18n.t('trạng thái'), tenantDomain: 'workspace',
+        tenantEmail: 'email', tenantPassword: HrmI18n.t('mật khẩu'), identifier: HrmI18n.t('tên đăng nhập / email'),
+        password: HrmI18n.t('mật khẩu'), newPassword: HrmI18n.t('mật khẩu mới'), confirmPassword: HrmI18n.t('mật khẩu xác nhận'),
+        companyName: HrmI18n.t('tên công ty'), region: HrmI18n.t('khu vực'), reason: HrmI18n.t('lý do'),
+        startDate: HrmI18n.t('ngày bắt đầu'), endDate: HrmI18n.t('ngày kết thúc'), leaveTypeId: HrmI18n.t('loại nghỉ phép'),
+        typeCode: HrmI18n.t('mã loại nghỉ phép'), typeName: HrmI18n.t('tên loại nghỉ phép'),
+        defaultDaysPerYear: HrmI18n.t('số ngày phép'), title: HrmI18n.t('tiêu đề'), content: HrmI18n.t('nội dung'),
+        grossSalary: HrmI18n.t("lương trước khấu trừ"), travelAllowance: HrmI18n.t('phụ cấp đi lại'),
+        positionId: HrmI18n.t('chức danh'), employeeId: HrmI18n.t('nhân viên'), contractCode: HrmI18n.t('mã hợp đồng'),
+        contractType: HrmI18n.t('loại hợp đồng'), effectiveDate: HrmI18n.t('ngày hiệu lực'),
+        startsAt: HrmI18n.t('thời gian bắt đầu'), endsAt: HrmI18n.t('thời gian kết thúc')
     };
 
     function fields(root) {
@@ -86,71 +86,71 @@ window.FormValidation = (() => {
         if (labelNode) labelNode.querySelectorAll('.field-error, input, select, textarea').forEach(node => node.remove());
         const label = field.dataset.validationLabel?.trim() || labels[field.name] || labels[field.id]
             || (labelNode && labelNode.textContent.replace(/\*/g, '').trim())
-            || 'thông tin';
+            || HrmI18n.t('thông tin');
         if (field.validity.badInput) {
-            return `${label}: giá trị không hợp lệ.`;
+            return `${label}${HrmI18n.fragment(": giá trị không hợp lệ.")}`;
         }
         const missing = field.type === 'radio' ? !members.some(member => member.checked)
             : field.type === 'checkbox' ? !field.checked
             : field.type === 'file' ? !field.files.length : !value;
         if (members.some(member => member.required) && missing) {
             const selection = field.tagName === 'SELECT' || ['radio', 'checkbox', 'file'].includes(field.type);
-            return `Vui lòng ${selection ? 'chọn' : 'nhập'} ${label}.`;
+            return `${HrmI18n.fragment("Vui lòng ")}${selection ? HrmI18n.t('chọn') : HrmI18n.t('nhập')} ${label}.`;
         }
         if (missing) {
             return '';
         }
-        if (field.type === 'email' && field.validity.typeMismatch) {
-            return 'Vui lòng nhập địa chỉ email hợp lệ.';
+        if (field.type === 'email' && (field.validity.typeMismatch || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))) {
+            return HrmI18n.t('Vui lòng nhập địa chỉ email hợp lệ.');
         }
         if (field.name === 'identityNumber' && !/^[0-9]{12}$/.test(value)) {
-            return 'Mã định danh (CCCD) phải gồm đúng 12 chữ số.';
+            return HrmI18n.t('Mã định danh (CCCD) phải gồm đúng 12 chữ số.');
         }
         if (field.name === 'phone' && !/^0[0-9]{9}$/.test(value)) {
-            return 'Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0.';
+            return HrmI18n.t('Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0.');
         }
         if (field.name !== 'phone' && field.validity.patternMismatch) {
-            return `${label}: không đúng định dạng yêu cầu.`;
+            return `${label}${HrmI18n.fragment(": không đúng định dạng yêu cầu.")}`;
         }
         if (field.maxLength > 0 && value.length > field.maxLength) {
-            return `${label}: tối đa ${field.maxLength} ký tự.`;
+            return `${label}${HrmI18n.fragment(": tối đa ")}${field.maxLength}${HrmI18n.fragment(" ký tự.")}`;
         }
         if (field.minLength > 0 && value.length < field.minLength) {
-            return `${label}: tối thiểu ${field.minLength} ký tự.`;
+            return `${label}${HrmI18n.fragment(": tối thiểu ")}${field.minLength}${HrmI18n.fragment(" ký tự.")}`;
         }
         if (field.validity.rangeUnderflow) {
-            return `${label}: giá trị phải từ ${field.min} trở lên.`;
+            return `${label}${HrmI18n.fragment(": giá trị phải từ ")}${field.min}${HrmI18n.fragment(" trở lên.")}`;
         }
         if (field.validity.rangeOverflow) {
-            return `${label}: giá trị không được vượt quá ${field.max}.`;
+            return `${label}${HrmI18n.fragment(": giá trị không được vượt quá ")}${field.max}.`;
         }
         if (field.validity.stepMismatch || field.validity.typeMismatch) {
-            return `${label}: giá trị không hợp lệ.`;
+            return `${label}${HrmI18n.fragment(": giá trị không hợp lệ.")}`;
         }
         const form = field.form;
         if (field.name === 'confirmPassword' && form && form.elements.namedItem('newPassword')
             && field.value !== form.elements.namedItem('newPassword').value) {
-            return 'Mật khẩu xác nhận không khớp.';
+            return HrmI18n.t('Mật khẩu xác nhận không khớp.');
         }
         if (field.name === 'newPassword' && field.value === '1') {
-            return 'Vui lòng chọn mật khẩu khác mật khẩu tạm.';
+            return HrmI18n.t('Vui lòng chọn mật khẩu khác mật khẩu tạm.');
         }
         const startDate = form && form.elements.namedItem('startDate');
         if (field.name === 'endDate' && startDate && startDate.value && value < startDate.value) {
-            return 'Ngày kết thúc không được trước ngày bắt đầu.';
+            return HrmI18n.t('Ngày kết thúc không được trước ngày bắt đầu.');
         }
         const startsAt = form && form.elements.namedItem('startsAt');
         if (field.name === 'endsAt' && startsAt && startsAt.value && value <= startsAt.value) {
-            return 'Thời gian kết thúc phải sau thời gian bắt đầu.';
+            return HrmI18n.t('Thời gian kết thúc phải sau thời gian bắt đầu.');
         }
         if (field.type === 'file') {
             const extensions = field.accept.split(',').map(extension => extension.trim().toLowerCase()).filter(extension => extension.startsWith('.'));
             for (const file of field.files) {
                 if (file.size > 10 * 1024 * 1024) {
-                    return 'Dung lượng tài liệu không được vượt quá 10 MB.';
+                    return HrmI18n.t('Dung lượng tài liệu không được vượt quá 10 MB.');
                 }
                 if (extensions.length && !extensions.some(extension => file.name.toLowerCase().endsWith(extension))) {
-                    return 'Định dạng tài liệu không được hỗ trợ.';
+                    return HrmI18n.t('Định dạng tài liệu không được hỗ trợ.');
                 }
             }
         }
@@ -174,16 +174,15 @@ window.FormValidation = (() => {
     }
 
     function validate(root) {
-        let firstInvalid;
-        fields(root).forEach(field => {
-            if (!validateField(field) && !firstInvalid) {
-                firstInvalid = field;
+        clear(root);
+        // DOM order follows the form from top to bottom (left to right per row).
+        for (const field of fields(root)) {
+            if (!validateField(field)) {
+                focusInvalid(field);
+                return false;
             }
-        });
-        if (firstInvalid) {
-            focusInvalid(firstInvalid);
         }
-        return !firstInvalid;
+        return true;
     }
 
     function clear(root) {
@@ -200,21 +199,28 @@ window.FormValidation = (() => {
     }
 
     function showErrors(root, failure) {
-        let firstInvalid;
+        const errors = new Map();
         Object.entries(failure.fieldErrors || {}).forEach(([name, message]) => {
             const field = resolve(root, name);
-            if (field && setError(root, field, message)) {
-                firstInvalid = firstInvalid || field;
-            }
+            if (field && message) errors.set(field, message);
         });
-        if (firstInvalid) {
-            focusInvalid(firstInvalid);
+        if (!errors.size) return false;
+        clear(root);
+        for (const field of fields(root)) {
+            if (field.disabled || field.readOnly) continue;
+            // Check earlier inputs before displaying a server error further down.
+            const message = messageFor(field) || errors.get(field);
+            if (message) {
+                setError(root, field, message);
+                focusInvalid(field);
+                return true;
+            }
         }
-        return Boolean(firstInvalid);
+        return false;
     }
 
     function responseError(payload) {
-        const error = new Error(payload.message || 'Không thể hoàn tất thao tác.');
+        const error = new Error(payload.message || HrmI18n.t('Không thể hoàn tất thao tác.'));
         error.fieldErrors = payload.fieldErrors;
         return error;
     }

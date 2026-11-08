@@ -60,16 +60,15 @@ async function setupPositionForm() {
     renderPositionCatalog(form);
 
     if (positionId) {
-        document.querySelector('#positionFormTitle').textContent = 'Cập nhật chức danh';
+        document.querySelector('#positionFormTitle').textContent = HrmI18n.t('Cập nhật chức danh');
         const payload = await PositionApi.get(`/positions/detail?id=${positionId}`);
         await loadDepartmentOptions(form, payload.data.departmentId);
         renderPositionCatalog(form, payload.data);
         fillPositionForm(form, payload.data);
         renderReportingPositionOptions(form,payload.data.reportsToPositionId);
-        if (new URLSearchParams(location.search).get('view') === '1') {
-            document.querySelector('#positionFormTitle').textContent = 'Chi tiết chức danh';
-            form.querySelectorAll('input, select, textarea, button').forEach(control => control.disabled = true);
-        }
+        document.querySelectorAll('a[href="position-list"]').forEach(link => {
+            link.href = 'position-detail?id=' + encodeURIComponent(positionId);
+        });
     }
 
     form.responsibilityLevelId.addEventListener('change', () => showResponsibilityAllowance(form));
@@ -102,7 +101,7 @@ async function updatePosition(form) {
     try {
         const payload = await PositionApi.post('/positions/update', readPositionForm(form));
         sessionStorage.setItem('organizationMessage', payload.message);
-        location.assign('position-list');
+        location.assign('position-detail?id=' + encodeURIComponent(form.elements.namedItem('positionId').value));
     } catch (error) {
         if (!FormValidation.showErrors(form, error)) {
             showPositionMessage(error.message, 'error');
@@ -111,7 +110,7 @@ async function updatePosition(form) {
 }
 
 async function setPositionActive(positionId, active) {
-    if (!confirm(active ? 'Kích hoạt lại chức danh này?' : 'Vô hiệu hóa chức danh này?')) {
+    if (!(await AppDialog.confirm(active ? HrmI18n.t('Kích hoạt lại chức danh này?') : HrmI18n.t('Vô hiệu hóa chức danh này?')))) {
         return;
     }
 
@@ -131,21 +130,18 @@ function renderPositionRows(positions) {
     positions = positions.filter(item => !status || (item.isActive) === (status === 'Active'));
     const tbody = document.querySelector('#positionRows');
     if (!positions.length) {
-        tbody.innerHTML = '<tr><td colspan="6">Chưa có chức danh.</td></tr>';
+        tbody.innerHTML = HrmI18n.fragment('<tr><td colspan="6">Chưa có chức danh.</td></tr>');
         return;
     }
 
     tbody.innerHTML = positions.map(position => `
         <tr>
-            <td><strong>${safePositionValue(position.positionTitle)}</strong>${position.canManageEmployees ? '<small>Được quản lý nhân viên</small>' : ''}</td>
+            <td><strong>${safePositionValue(position.positionTitle)}</strong>${position.canManageEmployees ? HrmI18n.fragment('<small>Được quản lý nhân viên</small>') : ''}</td>
             <td>${safePositionValue(position.departmentName)}</td>
-            <td><a href="../responsibility-level/responsibility-level-form?id=${position.responsibilityLevelId}">${safePositionValue(position.responsibilityLevelName)}</a></td>
-            <td>${position.effectiveAllowance == null ? 'Chưa cấu hình' : Number(position.effectiveAllowance).toLocaleString('vi-VN') + ' ₫'}<small>Theo cấp trách nhiệm</small></td>
-            <td>${position.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}</td>
+            <td><a href="../responsibility-level/responsibility-level-detail?id=${position.responsibilityLevelId}">${safePositionValue(position.responsibilityLevelName)}</a></td>
+            <td>${position.effectiveAllowance == null ? HrmI18n.t('Chưa cấu hình') : Number(position.effectiveAllowance).toLocaleString(HrmI18n.locale) + ' ₫'}${HrmI18n.fragment("<small>Theo cấp trách nhiệm</small></td>\n            <td>")}${position.isActive ? HrmI18n.t('Đang hoạt động') : HrmI18n.t('Ngừng hoạt động')}</td>
             <td class="actions">
-                <a href="position-form?id=${position.positionId}&view=1">Chi tiết</a>
-                <a href="position-form?id=${position.positionId}">Sửa</a>
-                <button class="danger" onclick="setPositionActive(${position.positionId}, ${!position.isActive})">${position.isActive ? 'Vô hiệu hóa' : 'Kích hoạt lại'}</button>
+                <a href="position-detail?id=${position.positionId}${HrmI18n.fragment("\">Chi tiết</a>\n                <a href=\"position-form?id=")}${position.positionId}${HrmI18n.fragment("\">Sửa</a>\n                <button class=\"danger\" onclick=\"setPositionActive(")}${position.positionId}, ${!position.isActive})">${position.isActive ? HrmI18n.t('Vô hiệu hóa') : HrmI18n.t('Kích hoạt lại')}</button>
             </td>
         </tr>
     `).join('');
@@ -168,7 +164,7 @@ function readPositionForm(form) {
 async function loadDepartmentOptions(form, selectedDepartment = form.departmentId.value) {
     const payload = await PositionApi.get('/departments');
     const departments = (payload.data || []).filter(department => department.isActive !== false || String(department.departmentId) === String(selectedDepartment));
-    form.departmentId.innerHTML = '<option value="">Chọn phòng ban</option>' + departments.map(department => `
+    form.departmentId.innerHTML = HrmI18n.fragment('<option value="">Chọn phòng ban</option>') + departments.map(department => `
         <option value="${department.departmentId}">${safePositionValue(department.departmentName)}</option>
     `).join('');
 }
@@ -180,7 +176,7 @@ function positionApiUrl(url) {
 }
 
 async function handlePositionResponse(response) {
-    const payload = await response.json();
+    const payload = await response.json().then(HrmI18n.response);
     if (!response.ok || payload.success === false) {
         throw FormValidation.responseError(payload);
     }
@@ -189,7 +185,7 @@ async function handlePositionResponse(response) {
 
 function showPositionMessage(message, type = 'success') {
     const element = document.querySelector('#message');
-    element.textContent = message;
+    element.textContent = HrmI18n.t(message);
     element.className = `message show ${type}`;
 }
 
@@ -199,13 +195,13 @@ function safePositionValue(value) {
 async function setupPositionList() {
     const payload = await PositionApi.get('/departments');
     const filter = document.querySelector('#departmentFilter');
-    filter.replaceChildren(new Option('Tất cả phòng ban', ''));
+    filter.replaceChildren(new Option(HrmI18n.t('Tất cả phòng ban'), ''));
     payload.data.forEach(department => filter.add(new Option(department.departmentName, department.departmentId)));
     filter.value = new URLSearchParams(location.search).get('departmentId') || '';
     filter.addEventListener('change', loadPositions);
     const levels=await PositionApi.get('/positions?action=catalogs');
     const levelFilter=document.querySelector('#levelFilter');
-    levelFilter.replaceChildren(new Option('Tất cả cấp trách nhiệm',''));
+    levelFilter.replaceChildren(new Option(HrmI18n.t('Tất cả cấp trách nhiệm'),''));
     levels.data.responsibilityLevels.forEach(level => levelFilter.add(new Option(level.name,level.id)));
     levelFilter.value=new URLSearchParams(location.search).get('responsibilityLevelId') || '';
     levelFilter.addEventListener('change',loadPositions);
@@ -217,9 +213,9 @@ async function setupPositionList() {
 function renderPositionCatalog(form, selected = {}) {
     const catalog = JSON.parse(form.dataset.catalog);
     for (const [field, entries] of [['responsibilityLevelId', catalog.responsibilityLevels]]) {
-        form[field].replaceChildren(new Option('Chọn cấp trách nhiệm', ''));
+        form[field].replaceChildren(new Option(HrmI18n.t('Chọn cấp trách nhiệm'), ''));
         entries.filter(entry => entry.active || String(entry.id) === String(selected[field]))
-            .forEach(entry => form[field].add(new Option(entry.name + (entry.active ? '' : ' (ngừng hoạt động)'), entry.id)));
+            .forEach(entry => form[field].add(new Option(entry.name + (entry.active ? '' : HrmI18n.t(' (ngừng hoạt động)')), entry.id)));
     }
 }
 
@@ -233,8 +229,8 @@ function showResponsibilityAllowance(form) {
         if (!selected || employeeLevel) form.canManageEmployees.checked = false;
     }
     document.querySelector('#responsibilityAllowance').textContent = selected && selected.allowance != null
-        ? 'Phụ cấp theo cấp trách nhiệm: ' + Number(selected.allowance).toLocaleString('vi-VN') + ' ₫ (chỉ xem, cấu hình tại cấp trách nhiệm)'
-        : 'Chưa có một chính sách mặc định hợp lệ; hãy cấu hình tại cấp trách nhiệm.';
+        ? HrmI18n.t('Phụ cấp theo cấp trách nhiệm: ') + Number(selected.allowance).toLocaleString(HrmI18n.locale) + HrmI18n.t(' ₫ (chỉ xem, cấu hình tại cấp trách nhiệm)')
+        : HrmI18n.t('Chưa có một chính sách mặc định hợp lệ; hãy cấu hình tại cấp trách nhiệm.');
     renderReportingPositionOptions(form);
 }
 
@@ -247,7 +243,7 @@ function renderReportingPositionOptions(form, selected = form.reportsToPositionI
     const manager=!employee && (form.canManageEmployees.checked || String(level?.code || '').trim().toUpperCase()==='MANAGER'
         || String(level?.name || '').trim().toUpperCase()==='MANAGER');
     const positions=JSON.parse(form.dataset.reportingPositions || '[]');
-    form.reportsToPositionId.replaceChildren(new Option('Chưa cấu hình',''));
+    form.reportsToPositionId.replaceChildren(new Option(HrmI18n.t('Chưa cấu hình'),''));
     if (!manager) for (const position of positions.filter(item=>item.canManageEmployees===true && item.isActive!==false && item.reportsToPositionId==null
         && String(item.departmentId)===form.departmentId.value && String(item.positionId)!==String(form.positionId?.value)))
         form.reportsToPositionId.add(new Option(position.positionTitle,position.positionId));

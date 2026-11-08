@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const show = input.type === 'password';
             input.type = show ? 'text' : 'password';
             button.setAttribute('aria-pressed', String(show));
-            button.setAttribute('aria-label', show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
+            button.setAttribute('aria-label', show ? HrmI18n.t('Ẩn mật khẩu') : HrmI18n.t('Hiện mật khẩu'));
         });
     });
 
@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function () {
         backdrop.hidden = true;
         sidebar.inert = mobile.matches;
         toggle.setAttribute('aria-expanded', String(!mobile.matches && !document.body.classList.contains('sidebar-collapsed')));
-        toggle.setAttribute('aria-label', mobile.matches ? 'Mở menu' : 'Thu gọn / mở rộng menu');
+        toggle.setAttribute('aria-label', mobile.matches ? HrmI18n.t('Mở menu') : HrmI18n.t('Thu gọn / mở rộng menu'));
     }
     closeDrawer();
     toggle.addEventListener('click', function () {
@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function () {
             sidebar.inert = false;
             backdrop.hidden = false;
             toggle.setAttribute('aria-expanded', 'true');
-            toggle.setAttribute('aria-label', 'Đóng menu');
+            toggle.setAttribute('aria-label', HrmI18n.t('Đóng menu'));
             sidebar.querySelector('a').focus();
         }
     });

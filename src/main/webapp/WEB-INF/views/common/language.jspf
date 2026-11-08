@@ -1,0 +1,5 @@
+<script src="${pageContext.request.contextPath}/js/i18n-catalog.js?v=<%= application.getResource("/js/i18n-catalog.js").openConnection().getLastModified() %>"></script>
+<script src="${pageContext.request.contextPath}/js/i18n.js?v=<%= application.getResource("/js/i18n.js").openConnection().getLastModified() %>"></script>
+
+<link rel="stylesheet" href="${pageContext.request.contextPath}/css/app-dialog.css">
+<script src="${pageContext.request.contextPath}/js/app-dialog.js?v=<%= application.getResource("/js/app-dialog.js").openConnection().getLastModified() %>"></script>
