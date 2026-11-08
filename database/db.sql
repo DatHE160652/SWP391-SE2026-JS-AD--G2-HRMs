@@ -312,7 +312,6 @@ CREATE TABLE Employees (
     Major NVARCHAR(200) NULL,
     IntendedContractType VARCHAR(30) NULL,
     TerminationReason NVARCHAR(500) NULL,
-    StartDate DATE NULL,                            -- Tương thích legacy; hồ sơ có thể được tạo trước hợp đồng
     EndDate DATE NULL,
     BaseSalary DECIMAL(18,2) NOT NULL DEFAULT 0.00 CHECK (BaseSalary >= 0), -- Chỉ tương thích; payroll đọc lịch sử lương
     Status NVARCHAR(30) NOT NULL DEFAULT 'Active'
