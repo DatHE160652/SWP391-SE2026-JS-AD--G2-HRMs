@@ -14,6 +14,29 @@
         sidebar.id = sidebar.id || 'lc-sidebar';
         const brand = sidebar.querySelector('.lc-brand');
         if (!brand) return;
+        const current = new URL(location.href);
+        const navigationPath = current.pathname
+            .replace(/\/(employee|department|position|responsibility-level)\/\1-(?:detail|form)$/, '/$1/$1-list')
+            .replace(/\/employee\/(?:employee-document-list|document-upload)$/, '/employee/employee-list');
+        const links = Array.from(sidebar.querySelectorAll('nav a[href]'));
+        const matches = links.filter(link => {
+            const url = new URL(link.href);
+            return url.pathname === navigationPath && Array.from(url.searchParams).every(([key, value]) => current.searchParams.get(key) === value);
+        });
+        const specificity = Math.max(0, ...matches.map(link => Array.from(new URL(link.href).searchParams).length));
+        if (matches.length) links.forEach(link => {
+            const active = matches.includes(link) && Array.from(new URL(link.href).searchParams).length === specificity;
+            link.classList.toggle('active', active);
+            if (active) link.setAttribute('aria-current', 'page');
+            else link.removeAttribute('aria-current');
+        });
+        const activeLink = sidebar.querySelector('nav a.active');
+        if (activeLink) {
+            const currentGroup = activeLink.closest('[data-nav-group]');
+            if (currentGroup) closedGroups.delete(currentGroup.dataset.navGroup);
+            const breadcrumb = document.querySelector('.lc-topbar .lc-muted');
+            if (breadcrumb) breadcrumb.textContent = '/ ' + (activeLink.querySelector('span:not(.lc-nav-icon)')?.textContent.trim() || activeLink.textContent.trim());
+        }
         const header = document.createElement('div');
         header.className = 'lc-sidebar-header';
         brand.before(header);

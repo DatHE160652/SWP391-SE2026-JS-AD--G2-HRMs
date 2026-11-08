@@ -7,8 +7,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= com.hrms.i18n.Language.text(request, "ui_5fa6138e70c3", "Quản lý phòng ban") %></title>
-    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/lifecycle.css">
+
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/organization.css">
+<%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
 <body class="lc" data-page="department-list">
 <%@ include file="/WEB-INF/views/common/lifecycle-shell.jspf" %>

@@ -8,10 +8,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= com.hrms.i18n.Language.text(request, "ui_d7794a1b7f80", "Chấm công cá nhân - HRMs Cloud") %></title>
-    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/lifecycle.css">
+
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/organization.css">
-    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/employee-navigation.css?v=<%= application.getResource("/css/employee-navigation.css").openConnection().getLastModified() %>">
+
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/attendance.css?v=<%= application.getResource("/css/attendance.css").openConnection().getLastModified() %>">
+<%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
 <body class="lc" data-page="employee-attendance" data-profile-role="<c:out value='${sessionScope.tenantPrincipal.roleCode}'/>">
 <c:set var="employeeNavPage" value="attendance"/>

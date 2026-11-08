@@ -1,8 +1,4 @@
 <%@ page pageEncoding="UTF-8" %>
-<link rel="stylesheet" href="${pageContext.request.contextPath}/css/appearance.css?v=<%= application.getResource("/css/appearance.css").openConnection().getLastModified() %>">
-<script src="${pageContext.request.contextPath}/js/appearance.js?v=<%= application.getResource("/js/appearance.js").openConnection().getLastModified() %>"></script>
-<link rel="stylesheet" href="${pageContext.request.contextPath}/css/sidebar.css?v=<%= application.getResource("/css/sidebar.css").openConnection().getLastModified() %>">
-<script src="${pageContext.request.contextPath}/js/sidebar.js?v=<%= application.getResource("/js/sidebar.js").openConnection().getLastModified() %>"></script>
 <section id="appearance-panel" class="appearance-panel" aria-labelledby="appearance-title" hidden>
     <header><h2 id="appearance-title"><%= com.hrms.i18n.Language.text(request, "ui_705b42375db7", "Giao diện") %></h2><button type="button" data-appearance-close aria-label="<%= com.hrms.i18n.Language.text(request, "ui_20cd486293b7", "Đóng tùy chỉnh giao diện") %>"><%= com.hrms.i18n.Language.text(request, "ui_67fba2f357af", "×") %></button></header>
     <label class="appearance-language-label" for="appearance-language"><%= com.hrms.i18n.Language.text(request, "ui_65074a85658a", "Ngôn ngữ") %></label>

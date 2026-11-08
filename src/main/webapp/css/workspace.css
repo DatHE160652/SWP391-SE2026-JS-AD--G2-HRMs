@@ -1,0 +1,172 @@
+/* Shared workspace presentation, derived from Employee Lifecycle Data Management.
+   Keep module layouts, record values, status semantics and print documents intact. */
+body.lc {
+    --blue: var(--lc-purple);
+    --primary: var(--lc-purple);
+    --navy: var(--lc-ink);
+    --ink: var(--lc-ink);
+    --muted: var(--lc-muted);
+    --line: var(--lc-line);
+    --border: var(--lc-line);
+    --surface: var(--lc-surface);
+    --page: var(--lc-bg);
+    --bg: var(--lc-bg);
+    --soft: var(--lc-soft);
+    --pale: var(--lc-soft);
+    --accent-soft: color-mix(in srgb, var(--lc-purple) 9%, var(--lc-surface));
+    font: 14px/1.5 "Segoe UI", Arial, sans-serif;
+}
+.lc h1, .lc h2, .lc h3, .lc input, .lc select, .lc textarea, .lc button {font-family: inherit}
+.lc :is(.page-header, .page-heading) {display:flex; align-items:flex-start; justify-content:space-between; gap:20px; padding:0; margin:0 0 24px}
+.lc :is(.page-title, .page-heading h1) {font-size:25px; line-height:1.35; letter-spacing:-.6px; color:var(--lc-ink); margin:0 0 5px; font-weight:700}
+.lc :is(.page-subtitle, .page-heading p) {font-size:13px; color:var(--lc-muted); line-height:1.65; margin:0; max-width:880px}
+.lc :is(.panel, .summary-card, .balance-card, .pay-card, .metric, .calendar-container, .report-card, .company-card, .company-list-card, .data-card) {
+    background:var(--lc-surface); color:var(--lc-ink); border:1px solid var(--lc-line); border-radius:var(--lc-radius); box-shadow:0 3px 8px #20243603;
+}
+.lc .content > .panel {padding:var(--lc-space); margin:0 0 22px; max-width:100%; overflow-x:auto}
+.lc .lc-main {min-width:0}
+.lc .lc-sidebar nav a {font-weight:500}
+.lc .lc-group-toggle {text-transform:uppercase}
+.lc :is(.panel-title, .card-title, .card-toolbar h2, .card-toolbar h3) {font-size:16px; color:var(--lc-ink); font-weight:650}
+.lc :is(.button, .btn) {display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:var(--lc-control); padding:9px 16px; border:1px solid transparent; border-radius:8px; background:var(--lc-purple); color:#fff; font-size:13px; font-weight:600; text-decoration:none; cursor:pointer}
+.lc :is(.button, .btn).secondary {background:var(--lc-surface); border-color:var(--lc-line); color:var(--lc-ink)}
+.lc :is(.button, .btn).danger {background:#fff1f3; border-color:#f4c9d2; color:#b3334b}
+.lc :is(.button, .btn).success {background:#e8f8f0; border-color:#ccebdd; color:#247652}
+.lc :is(.button, .btn):hover {filter:brightness(.97)}
+.lc button:disabled, .lc .button[aria-disabled=true] {cursor:not-allowed}
+.lc :is(input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea) {border-color:var(--lc-line); background:var(--lc-surface); color:var(--lc-ink); border-radius:8px; font-size:13px}
+.lc :is(input, select, textarea):focus {border-color:var(--lc-purple); box-shadow:0 0 0 3px color-mix(in srgb, var(--lc-purple) 12%, transparent)}
+.lc :is(input, textarea)::placeholder {color:var(--lc-muted); opacity:.85}
+.lc input[type=checkbox], .lc input[type=radio] {accent-color:var(--lc-purple)}
+.lc :is(.filter-bar, .filter-panel, .table-filter, .toolbar-fields, .company-toolbar) {background:var(--lc-surface); border-color:var(--lc-line); color:var(--lc-ink)}
+.lc .filter-bar {border-radius:10px; gap:14px; padding:16px; margin-bottom:20px}
+.lc .filter-group label {color:var(--lc-muted)!important}
+.lc :is(.table-container, .table-scroll, .table-wrap) {max-width:100%; overflow-x:auto}
+.lc table {font-size:13px; color:var(--lc-ink)}
+.lc th {padding:13px 16px; color:var(--lc-muted); font-size:11px; background:var(--lc-soft); border-color:var(--lc-line); font-weight:650}
+.lc td {padding:var(--lc-cell); border-color:var(--lc-line); color:var(--lc-ink)}
+.lc tbody tr:hover {background:var(--lc-soft)}
+.lc :is(.empty-state, .empty, .empty-message) {color:var(--lc-muted)}
+.lc .text-button {background:transparent; border:0; color:var(--lc-purple); min-height:32px; padding:5px 9px; font-size:12px}
+.lc :is(.pagination, .pagination-bar, .company-pagination) {background:var(--lc-surface); border-color:var(--lc-line); color:var(--lc-muted)}
+.lc :is(.info-banner, .info-note, .calc-banner) {background:var(--accent-soft); border-color:color-mix(in srgb, var(--lc-purple) 22%, var(--lc-line)); color:var(--lc-ink); border-radius:10px}
+.lc :is(.metric.highlight, .personal-hero) {background:var(--accent-soft); color:var(--lc-ink); border:1px solid var(--lc-line); border-radius:var(--lc-radius)}
+.lc .metric.highlight :is(small, span), .lc .personal-hero p {color:var(--lc-muted)}
+.lc .personal-hero .hero-icon, .lc .employee-avatar {color:var(--lc-purple)}
+.lc :is(.employee-avatar, .user-avatar, .slip-period) {background:var(--accent-soft); color:var(--lc-purple)}
+.lc :is(.pay-dialog, .action-dialog, .modal-box, .att-center-modal-box) {background:var(--lc-surface); color:var(--lc-ink); border:1px solid var(--lc-line); border-radius:var(--lc-radius); box-shadow:0 20px 80px #10172e30}
+.lc :is(.pay-dialog, .action-dialog)::backdrop {background:#10172e66; backdrop-filter:blur(2px)}
+.lc :is(.modal-header, .modal-footer, .dialog-actions, .modal-body) {border-color:var(--lc-line)}
+.lc :is(.modal-footer, .employee-label, .upload-field) {background:var(--lc-soft); color:var(--lc-ink)}
+.lc :is(.modal-title, .dialog-heading h2, .att-center-modal-title) {font-size:18px; color:var(--lc-ink)}
+.lc :is(.modal-header .close-btn, .icon-button) {background:var(--lc-soft); color:var(--lc-muted); border-color:var(--lc-line)}
+.lc :is(.badge, .status) {border-radius:5px; font-size:11px; font-weight:600}
+
+/* Payroll keeps its calculation/editor structure within the common navigation. */
+.lc .pay-shell {display:block; min-height:100vh}
+.lc .pay-main {min-width:0}
+.lc .pay-content {padding:0; max-width:none; margin:0}
+.lc .pay-topbar {display:none}
+.lc .pay-card {overflow:hidden}
+.lc .card-toolbar {padding:20px; border-color:var(--lc-line)}
+.lc .period-list {padding:0 20px 20px}
+.lc .period-tile {display:block; text-align:left; background:var(--lc-surface); color:var(--lc-ink); border:1px solid var(--lc-line); border-radius:10px}
+.lc .period-tile strong, .lc .period-tile small {display:block}
+.lc .period-tile strong {margin-bottom:8px}
+.lc .period-tile small {margin-top:8px}
+.lc .period-tile.active {background:var(--accent-soft); border-color:var(--lc-purple)}
+.lc .period-tile strong {color:var(--lc-ink)}
+.lc .period-tile small {color:var(--lc-muted)}
+.lc .pay-metrics {gap:var(--lc-space)}
+.lc .metric {padding:var(--lc-space)}
+.lc .metric strong {color:var(--lc-ink)}
+.lc .metric small, .lc .metric span {color:var(--lc-muted)}
+.lc .workflow-strip {background:var(--lc-surface); border:1px solid var(--lc-line); border-radius:var(--lc-radius)}
+.lc .workflow-strip :is(strong, b) {color:var(--lc-ink)}
+.lc .workflow-strip small {color:var(--lc-muted)}
+.lc .workflow-strip .step-index {background:var(--accent-soft); color:var(--lc-purple)}
+.lc .notification-item {background:var(--lc-surface); border-color:var(--lc-line)}
+.lc .search-field input {box-shadow:none}
+.lc .search-field {display:flex; align-items:center; gap:8px; width:min(330px,100%); min-width:0}
+.lc .search-field input {width:100%; min-width:0; flex:1; border:0; background:transparent}
+.lc .toolbar-fields select {width:auto; min-width:150px}
+.lc .pay-dialog .salary-amount-buttons button {border-radius:0; min-height:0; padding:0; background:var(--lc-soft); color:var(--lc-muted)}
+
+/* Platform administration shares the same frame; existing forms retain their CSRF actions. */
+.lc.workspace-admin {--sidebar:var(--lc-sidebar-width, 236px); --company-blue:var(--lc-purple); --company-surface:var(--lc-surface); --company-line:var(--lc-line); --company-copy:var(--lc-ink); --company-muted:var(--lc-muted)}
+.lc.workspace-admin .company-stat-card h2 {font-size:11px; line-height:1.6; color:var(--lc-muted); font-weight:600; letter-spacing:.04em; max-width:calc(100% - 36px)}
+.lc.workspace-admin .company-stat-card h2 span {font-size:inherit; color:inherit}
+.lc.workspace-admin .company-stat-card strong:not(.text-success):not(.text-warning) {color:var(--lc-ink)}
+.lc.workspace-admin .company-tabs {background:var(--lc-soft)}
+.lc.workspace-admin .company-tabs a {background:transparent; color:var(--lc-muted)}
+.lc.workspace-admin .company-tabs a.active {background:var(--accent-soft); color:var(--lc-purple)}
+.lc.workspace-admin .admin-sidebar {z-index:20; transform:none}
+.lc.workspace-admin .sidebar-nav {padding:0 3px 0 0}
+.lc.workspace-admin .admin-sidebar .nav-label {margin:12px 0 5px; padding:9px 10px; font-size:10px; letter-spacing:.5px}
+.lc.workspace-admin .admin-sidebar .nav-link {border:0; margin:3px 0; font-size:13px; color:var(--lc-muted); background:transparent; border-radius:8px}
+.lc.workspace-admin .admin-sidebar .nav-link:is(.active, :hover) {color:var(--lc-purple); background:var(--accent-soft)}
+.lc.workspace-admin .admin-sidebar .nav-count {margin-left:auto; background:var(--accent-soft); color:var(--lc-purple)}
+.lc.workspace-admin .sidebar-footer {padding:12px 0 0; border-top:1px solid var(--lc-line)}
+.lc.workspace-admin .user-card {padding:8px; border-radius:8px; background:var(--lc-soft)}
+.lc.workspace-admin .user-copy {min-width:0}
+.lc.workspace-admin .user-copy strong {overflow:hidden; text-overflow:ellipsis; color:var(--lc-ink)}
+.lc.workspace-admin .user-copy span {color:var(--lc-muted)}
+.lc.workspace-admin .logout-button {background:transparent; min-height:32px; padding:5px; color:var(--lc-muted)}
+.lc.workspace-admin .admin-header {height:76px; z-index:15; gap:20px; padding:0 30px; border-bottom:1px solid var(--lc-line); box-shadow:none}
+.lc.workspace-admin .header-search {max-width:560px; border:1px solid var(--lc-line); background:var(--lc-soft)}
+.lc.workspace-admin .header-search input {border:0; background:transparent; box-shadow:none; min-width:0}
+.lc.workspace-admin .portal-badge {color:var(--lc-muted); background:var(--lc-soft); border-color:var(--lc-line); margin-left:auto}
+.lc.workspace-admin .admin-main {padding:103px 30px 28px; min-height:100vh}
+.lc.workspace-admin :is(.surface, .card, .detail-card, .company-hero, .company-card, .metric-card, .stat-card, .request-card, .filter-card, .table-card) {background:var(--lc-surface); border-color:var(--lc-line); border-radius:var(--lc-radius); box-shadow:0 3px 8px #20243603}
+.lc.workspace-admin :is(.company-page-title h1, .page-heading h1) {font-size:25px; color:var(--lc-ink); font-family:inherit}
+.lc.workspace-admin :is(.breadcrumb, .eyebrow, .company-card-heading, .card-heading) {color:var(--lc-muted); border-color:var(--lc-line)}
+.lc.workspace-admin :is(.company-hero-title h1, .metric-card strong, .stat-card strong) {color:var(--lc-ink)}
+.lc.workspace-admin :is(.company-toolbar, .toolbar, .list-toolbar, .company-card-heading) {background:var(--lc-surface); border-color:var(--lc-line)}
+html[data-sidebar=collapsed] .workspace-admin .user-copy,
+html[data-sidebar=collapsed] .workspace-admin .user-card > .avatar {display:none}
+html[data-sidebar=collapsed] .workspace-admin .user-card {padding:0; justify-content:center}
+
+/* Login and standalone payslips use the same type, controls and surfaces. */
+.lc.workspace-auth {background:var(--lc-bg); color:var(--lc-ink)}
+.lc.workspace-auth :is(.auth-card, .tenant-login-card) {background:var(--lc-surface); color:var(--lc-ink); border:1px solid var(--lc-line); border-radius:var(--lc-radius); box-shadow:0 12px 40px #2024360a}
+.lc.workspace-auth :is(.auth-card h1, .tenant-login-card h1) {font-size:25px; color:var(--lc-ink)}
+.lc.workspace-auth :is(.accent-line, .submit-button, .tenant-login-submit) {background:var(--lc-purple); border-color:var(--lc-purple)}
+.lc.workspace-auth :is(.eyebrow, .label-row span) {color:var(--lc-purple)}
+.lc.workspace-auth .auth-card {max-width:480px}
+.lc.workspace-document .slip-paper {background:var(--lc-surface); color:var(--lc-ink); border-color:var(--lc-line)}
+.lc.workspace-document .slip-total {background:var(--accent-soft)}
+
+@media(max-width:1100px) {
+    .lc.workspace-admin .admin-main {padding-left:20px; padding-right:20px}
+    .lc.workspace-admin .portal-badge {font-size:11px; white-space:nowrap}
+}
+@media(max-width:820px) {
+    .lc :is(.page-header, .page-heading) {flex-direction:column; gap:14px}
+    .lc :is(.page-title, .page-heading h1) {font-size:23px}
+    .lc :is(.header-actions, .action-row, .filter-bar) {flex-wrap:wrap}
+    .lc :is(.toolbar-fields, .table-filter) {flex-wrap:wrap}
+    .lc .summary-grid {grid-template-columns:repeat(2,minmax(0,1fr))!important; gap:14px}
+    .lc .summary-card {min-width:0; padding:16px}
+    .lc .role-tabs-container {max-width:100%; overflow-x:auto}
+    .lc .filter-group {min-width:0; flex:1 1 150px}
+    .lc .pay-metrics {grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px}
+    .lc .pay-dialog {padding:20px}
+    .lc.workspace-admin .admin-main {padding:94px 15px 20px}
+    .lc.workspace-admin .admin-header {padding:0 16px; gap:10px}
+    .lc.workspace-admin .header-search {min-width:0; width:100%}
+    .lc.workspace-admin .portal-badge {display:none}
+    .lc.workspace-admin .header-search input {width:100%}
+}
+@media(max-width:500px) {
+    .lc :is(.card-toolbar, .period-list) {padding-left:16px; padding-right:16px}
+    .lc :is(.form-pair, .form-grid) {grid-template-columns:minmax(0, 1fr)}
+    .lc .balance-grid {grid-template-columns:minmax(0, 1fr)}
+    .lc :is(.search-field, .search-field input) {width:100%; min-width:0}
+    .lc .pay-metrics .metric {padding:14px}
+}
+@media print {
+    body.lc.workspace-document {--lc-ink:#202436; --lc-muted:#7b8195; --lc-surface:#fff; --lc-purple:#4f46e5; color-scheme:light; background:#fff; color:#202436}
+    .lc.workspace-document .slip-paper {background:#fff; color:#202436; box-shadow:none; border:0; border-radius:0}
+    .lc.workspace-document .slip-paper :is(th, td) {color:#202436; border-color:#e9ebf3}
+    .lc.workspace-document .slip-paper th, .lc.workspace-document .slip-total {background:#f6f7fb}
+}

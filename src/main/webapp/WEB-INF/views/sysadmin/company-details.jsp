@@ -9,10 +9,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><%= com.hrms.i18n.Language.text(request, "ui_7a13b3a21066", "Chi tiết Company | HRMs.Admin") %></title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/system-admin.css?v=20261020-company-toolbar">
+<%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
-<body class="admin-page company-page company-detail-page">
+<body class="lc workspace-admin admin-page company-page company-detail-page">
 <%@ include file="/WEB-INF/views/sysadmin/admin-shell.jspf" %>
-<main class="admin-main" id="main-content">
+<main class="lc-main admin-main" id="main-content">
     <a class="company-back-link" href="${pageContext.request.contextPath}/systemadmin/company"><svg class="icon" aria-hidden="true"><use href="${icons}#arrow-left"/></svg><%= com.hrms.i18n.Language.text(request, "ui_13fbcf84a5b5", "Quay lại danh sách Doanh nghiệp") %></a>
 
     <section class="company-hero" aria-labelledby="company-title">

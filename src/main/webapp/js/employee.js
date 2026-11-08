@@ -213,6 +213,7 @@ async function setupMyProfile() {
 function renderMyProfileSidebar(roleCode) {
     const modernSidebar = document.querySelector('.lc-sidebar');
     if (modernSidebar) {
+        if (modernSidebar.dataset.workspaceShell === 'true') return;
         const links = [['/employee/my-profile', HrmI18n.t('Hồ sơ cá nhân')]];
         if (roleCode==='MANAGER') links.push(['/employee/organization',HrmI18n.t('Sơ đồ tổ chức')],['/employee/my-contracts',HrmI18n.t('Hợp đồng của tôi')]);
         if (roleCode === 'MANAGER') links.push(['/attendance/manager-attendance', HrmI18n.t('Điểm danh nhân sự')], ['/attendance/manager-personal-attendance', HrmI18n.t('Chấm công cá nhân')], ['/attendance/attendance-report', HrmI18n.t('Báo cáo chấm công')]);

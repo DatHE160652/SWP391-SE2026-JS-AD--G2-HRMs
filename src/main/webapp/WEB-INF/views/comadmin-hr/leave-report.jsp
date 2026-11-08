@@ -10,33 +10,13 @@
     <link rel="stylesheet" href="../css/employee.css">
     <link rel="stylesheet" href="../css/attendance.css">
     <link rel="stylesheet" href="../css/leave.css">
+<%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
-<body data-page="leave-report">
-<div class="shell">
-    <aside class="sidebar">
-        <div class="brand">HRMs Cloud<span><c:out value="${not empty sessionScope.tenantPrincipal.companyName ? sessionScope.tenantPrincipal.companyName : 'Doanh nghiệp'}"/></span></div>
-        <div class="nav-label"><%= com.hrms.i18n.Language.text(request, "ui_0dec7fd51c40", "Phân hệ Quản trị") %></div>
-        <a class="nav-link" href="../employee/employee-list"><%= com.hrms.i18n.Language.text(request, "ui_5ed96e7249d6", "Quản lý Nhân sự") %></a>
-        <a class="nav-link" href="../department/department-list"><%= com.hrms.i18n.Language.text(request, "ui_bc217c0a7c21", "Quản lý Phòng ban") %></a>
-        <a class="nav-link" href="../position/position-list"><%= com.hrms.i18n.Language.text(request, "ui_45243efa4b09", "Quản lý Chức danh") %></a>
+<body class="lc" data-page="leave-report">
+<div class="workspace-shell">
+    <%@ include file="/WEB-INF/views/common/tenant-shell.jspf" %>
 
-        <div class="nav-label" style="margin-top: 18px;"><%= com.hrms.i18n.Language.text(request, "ui_bb8e1c6f085e", "Phân hệ Chấm công") %></div>
-        <a class="nav-link" href="../attendance/manager-attendance"><%= com.hrms.i18n.Language.text(request, "ui_cc34d4e67fde", "Điểm danh Nhân sự") %></a>
-        <a class="nav-link" href="../attendance/manager-personal-attendance"><%= com.hrms.i18n.Language.text(request, "ui_e846c0844ceb", "Chấm công Cá nhân") %></a>
-        <a class="nav-link" href="../attendance/company-attendance"><%= com.hrms.i18n.Language.text(request, "ui_6b91b52ab71d", "Giám sát Công ty") %></a>
-        <a class="nav-link" href="../attendance/attendance-report"><%= com.hrms.i18n.Language.text(request, "ui_5cfe0baad77f", "Báo cáo Chấm công") %></a>
-
-        <div class="nav-label" style="margin-top: 18px;"><%= com.hrms.i18n.Language.text(request, "ui_b036712357df", "Phân hệ Nghỉ phép") %></div>
-        <a class="nav-link" href="types"><%= com.hrms.i18n.Language.text(request, "ui_611245ff0fb6", "Cấu hình loại phép") %></a>
-        <a class="nav-link" href="all-requests"><%= com.hrms.i18n.Language.text(request, "ui_b26df14c4e69", "Tất cả đơn nghỉ") %></a>
-        <a class="nav-link" href="pending-approvals"><%= com.hrms.i18n.Language.text(request, "ui_7b0a878a5449", "Duyệt đơn nghỉ phép") %></a>
-        <a class="nav-link" href="calendar"><%= com.hrms.i18n.Language.text(request, "ui_0dd83ebf282c", "Lịch nghỉ công ty") %></a>
-        <a class="nav-link active" href="report"><%= com.hrms.i18n.Language.text(request, "ui_e198a77b4338", "Báo cáo nghỉ phép") %></a>
-
-        <a class="nav-link logout-link" href="../logout"><%= com.hrms.i18n.Language.text(request, "ui_d513aac0be87", "Đăng xuất") %></a>
-    </aside>
-
-    <main class="content">
+    <main class="lc-main content">
         <div class="page-header">
             <div>
                 <h1 class="page-title"><%= com.hrms.i18n.Language.text(request, "ui_b785164dd4b0", "Báo cáo tình hình sử dụng nghỉ phép") %></h1>

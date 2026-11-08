@@ -4,8 +4,9 @@
 <fmt:setLocale value='<%= "en".equals(com.hrms.i18n.Language.selected(request)) ? "en_US" : "vi_VN" %>'/>
 <!DOCTYPE html>
 <html lang="<%= com.hrms.i18n.Language.selected(request) %>"><head>
-<%@ include file="/WEB-INF/views/common/language.jspf" %><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><%= com.hrms.i18n.Language.text(request, "ui_7283a20e7ce7", "Phiếu lương ·") %> <c:out value="${slip.periodName()}"/></title><link rel="stylesheet" href="${pageContext.request.contextPath}/css/payroll.css?v=20261026-payslips-1"></head>
-<body><main class="slip-page">
+<%@ include file="/WEB-INF/views/common/language.jspf" %><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><%= com.hrms.i18n.Language.text(request, "ui_7283a20e7ce7", "Phiếu lương ·") %> <c:out value="${slip.periodName()}"/></title><link rel="stylesheet" href="${pageContext.request.contextPath}/css/payroll.css?v=20261026-payslips-1"><%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
+</head>
+<body class="lc workspace-document"><main class="slip-page">
     <div class="slip-actions">
         <c:url var="slipListUrl" value="${adminView ? '/payroll' : '/payslips'}"><c:if test="${adminView}"><c:param name="view" value="payslips"/><c:param name="periodId" value="${slip.payrollPeriodId()}"/></c:if></c:url>
         <a class="btn secondary" href="<c:out value='${slipListUrl}'/>"><%= com.hrms.i18n.Language.text(request, "ui_4a436befc12b", "← Quay lại") %></a><button class="btn primary" type="button" onclick="window.print()"><%= com.hrms.i18n.Language.text(request, "ui_c3e2d23e53b2", "In / Lưu PDF") %></button>

@@ -7,9 +7,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= com.hrms.i18n.Language.text(request, "ui_63e905f01f81", "Tài liệu nhân viên") %></title>
-    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/lifecycle.css">
+
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/organization.css">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/employee-assignment.css">
+<%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
 <body class="lc" data-page="documents">
 <%@ include file="/WEB-INF/views/common/lifecycle-shell.jspf" %>

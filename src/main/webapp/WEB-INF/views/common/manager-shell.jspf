@@ -1,6 +1,6 @@
 <%@ page pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
-<aside class="lc-sidebar">
+<aside class="lc-sidebar" data-workspace-shell="true">
     <a class="lc-brand" href="${pageContext.request.contextPath}/attendance/manager-attendance">
         <span class="lc-logo">H</span><span class="lc-brand-name">HRMs Cloud</span>
     </a>
@@ -19,11 +19,19 @@
             <div class="lc-nav-links" id="lc-manager-leave-links">
                 <a class="${managerNavPage == 'leave-pending' ? 'active' : ''}" href="${pageContext.request.contextPath}/leave/pending-approvals"><span class="lc-nav-icon" aria-hidden="true">▢</span><span><%= com.hrms.i18n.Language.text(request, "ui_7b0a878a5449", "Duyệt đơn nghỉ phép") %></span></a>
                 <a class="${managerNavPage == 'payroll' ? 'active' : ''}" href="${pageContext.request.contextPath}/payroll"><span class="lc-nav-icon" aria-hidden="true">◈</span><span><%= com.hrms.i18n.Language.text(request, "ui_8b3b6553d5b5", "Quản lý lương") %></span></a>
+<a href="${pageContext.request.contextPath}/payroll/salaries"><span class="lc-nav-icon" aria-hidden="true">▤</span><span><%= com.hrms.i18n.Language.text(request, "ui_f6195db41766", "Lương cơ bản") %></span></a>
             </div>
         </section>
         <section class="lc-nav-group" data-nav-group="personal">
             <button type="button" class="lc-group-toggle" aria-controls="lc-manager-personal-links" aria-expanded="true"><%= com.hrms.i18n.Language.text(request, "ui_3874d4ffe564", "CÁ NHÂN") %></button>
             <div class="lc-nav-links" id="lc-manager-personal-links">
+<a href="${pageContext.request.contextPath}/employee/organization"><span class="lc-nav-icon" aria-hidden="true">⌘</span><span><%= com.hrms.i18n.Language.text(request, "ui_964624eb861b", "Sơ đồ tổ chức") %></span></a>
+<a href="${pageContext.request.contextPath}/employee/my-contracts"><span class="lc-nav-icon" aria-hidden="true">▤</span><span><%= com.hrms.i18n.Language.text(request, "ui_4939da54ffa3", "Hợp đồng của tôi") %></span></a>
+<a href="${pageContext.request.contextPath}/leave/my-balances"><span class="lc-nav-icon" aria-hidden="true">◫</span><span><%= com.hrms.i18n.Language.text(request, "ui_35400d7d055b", "Số dư phép") %></span></a>
+<a href="${pageContext.request.contextPath}/leave/submit"><span class="lc-nav-icon" aria-hidden="true">＋</span><span><%= com.hrms.i18n.Language.text(request, "ui_970a42dcb266", "Tạo đơn xin nghỉ") %></span></a>
+<a href="${pageContext.request.contextPath}/leave/my-requests"><span class="lc-nav-icon" aria-hidden="true">▢</span><span><%= com.hrms.i18n.Language.text(request, "ui_697728531b43", "Lịch sử đơn nghỉ") %></span></a>
+<a href="${pageContext.request.contextPath}/leave/calendar"><span class="lc-nav-icon" aria-hidden="true">▦</span><span><%= com.hrms.i18n.Language.text(request, "ui_bcfc74d75019", "Lịch nghỉ cá nhân") %></span></a>
+
                 <a class="${managerNavPage == 'profile' ? 'active' : ''}" href="${pageContext.request.contextPath}/employee/my-profile?nav=manager"><span class="lc-nav-icon" aria-hidden="true">♙</span><span><%= com.hrms.i18n.Language.text(request, "ui_b70d1e2772e9", "Hồ sơ cá nhân") %></span></a>
                 <a class="${managerNavPage == 'payslips' ? 'active' : ''}" href="${pageContext.request.contextPath}/payslips"><span class="lc-nav-icon" aria-hidden="true">▱</span><span><%= com.hrms.i18n.Language.text(request, "ui_2e59daf63e47", "Phiếu lương của tôi") %></span></a>
             </div>
@@ -32,7 +40,7 @@
     <a class="lc-signout" href="${pageContext.request.contextPath}/logout" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_d513aac0be87", "Đăng xuất") %>"><span class="lc-nav-icon" aria-hidden="true">↪</span><span><%= com.hrms.i18n.Language.text(request, "ui_d513aac0be87", "Đăng xuất") %></span></a>
 </aside>
 <header class="lc-topbar">
-    <span><%= com.hrms.i18n.Language.text(request, "ui_3d11fc48b64c", "Cổng quản lý") %> <span class="lc-muted">/ <c:out value="${managerNavTitle}" default="Chấm công"/></span></span>
+    <span><%= com.hrms.i18n.Language.text(request, "ui_3d11fc48b64c", "Cổng quản lý") %> <span class="lc-muted">/ <c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("managerNavTitle")) %>'/></span></span>
     <span class="lc-workspace" title="<c:out value='${sessionScope.tenantPrincipal.companyName}'/>">Workspace · <c:out value="${sessionScope.tenantPrincipal.workspaceCode}" default="—"/></span>
 </header>
 <%@ include file="/WEB-INF/views/common/appearance.jspf" %>

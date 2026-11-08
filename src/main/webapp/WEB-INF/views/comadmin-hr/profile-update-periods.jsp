@@ -8,9 +8,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><c:out value="${updatePeriodHeading}"/></title>
-    <link rel="stylesheet" href="../css/lifecycle.css">
+
     <link rel="stylesheet" href="../css/organization.css">
     <link rel="stylesheet" href="../css/profile-update.css">
+<%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
 <body class="lc" data-page="profile-update-periods" data-period-type="${updatePeriodType}">
 <%@ include file="/WEB-INF/views/common/lifecycle-shell.jspf" %>

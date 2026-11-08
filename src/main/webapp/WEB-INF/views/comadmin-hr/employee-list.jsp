@@ -5,7 +5,8 @@
 <%@ include file="/WEB-INF/views/common/language.jspf" %><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
 <meta name="csrf-token" content="<c:out value='${organizationCsrfToken}'/>">
-<title><%= com.hrms.i18n.Language.text(request, "ui_202f75f34e4c", "Hồ sơ nhân viên · HRMs Cloud") %></title><link rel="stylesheet" href="${pageContext.request.contextPath}/css/lifecycle.css"><link rel="stylesheet" href="${pageContext.request.contextPath}/css/employee-assignment.css"></head>
+<title><%= com.hrms.i18n.Language.text(request, "ui_202f75f34e4c", "Hồ sơ nhân viên · HRMs Cloud") %></title><link rel="stylesheet" href="${pageContext.request.contextPath}/css/employee-assignment.css"><%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
+</head>
 <body class="lc" data-lifecycle="employees" data-context="${pageContext.request.contextPath}">
 <%@ include file="/WEB-INF/views/common/lifecycle-shell.jspf" %>
 <main class="lc-main">

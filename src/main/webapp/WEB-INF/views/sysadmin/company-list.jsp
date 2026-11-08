@@ -8,10 +8,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><%= com.hrms.i18n.Language.text(request, "ui_932ff9068f27", "Quản lý Doanh nghiệp | HRMs.Admin") %></title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/system-admin.css?v=20261020-company-toolbar">
+<%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
-<body class="admin-page company-page company-list-page">
+<body class="lc workspace-admin admin-page company-page company-list-page">
 <%@ include file="/WEB-INF/views/sysadmin/admin-shell.jspf" %>
-<main class="admin-main" id="main-content">
+<main class="lc-main admin-main" id="main-content">
     <header class="company-page-title">
         <nav class="breadcrumb" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_50de7d02dcaa", "Đường dẫn") %>"><a href="${pageContext.request.contextPath}/systemadmin/dashboard"><%= com.hrms.i18n.Language.text(request, "ui_8201002cd9e8", "Quản lý tenant") %></a><svg class="icon" aria-hidden="true"><use href="${icons}#chevron"/></svg><span><%= com.hrms.i18n.Language.text(request, "ui_2093bd912e40", "Quản lý công ty") %></span></nav>
         <h1><%= com.hrms.i18n.Language.text(request, "ui_f202a77ef7d0", "Quản lý Doanh nghiệp") %> </h1>

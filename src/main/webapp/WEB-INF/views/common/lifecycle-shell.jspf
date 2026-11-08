@@ -1,6 +1,6 @@
 <%@ page pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
-<aside class="lc-sidebar">
+<aside class="lc-sidebar" data-workspace-shell="true">
 <a class="lc-brand" href="${pageContext.request.contextPath}/lifecycle/dashboard"><span class="lc-logo">H</span><span class="lc-brand-name">HRMs Cloud</span></a>
 <nav aria-label="<%= com.hrms.i18n.Language.text(request, "ui_0881b7408a9c", "Điều hướng nhân sự") %>">
 <section class="lc-nav-group" data-nav-group="workspace"><button type="button" class="lc-group-toggle" aria-controls="lc-workspace-links" aria-expanded="true">WORKSPACE</button><div class="lc-nav-links" id="lc-workspace-links">
@@ -17,10 +17,19 @@
 <a href="${pageContext.request.contextPath}/responsibility-level/responsibility-level-list"><span class="lc-nav-icon" aria-hidden="true">≋</span><span><%= com.hrms.i18n.Language.text(request, "ui_a77b71180722", "Cấp trách nhiệm") %></span></a>
 </div></section><section class="lc-nav-group" data-nav-group="other"><button type="button" class="lc-group-toggle" aria-controls="lc-other-links" aria-expanded="true"><%= com.hrms.i18n.Language.text(request, "ui_9152aed90a13", "NGHIỆP VỤ KHÁC") %></button><div class="lc-nav-links" id="lc-other-links">
 <a href="${pageContext.request.contextPath}/attendance/company-attendance"><span class="lc-nav-icon" aria-hidden="true">◷</span><span><%= com.hrms.i18n.Language.text(request, "ui_fc355fff8378", "Chấm công") %></span></a>
-<a href="${pageContext.request.contextPath}/leave/all-requests"><span class="lc-nav-icon" aria-hidden="true">▢</span><span><%= com.hrms.i18n.Language.text(request, "ui_9d21ce1caf72", "Nghỉ phép") %></span></a>
 <a href="${pageContext.request.contextPath}/payroll"><span class="lc-nav-icon" aria-hidden="true">▤</span><span><%= com.hrms.i18n.Language.text(request, "ui_7dbe4ff1ea13", "Quản lý kỳ lương") %></span></a>
 <a href="${pageContext.request.contextPath}/payroll/salaries"><span class="lc-nav-icon" aria-hidden="true">▤</span><span><%= com.hrms.i18n.Language.text(request, "ui_f6195db41766", "Lương cơ bản") %></span></a>
-<a href="${pageContext.request.contextPath}/payslips"><span class="lc-nav-icon" aria-hidden="true">▤</span><span><%= com.hrms.i18n.Language.text(request, "ui_2e59daf63e47", "Phiếu lương của tôi") %></span></a>
-</div></section></nav><a class="lc-signout" href="${pageContext.request.contextPath}/logout" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_d513aac0be87", "Đăng xuất") %>"><span class="lc-nav-icon" aria-hidden="true">↪</span><span><%= com.hrms.i18n.Language.text(request, "ui_d513aac0be87", "Đăng xuất") %></span></a></aside>
+</div></section><section class="lc-nav-group" data-nav-group="leave"><button type="button" class="lc-group-toggle" aria-controls="lc-leave-links" aria-expanded="true"><%= com.hrms.i18n.Language.text(request, "ui_9d21ce1caf72", "Nghỉ phép") %></button><div class="lc-nav-links" id="lc-leave-links"><a href="${pageContext.request.contextPath}/leave/all-requests"><span class="lc-nav-icon" aria-hidden="true">▢</span><span><%= com.hrms.i18n.Language.text(request, "ui_b26df14c4e69", "Tất cả đơn nghỉ") %></span></a>
+<a href="${pageContext.request.contextPath}/leave/pending-approvals"><span class="lc-nav-icon" aria-hidden="true">✓</span><span><%= com.hrms.i18n.Language.text(request, "ui_7b0a878a5449", "Duyệt đơn nghỉ phép") %></span></a>
+<a href="${pageContext.request.contextPath}/leave/types"><span class="lc-nav-icon" aria-hidden="true">≋</span><span><%= com.hrms.i18n.Language.text(request, "ui_1389e04eccd7", "Loại nghỉ phép") %></span></a>
+<a href="${pageContext.request.contextPath}/leave/calendar"><span class="lc-nav-icon" aria-hidden="true">▦</span><span><%= com.hrms.i18n.Language.text(request, "ui_0dd83ebf282c", "Lịch nghỉ công ty") %></span></a>
+<a href="${pageContext.request.contextPath}/leave/report"><span class="lc-nav-icon" aria-hidden="true">▤</span><span><%= com.hrms.i18n.Language.text(request, "ui_e198a77b4338", "Báo cáo nghỉ phép") %></span></a></div></section>
+<c:if test="${not empty sessionScope.tenantPrincipal.employeeId}">
+<section class="lc-nav-group" data-nav-group="hr-personal"><button type="button" class="lc-group-toggle" aria-controls="lc-hr-personal-links" aria-expanded="true"><%= com.hrms.i18n.Language.text(request, "ui_3874d4ffe564", "CÁ NHÂN") %></button><div class="lc-nav-links" id="lc-hr-personal-links"><a href="${pageContext.request.contextPath}/employee/my-profile"><span class="lc-nav-icon" aria-hidden="true">♙</span><span><%= com.hrms.i18n.Language.text(request, "ui_b70d1e2772e9", "Hồ sơ cá nhân") %></span></a>
+<a href="${pageContext.request.contextPath}/employee/my-contracts"><span class="lc-nav-icon" aria-hidden="true">▤</span><span><%= com.hrms.i18n.Language.text(request, "ui_4939da54ffa3", "Hợp đồng của tôi") %></span></a>
+<a href="${pageContext.request.contextPath}/payslips"><span class="lc-nav-icon" aria-hidden="true">▱</span><span><%= com.hrms.i18n.Language.text(request, "ui_2e59daf63e47", "Phiếu lương của tôi") %></span></a>
+</div></section>
+</c:if>
+</nav><a class="lc-signout" href="${pageContext.request.contextPath}/logout" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_d513aac0be87", "Đăng xuất") %>"><span class="lc-nav-icon" aria-hidden="true">↪</span><span><%= com.hrms.i18n.Language.text(request, "ui_d513aac0be87", "Đăng xuất") %></span></a></aside>
 <header class="lc-topbar"><span><%= com.hrms.i18n.Language.text(request, "ui_a944931bd7b3", "Quản trị nhân sự") %> <span class="lc-muted"><%= com.hrms.i18n.Language.text(request, "ui_2c86e9370b5a", "/ Quy trình nhân sự") %></span></span><span class="lc-workspace" title="<c:out value='${sessionScope.tenantPrincipal.companyName}'/>">Workspace · <c:out value="${sessionScope.tenantPrincipal.workspaceCode}" default="—"/></span></header>
 <%@ include file="/WEB-INF/views/common/appearance.jspf" %>

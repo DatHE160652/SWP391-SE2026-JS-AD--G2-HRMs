@@ -9,8 +9,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><%= com.hrms.i18n.Language.text(request, "ui_7d46aacfa2da", "Đổi mật khẩu | HRMs Cloud") %></title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/public-portal.css">
+<%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
-<body class="tenant-login-page">
+<body class="lc workspace-auth tenant-login-page">
 <main class="tenant-login-main">
     <section class="tenant-login-card" aria-labelledby="change-password-title">
         <div class="tenant-login-heading">

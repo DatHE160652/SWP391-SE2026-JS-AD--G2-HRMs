@@ -22,7 +22,7 @@
     margin: 0 0 6px 0 !important;
     font-size: 12px !important;
     font-weight: 600 !important;
-    color: #475467 !important;
+    color: var(--lc-muted, #475467) !important;
     display: block !important;
     line-height: 1.4 !important;
 }
@@ -35,14 +35,14 @@
 .filter-bar #statusFilter,
 .lc .content .filter-bar #statusFilter,
 .lc .content .filter-group #statusFilter {
-    height: 40px !important;
-    min-height: 40px !important;
-    padding: 8px 12px !important;
-    border: 1.5px solid #d0d5dd !important;
+    height: var(--lc-control, 40px) !important;
+    min-height: var(--lc-control, 40px) !important;
+    padding: var(--lc-input-pad, 8px) 12px !important;
+    border: 1px solid var(--lc-line, #d0d5dd) !important;
     border-radius: 8px !important;
-    background: #ffffff !important;
+    background: var(--lc-surface, #ffffff) !important;
     font-size: 13.5px !important;
-    color: #101828 !important;
+    color: var(--lc-ink, #101828) !important;
     box-sizing: border-box !important;
     margin: 0 !important;
     margin-bottom: 0 !important;
@@ -55,8 +55,8 @@
 .filter-group select:focus,
 .filter-bar input:focus,
 .filter-bar select:focus {
-    border-color: #4f46e5 !important;
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
+    border-color: var(--lc-purple, #4f46e5) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--lc-purple, #4f46e5) 12%, transparent) !important;
 }
 
 .filter-actions {

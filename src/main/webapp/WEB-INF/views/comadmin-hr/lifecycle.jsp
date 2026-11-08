@@ -4,7 +4,8 @@
 <%@ include file="/WEB-INF/views/common/language.jspf" %><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
 <meta name="csrf-token" content="<c:out value='${organizationCsrfToken}'/>">
-<title><%= com.hrms.i18n.Language.text(request, "ui_e2fae15bcdca", "Quản trị nhân sự · HRMs Cloud") %></title><link rel="stylesheet" href="${pageContext.request.contextPath}/css/lifecycle.css?v=<%= application.getResource("/css/lifecycle.css").openConnection().getLastModified() %>"><link rel="stylesheet" href="${pageContext.request.contextPath}/css/organization-explorer.css?v=<%= application.getResource("/css/organization-explorer.css").openConnection().getLastModified() %>"><link rel="stylesheet" href="${pageContext.request.contextPath}/css/dashboard.css?v=<%= application.getResource("/css/dashboard.css").openConnection().getLastModified() %>"></head>
+<title><%= com.hrms.i18n.Language.text(request, "ui_e2fae15bcdca", "Quản trị nhân sự · HRMs Cloud") %></title><link rel="stylesheet" href="${pageContext.request.contextPath}/css/organization-explorer.css?v=<%= application.getResource("/css/organization-explorer.css").openConnection().getLastModified() %>"><link rel="stylesheet" href="${pageContext.request.contextPath}/css/dashboard.css?v=<%= application.getResource("/css/dashboard.css").openConnection().getLastModified() %>"><%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
+</head>
 <body class="lc" data-lifecycle="<c:out value='${lifecycleResource}'/>" data-context="${pageContext.request.contextPath}" data-role="<c:out value='${sessionScope.tenantPrincipal.roleCode}'/>">
 <%@ include file="/WEB-INF/views/common/lifecycle-shell.jspf" %>
 <main class="lc-main"><div class="lc-breadcrumb"><%= com.hrms.i18n.Language.text(request, "ui_19a324d31030", "Quản trị nhân sự &nbsp; / &nbsp;") %> <span id="lc-page-label"></span></div>

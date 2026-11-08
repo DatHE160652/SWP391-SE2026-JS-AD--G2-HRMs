@@ -10,26 +10,13 @@
     <link rel="stylesheet" href="../css/employee.css">
     <link rel="stylesheet" href="../css/attendance.css">
     <link rel="stylesheet" href="../css/leave.css">
+<%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
-<body data-page="leave-pending">
-<div class="shell">
-    <aside class="sidebar">
-        <div class="brand">HRMs Cloud<span><%= com.hrms.i18n.Language.text(request, "ui_3d11fc48b64c", "Cổng quản lý") %></span></div>
-        <div class="nav-label"><%= com.hrms.i18n.Language.text(request, "ui_bb8e1c6f085e", "Phân hệ Chấm công") %></div>
-        <a class="nav-link" href="../employee/my-profile?nav=manager"><%= com.hrms.i18n.Language.text(request, "ui_b70d1e2772e9", "Hồ sơ cá nhân") %></a>
-        <a class="nav-link" href="../attendance/manager-attendance"><%= com.hrms.i18n.Language.text(request, "ui_cc34d4e67fde", "Điểm danh Nhân sự") %></a>
-        <a class="nav-link" href="../attendance/manager-personal-attendance"><%= com.hrms.i18n.Language.text(request, "ui_e846c0844ceb", "Chấm công Cá nhân") %></a>
-        <a class="nav-link" href="../attendance/attendance-report"><%= com.hrms.i18n.Language.text(request, "ui_5cfe0baad77f", "Báo cáo Chấm công") %></a>
+<body class="lc" data-page="leave-pending">
+<div class="workspace-shell">
+    <%@ include file="/WEB-INF/views/common/tenant-shell.jspf" %>
 
-        <div class="nav-label" style="margin-top: 18px;"><%= com.hrms.i18n.Language.text(request, "ui_b036712357df", "Phân hệ Nghỉ phép") %></div>
-        <a class="nav-link active" href="pending-approvals"><%= com.hrms.i18n.Language.text(request, "ui_7b0a878a5449", "Duyệt đơn nghỉ phép") %></a>
-        <a class="nav-link" href="calendar"><%= com.hrms.i18n.Language.text(request, "ui_55ed5216ef49", "Lịch nghỉ nhân sự") %></a>
-        <a class="nav-link" href="my-requests"><%= com.hrms.i18n.Language.text(request, "ui_f88e8ff3ad6b", "Đơn nghỉ cá nhân") %></a>
-
-        <a class="nav-link logout-link" href="../logout"><%= com.hrms.i18n.Language.text(request, "ui_d513aac0be87", "Đăng xuất") %></a>
-    </aside>
-
-    <main class="content">
+    <main class="lc-main content">
         <div class="page-header">
             <div>
                 <h1 class="page-title"><%= com.hrms.i18n.Language.text(request, "ui_9721d2df1381", "Duyệt đơn xin nghỉ phép") %></h1>

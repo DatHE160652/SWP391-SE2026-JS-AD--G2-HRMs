@@ -8,33 +8,13 @@
     <meta name="csrf-token" content="<c:out value='${payrollCsrf}'/>">
     <title><%= com.hrms.i18n.Language.text(request, "ui_78f95e303c84", "Quản lý lương · HRMs Cloud") %></title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/payroll.css?v=20261026-payslips-1">
+<%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
-<body data-page="${salaryPage ? 'salaries' : 'payroll'}" data-context="${pageContext.request.contextPath}">
+<body class="lc workspace-payroll" data-page="${salaryPage ? 'salaries' : 'payroll'}" data-context="${pageContext.request.contextPath}">
 <div class="pay-shell">
-    <aside class="pay-sidebar">
-        <a class="pay-brand" href="${pageContext.request.contextPath}/payroll"><span class="brand-mark">H</span><span>HRMs <b>Cloud</b><small><%= com.hrms.i18n.Language.text(request, "ui_c281aa3ce866", "Không gian doanh nghiệp") %></small></span></a>
-        <div class="workspace-name"><span class="workspace-icon">▦</span><div><strong><c:out value="${payrollPrincipal.companyName}"/></strong><small><%= com.hrms.i18n.Language.text(request, "ui_8b3b6553d5b5", "Quản lý lương") %></small></div></div>
-        <c:if test="${payrollPrincipal.companyAdministrator}">
-        <div class="nav-caption"><%= com.hrms.i18n.Language.text(request, "ui_ab19ea93e612", "QUẢN TRỊ NHÂN SỰ") %></div>
-        <a class="pay-nav" href="${pageContext.request.contextPath}/employee/employee-list"><span>♙</span> <%= com.hrms.i18n.Language.text(request, "ui_14ddd70d2564", "Nhân viên") %></a>
-        <a class="pay-nav" href="${pageContext.request.contextPath}/department/department-list"><span>▦</span> <%= com.hrms.i18n.Language.text(request, "ui_6f358f848e2e", "Phòng ban") %></a>
-        <a class="pay-nav" href="${pageContext.request.contextPath}/attendance/company-attendance"><span>◷</span> <%= com.hrms.i18n.Language.text(request, "ui_fc355fff8378", "Chấm công") %></a>
-        </c:if>
-        <c:if test="${payrollPrincipal.roleCode == 'MANAGER'}">
-        <div class="nav-caption"><%= com.hrms.i18n.Language.text(request, "ui_bf68d61f53c9", "QUẢN LÝ NHÂN SỰ") %></div>
-        <a class="pay-nav" href="${pageContext.request.contextPath}/attendance/manager-attendance"><span>◷</span> <%= com.hrms.i18n.Language.text(request, "ui_ea8763ca4a71", "Điểm danh nhân sự") %></a>
-        <a class="pay-nav" href="${pageContext.request.contextPath}/employee/my-profile?nav=manager"><span>♙</span> <%= com.hrms.i18n.Language.text(request, "ui_b70d1e2772e9", "Hồ sơ cá nhân") %></a>
-        </c:if>
-        <div class="nav-caption"><%= com.hrms.i18n.Language.text(request, "ui_ef5b024491b3", "LƯƠNG & PHÚC LỢI") %></div>
-        <a class="pay-nav ${salaryPage ? '' : 'selected'}" href="${pageContext.request.contextPath}/payroll"><span>▤</span> <%= com.hrms.i18n.Language.text(request, "ui_4a9c54be5faf", "Kỳ tính lương") %></a>
-        <a class="pay-nav ${salaryPage ? 'selected' : ''}" href="${pageContext.request.contextPath}/payroll/salaries"><span>₫</span> <%= com.hrms.i18n.Language.text(request, "ui_f6195db41766", "Lương cơ bản") %></a>
-        <a class="pay-nav" href="${pageContext.request.contextPath}/payroll?view=payslips"><span>▧</span> <%= com.hrms.i18n.Language.text(request, "ui_65f06a795277", "Quản lý phiếu lương") %></a>
-        <c:if test="${not empty payrollPrincipal.employeeId}"><a class="pay-nav" href="${pageContext.request.contextPath}/payslips"><span>▧</span> <%= com.hrms.i18n.Language.text(request, "ui_2e59daf63e47", "Phiếu lương của tôi") %></a></c:if>
-        <div class="sidebar-note"><strong><%= com.hrms.i18n.Language.text(request, "ui_ee7bb04873c3", "Lương chính xác, minh bạch") %></strong><p><%= com.hrms.i18n.Language.text(request, "ui_570b64920dc4", "Rà soát và phê duyệt trước khi gửi phiếu lương đến nhân viên.") %></p></div>
-        <a class="pay-nav logout" href="${pageContext.request.contextPath}/logout"><%= com.hrms.i18n.Language.text(request, "ui_1aaa5088f3df", "↪ Đăng xuất") %></a>
-    </aside>
-    <main class="pay-main">
-        <header class="pay-topbar"><span><%= com.hrms.i18n.Language.text(request, "ui_9edad8958aeb", "Không gian công ty") %> <span class="crumb">/</span> <strong><c:set var="i18nConditionalLabel" value="${salaryPage ? 'Lương cơ bản' : 'Quản lý lương'}"/><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("i18nConditionalLabel")) %>'/></strong></span><div class="user-chip"><span class="user-avatar">HR</span><c:out value="${payrollPrincipal.displayName}"/></div></header>
+    <%@ include file="/WEB-INF/views/common/tenant-shell.jspf" %>
+    <main class="lc-main pay-main">
+
         <div class="pay-content">
             <div class="page-heading"><div><div class="eyebrow">PAYROLL MANAGEMENT</div><h1><c:set var="i18nConditionalLabel" value="${salaryPage ? 'Thiết lập lương cơ bản' : 'Quản lý kỳ lương'}"/><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("i18nConditionalLabel")) %>'/></h1><p><c:set var="i18nConditionalLabel" value="${salaryPage ? 'Thiết lập mức lương cho từng nhân viên, làm cơ sở cho các kỳ tính lương.' : 'Từ dữ liệu lương đến phiếu lương — mọi bước trong cùng một không gian.'}"/><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("i18nConditionalLabel")) %>'/></p></div><c:if test="${not salaryPage}"><button class="btn primary" id="newPeriod"><%= com.hrms.i18n.Language.text(request, "ui_efeac4fb7566", "＋ Tạo kỳ lương") %></button></c:if></div>
             <div id="feedback" class="feedback" role="status" aria-live="polite" hidden></div>

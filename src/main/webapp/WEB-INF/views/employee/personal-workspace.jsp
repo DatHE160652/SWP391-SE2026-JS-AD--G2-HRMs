@@ -5,16 +5,13 @@
 <%@ include file="/WEB-INF/views/common/language.jspf" %><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
 <title><c:set var="i18nConditionalLabel" value="${personalView == 'contracts' ? 'Hợp đồng của tôi' : 'Sơ đồ tổ chức'}"/><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("i18nConditionalLabel")) %>'/> · HRMs Cloud</title>
-<link rel="stylesheet" href="../css/lifecycle.css"><link rel="stylesheet" href="../css/organization.css">
+<link rel="stylesheet" href="../css/organization.css">
 <link rel="stylesheet" href="../css/profile-update.css"><link rel="stylesheet" href="../css/organization-explorer.css">
-<link rel="stylesheet" href="../css/employee-navigation.css?v=<%= application.getResource("/css/employee-navigation.css").openConnection().getLastModified() %>">
+
 <link rel="stylesheet" href="../css/personal-workspace.css?v=<%= application.getResource("/css/personal-workspace.css").openConnection().getLastModified() %>">
+<%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head><body class="lc" data-page="personal-workspace" data-personal-view="${personalView}" data-profile-role="<c:out value='${sessionScope.tenantPrincipal.roleCode}'/>">
-<c:set var="employeeNavPage" value="${personalView}"/>
-<%@ include file="/WEB-INF/views/common/employee-navigation.jspf" %>
-<aside class="lc-sidebar"><a class="lc-brand" href="my-profile"><span class="lc-logo">H</span><span class="lc-brand-name">HRMs Cloud</span></a><nav aria-label="<%= com.hrms.i18n.Language.text(request, "ui_0a2ac8dcdfc1", "Chức năng cá nhân") %>"></nav><a class="lc-signout" href="../logout">↪ <span><%= com.hrms.i18n.Language.text(request, "ui_d513aac0be87", "Đăng xuất") %></span></a></aside>
-<header class="lc-topbar"><span><%= com.hrms.i18n.Language.text(request, "ui_7b12f84571da", "Cổng cá nhân") %></span><span class="lc-workspace">Workspace · <c:out value="${sessionScope.tenantPrincipal.workspaceCode}" default="—"/></span></header>
-<%@ include file="/WEB-INF/views/common/appearance.jspf" %>
+<%@ include file="/WEB-INF/views/common/tenant-shell.jspf" %>
 <main class="lc-main"><div class="lc-breadcrumb"><%= com.hrms.i18n.Language.text(request, "ui_852bf6ee4e97", "Cổng nhân viên /") %> <span id="personalBreadcrumb"></span></div>
 <div class="lc-heading"><div><h1 id="personalPageTitle"></h1><p id="personalPageDescription"></p></div></div>
 <div id="personalPageError" class="lc-alert" role="alert"></div><div id="personalWorkspaceContent" aria-live="polite"><div class="lc-spinner"><%= com.hrms.i18n.Language.text(request, "ui_e6b584854879", "Đang tải dữ liệu…") %></div></div></main>

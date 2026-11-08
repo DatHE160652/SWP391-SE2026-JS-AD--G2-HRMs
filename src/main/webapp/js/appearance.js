@@ -25,11 +25,6 @@
         const panel = document.querySelector('#appearance-panel');
         const trigger = document.querySelector('#appearance-trigger');
         if (!panel || !trigger) return;
-        document.querySelectorAll('.lc-sidebar nav a').forEach(link => {
-            const current = location.pathname;
-            const employeeDetails = /\/(employee-detail|employee-form)$/.test(current);
-            link.classList.toggle('active', link.pathname === current || (employeeDetails && link.pathname.endsWith('/employee/employee-list')));
-        });
         const sync = () => {
             panel.querySelectorAll('[data-accent]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.accent === preferences.accent)));
             panel.querySelectorAll('[data-density]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.density === preferences.density)));

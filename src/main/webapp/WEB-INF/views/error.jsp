@@ -8,8 +8,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><%= com.hrms.i18n.Language.text(request, "ui_8f12ad371250", "Lỗi | HRMs.Admin") %></title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/system-admin.css">
+<%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
-<body class="auth-page">
+<body class="lc workspace-auth auth-page">
 <main class="error-card">
     <img src="${pageContext.request.contextPath}/images/hrms-admin.svg" alt="HRMs.Admin">
     <h1><%= com.hrms.i18n.Language.text(request, "ui_b6ff00c42b42", "Không thể hoàn tất yêu cầu") %></h1>

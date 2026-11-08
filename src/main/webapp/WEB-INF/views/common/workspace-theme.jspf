@@ -1,0 +1,7 @@
+<%@ page pageEncoding="UTF-8" %>
+<link rel="stylesheet" href="${pageContext.request.contextPath}/css/lifecycle.css?v=<%= application.getResource("/css/lifecycle.css").openConnection().getLastModified() %>">
+<link rel="stylesheet" href="${pageContext.request.contextPath}/css/appearance.css?v=<%= application.getResource("/css/appearance.css").openConnection().getLastModified() %>">
+<link rel="stylesheet" href="${pageContext.request.contextPath}/css/sidebar.css?v=<%= application.getResource("/css/sidebar.css").openConnection().getLastModified() %>">
+<link rel="stylesheet" href="${pageContext.request.contextPath}/css/workspace.css?v=<%= application.getResource("/css/workspace.css").openConnection().getLastModified() %>">
+<script src="${pageContext.request.contextPath}/js/appearance.js?v=<%= application.getResource("/js/appearance.js").openConnection().getLastModified() %>"></script>
+<script src="${pageContext.request.contextPath}/js/sidebar.js?v=<%= application.getResource("/js/sidebar.js").openConnection().getLastModified() %>"></script>

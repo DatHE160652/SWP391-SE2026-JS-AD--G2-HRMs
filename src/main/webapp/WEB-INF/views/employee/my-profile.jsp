@@ -8,27 +8,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= com.hrms.i18n.Language.text(request, "ui_6bf97329bdf0", "Hồ sơ cá nhân - HRMs Cloud") %></title>
-    <link rel="stylesheet" href="../css/lifecycle.css">
+
     <link rel="stylesheet" href="../css/organization.css">
     <link rel="stylesheet" href="../css/profile-update.css">
-    <link rel="stylesheet" href="../css/employee-navigation.css?v=<%= application.getResource("/css/employee-navigation.css").openConnection().getLastModified() %>">
+
+<%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
 <body class="lc" data-page="my-profile" data-profile-role="<c:out value='${sessionScope.tenantPrincipal.roleCode}'/>">
-    <c:set var="employeeNavPage" value="profile"/>
-    <%@ include file="/WEB-INF/views/common/employee-navigation.jspf" %>
-
-    <aside class="lc-sidebar">
-        <a class="lc-brand" href="my-profile"><span class="lc-logo">H</span><span class="lc-brand-name">HRMs Cloud</span></a>
-        <div class="lc-nav-label"><%= com.hrms.i18n.Language.text(request, "ui_add95b680d3c", "CỔNG NHÂN VIÊN") %></div><nav aria-label="<%= com.hrms.i18n.Language.text(request, "ui_0a2ac8dcdfc1", "Chức năng cá nhân") %>">
-        <a class="active" href="my-profile"><%= com.hrms.i18n.Language.text(request, "ui_b70d1e2772e9", "Hồ sơ cá nhân") %></a>
-        <a  href="../attendance/employee-attendance"><%= com.hrms.i18n.Language.text(request, "ui_5d058034330c", "Chấm công cá nhân") %></a>
-        </nav><a href="../payslips"><%= com.hrms.i18n.Language.text(request, "ui_2e59daf63e47", "Phiếu lương của tôi") %></a>
-<a class="lc-signout" href="../logout">↪ <span><%= com.hrms.i18n.Language.text(request, "ui_d513aac0be87", "Đăng xuất") %></span></a>
-    </aside>
-
-    <header class="lc-topbar"><span><%= com.hrms.i18n.Language.text(request, "ui_c42485146656", "Cổng nhân viên") %> <span class="lc-muted"><%= com.hrms.i18n.Language.text(request, "ui_436f3ba8cb5c", "/ Hồ sơ cá nhân") %></span></span><span class="lc-workspace">Workspace · <c:out value="${sessionScope.tenantPrincipal.workspaceCode}" default="—"/></span></header>
-<%@ include file="/WEB-INF/views/common/appearance.jspf" %>
-    <main class="lc-main content profile-update-page">
+<%@ include file="/WEB-INF/views/common/tenant-shell.jspf" %>
+<main class="lc-main content profile-update-page">
         <div class="lc-breadcrumb"><%= com.hrms.i18n.Language.text(request, "ui_e53a24994284", "Cổng nhân viên &nbsp; / &nbsp; Hồ sơ cá nhân") %></div>
         <div class="page-header">
             <div>

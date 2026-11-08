@@ -2,10 +2,8 @@
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <c:set var="icons" value="${pageContext.request.contextPath}/images/admin-icons.svg"/>
 <a class="skip-link" href="#main-content"><%= com.hrms.i18n.Language.text(request, "ui_78b91491b09c", "Đến nội dung chính") %></a>
-<aside class="admin-sidebar" id="admin-navigation" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_575a026bd321", "Điều hướng Quản trị viên hệ thống") %>">
-    <a class="brand" href="${pageContext.request.contextPath}/systemadmin/dashboard">
-        <img src="${pageContext.request.contextPath}/images/hrms-admin.svg" alt="HRMs.Admin" width="144" height="36">
-    </a>
+<aside class="lc-sidebar admin-sidebar" data-workspace-shell="true" id="admin-navigation" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_575a026bd321", "Điều hướng Quản trị viên hệ thống") %>">
+    <a class="lc-brand" href="${pageContext.request.contextPath}/systemadmin/dashboard"><span class="lc-logo">H</span><span class="lc-brand-name">HRMs Cloud</span></a>
     <nav class="sidebar-nav" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_1129dd45694f", "Menu chính") %>">
         <p class="nav-label"><%= com.hrms.i18n.Language.text(request, "ui_2310df7ad340", "TỔNG QUAN") %></p>
         <a aria-label="<%= com.hrms.i18n.Language.text(request, "ui_b374b93a9cac", "Bảng điều khiển") %>" class="nav-link ${activeNav == 'dashboard' ? 'active' : ''}" aria-current="${activeNav == 'dashboard' ? 'page' : 'false'}" href="${pageContext.request.contextPath}/systemadmin/dashboard">
@@ -33,11 +31,9 @@
         </div>
     </div>
 </aside>
-<button class="sidebar-backdrop" type="button" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_ef10b4f036bc", "Đóng menu") %>" tabindex="-1" hidden></button>
-<header class="admin-header">
-    <button class="icon-button" type="button" data-menu-toggle aria-controls="admin-navigation" aria-expanded="false" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_23e29182f48f", "Mở menu") %>">
-        <svg class="icon" aria-hidden="true"><use href="${icons}#menu"/></svg>
-    </button>
+
+<header class="lc-topbar admin-header">
+
     <c:set var="companyNavigation" value="${activeNav == 'companies'}"/>
     <form class="header-search" method="get" action="${pageContext.request.contextPath}${companyNavigation ? '/systemadmin/company' : '/systemadmin/registration-request'}" role="search">
         <label class="sr-only" for="global-search"><c:choose><c:when test="${companyNavigation}"><%= com.hrms.i18n.Language.text(request, "ui_4a44dfde2bc4", "Tìm Company") %></c:when><c:otherwise><%= com.hrms.i18n.Language.text(request, "ui_acd91f90e01c", "Tìm yêu cầu đăng ký") %></c:otherwise></c:choose></label>
@@ -49,3 +45,5 @@
     <span class="portal-badge"><svg class="icon" aria-hidden="true"><use href="${icons}#shield"/></svg><%= com.hrms.i18n.Language.text(request, "ui_cfe621a628b5", "Cổng quản trị hệ thống") %></span>
 </header>
 <script src="${pageContext.request.contextPath}/js/system-admin.js?v=<%= application.getResource("/js/system-admin.js").openConnection().getLastModified() %>" defer></script>
+
+<%@ include file="/WEB-INF/views/common/appearance.jspf" %>

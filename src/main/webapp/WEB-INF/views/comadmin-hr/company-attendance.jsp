@@ -8,9 +8,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= com.hrms.i18n.Language.text(request, "ui_891cd01ca5f2", "Giám sát Chấm công Toàn Công ty - HRMs Cloud") %></title>
-    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/lifecycle.css">
+
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/organization.css">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/attendance.css?v=<%= application.getResource("/css/attendance.css").openConnection().getLastModified() %>">
+<%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
 <body class="lc" data-page="company-attendance">
 <%@ include file="/WEB-INF/views/common/lifecycle-shell.jspf" %>

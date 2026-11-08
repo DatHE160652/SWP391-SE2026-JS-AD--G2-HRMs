@@ -5,8 +5,9 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
 <title><%= com.hrms.i18n.Language.text(request, "ui_4087262b773c", "Chi tiết cơ cấu tổ chức") %></title>
-<link rel="stylesheet" href="${pageContext.request.contextPath}/css/lifecycle.css">
+
 <link rel="stylesheet" href="${pageContext.request.contextPath}/css/organization.css?v=<%= application.getResource("/css/organization.css").openConnection().getLastModified() %>">
+<%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head><body class="lc" data-page="organization-detail" data-context="${pageContext.request.contextPath}">
 <%@ include file="/WEB-INF/views/common/lifecycle-shell.jspf" %>
 <main class="lc-main content">

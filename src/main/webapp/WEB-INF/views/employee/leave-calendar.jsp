@@ -10,25 +10,13 @@
     <link rel="stylesheet" href="../css/employee.css">
     <link rel="stylesheet" href="../css/attendance.css">
     <link rel="stylesheet" href="../css/leave.css">
+<%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
-<body data-page="leave-calendar-employee">
-<div class="shell">
-    <aside class="sidebar">
-        <div class="brand">HRMs Cloud<span><%= com.hrms.i18n.Language.text(request, "ui_c42485146656", "Cổng nhân viên") %></span></div>
-        <div class="nav-label"><%= com.hrms.i18n.Language.text(request, "ui_0a2ac8dcdfc1", "Chức năng cá nhân") %></div>
-        <a class="nav-link" href="../employee/my-profile"><%= com.hrms.i18n.Language.text(request, "ui_b70d1e2772e9", "Hồ sơ cá nhân") %></a>
-        <a class="nav-link" href="../attendance/employee-attendance"><%= com.hrms.i18n.Language.text(request, "ui_5d058034330c", "Chấm công cá nhân") %></a>
+<body class="lc" data-page="leave-calendar-employee">
+<div class="workspace-shell">
+    <%@ include file="/WEB-INF/views/common/tenant-shell.jspf" %>
 
-        <div class="nav-label" style="margin-top: 18px;"><%= com.hrms.i18n.Language.text(request, "ui_9d21ce1caf72", "Nghỉ phép") %></div>
-        <a class="nav-link" href="my-balances"><%= com.hrms.i18n.Language.text(request, "ui_35400d7d055b", "Số dư phép") %></a>
-        <a class="nav-link" href="submit"><%= com.hrms.i18n.Language.text(request, "ui_970a42dcb266", "Tạo đơn xin nghỉ") %></a>
-        <a class="nav-link" href="my-requests"><%= com.hrms.i18n.Language.text(request, "ui_697728531b43", "Lịch sử đơn nghỉ") %></a>
-        <a class="nav-link active" href="calendar"><%= com.hrms.i18n.Language.text(request, "ui_bcfc74d75019", "Lịch nghỉ cá nhân") %></a>
-
-        <a class="nav-link logout-link" href="../logout"><%= com.hrms.i18n.Language.text(request, "ui_d513aac0be87", "Đăng xuất") %></a>
-    </aside>
-
-    <main class="content">
+    <main class="lc-main content">
         <div class="page-header">
             <div>
                 <h1 class="page-title"><%= com.hrms.i18n.Language.text(request, "ui_ef7a5eded78e", "Lịch nghỉ phép cá nhân") %></h1>
