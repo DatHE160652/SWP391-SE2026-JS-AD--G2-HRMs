@@ -16,15 +16,15 @@
                         </span>
                     </strong>
                     <small>
-                        DOANH NGHIỆP THÔNG MINH
+                        <%= com.hrms.i18n.Language.text(request, "ui_8f5b18cac271", "DOANH NGHIỆP THÔNG MINH") %>
                     </small>
                 </span>
             </a>
             <p>
-                Hệ sinh thái số hóa hồ sơ, chấm công, tính lương và tự phục vụ nhân viên cho doanh nghiệp tăng trưởng tại Việt Nam.
+                <%= com.hrms.i18n.Language.text(request, "ui_0eb02d24cfcb", "Hệ sinh thái số hóa hồ sơ, chấm công, tính lương và tự phục vụ nhân viên cho doanh nghiệp tăng trưởng tại Việt Nam.") %>
             </p>
             <p class="footer-contact">
-                Hotline tư vấn:
+                <%= com.hrms.i18n.Language.text(request, "ui_ca2345e0eceb", "Hotline tư vấn:") %>
                 <strong>
                     0904 885 833
                 </strong>
@@ -34,48 +34,48 @@
         </div>
         <div>
             <h2>
-                Giải pháp &amp; Sản phẩm
+                <%= com.hrms.i18n.Language.text(request, "ui_f0d515f3edb3", "Giải pháp &amp; Sản phẩm") %>
             </h2>
             <a href="${base}/features-solutions">
-                Hồ sơ nhân sự số
+                <%= com.hrms.i18n.Language.text(request, "ui_c9c55114a63c", "Hồ sơ nhân sự số") %>
             </a>
             <a href="${base}/features-solutions">
-                Chấm công &amp; ca kíp
+                <%= com.hrms.i18n.Language.text(request, "ui_9190b3c34e5e", "Chấm công &amp; ca kíp") %>
             </a>
             <a href="${base}/features-solutions">
-                Tính lương tự động
+                <%= com.hrms.i18n.Language.text(request, "ui_4c3a53ab8cb7", "Tính lương tự động") %>
             </a>
             <a href="${base}/features-solutions">
-                Cổng ESS
+                <%= com.hrms.i18n.Language.text(request, "ui_eb99224ebeea", "Cổng ESS") %>
             </a>
         </div>
         <div>
             <h2>
-                Hỗ trợ &amp; Tài nguyên
+                <%= com.hrms.i18n.Language.text(request, "ui_d008c8ced3e4", "Hỗ trợ &amp; Tài nguyên") %>
             </h2>
             <a href="${base}/faqs">
-                Trung tâm Hỏi đáp
+                <%= com.hrms.i18n.Language.text(request, "ui_05b2ca99f14c", "Trung tâm Hỏi đáp") %>
             </a>
             <a href="${base}/consultation-request">
-                Yêu cầu tư vấn
+                <%= com.hrms.i18n.Language.text(request, "ui_2baee0d32519", "Yêu cầu tư vấn") %>
             </a>
             <a href="${base}/login">
-                Cổng đăng nhập tenant
+                <%= com.hrms.i18n.Language.text(request, "ui_bf21f0d969b8", "Cổng đăng nhập tenant") %>
             </a>
         </div>
         <div>
             <h2>
-                Pháp lý &amp; Bảo mật
+                <%= com.hrms.i18n.Language.text(request, "ui_f20016cd497a", "Pháp lý &amp; Bảo mật") %>
             </h2>
             <p>
-                Thiết kế theo hướng bảo vệ dữ liệu doanh nghiệp và phân tách quyền truy cập theo workspace.
+                <%= com.hrms.i18n.Language.text(request, "ui_b04e4c030229", "Thiết kế theo hướng bảo vệ dữ liệu doanh nghiệp và phân tách quyền truy cập theo workspace.") %>
             </p>
             <a href="${base}/Pricing">
-                Bảng giá tham chiếu
+                <%= com.hrms.i18n.Language.text(request, "ui_33e1985e1b2e", "Bảng giá tham chiếu") %>
             </a>
         </div>
     </div>
     <div class="public-container footer-bottom">
-        © 2026 HRMs Cloud. Tất cả các quyền được bảo lưu.
+        <%= com.hrms.i18n.Language.text(request, "ui_e32ae4839183", "© 2026 HRMs Cloud. Tất cả các quyền được bảo lưu.") %>
     </div>
 </footer>

@@ -95,9 +95,9 @@ public class PositionService {
         if (position.getDescription() != null && position.getDescription().length() > 255) {
             throw new FieldValidationException("description", "Độ dài tối đa là 255 ký tự.");
         }
-        if (positionDAO.positionTitleExists(position.getCompanyId(), position.getDepartmentId(),
-                position.getPositionTitle(), existing == null ? null : existing.getPositionId())) {
-            throw new FieldValidationException("positionTitle", "Tên chức danh đã tồn tại trong phòng ban.");
+        if (positionDAO.positionTitleExists(position.getCompanyId(), position.getPositionTitle(),
+                existing == null ? null : existing.getPositionId())) {
+            throw new FieldValidationException("positionTitle", "Tên chức danh đã tồn tại trong công ty.");
         }
     }
 }

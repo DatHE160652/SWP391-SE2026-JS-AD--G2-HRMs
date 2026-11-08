@@ -1,5 +1,5 @@
 const updatePeriodApi = document.body.dataset.periodType === 'DOCUMENT' ? '/employees/document-update-periods' : '/employees/profile-update-periods';
-const updatePeriodLabel = document.body.dataset.periodType === 'DOCUMENT' ? 'tài liệu' : 'hồ sơ';
+const documentUpdatePeriods = document.body.dataset.periodType === 'DOCUMENT';
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.querySelector('#profileUpdatePeriodForm');
     setDefaultProfilePeriodDates(form);
@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const start = new Date(form.elements.namedItem('startsAt').value);
         const end = new Date(form.elements.namedItem('endsAt').value);
         if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start) {
-            FormValidation.setError(form, 'endsAt', 'Thời gian kết thúc phải sau thời gian bắt đầu.');
+            FormValidation.setError(form, 'endsAt', HrmI18n.t('Thời gian kết thúc phải sau thời gian bắt đầu.'));
             form.elements.namedItem('endsAt').focus();
             return;
         }
@@ -51,26 +51,28 @@ async function loadProfileUpdatePeriods() {
             const row = rows.insertRow();
             const cell = row.insertCell();
             cell.colSpan = 5;
-            cell.textContent = 'Chưa có đợt cập nhật '+updatePeriodLabel+'.';
+            cell.textContent = HrmI18n.t(documentUpdatePeriods ? 'Chưa có đợt cập nhật tài liệu.' : 'Chưa có đợt cập nhật hồ sơ.');
         }
         payload.data.forEach(period => {
             const row = rows.insertRow();
             const expired = Date.parse(period.endsAt) <= Date.now();
-            const state = period.closed ? 'Đã đóng' : expired ? 'Đã kết thúc'
-                : Date.parse(period.startsAt) <= Date.now() ? 'Đang mở' : 'Chưa bắt đầu';
-            [period.title, new Date(period.startsAt).toLocaleString('vi-VN'),
-                new Date(period.endsAt).toLocaleString('vi-VN'), state].forEach(value => {
+            const stateCode = period.closed ? 'closed' : expired ? 'ended'
+                : Date.parse(period.startsAt) <= Date.now() ? 'open' : 'scheduled';
+            const state = {closed:HrmI18n.t('Đã đóng'),ended:HrmI18n.t('Đã kết thúc'),
+                open:HrmI18n.t('Đang mở'),scheduled:HrmI18n.t('Chưa bắt đầu')}[stateCode];
+            [period.title, new Date(period.startsAt).toLocaleString(HrmI18n.locale),
+                new Date(period.endsAt).toLocaleString(HrmI18n.locale), state].forEach(value => {
                 row.insertCell().textContent = value;
             });
             const statusCell = row.cells[3];
             const badge = document.createElement('span');
-            badge.className = 'lc-badge' + (state === 'Đang mở' ? ' active' : state === 'Chưa bắt đầu' ? ' warning' : '');
+            badge.className = 'lc-badge' + (stateCode === 'open' ? ' active' : stateCode === 'scheduled' ? ' warning' : '');
             badge.textContent = state;
             statusCell.replaceChildren(badge);
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'danger';
-            button.textContent = 'Đóng đợt';
+            button.textContent = HrmI18n.t('Đóng đợt');
             button.disabled = period.closed || expired;
             button.addEventListener('click', () => closeProfileUpdatePeriod(period.periodId, button));
             row.insertCell().appendChild(button);
@@ -81,7 +83,10 @@ async function loadProfileUpdatePeriods() {
 }
 
 async function closeProfileUpdatePeriod(periodId, button) {
-    if (!confirm('Đóng đợt cập nhật '+updatePeriodLabel+' này? Chỉ quyền cập nhật '+updatePeriodLabel+' của đợt này sẽ bị khóa.')) {
+    const confirmation = HrmI18n.t(documentUpdatePeriods
+        ? 'Đóng đợt cập nhật tài liệu này? Chỉ quyền cập nhật tài liệu của đợt này sẽ bị khóa.'
+        : 'Đóng đợt cập nhật hồ sơ này? Chỉ quyền cập nhật hồ sơ của đợt này sẽ bị khóa.');
+    if (!(await AppDialog.confirm(confirmation))) {
         return;
     }
     button.disabled = true;

@@ -11,14 +11,14 @@
             const label=unread?String(unread):'';
             if(count.textContent!==label) count.textContent=label;
             count.hidden=!unread;
-            link.title=unread?`${unread} phiếu lương mới chưa đọc`:'Phiếu lương của tôi';
+            link.title=unread?`${unread}${HrmI18n.fragment(" phiếu lương mới chưa đọc")}`:HrmI18n.t('Phiếu lương của tôi');
         });
     }
     async function refresh() {
         try {
             const response=await fetch(root+'/payslips/api/notifications',{headers:{Accept:'application/json'},credentials:'same-origin'});
             if(!response.ok) return;
-            const payload=await response.json();
+            const payload=await response.json().then(HrmI18n.response);
             if(payload.success) { unread=payload.data.filter(item=>!item.readAt).length;badge(); }
         } catch (_) { /* Other tenant features remain usable during a network outage. */ }
     }

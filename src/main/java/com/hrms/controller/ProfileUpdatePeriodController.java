@@ -38,7 +38,12 @@ public class ProfileUpdatePeriodController extends HttpServlet {
             if ("/employee/profile-update-periods".equals(request.getServletPath()) || "/employee/document-update-periods".equals(request.getServletPath())) {
                 request.setAttribute("canManageEmployees", principal.isCompanyAdministrator());
                 request.setAttribute("documentUpdatePeriods",documents(request));
-                request.setAttribute("updatePeriodLabel",documents(request)?"tài liệu":"hồ sơ");
+                String subject = documents(request) ? "tài liệu" : "hồ sơ";
+                request.setAttribute("updatePeriodHeading", com.hrms.i18n.Language.message(request, "Đợt cập nhật " + subject));
+                request.setAttribute("updatePeriodBreadcrumb", com.hrms.i18n.Language.message(request, "Quản trị nhân sự / Cập nhật " + subject));
+                request.setAttribute("updatePeriodSubtitle", com.hrms.i18n.Language.message(request, "Quản lý thời gian cập nhật " + subject + " độc lập cho nhân viên trong công ty."));
+                request.setAttribute("updatePeriodCreateHeading", com.hrms.i18n.Language.message(request, "Tạo đợt cập nhật " + subject));
+                request.setAttribute("updatePeriodCreateDescription", com.hrms.i18n.Language.message(request, "Thiết lập khoảng thời gian cho phép nhân viên cập nhật " + subject + "."));
                 request.setAttribute("updatePeriodType",documents(request)?"DOCUMENT":"PROFILE");
                 request.getRequestDispatcher("/WEB-INF/views/comadmin-hr/profile-update-periods.jsp").forward(request, response);
                 return;

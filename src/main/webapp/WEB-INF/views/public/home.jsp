@@ -2,7 +2,6 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>
@@ -11,7 +10,7 @@
         <link rel="stylesheet" href="${pageContext.request.contextPath}/css/public-portal.css">
     </head>
     <body>
-        <%@ include file="public-header.jspf" %>
+        <%@ include file="homepage-header.jspf" %>
         <main>
             <section class="hero public-container">
                 <div class="hero-copy">
@@ -142,7 +141,7 @@
                 </div>
             </section>
         </main>
-        <%@ include file="public-footer.jspf" %>
+        <%@ include file="homepage-footer.jspf" %>
         <script src="${pageContext.request.contextPath}/js/public-portal.js?v=<%= application.getResource("/js/public-portal.js").openConnection().getLastModified() %>" defer>
         </script>
     </body>

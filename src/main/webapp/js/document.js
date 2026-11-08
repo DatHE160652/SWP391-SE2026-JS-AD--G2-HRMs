@@ -74,7 +74,7 @@ async function uploadDocument(form, employeeId) {
 }
 
 async function setDocumentActive(documentId, active) {
-    if (!confirm(active ? 'Kích hoạt lại tài liệu này?' : 'Vô hiệu hóa tài liệu này?')) {
+    if (!(await AppDialog.confirm(active ? HrmI18n.t('Kích hoạt lại tài liệu này?') : HrmI18n.t('Vô hiệu hóa tài liệu này?')))) {
         return;
     }
 
@@ -99,7 +99,7 @@ function renderDocumentRows(documents) {
         return;
     }
     if (!documents.length) {
-        tbody.innerHTML = '<tr><td colspan="5">Chưa có tài liệu.</td></tr>';
+        tbody.innerHTML = HrmI18n.fragment('<tr><td colspan="5">Chưa có tài liệu.</td></tr>');
         return;
     }
 
@@ -112,10 +112,9 @@ function renderDocumentRows(documents) {
             <td class="actions">
                 ${document.status && document.status !== 'Active' ? '' : `
                 <a href="${documentApiUrl(`/documents/download?id=${document.documentId}&inline=true`)}" target="_blank" rel="noopener">Xem</a>
-                <a href="${documentApiUrl(`/documents/download?id=${document.documentId}`)}" download="${safeDocumentValue(document.fileName || document.documentName || 'document')}">Tải xuống</a>
-                `}
-                <span>${safeDocumentValue(globalThis.HrmVietnamese?.label(document.status || 'Active') ?? document.status ?? 'Đang hoạt động')}</span>
-                <button class="danger" onclick="setDocumentActive(${document.documentId}, ${document.status !== null && document.status !== 'Active'})">${document.status === null || document.status === 'Active' ? 'Vô hiệu hóa' : 'Kích hoạt lại'}</button>
+                <a href="${documentApiUrl(`/documents/download?id=${document.documentId}`)}" download="${safeDocumentValue(document.fileName || document.documentName || 'document')}${HrmI18n.fragment("\">Tải xuống</a>\n                ")}`}
+                <span>${safeDocumentValue(globalThis.HrmVietnamese?.label(document.status || 'Active') ?? document.status ?? HrmI18n.t('Đang hoạt động'))}</span>
+                <button class="danger" onclick="setDocumentActive(${document.documentId}, ${document.status !== null && document.status !== 'Active'})">${document.status === null || document.status === 'Active' ? HrmI18n.t('Vô hiệu hóa') : HrmI18n.t('Kích hoạt lại')}</button>
             </td>
         </tr>
     `).join('');
@@ -136,7 +135,7 @@ function setupDocumentLinks(employeeId) {
 function getEmployeeIdFromUrl(param = 'employeeId') {
     const value = new URLSearchParams(location.search).get(param);
     if (!value) {
-        showDocumentMessage("Vui lòng chọn nhân viên.", 'error');
+        showDocumentMessage(HrmI18n.t("Vui lòng chọn nhân viên."), 'error');
         return '';
     }
     return value;
@@ -181,7 +180,7 @@ function documentApiUrl(url) {
 }
 
 async function handleDocumentResponse(response) {
-    const payload = await response.json();
+    const payload = await response.json().then(HrmI18n.response);
     if (!response.ok || payload.success === false) {
         throw FormValidation.responseError(payload);
     }

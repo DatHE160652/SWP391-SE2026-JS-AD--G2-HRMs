@@ -93,7 +93,9 @@ public class ProfileUpdateService {
             if ("phone".equals(field)) value=com.hrms.util.ValidationSupport.validatePhone(value);
             int maximum=switch(field) { case "email" -> 150; case "permanentAddress" -> 500; default -> 200; };
             if (value!=null && value.length()>maximum) throw new FieldValidationException(field,"Độ dài tối đa là "+maximum+" ký tự.");
-            if ("email".equals(field) && value!=null && !value.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"))
+            if ("email".equals(field) && (value==null || value.isBlank()))
+                throw new FieldValidationException(field,"Vui lòng nhập email.");
+            if ("email".equals(field) && !value.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"))
                 throw new FieldValidationException(field,"Vui lòng nhập địa chỉ email hợp lệ.");
             if ("identityIssuedDate".equals(field) && value!=null) {
                 try {

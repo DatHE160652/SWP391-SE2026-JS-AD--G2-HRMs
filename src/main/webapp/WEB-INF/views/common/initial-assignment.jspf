@@ -1,24 +1,24 @@
 <%@ page pageEncoding="UTF-8" %>
 <dialog id="initialAssignmentDialog" class="lc-modal" aria-labelledby="initialAssignmentTitle">
     <form id="initialAssignmentForm">
-        <div class="lc-modal-header"><h2 id="initialAssignmentTitle">Phân công nhân viên</h2><button type="button" class="lc-close" data-initial-close aria-label="Đóng phân công">×</button></div>
+        <div class="lc-modal-header"><h2 id="initialAssignmentTitle"><%= com.hrms.i18n.Language.text(request, "ui_965d995c503c", "Phân công nhân viên") %></h2><button type="button" class="lc-close" data-initial-close aria-label="<%= com.hrms.i18n.Language.text(request, "ui_a9f110e487c1", "Đóng phân công") %>"><%= com.hrms.i18n.Language.text(request, "ui_67fba2f357af", "×") %></button></div>
         <div class="lc-form-section">
             <p id="initialAssignmentDepartment" class="lc-muted"></p>
             <div id="initialAssignmentError" class="lc-alert" role="alert"></div>
             <input type="hidden" name="departmentId">
             <div class="lc-form-grid">
-                <label class="full">Chức danh trong phòng ban *<select name="positionId" required></select></label>
-                <div class="full"><label>Vai trò tài khoản theo chức danh</label><span id="initialAssignmentRole" class="lc-badge">Chưa chọn chức danh</span></div>
-                <fieldset class="full ia-employees"><legend>Nhân viên chưa phân công *</legend>
-                    <p id="initialAssignmentSelectionHint" class="lc-form-hint" aria-live="polite">Chọn chức danh trước để chọn nhân viên.</p>
+                <label class="full"><%= com.hrms.i18n.Language.text(request, "ui_3e3d4d3b82d9", "Chức danh trong phòng ban *") %><select name="positionId" required></select></label>
+                <div class="full"><label><%= com.hrms.i18n.Language.text(request, "ui_2df98d0bfe86", "Vai trò tài khoản theo chức danh") %></label><span id="initialAssignmentRole" class="lc-badge"><%= com.hrms.i18n.Language.text(request, "ui_c78cc460729c", "Chưa chọn chức danh") %></span></div>
+                <fieldset class="full ia-employees"><legend><%= com.hrms.i18n.Language.text(request, "ui_7fa141d51449", "Nhân viên chưa phân công *") %></legend>
+                    <p id="initialAssignmentSelectionHint" class="lc-form-hint" aria-live="polite"><%= com.hrms.i18n.Language.text(request, "ui_0d4571948529", "Chọn chức danh trước để chọn nhân viên.") %></p>
                     <div id="initialAssignmentEmployees" class="ia-picker"></div>
                 </fieldset>
-                <label id="initialAssignmentManagerField" class="full" hidden>Quản lý trực tiếp<input id="initialAssignmentManagerName" type="text" readonly><input name="managerId" type="hidden" disabled><span id="initialAssignmentManagerHint" class="lc-form-hint" aria-live="polite"></span></label>
+                <label id="initialAssignmentManagerField" class="full" hidden><%= com.hrms.i18n.Language.text(request, "ui_76530a4ee8b1", "Quản lý trực tiếp") %><input id="initialAssignmentManagerName" type="text" readonly><input name="managerId" type="hidden" disabled><span id="initialAssignmentManagerHint" class="lc-form-hint" aria-live="polite"></span></label>
             </div>
             <p id="initialAssignmentEmpty" class="lc-muted" hidden></p>
-            <a id="initialAssignmentPositionLink" class="button secondary small">Thêm chức danh cho phòng ban →</a>
+            <a id="initialAssignmentPositionLink" class="button secondary small"><%= com.hrms.i18n.Language.text(request, "ui_797263c9faba", "Thêm chức danh cho phòng ban →") %></a>
         </div>
-        <div class="lc-modal-footer"><button type="button" class="secondary" data-initial-close>Đóng</button><button type="submit" id="initialAssignmentSave">Lưu phân công</button></div>
+        <div class="lc-modal-footer"><button type="button" class="secondary" data-initial-close><%= com.hrms.i18n.Language.text(request, "ui_d2b73ab2ada1", "Đóng") %></button><button type="submit" id="initialAssignmentSave"><%= com.hrms.i18n.Language.text(request, "ui_a6df391f8585", "Lưu phân công") %></button></div>
     </form>
 </dialog>
 <link rel="stylesheet" href="${pageContext.request.contextPath}/css/initial-assignment.css?v=<%= application.getResource("/css/initial-assignment.css").openConnection().getLastModified() %>">

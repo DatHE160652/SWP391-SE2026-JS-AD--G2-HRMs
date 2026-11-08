@@ -146,7 +146,7 @@ public class EmployeeController extends HttpServlet {
                     new com.hrms.service.EmployeeLifecycleService().terminate(SecuritySupport.getTenantPrincipal(request), employeeId, request.getParameter("reason"));
                     success = true;
                 } else {
-                    success = employeeService.activateEmployee(companyId, employeeId, SecuritySupport.getTenantPrincipal(request).getUserId());
+                    success = employeeService.activateEmployee(companyId, employeeId, SecuritySupport.getTenantPrincipal(request).getUserId(), request.getParameter("reason"));
                 }
                 message = active ? "Đã kích hoạt hồ sơ nhân viên." : "Đã ngừng hoạt động hồ sơ nhân viên.";
             } else if ("/employees/me/update-profile".equals(request.getServletPath())) {

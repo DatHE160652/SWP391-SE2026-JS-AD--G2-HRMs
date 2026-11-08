@@ -3,20 +3,20 @@
 <c:set var="base" value="${pageContext.request.contextPath}"/>
 <header class="public-header">
     <div class="public-container public-header-inner">
-        <a class="brand-mark" href="${base}/homepage" aria-label="HRMs Cloud - Trang chủ">
+        <a class="brand-mark" href="${base}/homepage" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_883987c5ee5e", "HRMs Cloud - Trang chủ") %>">
             <span class="logo-box">HC</span>
-            <span class="brand-copy"><strong>HRMs<span>Cloud</span></strong><small>DOANH NGHIỆP THÔNG MINH</small></span>
+            <span class="brand-copy"><strong>HRMs<span>Cloud</span></strong><small><%= com.hrms.i18n.Language.text(request, "ui_8f5b18cac271", "DOANH NGHIỆP THÔNG MINH") %></small></span>
         </a>
-        <nav class="public-nav" aria-label="Điều hướng chính">
-            <a href="${base}/homepage">Trang chủ</a>
-            <a href="${base}/features-solutions">Tính năng</a>
-            <a href="${base}/Pricing">Bảng giá</a>
-            <a href="${base}/faqs">Hỏi đáp (FAQ)</a>
-            <a href="${base}/consultation-request">Liên hệ</a>
+        <nav class="public-nav" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_f03700cd5e39", "Điều hướng chính") %>">
+            <a href="${base}/homepage"><%= com.hrms.i18n.Language.text(request, "ui_738a4cd14852", "Trang chủ") %></a>
+            <a href="${base}/features-solutions"><%= com.hrms.i18n.Language.text(request, "ui_5cbb5b5950da", "Tính năng") %></a>
+            <a href="${base}/Pricing"><%= com.hrms.i18n.Language.text(request, "ui_9483ecfb20db", "Bảng giá") %></a>
+            <a href="${base}/faqs"><%= com.hrms.i18n.Language.text(request, "ui_ac2d56d59d5d", "Hỏi đáp (FAQ)") %></a>
+            <a href="${base}/consultation-request"><%= com.hrms.i18n.Language.text(request, "ui_603522f10795", "Liên hệ") %></a>
         </nav>
         <div class="header-actions">
-            <a class="button button-outline" href="${base}/login">Đăng nhập tenant</a>
-            <a class="button button-primary" href="${base}/consultation-request">Đăng ký tư vấn</a>
+            <a class="button button-outline" href="${base}/login"><%= com.hrms.i18n.Language.text(request, "ui_0c0990306658", "Đăng nhập tenant") %></a>
+            <a class="button button-primary" href="${base}/consultation-request"><%= com.hrms.i18n.Language.text(request, "ui_704751ca32bd", "Đăng ký tư vấn") %></a>
         </div>
     </div>
 </header>

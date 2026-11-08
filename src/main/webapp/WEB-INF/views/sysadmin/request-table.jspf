@@ -1,21 +1,21 @@
 <%@ page pageEncoding="UTF-8" %>
-<div class="table-wrap" tabindex="0" role="region" aria-label="Bảng yêu cầu đăng ký">
+<div class="table-wrap" tabindex="0" role="region" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_59c65ede5299", "Bảng yêu cầu đăng ký") %>">
 <table class="request-table">
-    <caption class="sr-only">Yêu cầu đăng ký tenant</caption>
-    <thead><tr><th scope="col">Mã yêu cầu</th><th scope="col">Doanh nghiệp SME</th><th scope="col">Đại diện &amp; liên hệ</th><th scope="col">Khu vực</th><th scope="col">Thời gian gửi</th><th scope="col">Trạng thái</th><th scope="col">Thao tác</th></tr></thead>
+    <caption class="sr-only"><%= com.hrms.i18n.Language.text(request, "ui_59db5526dbd1", "Yêu cầu đăng ký tenant") %></caption>
+    <thead><tr><th scope="col"><%= com.hrms.i18n.Language.text(request, "ui_22c32fa452ec", "Mã yêu cầu") %></th><th scope="col"><%= com.hrms.i18n.Language.text(request, "ui_ff89a728e65f", "Doanh nghiệp SME") %></th><th scope="col"><%= com.hrms.i18n.Language.text(request, "ui_b88ce0cc9ef9", "Đại diện &amp; liên hệ") %></th><th scope="col"><%= com.hrms.i18n.Language.text(request, "ui_c12e4bb02923", "Khu vực") %></th><th scope="col"><%= com.hrms.i18n.Language.text(request, "ui_b955b288d60b", "Thời gian gửi") %></th><th scope="col"><%= com.hrms.i18n.Language.text(request, "ui_e03c1401e314", "Trạng thái") %></th><th scope="col"><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th></tr></thead>
     <tbody>
     <c:forEach var="item" items="${registrationRequests}">
         <tr>
             <td><a class="request-id" href="${pageContext.request.contextPath}/systemadmin/registration-request-details?id=${item.registrationRequestId}">REQ-<c:out value="${item.registrationRequestId}"/></a></td>
             <td class="company-cell"><strong><c:out value="${item.companyName}"/></strong></td>
             <td><strong class="cell-block"><c:out value="${item.fullName}"/></strong><span class="muted cell-block"><c:out value="${item.email}"/></span><span class="muted"><c:out value="${item.phone}"/></span></td>
-            <td><span class="region-label"><c:out value="${item.regionLabel}"/></span></td>
+            <td><span class="region-label"><c:set var="i18nDisplayLabel" value="${item.regionLabel}"/><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("i18nDisplayLabel")) %>'/></span></td>
             <td class="date-cell"><c:out value="${item.createdAtDisplay}"/></td>
-            <td><span class="status status-${item.status}"><span class="status-dot" aria-hidden="true"></span><c:out value="${item.statusLabel}"/></span></td>
-            <td><a class="button button-small button-primary" href="${pageContext.request.contextPath}/systemadmin/registration-request-details?id=${item.registrationRequestId}">Chi tiết<svg class="icon" aria-hidden="true"><use href="${icons}#arrow-right"/></svg><span class="sr-only"> yêu cầu <c:out value="${item.registrationRequestId}"/></span></a></td>
+            <td><span class="status status-${item.status}"><span class="status-dot" aria-hidden="true"></span><c:set var="i18nDisplayLabel" value="${item.statusLabel}"/><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("i18nDisplayLabel")) %>'/></span></td>
+            <td><a class="button button-small button-primary" href="${pageContext.request.contextPath}/systemadmin/registration-request-details?id=${item.registrationRequestId}"><%= com.hrms.i18n.Language.text(request, "ui_d72a6317ec65", "Chi tiết") %><svg class="icon" aria-hidden="true"><use href="${icons}#arrow-right"/></svg><span class="sr-only"> <%= com.hrms.i18n.Language.text(request, "ui_f970f45deb01", "yêu cầu") %> <c:out value="${item.registrationRequestId}"/></span></a></td>
         </tr>
     </c:forEach>
-    <c:if test="${empty registrationRequests}"><tr><td colspan="7"><div class="empty-state"><svg class="icon" aria-hidden="true"><use href="${icons}#requests"/></svg><h3>Không có yêu cầu đăng ký</h3><p>Chưa có dữ liệu hoặc không có yêu cầu phù hợp với bộ lọc.</p></div></td></tr></c:if>
+    <c:if test="${empty registrationRequests}"><tr><td colspan="7"><div class="empty-state"><svg class="icon" aria-hidden="true"><use href="${icons}#requests"/></svg><h3><%= com.hrms.i18n.Language.text(request, "ui_39d46e9f5e16", "Không có yêu cầu đăng ký") %></h3><p><%= com.hrms.i18n.Language.text(request, "ui_f7d3431b9ab4", "Chưa có dữ liệu hoặc không có yêu cầu phù hợp với bộ lọc.") %></p></div></td></tr></c:if>
     </tbody>
 </table>
 </div>

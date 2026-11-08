@@ -1,12 +1,13 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="<%= com.hrms.i18n.Language.selected(request) %>">
 <head>
+<%@ include file="/WEB-INF/views/common/language.jspf" %>
     <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chấm công cá nhân - HRMs Cloud</title>
+    <title><%= com.hrms.i18n.Language.text(request, "ui_d7794a1b7f80", "Chấm công cá nhân - HRMs Cloud") %></title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/lifecycle.css">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/organization.css">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/employee-navigation.css?v=<%= application.getResource("/css/employee-navigation.css").openConnection().getLastModified() %>">
@@ -18,12 +19,12 @@
 <%@ include file="/WEB-INF/views/common/employee-shell.jspf" %>
 
     <main class="lc-main content">
-        <div class="lc-breadcrumb">Cổng nhân viên &nbsp; / &nbsp; Chấm công cá nhân</div>
+        <div class="lc-breadcrumb"><%= com.hrms.i18n.Language.text(request, "ui_f2bbd55d9786", "Cổng nhân viên &nbsp; / &nbsp; Chấm công cá nhân") %></div>
 
         <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
             <div>
-                <h1 class="page-title">Bảng chấm công cá nhân</h1>
-                <p class="page-subtitle">Xem lịch sử chấm công theo tháng, số công làm việc và gửi đơn giải trình nếu có sai sót hoặc quên quẹt thẻ.</p>
+                <h1 class="page-title"><%= com.hrms.i18n.Language.text(request, "ui_b7670a343e0f", "Bảng chấm công cá nhân") %></h1>
+                <p class="page-subtitle"><%= com.hrms.i18n.Language.text(request, "ui_a16e43514cf9", "Xem lịch sử chấm công theo tháng, số công làm việc và gửi đơn giải trình nếu có sai sót hoặc quên quẹt thẻ.") %></p>
             </div>
             <div class="header-actions">
                 <button class="button" id="btnMyExplanations" type="button" style="background:#4338ca; border-color:#4338ca; color:#fff; display:inline-flex; align-items:center; gap:6px;">
@@ -33,7 +34,7 @@
                         <line x1="16" y1="13" x2="8" y2="13"></line>
                         <line x1="16" y1="17" x2="8" y2="17"></line>
                     </svg>
-                    Đơn giải trình của tôi
+                    <%= com.hrms.i18n.Language.text(request, "ui_825087f76b16", "Đơn giải trình của tôi") %>
                 </button>
             </div>
         </div>
@@ -43,35 +44,35 @@
                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
             </svg>
             <div>
-                <strong>Lưu ý:</strong> Chế độ xem dành riêng cho nhân viên. Nếu bạn quên chấm công hoặc đi công tác bên ngoài, vui lòng bấm nút <strong>"Giải trình"</strong> tại dòng ngày tương ứng để gửi yêu cầu cho quản lý duyệt bù công.
+                <strong><%= com.hrms.i18n.Language.text(request, "ui_c3b6f0d6b194", "Lưu ý:") %></strong> <%= com.hrms.i18n.Language.text(request, "ui_0980249334c6", "Chế độ xem dành riêng cho nhân viên. Nếu bạn quên chấm công hoặc đi công tác bên ngoài, vui lòng bấm nút") %> <strong><%= com.hrms.i18n.Language.text(request, "ui_a2490bd7a6ab", "\"Giải trình\"") %></strong> <%= com.hrms.i18n.Language.text(request, "ui_0696cc9dcb7e", "tại dòng ngày tương ứng để gửi yêu cầu cho quản lý duyệt bù công.") %>
             </div>
         </div>
 
         <section class="panel" style="margin-bottom: 20px;">
             <div class="filter-bar" style="margin-bottom: 0; background: none; border: none; padding: 0;">
                 <div class="filter-group" style="min-width: 240px;">
-                    <label for="employeeSelect">Nhân viên:</label>
+                    <label for="employeeSelect"><%= com.hrms.i18n.Language.text(request, "ui_083724684294", "Nhân viên:") %></label>
                     <select id="employeeSelect"></select>
                 </div>
                 <div class="filter-group">
-                    <label for="monthSelect">Tháng:</label>
+                    <label for="monthSelect"><%= com.hrms.i18n.Language.text(request, "ui_10168731cfaa", "Tháng:") %></label>
                     <select id="monthSelect">
-                        <option value="1">Tháng 1</option>
-                        <option value="2">Tháng 2</option>
-                        <option value="3">Tháng 3</option>
-                        <option value="4">Tháng 4</option>
-                        <option value="5">Tháng 5</option>
-                        <option value="6">Tháng 6</option>
-                        <option value="7">Tháng 7</option>
-                        <option value="8">Tháng 8</option>
-                        <option value="9">Tháng 9</option>
-                        <option value="10">Tháng 10</option>
-                        <option value="11">Tháng 11</option>
-                        <option value="12">Tháng 12</option>
+                        <option value="1"><%= com.hrms.i18n.Language.text(request, "ui_b216054d0ed2", "Tháng 1") %></option>
+                        <option value="2"><%= com.hrms.i18n.Language.text(request, "ui_516d1076c554", "Tháng 2") %></option>
+                        <option value="3"><%= com.hrms.i18n.Language.text(request, "ui_ffadeda83dc4", "Tháng 3") %></option>
+                        <option value="4"><%= com.hrms.i18n.Language.text(request, "ui_e17ca884dc27", "Tháng 4") %></option>
+                        <option value="5"><%= com.hrms.i18n.Language.text(request, "ui_cac48fd56c48", "Tháng 5") %></option>
+                        <option value="6"><%= com.hrms.i18n.Language.text(request, "ui_ba86b1edac83", "Tháng 6") %></option>
+                        <option value="7"><%= com.hrms.i18n.Language.text(request, "ui_9d6c2d27b25e", "Tháng 7") %></option>
+                        <option value="8"><%= com.hrms.i18n.Language.text(request, "ui_90318b387a39", "Tháng 8") %></option>
+                        <option value="9"><%= com.hrms.i18n.Language.text(request, "ui_d90a79daca16", "Tháng 9") %></option>
+                        <option value="10"><%= com.hrms.i18n.Language.text(request, "ui_1293573088a5", "Tháng 10") %></option>
+                        <option value="11"><%= com.hrms.i18n.Language.text(request, "ui_e2e2ffeea726", "Tháng 11") %></option>
+                        <option value="12"><%= com.hrms.i18n.Language.text(request, "ui_59de2e03dd04", "Tháng 12") %></option>
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label for="yearSelect">Năm:</label>
+                    <label for="yearSelect"><%= com.hrms.i18n.Language.text(request, "ui_3731977b06d7", "Năm:") %></label>
                     <select id="yearSelect">
                         <option value="2025">2025</option>
                         <option value="2026" selected>2026</option>
@@ -79,30 +80,30 @@
                     </select>
                 </div>
                 <div class="filter-actions">
-                    <button class="button" id="btnFilter" type="button">Xem bảng công</button>
+                    <button class="button" id="btnFilter" type="button"><%= com.hrms.i18n.Language.text(request, "ui_d866f4958610", "Xem bảng công") %></button>
                 </div>
             </div>
         </section>
 
         <section class="summary-grid" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));">
             <div class="summary-card">
-                <div class="summary-label">Số ngày đi làm</div>
+                <div class="summary-label"><%= com.hrms.i18n.Language.text(request, "ui_fa1a0311252f", "Số ngày đi làm") %></div>
                 <div id="totalWorkingDays" class="summary-number">0</div>
             </div>
             <div class="summary-card">
-                <div class="summary-label">Số ngày công</div>
-                <div id="totalWorkCredits" class="summary-number text-success" style="font-size: 24px;">0 công</div>
+                <div class="summary-label"><%= com.hrms.i18n.Language.text(request, "ui_1ba1fa4b2b12", "Số ngày công") %></div>
+                <div id="totalWorkCredits" class="summary-number text-success" style="font-size: 24px;"><%= com.hrms.i18n.Language.text(request, "ui_ad40299b9b92", "0 công") %></div>
             </div>
             <div class="summary-card">
-                <div class="summary-label">Tổng giờ làm</div>
-                <div id="totalHours" class="summary-number text-success" style="font-size: 24px;">0 giờ</div>
+                <div class="summary-label"><%= com.hrms.i18n.Language.text(request, "ui_fae054de5cea", "Tổng giờ làm") %></div>
+                <div id="totalHours" class="summary-number text-success" style="font-size: 24px;"><%= com.hrms.i18n.Language.text(request, "ui_d245a9a1d25c", "0 giờ") %></div>
             </div>
             <div class="summary-card">
-                <div class="summary-label">Đúng giờ</div>
+                <div class="summary-label"><%= com.hrms.i18n.Language.text(request, "ui_eeb85b25d751", "Đúng giờ") %></div>
                 <div id="presentDays" class="summary-number text-success">0</div>
             </div>
             <div class="summary-card">
-                <div class="summary-label">Vắng / Nghỉ phép</div>
+                <div class="summary-label"><%= com.hrms.i18n.Language.text(request, "ui_605a2078868b", "Vắng / Nghỉ phép") %></div>
                 <div id="absentDays" class="summary-number text-danger" style="font-size: 22px;">0</div>
             </div>
         </section>
@@ -113,19 +114,19 @@
             <table>
                 <thead>
                 <tr>
-                    <th>Ngày</th>
-                    <th>Thứ</th>
-                    <th>Giờ vào</th>
-                    <th>Giờ ra</th>
-                    <th>Tổng giờ</th>
-                    <th>Số công</th>
-                    <th>Trạng thái</th>
-                    <th>Ghi chú</th>
-                    <th style="text-align:center;">Thao tác</th>
+                    <th><%= com.hrms.i18n.Language.text(request, "ui_368c4575744a", "Ngày") %></th>
+                    <th><%= com.hrms.i18n.Language.text(request, "ui_f445a0520061", "Thứ") %></th>
+                    <th><%= com.hrms.i18n.Language.text(request, "ui_4754e55645c1", "Giờ vào") %></th>
+                    <th><%= com.hrms.i18n.Language.text(request, "ui_7c51594b39a3", "Giờ ra") %></th>
+                    <th><%= com.hrms.i18n.Language.text(request, "ui_bf5e3203822b", "Tổng giờ") %></th>
+                    <th><%= com.hrms.i18n.Language.text(request, "ui_e988aba3e0d7", "Số công") %></th>
+                    <th><%= com.hrms.i18n.Language.text(request, "ui_e03c1401e314", "Trạng thái") %></th>
+                    <th><%= com.hrms.i18n.Language.text(request, "ui_02f03f68e75d", "Ghi chú") %></th>
+                    <th style="text-align:center;"><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th>
                 </tr>
                 </thead>
                 <tbody id="attendanceRows">
-                    <tr><td colspan="9" style="text-align:center;color:#667085;padding:24px;">Đang tải dữ liệu...</td></tr>
+                    <tr><td colspan="9" style="text-align:center;color:#667085;padding:24px;"><%= com.hrms.i18n.Language.text(request, "ui_de6849168004", "Đang tải dữ liệu...") %></td></tr>
                 </tbody>
             </table>
         </section>
@@ -135,42 +136,42 @@
 <div id="modalSubmitExplanation" class="exp-modal-overlay">
     <div class="exp-modal-box">
         <div class="exp-modal-header">
-            <h3>Đơn giải trình / Xin bù công</h3>
+            <h3><%= com.hrms.i18n.Language.text(request, "ui_c296db916083", "Đơn giải trình / Xin bù công") %></h3>
             <button type="button" class="btn-close" id="btnCloseSubmitExp" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
         </div>
         <form id="formSubmitExplanation">
             <div class="exp-modal-body">
                 <div class="form-group" style="margin-bottom:16px;">
-                    <label style="font-weight:600;display:block;margin-bottom:6px;">Ngày giải trình <span class="text-danger">*</span></label>
+                    <label style="font-weight:600;display:block;margin-bottom:6px;"><%= com.hrms.i18n.Language.text(request, "ui_e2caeb5a707b", "Ngày giải trình") %> <span class="text-danger">*</span></label>
                     <input type="date" id="expAttendanceDate" class="form-control" required style="width:100%;padding:8px 12px;border:1px solid #d0d5dd;border-radius:6px;">
                 </div>
                 <div class="form-group" style="margin-bottom:16px;">
-                    <label style="font-weight:600;display:block;margin-bottom:6px;">Loại lý do <span class="text-danger">*</span></label>
+                    <label style="font-weight:600;display:block;margin-bottom:6px;"><%= com.hrms.i18n.Language.text(request, "ui_adc053bca248", "Loại lý do") %> <span class="text-danger">*</span></label>
                     <select id="expReasonType" class="form-control" required style="width:100%;padding:8px 12px;border:1px solid #d0d5dd;border-radius:6px;">
-                        <option value="FORGOT_PUNCH">Quên bấm chấm công</option>
-                        <option value="BUSINESS_TRIP">Đi công tác / Ra ngoài gặp đối tác</option>
-                        <option value="TECHNICAL_ISSUE">Lỗi máy chấm công / Lỗi mạng</option>
-                        <option value="OTHER">Lý do chính đáng khác</option>
+                        <option value="FORGOT_PUNCH"><%= com.hrms.i18n.Language.text(request, "ui_6db442a46a2a", "Quên bấm chấm công") %></option>
+                        <option value="BUSINESS_TRIP"><%= com.hrms.i18n.Language.text(request, "ui_9a468da59bcc", "Đi công tác / Ra ngoài gặp đối tác") %></option>
+                        <option value="TECHNICAL_ISSUE"><%= com.hrms.i18n.Language.text(request, "ui_13df03dc98a9", "Lỗi máy chấm công / Lỗi mạng") %></option>
+                        <option value="OTHER"><%= com.hrms.i18n.Language.text(request, "ui_36eb426b5eba", "Lý do chính đáng khác") %></option>
                     </select>
                 </div>
                 <div style="display:flex;gap:16px;margin-bottom:16px;">
                     <div style="flex:1;">
-                        <label style="font-weight:600;display:block;margin-bottom:6px;">Giờ vào thực tế đề xuất</label>
+                        <label style="font-weight:600;display:block;margin-bottom:6px;"><%= com.hrms.i18n.Language.text(request, "ui_910745505a73", "Giờ vào thực tế đề xuất") %></label>
                         <input type="time" id="expProposedCheckIn" value="08:30" class="form-control" style="width:100%;padding:8px 12px;border:1px solid #d0d5dd;border-radius:6px;">
                     </div>
                     <div style="flex:1;">
-                        <label style="font-weight:600;display:block;margin-bottom:6px;">Giờ tan ca thực tế đề xuất</label>
+                        <label style="font-weight:600;display:block;margin-bottom:6px;"><%= com.hrms.i18n.Language.text(request, "ui_ab28ad2fd690", "Giờ tan ca thực tế đề xuất") %></label>
                         <input type="time" id="expProposedCheckOut" value="17:30" class="form-control" style="width:100%;padding:8px 12px;border:1px solid #d0d5dd;border-radius:6px;">
                     </div>
                 </div>
                 <div class="form-group">
-                    <label style="font-weight:600;display:block;margin-bottom:6px;">Lý do giải trình chi tiết <span class="text-danger">*</span></label>
-                    <textarea id="expReasonDetail" rows="3" required placeholder="Ghi rõ lý do tại sao không bấm công đúng giờ hoặc vắng mặt..." style="width:100%;padding:8px 12px;border:1px solid #d0d5dd;border-radius:6px;"></textarea>
+                    <label style="font-weight:600;display:block;margin-bottom:6px;"><%= com.hrms.i18n.Language.text(request, "ui_0df5ac3aba60", "Lý do giải trình chi tiết") %> <span class="text-danger">*</span></label>
+                    <textarea id="expReasonDetail" rows="3" required placeholder="<%= com.hrms.i18n.Language.text(request, "ui_e5f8833d639c", "Ghi rõ lý do tại sao không bấm công đúng giờ hoặc vắng mặt...") %>" style="width:100%;padding:8px 12px;border:1px solid #d0d5dd;border-radius:6px;"></textarea>
                 </div>
             </div>
             <div class="exp-modal-footer">
-                <button type="button" class="button secondary" id="btnCancelSubmitExp">Đóng</button>
-                <button type="submit" class="button" style="background:#4338ca;border-color:#4338ca;color:#fff;">Gửi đơn duyệt</button>
+                <button type="button" class="button secondary" id="btnCancelSubmitExp"><%= com.hrms.i18n.Language.text(request, "ui_d2b73ab2ada1", "Đóng") %></button>
+                <button type="submit" class="button" style="background:#4338ca;border-color:#4338ca;color:#fff;"><%= com.hrms.i18n.Language.text(request, "ui_d070abfb437c", "Gửi đơn duyệt") %></button>
             </div>
         </form>
     </div>
@@ -180,33 +181,33 @@
 <div id="modalMyExplanations" class="exp-modal-overlay">
     <div class="exp-modal-box wide">
         <div class="exp-modal-header">
-            <h3>Danh sách đơn giải trình của tôi</h3>
+            <h3><%= com.hrms.i18n.Language.text(request, "ui_4d5996a1fb17", "Danh sách đơn giải trình của tôi") %></h3>
             <button type="button" class="btn-close" id="btnCloseMyExp" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
         </div>
         <div class="exp-modal-body">
             <table style="width:100%;border-collapse:collapse;">
                 <thead>
                     <tr style="border-bottom:2px solid #eaecf0;text-align:left;font-size:13px;color:#475467;">
-                        <th style="padding:10px 8px;">Ngày công</th>
-                        <th style="padding:10px 8px;">Loại lý do</th>
-                        <th style="padding:10px 8px;">Giờ đề xuất</th>
-                        <th style="padding:10px 8px;">Trạng thái</th>
-                        <th style="padding:10px 8px;">Phản hồi</th>
-                        <th style="padding:10px 8px;text-align:center;">Thao tác</th>
+                        <th style="padding:10px 8px;"><%= com.hrms.i18n.Language.text(request, "ui_07a00d3cb09e", "Ngày công") %></th>
+                        <th style="padding:10px 8px;"><%= com.hrms.i18n.Language.text(request, "ui_adc053bca248", "Loại lý do") %></th>
+                        <th style="padding:10px 8px;"><%= com.hrms.i18n.Language.text(request, "ui_34747a0262eb", "Giờ đề xuất") %></th>
+                        <th style="padding:10px 8px;"><%= com.hrms.i18n.Language.text(request, "ui_e03c1401e314", "Trạng thái") %></th>
+                        <th style="padding:10px 8px;"><%= com.hrms.i18n.Language.text(request, "ui_51839e076b86", "Phản hồi") %></th>
+                        <th style="padding:10px 8px;text-align:center;"><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th>
                     </tr>
                 </thead>
                 <tbody id="myExplanationsRows">
-                    <tr><td colspan="6" style="text-align:center;color:#667085;padding:20px;">Đang tải danh sách...</td></tr>
+                    <tr><td colspan="6" style="text-align:center;color:#667085;padding:20px;"><%= com.hrms.i18n.Language.text(request, "ui_d37b2a68bf44", "Đang tải danh sách...") %></td></tr>
                 </tbody>
             </table>
         </div>
         <div class="exp-modal-footer">
-            <button type="button" class="button secondary" id="btnCloseMyExpBottom">Đóng</button>
+            <button type="button" class="button secondary" id="btnCloseMyExpBottom"><%= com.hrms.i18n.Language.text(request, "ui_d2b73ab2ada1", "Đóng") %></button>
         </div>
     </div>
 </div>
 
 <script src="../js/attendance.js?v=<%= application.getResource("/js/attendance.js").openConnection().getLastModified() %>"></script>
-<script src="../js/payroll-notifications.js"></script>
+<script src="../js/payroll-notifications.js?v=<%= application.getResource("/js/payroll-notifications.js").openConnection().getLastModified() %>"></script>
 </body>
 </html>

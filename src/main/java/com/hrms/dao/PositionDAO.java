@@ -154,19 +154,8 @@ public class PositionDAO {
         }
     }
 
-    public boolean positionTitleExists(int companyId, int departmentId, String title, Integer excludeId) throws SQLException {
-        try (Connection connection = DBConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement("""
-                     SELECT 1 FROM Positions WHERE CompanyId=? AND DepartmentId=? AND PositionTitle=?
-                         AND (? IS NULL OR PositionId<>?)
-                     """)) {
-            statement.setInt(1, companyId);
-            statement.setInt(2, departmentId);
-            statement.setString(3, title);
-            statement.setObject(4, excludeId, Types.INTEGER);
-            statement.setObject(5, excludeId, Types.INTEGER);
-            try (ResultSet rows = statement.executeQuery()) { return rows.next(); }
-        }
+    public boolean positionTitleExists(int companyId, String title, Integer excludeId) throws SQLException {
+        return new OrganizationNameDAO().exists(OrganizationNameDAO.Catalog.POSITION,companyId,title,excludeId);
     }
 
     private Position mapPosition(ResultSet rows) throws SQLException {

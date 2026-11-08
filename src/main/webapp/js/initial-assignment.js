@@ -23,16 +23,16 @@
         managerField.hidden = true;
         managerInput.disabled = true;
         managerInput.value = '';
-        managerName.value = 'Chưa có quản lý';
+        managerName.value = HrmI18n.t('Chưa có quản lý');
         managerHint.textContent = '';
         const position = positions.find(item => String(item.positionId) === form.elements.positionId.value);
         const roleBadge = document.querySelector('#initialAssignmentRole');
-        if (roleBadge) roleBadge.textContent = 'Chưa chọn chức danh';
+        if (roleBadge) roleBadge.textContent = HrmI18n.t('Chưa chọn chức danh');
         save.disabled = !position || !candidates.length || submitting;
-        if (!position) { hint.textContent = 'Chọn chức danh trước để chọn nhân viên.'; return; }
+        if (!position) { hint.textContent = HrmI18n.t('Chọn chức danh trước để chọn nhân viên.'); return; }
         const level = levels.find(item => String(item.responsibilityLevelId) === String(position.responsibilityLevelId));
         if (!level) {
-            hint.textContent = 'Không xác định được cấp trách nhiệm. Vui lòng tải lại danh sách.';
+            hint.textContent = HrmI18n.t('Không xác định được cấp trách nhiệm. Vui lòng tải lại danh sách.');
             save.disabled = true;
             return;
         }
@@ -48,12 +48,12 @@
             if (matching.length === 1) {
                 managerInput.value = matching[0].employeeId;
                 managerName.value = matching[0].employeeCode + ' · ' + matching[0].fullName + ' · ' + (matching[0].positionTitle || '');
-                managerHint.textContent = 'Tự động xác định theo chức danh quản lý đã liên kết.';
+                managerHint.textContent = HrmI18n.t('Tự động xác định theo chức danh quản lý đã liên kết.');
             } else managerHint.textContent = position.reportsToPositionId == null
-                ? 'Chưa liên kết chức danh quản lý. Hãy cấu hình tại Chức danh; hệ thống không tự chọn quản lý khác team.'
-                : matching.length ? 'Có nhiều người đảm nhiệm chức danh quản lý đã liên kết. Cần kiểm tra lại phân công chức danh để xác định quản lý trực tiếp.' : 'Chưa có quản lý đang hoạt động đảm nhiệm chức danh đã liên kết. Có thể phân công quản lý sau.';
+                ? HrmI18n.t('Chưa liên kết chức danh quản lý. Hãy cấu hình tại Chức danh; hệ thống không tự chọn quản lý khác team.')
+                : matching.length ? HrmI18n.t('Có nhiều người đảm nhiệm chức danh quản lý đã liên kết. Cần kiểm tra lại phân công chức danh để xác định quản lý trực tiếp.') : HrmI18n.t('Chưa có quản lý đang hoạt động đảm nhiệm chức danh đã liên kết. Có thể phân công quản lý sau.');
         }
-        hint.textContent = single ? 'Chức danh cấp Manager: chỉ chọn một nhân viên.' : 'Có thể chọn nhiều nhân viên cho chức danh này.';
+        hint.textContent = single ? HrmI18n.t('Chức danh cấp Manager: chỉ chọn một nhân viên.') : HrmI18n.t('Có thể chọn nhiều nhân viên cho chức danh này.');
         for (const employee of candidates) {
             const label = document.createElement('label');
             label.className = 'ia-choice';
@@ -64,7 +64,7 @@
             input.required = single;
             const text = document.createElement('span');
             text.textContent = employee.EmployeeCode + ' · ' + employee.FullName
-                + (employee.DepartmentName ? ' · ' + employee.DepartmentName + ' / ' + (employee.PositionTitle || 'Chưa có chức danh') : ' · Chưa phân công');
+                + (employee.DepartmentName ? ' · ' + employee.DepartmentName + ' / ' + (employee.PositionTitle || HrmI18n.t('Chưa có chức danh')) : HrmI18n.t(' · Chưa phân công'));
             label.append(input, text);
             picker.append(label);
         }
@@ -79,14 +79,14 @@
         managerField.hidden = true;
         managerInput.disabled = true;
         managerInput.value = '';
-        managerName.value = 'Chưa có quản lý';
+        managerName.value = HrmI18n.t('Chưa có quản lý');
         picker.replaceChildren();
         error.textContent = '';
-        hint.textContent = 'Chọn chức danh trước để chọn nhân viên.';
-        document.querySelector('#initialAssignmentDepartment').textContent = 'Đang tải phòng ban…';
+        hint.textContent = HrmI18n.t('Chọn chức danh trước để chọn nhân viên.');
+        document.querySelector('#initialAssignmentDepartment').textContent = HrmI18n.t('Đang tải phòng ban…');
         document.querySelector('#initialAssignmentEmpty').hidden = true;
         save.disabled = true;
-        form.elements.positionId.replaceChildren(new Option('Đang tải chức danh…', ''));
+        form.elements.positionId.replaceChildren(new Option(HrmI18n.t('Đang tải chức danh…'), ''));
         document.querySelector('#initialAssignmentPositionLink').href = '../position/position-form?departmentId=' + encodeURIComponent(departmentId);
         dialog.showModal();
         try {
@@ -110,13 +110,13 @@
                 return !manager || position.assignmentOccupied!==true;
             });
             document.querySelector('#initialAssignmentDepartment').textContent = department.data.departmentName;
-            form.elements.positionId.replaceChildren(new Option('Chọn chức danh', ''));
+            form.elements.positionId.replaceChildren(new Option(HrmI18n.t('Chọn chức danh'), ''));
             for (const position of availablePositions) form.elements.positionId.add(new Option(position.positionTitle + ' · ' + (position.responsibilityLevelName || ''), position.positionId));
             const empty = document.querySelector('#initialAssignmentEmpty');
             empty.hidden = Boolean(candidates.length && availablePositions.length);
-            empty.textContent = !positions.length ? 'Phòng ban chưa có chức danh đang hoạt động. Hãy tạo chức danh trước khi phân công.'
-                : !availablePositions.length ? 'Không có chức danh còn chỗ để phân công. Các chức danh Manager đã có người được ẩn khỏi danh sách.'
-                : 'Không có nhân viên chưa phân công. Để chuyển phòng ban/chức danh, hãy mở hồ sơ nhân viên và chọn Phân công / Chuyển chức danh.';
+            empty.textContent = !positions.length ? HrmI18n.t('Phòng ban chưa có chức danh đang hoạt động. Hãy tạo chức danh trước khi phân công.')
+                : !availablePositions.length ? HrmI18n.t('Không có chức danh còn chỗ để phân công. Các chức danh Manager đã có người được ẩn khỏi danh sách.')
+                : HrmI18n.t('Không có nhân viên chưa phân công. Để chuyển phòng ban/chức danh, hãy mở hồ sơ nhân viên và chọn Phân công / Chuyển chức danh.');
             FormValidation.init(form);
             renderEmployees();
         } catch (exception) {
@@ -137,7 +137,7 @@
         error.textContent = '';
         const employeeIds = [...picker.querySelectorAll('input[name="employeeIds"]:checked')].map(input => input.value);
         if (!employeeIds.length) {
-            error.textContent = 'Vui lòng chọn ít nhất một nhân viên.';
+            error.textContent = HrmI18n.t('Vui lòng chọn ít nhất một nhân viên.');
             picker.querySelector('input')?.focus();
             return;
         }

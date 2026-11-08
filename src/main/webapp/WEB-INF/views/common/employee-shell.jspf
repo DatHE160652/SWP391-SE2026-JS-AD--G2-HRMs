@@ -5,17 +5,17 @@
     <a class="lc-brand" href="${pageContext.request.contextPath}/employee/my-profile">
         <span class="lc-logo">H</span><span class="lc-brand-name">HRMs Cloud</span>
     </a>
-    <div class="lc-nav-label">CỔNG NHÂN VIÊN</div>
-    <nav aria-label="Chức năng cá nhân">
-        <a class="${employeeNavPage == 'profile' ? 'active' : ''}" href="${pageContext.request.contextPath}/employee/my-profile"><span class="lc-nav-icon" aria-hidden="true">♙</span><span>Hồ sơ cá nhân</span></a>
-        <a class="${employeeNavPage == 'attendance' ? 'active' : ''}" href="${pageContext.request.contextPath}/attendance/employee-attendance"><span class="lc-nav-icon" aria-hidden="true">◷</span><span>Chấm công cá nhân</span></a>
-        <a class="${employeeNavPage == 'payslips' ? 'active' : ''}" href="${pageContext.request.contextPath}/payslips"><span class="lc-nav-icon" aria-hidden="true">▤</span><span>Phiếu lương của tôi</span></a>
-        <a class="${employeeNavPage == 'leave' ? 'active' : ''}" href="${pageContext.request.contextPath}/leave/my-requests"><span class="lc-nav-icon" aria-hidden="true">▢</span><span>Đơn nghỉ cá nhân</span></a>
+    <div class="lc-nav-label"><%= com.hrms.i18n.Language.text(request, "ui_add95b680d3c", "CỔNG NHÂN VIÊN") %></div>
+    <nav aria-label="<%= com.hrms.i18n.Language.text(request, "ui_0a2ac8dcdfc1", "Chức năng cá nhân") %>">
+        <a class="${employeeNavPage == 'profile' ? 'active' : ''}" href="${pageContext.request.contextPath}/employee/my-profile"><span class="lc-nav-icon" aria-hidden="true">♙</span><span><%= com.hrms.i18n.Language.text(request, "ui_b70d1e2772e9", "Hồ sơ cá nhân") %></span></a>
+        <a class="${employeeNavPage == 'attendance' ? 'active' : ''}" href="${pageContext.request.contextPath}/attendance/employee-attendance"><span class="lc-nav-icon" aria-hidden="true">◷</span><span><%= com.hrms.i18n.Language.text(request, "ui_5d058034330c", "Chấm công cá nhân") %></span></a>
+        <a class="${employeeNavPage == 'payslips' ? 'active' : ''}" href="${pageContext.request.contextPath}/payslips"><span class="lc-nav-icon" aria-hidden="true">▤</span><span><%= com.hrms.i18n.Language.text(request, "ui_2e59daf63e47", "Phiếu lương của tôi") %></span></a>
+        <a class="${employeeNavPage == 'leave' ? 'active' : ''}" href="${pageContext.request.contextPath}/leave/my-requests"><span class="lc-nav-icon" aria-hidden="true">▢</span><span><%= com.hrms.i18n.Language.text(request, "ui_f88e8ff3ad6b", "Đơn nghỉ cá nhân") %></span></a>
     </nav>
-    <a class="lc-signout" href="${pageContext.request.contextPath}/logout" aria-label="Đăng xuất"><span class="lc-nav-icon" aria-hidden="true">↪</span><span>Đăng xuất</span></a>
+    <a class="lc-signout" href="${pageContext.request.contextPath}/logout" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_d513aac0be87", "Đăng xuất") %>"><span class="lc-nav-icon" aria-hidden="true">↪</span><span><%= com.hrms.i18n.Language.text(request, "ui_d513aac0be87", "Đăng xuất") %></span></a>
 </aside>
 <header class="lc-topbar">
-    <span>Cổng nhân viên <span class="lc-muted">/ <c:out value="${employeeNavTitle}" default="Chấm công cá nhân"/></span></span>
+    <span><%= com.hrms.i18n.Language.text(request, "ui_c42485146656", "Cổng nhân viên") %> <span class="lc-muted">/ <c:out value="${employeeNavTitle}" default="Chấm công cá nhân"/></span></span>
     <span class="lc-workspace" title="<c:out value='${sessionScope.tenantPrincipal.companyName}'/>">Workspace · <c:out value="${sessionScope.tenantPrincipal.workspaceCode}" default="—"/></span>
 </header>
 <%@ include file="/WEB-INF/views/common/appearance.jspf" %>

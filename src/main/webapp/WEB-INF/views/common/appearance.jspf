@@ -1,19 +1,21 @@
 <%@ page pageEncoding="UTF-8" %>
-<link rel="stylesheet" href="${pageContext.request.contextPath}/css/appearance.css">
-<script src="${pageContext.request.contextPath}/js/appearance.js"></script>
+<link rel="stylesheet" href="${pageContext.request.contextPath}/css/appearance.css?v=<%= application.getResource("/css/appearance.css").openConnection().getLastModified() %>">
+<script src="${pageContext.request.contextPath}/js/appearance.js?v=<%= application.getResource("/js/appearance.js").openConnection().getLastModified() %>"></script>
 <link rel="stylesheet" href="${pageContext.request.contextPath}/css/sidebar.css?v=<%= application.getResource("/css/sidebar.css").openConnection().getLastModified() %>">
 <script src="${pageContext.request.contextPath}/js/sidebar.js?v=<%= application.getResource("/js/sidebar.js").openConnection().getLastModified() %>"></script>
 <section id="appearance-panel" class="appearance-panel" aria-labelledby="appearance-title" hidden>
-    <header><h2 id="appearance-title">Giao diện</h2><button type="button" data-appearance-close aria-label="Đóng tùy chỉnh giao diện">×</button></header>
-    <fieldset><legend>MÀU NHẤN</legend><div class="appearance-swatches">
-        <button type="button" data-accent="#4f46e5" style="--swatch:#4f46e5" aria-label="Tím chàm" aria-pressed="true"></button>
-        <button type="button" data-accent="#2563eb" style="--swatch:#2563eb" aria-label="Xanh dương" aria-pressed="false"></button>
-        <button type="button" data-accent="#0d9488" style="--swatch:#0d9488" aria-label="Xanh ngọc" aria-pressed="false"></button>
-        <button type="button" data-accent="#9333ea" style="--swatch:#9333ea" aria-label="Tím" aria-pressed="false"></button>
+    <header><h2 id="appearance-title"><%= com.hrms.i18n.Language.text(request, "ui_705b42375db7", "Giao diện") %></h2><button type="button" data-appearance-close aria-label="<%= com.hrms.i18n.Language.text(request, "ui_20cd486293b7", "Đóng tùy chỉnh giao diện") %>"><%= com.hrms.i18n.Language.text(request, "ui_67fba2f357af", "×") %></button></header>
+    <label class="appearance-language-label" for="appearance-language"><%= com.hrms.i18n.Language.text(request, "ui_65074a85658a", "Ngôn ngữ") %></label>
+    <select id="appearance-language" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_65074a85658a", "Ngôn ngữ") %>"><option value="vi"><%= com.hrms.i18n.Language.text(request, "ui_4993440c2393", "Tiếng Việt") %></option><option value="en">English</option></select>
+    <fieldset><legend><%= com.hrms.i18n.Language.text(request, "ui_9391532cb2bc", "MÀU NHẤN") %></legend><div class="appearance-swatches">
+        <button type="button" data-accent="#4f46e5" style="--swatch:#4f46e5" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_99aeda210d3c", "Tím chàm") %>" aria-pressed="true"></button>
+        <button type="button" data-accent="#2563eb" style="--swatch:#2563eb" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_95beb520033f", "Xanh dương") %>" aria-pressed="false"></button>
+        <button type="button" data-accent="#0d9488" style="--swatch:#0d9488" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_b8cbaa2e3b9b", "Xanh ngọc") %>" aria-pressed="false"></button>
+        <button type="button" data-accent="#9333ea" style="--swatch:#9333ea" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_684e59662905", "Tím") %>" aria-pressed="false"></button>
     </div></fieldset>
-    <label class="appearance-dark-label" for="appearance-dark">CHẾ ĐỘ TỐI <input id="appearance-dark" type="checkbox" role="switch"></label>
-    <fieldset><legend>MẬT ĐỘ</legend><div class="appearance-density"><button type="button" data-density="compact">Thu gọn</button><button type="button" data-density="normal">Thường</button><button type="button" data-density="comfortable">Rộng rãi</button></div></fieldset>
-    <label for="appearance-radius" class="appearance-radius-label">BO GÓC <output for="appearance-radius">14px</output></label><input id="appearance-radius" type="range" min="0" max="24" value="14">
-    <button type="button" class="secondary appearance-reset" data-appearance-reset>Đặt lại mặc định</button>
+    <label class="appearance-dark-label" for="appearance-dark"><%= com.hrms.i18n.Language.text(request, "ui_145475db6a7b", "CHẾ ĐỘ TỐI") %> <input id="appearance-dark" type="checkbox" role="switch"></label>
+    <fieldset><legend><%= com.hrms.i18n.Language.text(request, "ui_c4fd58d4871b", "MẬT ĐỘ") %></legend><div class="appearance-density"><button type="button" data-density="compact"><%= com.hrms.i18n.Language.text(request, "ui_b12331680800", "Thu gọn") %></button><button type="button" data-density="normal"><%= com.hrms.i18n.Language.text(request, "ui_a1e9637858b1", "Thường") %></button><button type="button" data-density="comfortable"><%= com.hrms.i18n.Language.text(request, "ui_d03f5ec74c64", "Rộng rãi") %></button></div></fieldset>
+    <label for="appearance-radius" class="appearance-radius-label"><%= com.hrms.i18n.Language.text(request, "ui_c1500363f5bc", "BO GÓC") %> <output for="appearance-radius">14px</output></label><input id="appearance-radius" type="range" min="0" max="24" value="14">
+    <button type="button" class="secondary appearance-reset" data-appearance-reset><%= com.hrms.i18n.Language.text(request, "ui_447701d64fd0", "Đặt lại mặc định") %></button>
 </section>
-<button type="button" id="appearance-trigger" aria-controls="appearance-panel" aria-expanded="false" aria-label="Tùy chỉnh giao diện" title="Tùy chỉnh giao diện"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h16M4 17h16M8 4v6M16 14v6"/></svg></button>
+<button type="button" id="appearance-trigger" aria-controls="appearance-panel" aria-expanded="false" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_2add5f60ffc8", "Tùy chỉnh giao diện") %>" title="<%= com.hrms.i18n.Language.text(request, "ui_2add5f60ffc8", "Tùy chỉnh giao diện") %>"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h16M4 17h16M8 4v6M16 14v6"/></svg></button>
