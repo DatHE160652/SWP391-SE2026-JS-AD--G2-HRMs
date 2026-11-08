@@ -377,10 +377,10 @@ public class RegistrationRequestDAO {
 
                 CompanyInsert company = insertCompany(connection, registration, requestId);
                 int companyId = company.companyId();
-                int userId = insertCompanyAdmin(connection, registration, companyId, password);
                 int planId = findDefaultPlan(connection);
                 if (planId <= 0) throw new SQLException("Default active subscription plan is missing.");
                 insertSubscription(connection, companyId, planId);
+                int userId = insertCompanyAdmin(connection, registration, companyId, password);
                 String convert = "UPDATE RegistrationRequests SET Status='CONVERTED', ConvertedCompanyId=?, "
                         + "ConvertedAt=SYSUTCDATETIME(), ConvertedByUserId=?, UpdatedAt=SYSUTCDATETIME() "
                         + "WHERE RegistrationRequestId=? AND Status='CONVERTING'";
@@ -555,8 +555,9 @@ public class RegistrationRequestDAO {
         }
         if (username == null) throw new SQLException("Unable to allocate unique Company Admin username.");
         String sql = "INSERT INTO Users (CompanyId,RoleId,Username,Email,DisplayName,Password,MustChangePassword,ActivatedAt,PasswordChangedAt,IsActive,IsLocked) "
-                + "OUTPUT INSERTED.UserId VALUES (?,?,?,?,?,?,1,NULL,NULL,1,0)";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                + "OUTPUT INSERTED.UserId INTO @CreatedUsers VALUES (?,?,?,?,?,?,1,NULL,NULL,1,0)";
+        try (PreparedStatement statement = connection.prepareStatement(
+                "DECLARE @CreatedUsers TABLE (UserId INT); " + sql + " SELECT UserId FROM @CreatedUsers")) {
             statement.setInt(1, companyId); statement.setInt(2, roleId);
             statement.setString(3, username); statement.setString(4, request.getEmail());
             statement.setNString(5, request.getFullName()); statement.setString(6, password);
