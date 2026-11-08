@@ -335,7 +335,38 @@ CREATE TABLE Employees (
 -- ========================================================================
 
 -- ------------------------------------------------------------------------
--- BẢNG 9: Attendances (Bản ghi chấm công theo ca)
+-- BẢNG 9: CompanyShiftSettings (Cấu hình ca làm việc theo từng công ty)
+-- ------------------------------------------------------------------------
+-- TimesheetCutoffDay và ngưỡng số giờ được ứng dụng hiện tại sử dụng để
+-- tính công và tự động khóa chốt công.
+IF OBJECT_ID(N'dbo.CompanyShiftSettings', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.CompanyShiftSettings (
+        CompanyId          INT PRIMARY KEY,
+        ShiftStartTime     TIME(0) NOT NULL DEFAULT '08:30:00',
+        ShiftEndTime       TIME(0) NOT NULL DEFAULT '17:30:00',
+        LunchBreakMinutes  INT NOT NULL DEFAULT 60,
+        GracePeriodMinutes INT NOT NULL DEFAULT 0,
+        TimesheetCutoffDay INT NOT NULL DEFAULT 5,
+        MinHoursHalfDay    DECIMAL(4,2) NOT NULL DEFAULT 4.00,
+        MinHoursFullDay    DECIMAL(4,2) NOT NULL DEFAULT 6.00,
+        UpdatedAt          DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        UpdatedByUserId    INT NULL,
+        CONSTRAINT FK_CompanyShiftSettings_Companies FOREIGN KEY (CompanyId)
+            REFERENCES dbo.Companies(CompanyId) ON DELETE CASCADE,
+        CONSTRAINT FK_CompanyShiftSettings_Users FOREIGN KEY (UpdatedByUserId)
+            REFERENCES dbo.Users(UserId),
+        CONSTRAINT CK_CompanyShiftSettings_Times CHECK (ShiftEndTime > ShiftStartTime),
+        CONSTRAINT CK_CompanyShiftSettings_CutoffDay CHECK (TimesheetCutoffDay BETWEEN 1 AND 31),
+        CONSTRAINT CK_CompanyShiftSettings_Hours CHECK (
+            MinHoursFullDay > MinHoursHalfDay AND MinHoursHalfDay > 0
+        )
+    );
+END;
+GO
+
+-- ------------------------------------------------------------------------
+-- BẢNG 10: Attendances (Bản ghi chấm công theo ca)
 -- ------------------------------------------------------------------------
 CREATE TABLE Attendances (
     AttendanceId BIGINT IDENTITY(1,1) PRIMARY KEY,
@@ -358,6 +389,67 @@ CREATE TABLE Attendances (
     -- Đảm bảo mỗi nhân viên chỉ có 1 bản ghi chấm công mỗi ngày
     CONSTRAINT UQ_Employee_AttendanceDate UNIQUE (EmployeeId, AttendanceDate)
 );
+GO
+
+-- ------------------------------------------------------------------------
+-- BẢNG 11: AttendanceExplanations (Giải trình chấm công và quy trình duyệt)
+-- ------------------------------------------------------------------------
+IF OBJECT_ID(N'dbo.AttendanceExplanations', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.AttendanceExplanations (
+        ExplanationId    INT IDENTITY(1,1) PRIMARY KEY,
+        CompanyId        INT NOT NULL,
+        EmployeeId       INT NOT NULL,
+        AttendanceDate   DATE NOT NULL,
+        ProposedCheckIn  TIME(0) NULL,
+        ProposedCheckOut TIME(0) NULL,
+        ReasonType       NVARCHAR(50) NOT NULL,
+        ReasonDetail     NVARCHAR(500) NOT NULL,
+        Status           NVARCHAR(20) NOT NULL DEFAULT 'PENDING',
+        ReviewerId       INT NULL,
+        ReviewerComment  NVARCHAR(500) NULL,
+        ReviewedAt       DATETIME NULL,
+        CreatedAt        DATETIME NOT NULL DEFAULT GETDATE(),
+        CONSTRAINT FK_AttExp_Company FOREIGN KEY (CompanyId)
+            REFERENCES dbo.Companies(CompanyId) ON DELETE CASCADE,
+        CONSTRAINT FK_AttExp_Employee FOREIGN KEY (EmployeeId)
+            REFERENCES dbo.Employees(EmployeeId),
+        CONSTRAINT FK_AttExp_Reviewer FOREIGN KEY (ReviewerId)
+            REFERENCES dbo.Users(UserId),
+        CONSTRAINT CK_AttExp_ReasonType CHECK (
+            ReasonType IN (N'FORGOT_PUNCH', N'BUSINESS_TRIP', N'TECHNICAL_ISSUE', N'OTHER')
+        ),
+        CONSTRAINT CK_AttExp_Status CHECK (
+            Status IN (N'PENDING', N'APPROVED', N'REJECTED', N'CANCELLED')
+        )
+    );
+END;
+GO
+
+-- ------------------------------------------------------------------------
+-- BẢNG 12: TimesheetLocks (Khóa chốt công theo tháng)
+-- ------------------------------------------------------------------------
+IF OBJECT_ID(N'dbo.TimesheetLocks', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.TimesheetLocks (
+        LockId         INT IDENTITY(1,1) PRIMARY KEY,
+        CompanyId      INT NOT NULL,
+        [Month]        INT NOT NULL,
+        [Year]         INT NOT NULL,
+        IsLocked       BIT NOT NULL DEFAULT 1,
+        LockedByUserId INT NOT NULL,
+        LockedAt       DATETIME NOT NULL DEFAULT GETDATE(),
+        Notes          NVARCHAR(255) NULL,
+        CONSTRAINT UQ_TimesheetLocks UNIQUE (CompanyId, [Month], [Year]),
+        CONSTRAINT FK_TimesheetLocks_Company FOREIGN KEY (CompanyId)
+            REFERENCES dbo.Companies(CompanyId) ON DELETE CASCADE,
+        CONSTRAINT FK_TimesheetLocks_User FOREIGN KEY (LockedByUserId)
+            REFERENCES dbo.Users(UserId),
+        CONSTRAINT CK_TimesheetLocks_Month CHECK ([Month] BETWEEN 1 AND 12),
+        CONSTRAINT CK_TimesheetLocks_Year CHECK ([Year] >= 2000)
+    );
+END;
+GO
 
 -- ========================================================================
 -- PHẦN 5: QUẢN LÝ NGHỈ PHÉP VÀ XÉT DUYỆT
@@ -365,7 +457,7 @@ CREATE TABLE Attendances (
 -- ========================================================================
 
 -- ------------------------------------------------------------------------
--- BẢNG 10: LeaveTypes (Danh mục chính sách các loại ngày nghỉ)
+-- BẢNG 14: LeaveTypes (Danh mục chính sách các loại ngày nghỉ)
 -- ------------------------------------------------------------------------
 CREATE TABLE LeaveTypes (
     LeaveTypeId INT IDENTITY(1,1) PRIMARY KEY,
