@@ -166,10 +166,14 @@
         <url-pattern>/department/department-list</url-pattern>
         <url-pattern>/department/department-list.html</url-pattern>
         <url-pattern>/department/department-form</url-pattern>
+        <url-pattern>/department/department-detail</url-pattern>
+        <url-pattern>/department/department-detail.html</url-pattern>
         <url-pattern>/department/department-form.html</url-pattern>
         <url-pattern>/position/position-list</url-pattern>
         <url-pattern>/position/position-list.html</url-pattern>
         <url-pattern>/position/position-form</url-pattern>
+        <url-pattern>/position/position-detail</url-pattern>
+        <url-pattern>/position/position-detail.html</url-pattern>
         <url-pattern>/position/position-form.html</url-pattern>
         <url-pattern>/job-title/job-title-list</url-pattern>
         <url-pattern>/job-title/job-title-list.html</url-pattern>
@@ -178,6 +182,8 @@
         <url-pattern>/responsibility-level/responsibility-level-list</url-pattern>
         <url-pattern>/responsibility-level/responsibility-level-list.html</url-pattern>
         <url-pattern>/responsibility-level/responsibility-level-form</url-pattern>
+        <url-pattern>/responsibility-level/responsibility-level-detail</url-pattern>
+        <url-pattern>/responsibility-level/responsibility-level-detail.html</url-pattern>
         <url-pattern>/responsibility-level/responsibility-level-form.html</url-pattern>
         <url-pattern>/document/employee-document-list</url-pattern>
         <url-pattern>/document/employee-document-list.html</url-pattern>

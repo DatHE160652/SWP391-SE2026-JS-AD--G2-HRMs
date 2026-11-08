@@ -67,10 +67,10 @@ function showAttendanceAlert(message, type = 'info', title = null) {
 
         let displayTitle = title;
         if (!displayTitle) {
-            if (type === 'error') displayTitle = 'Thông báo lỗi';
-            else if (type === 'success') displayTitle = 'Thao tác thành công';
-            else if (type === 'warning') displayTitle = 'Cảnh báo';
-            else displayTitle = 'Thông báo';
+            if (type === 'error') displayTitle = HrmI18n.t('Thông báo lỗi');
+            else if (type === 'success') displayTitle = HrmI18n.t('Thao tác thành công');
+            else if (type === 'warning') displayTitle = HrmI18n.t('Cảnh báo');
+            else displayTitle = HrmI18n.t('Thông báo');
         }
 
         let displayMessage = message || '';
@@ -87,12 +87,7 @@ function showAttendanceAlert(message, type = 'info', title = null) {
                     ${getCenterModalIconSvg(type)}
                 </div>
                 <h3 class="att-center-modal-title">${safe(displayTitle)}</h3>
-                <div class="att-center-modal-desc">${safe(displayMessage)}</div>
-                <div class="att-center-modal-actions">
-                    <button type="button" class="att-center-btn att-center-btn-primary" id="btnAttCenterOk">Đã hiểu</button>
-                </div>
-            </div>
-        `;
+                <div class="att-center-modal-desc">${safe(displayMessage)}${HrmI18n.fragment("</div>\n                <div class=\"att-center-modal-actions\">\n                    <button type=\"button\" class=\"att-center-btn att-center-btn-primary\" id=\"btnAttCenterOk\">Đã hiểu</button>\n                </div>\n            </div>\n        ")}`;
 
         document.body.appendChild(overlay);
 
@@ -125,10 +120,10 @@ function showAttendanceConfirm(message, options = {}) {
         const existing = document.getElementById('attendanceCenterModal');
         if (existing) existing.remove();
 
-        const title = options.title || 'Xác nhận thao tác';
+        const title = options.title || HrmI18n.t('Xác nhận thao tác');
         const type = options.type || 'confirm';
-        const confirmText = options.confirmText || 'Xác nhận';
-        const cancelText = options.cancelText || 'Hủy bỏ';
+        const confirmText = options.confirmText || HrmI18n.t('Xác nhận');
+        const cancelText = options.cancelText || HrmI18n.t('Hủy bỏ');
         const isDanger = options.isDanger || false;
 
         const overlay = document.createElement('div');
@@ -185,10 +180,10 @@ function showAttendancePrompt(message, defaultValue = '', options = {}) {
         const existing = document.getElementById('attendanceCenterModal');
         if (existing) existing.remove();
 
-        const title = options.title || 'Nhập thông tin';
-        const placeholder = options.placeholder || 'Nhập nội dung...';
-        const confirmText = options.confirmText || 'Đồng ý';
-        const cancelText = options.cancelText || 'Hủy bỏ';
+        const title = options.title || HrmI18n.t('Nhập thông tin');
+        const placeholder = options.placeholder || HrmI18n.t('Nhập nội dung...');
+        const confirmText = options.confirmText || HrmI18n.t('Đồng ý');
+        const cancelText = options.cancelText || HrmI18n.t('Hủy bỏ');
         const multiline = options.multiline || false;
 
         const overlay = document.createElement('div');
@@ -247,11 +242,6 @@ function showAttendancePrompt(message, defaultValue = '', options = {}) {
         }, 50);
     });
 }
-
-// Override window.alert for attendance flow so any popup call is centered
-window.alert = function(msg) {
-    showAttendanceAlert(msg);
-};
 
 document.addEventListener('DOMContentLoaded', async () => {
     const page = document.body.dataset.page;
@@ -319,26 +309,26 @@ async function loadPersonalAttendance() {
 
     if (!employeeId) {
         if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#667085;padding:32px;">Vui lòng chọn nhân viên để xem bảng công.</td></tr>';
+            tbody.innerHTML = HrmI18n.fragment('<tr><td colspan="8" style="text-align:center;color:#667085;padding:32px;">Vui lòng chọn nhân viên để xem bảng công.</td></tr>');
         }
         renderPersonalSummary(null);
-        showMessage('Vui lòng chọn nhân viên để xem bảng công.', 'error');
+        showMessage(HrmI18n.t('Vui lòng chọn nhân viên để xem bảng công.'), 'error');
         return;
     }
 
     if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#667085;padding:24px;">Đang tải dữ liệu...</td></tr>';
+        tbody.innerHTML = HrmI18n.fragment('<tr><td colspan="8" style="text-align:center;color:#667085;padding:24px;">Đang tải dữ liệu...</td></tr>');
     }
 
     try {
         const payload = await AttendanceApi.get(`/attendance/personal?employeeId=${employeeId}&month=${month}&year=${year}`);
         renderPersonalSummary(payload.summary, payload.data);
         renderPersonalRows(payload.data);
-        showMessage(`Đã tải dữ liệu chấm công tháng ${month}/${year}.`, 'success');
+        showMessage(`${HrmI18n.fragment("Đã tải dữ liệu chấm công tháng ")}${month}/${year}.`, 'success');
     } catch (err) {
         showMessage(err.message, 'error');
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#d92d20;padding:32px;">Lỗi: ${safe(err.message)}</td></tr>`;
+            tbody.innerHTML = `${HrmI18n.fragment("<tr><td colspan=\"8\" style=\"text-align:center;color:#d92d20;padding:32px;\">Lỗi: ")}${safe(err.message)}</td></tr>`;
         }
     }
 }
@@ -369,7 +359,7 @@ function renderPersonalSummary(summary, records) {
         } else if (records && Array.isArray(records)) {
             credits = records.reduce((sum, r) => sum + (r.workCredit !== undefined && r.workCredit !== null ? parseFloat(r.workCredit) : calculateWorkCredit(r.totalHours)), 0);
         }
-        elCredits.textContent = (credits % 1 === 0 ? credits : credits.toFixed(1)) + ' công';
+        elCredits.textContent = (credits % 1 === 0 ? credits : credits.toFixed(1)) + HrmI18n.t(' công');
     }
 
     const elHours = document.getElementById('totalHours');
@@ -381,7 +371,7 @@ function renderPersonalSummary(summary, records) {
     const elEarly = document.getElementById('earlyLeaveDays');
     if (elEarly) elEarly.textContent = s.earlyLeaveDays || 0;
     const elAbsent = document.getElementById('absentDays');
-    if (elAbsent) elAbsent.textContent = (s.absentDays || 0) + (s.onLeaveDays ? ` (${s.onLeaveDays} phép)` : '');
+    if (elAbsent) elAbsent.textContent = (s.absentDays || 0) + (s.onLeaveDays ? ` (${s.onLeaveDays}${HrmI18n.fragment(" phép)")}` : '');
 
     // Hiển thị thông báo hạn mức 5 buổi đi muộn/về sớm và cảnh báo khi > 3 buổi
     renderViolationNoticeBanner(summary, records);
@@ -417,8 +407,8 @@ function renderViolationNoticeBanner(summary, records) {
                 <line x1="12" y1="16" x2="12.01" y2="16"></line>
             </svg>
         `;
-        titleHtml = `🚨 CẢNH BÁO VI PHẠM: ĐÃ ĐẠT/VƯỢT QUÁ GIỚI HẠN ${maxAllowed} BUỔI (${totalViolations}/${maxAllowed} buổi)`;
-        reminderText = `Bạn đã đi muộn / về sớm <strong>${totalViolations}/${maxAllowed} buổi</strong> (${lateDays} lần đi muộn, ${earlyLeaveDays} lần về sớm). Theo quy định phòng ban, bạn đã chạm mức tối đa 5 buổi vi phạm trong tháng! Báo cáo chuyên cần này sẽ được gửi tới Trưởng phòng ban để xem xét xử lý kỷ luật.`;
+        titleHtml = `${HrmI18n.fragment("🚨 CẢNH BÁO VI PHẠM: ĐÃ ĐẠT/VƯỢT QUÁ GIỚI HẠN ")}${maxAllowed}${HrmI18n.fragment(" BUỔI (")}${totalViolations}/${maxAllowed}${HrmI18n.fragment(" buổi)")}`;
+        reminderText = `${HrmI18n.fragment("Bạn đã đi muộn / về sớm <strong>")}${totalViolations}/${maxAllowed}${HrmI18n.fragment(" buổi</strong> (")}${lateDays}${HrmI18n.fragment(" lần đi muộn, ")}${earlyLeaveDays}${HrmI18n.fragment(" lần về sớm). Theo quy định phòng ban, bạn đã chạm mức tối đa 5 buổi vi phạm trong tháng! Báo cáo chuyên cần này sẽ được gửi tới Trưởng phòng ban để xem xét xử lý kỷ luật.")}`;
     } else if (totalViolations > 3) {
         // > 3 buổi (cụ thể là 4 buổi): Cảnh báo vàng/cam nổi bật kèm hình cảnh báo và nhắc nhở
         bannerClass = 'warning';
@@ -429,8 +419,8 @@ function renderViolationNoticeBanner(summary, records) {
                 <line x1="12" y1="17" x2="12.01" y2="17"></line>
             </svg>
         `;
-        titleHtml = `⚠️ CẢNH BÁO GIỜ GIẤC: SỐ BUỔI ĐI MUỘN / VỀ SỚM ĐÃ TRÊN 3 BUỔI (${totalViolations}/${maxAllowed} buổi)`;
-        reminderText = `Bạn đã ghi nhận <strong>${totalViolations}/${maxAllowed} buổi</strong> đi muộn hoặc về sớm (${lateDays} lần đi muộn, ${earlyLeaveDays} lần về sớm). Bạn <strong>chỉ còn lại duy nhất ${maxAllowed - totalViolations} buổi</strong> trước khi bị xử lý kỷ luật phòng ban. Vui lòng nghiêm túc tuân thủ đúng giờ giấc làm việc để tránh bị phạt chuyên cần!`;
+        titleHtml = `${HrmI18n.fragment("⚠️ CẢNH BÁO GIỜ GIẤC: SỐ BUỔI ĐI MUỘN / VỀ SỚM ĐÃ TRÊN 3 BUỔI (")}${totalViolations}/${maxAllowed}${HrmI18n.fragment(" buổi)")}`;
+        reminderText = `${HrmI18n.fragment("Bạn đã ghi nhận <strong>")}${totalViolations}/${maxAllowed}${HrmI18n.fragment(" buổi</strong> đi muộn hoặc về sớm (")}${lateDays}${HrmI18n.fragment(" lần đi muộn, ")}${earlyLeaveDays}${HrmI18n.fragment(" lần về sớm). Bạn <strong>chỉ còn lại duy nhất ")}${maxAllowed - totalViolations}${HrmI18n.fragment(" buổi</strong> trước khi bị xử lý kỷ luật phòng ban. Vui lòng nghiêm túc tuân thủ đúng giờ giấc làm việc để tránh bị phạt chuyên cần!")}`;
     } else {
         // <= 3 buổi: Trạng thái bình thường / an toàn kèm thông báo nhắc nhở hạn mức
         bannerClass = 'safe';
@@ -440,8 +430,8 @@ function renderViolationNoticeBanner(summary, records) {
                 <polyline points="22 4 12 14.01 9 11.01"></polyline>
             </svg>
         `;
-        titleHtml = `Tình trạng giờ giấc phòng ban: ${totalViolations}/${maxAllowed} buổi vi phạm`;
-        reminderText = `Quy định phòng ban cho phép tối đa <strong>${maxAllowed} buổi</strong> đi muộn hoặc về sớm mỗi tháng. Hiện tại bạn đã ghi nhận <strong>${totalViolations}/${maxAllowed} buổi</strong> (${lateDays} lần đi muộn, ${earlyLeaveDays} lần về sớm) - Còn lại <strong>${maxAllowed - totalViolations} buổi</strong>. Hãy tiếp tục duy trì tác phong làm việc đúng giờ!`;
+        titleHtml = `${HrmI18n.fragment("Tình trạng giờ giấc phòng ban: ")}${totalViolations}/${maxAllowed}${HrmI18n.fragment(" buổi vi phạm")}`;
+        reminderText = `${HrmI18n.fragment("Quy định phòng ban cho phép tối đa <strong>")}${maxAllowed}${HrmI18n.fragment(" buổi</strong> đi muộn hoặc về sớm mỗi tháng. Hiện tại bạn đã ghi nhận <strong>")}${totalViolations}/${maxAllowed}${HrmI18n.fragment(" buổi</strong> (")}${lateDays}${HrmI18n.fragment(" lần đi muộn, ")}${earlyLeaveDays}${HrmI18n.fragment(" lần về sớm) - Còn lại <strong>")}${maxAllowed - totalViolations}${HrmI18n.fragment(" buổi</strong>. Hãy tiếp tục duy trì tác phong làm việc đúng giờ!")}`;
     }
 
     const percent = Math.min(100, Math.round((totalViolations / maxAllowed) * 100));
@@ -457,9 +447,7 @@ function renderViolationNoticeBanner(summary, records) {
                 ${titleHtml}
             </div>
             <div class="attendance-quota-desc">
-                ${reminderText}
-            </div>
-            <div class="attendance-quota-progress-track" title="Tỷ lệ sử dụng hạn mức vi phạm: ${percent}%">
+                ${reminderText}${HrmI18n.fragment("\n            </div>\n            <div class=\"attendance-quota-progress-track\" title=\"Tỷ lệ sử dụng hạn mức vi phạm: ")}${percent}%">
                 <div class="attendance-quota-progress-bar" style="width: ${percent}%;"></div>
             </div>
         </div>
@@ -470,25 +458,25 @@ function renderPersonalRows(records) {
     const tbody = document.getElementById('attendanceRows');
     if (!tbody) return;
     if (!records || records.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#667085;padding:32px;">Không có bản ghi chấm công nào trong tháng này.</td></tr>';
+        tbody.innerHTML = HrmI18n.fragment('<tr><td colspan="8" style="text-align:center;color:#667085;padding:32px;">Không có bản ghi chấm công nào trong tháng này.</td></tr>');
         return;
     }
 
     tbody.innerHTML = records.map(r => {
         const dateObj = new Date(r.attendanceDate);
-        const dayOfWeek = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'][dateObj.getDay()];
+        const dayOfWeek = [HrmI18n.t('Chủ nhật'), HrmI18n.t('Thứ hai'), HrmI18n.t('Thứ ba'), HrmI18n.t('Thứ tư'), HrmI18n.t('Thứ năm'), HrmI18n.t('Thứ sáu'), HrmI18n.t('Thứ bảy')][dateObj.getDay()];
         const st = (r.status || '').toLowerCase();
         let badgeHtml = '';
         if (st.includes('late') || st.includes('muộn') || st.includes('trễ')) {
-            badgeHtml = '<span class="badge badge-late">Đi muộn</span>';
+            badgeHtml = HrmI18n.fragment('<span class="badge badge-late">Đi muộn</span>');
         } else if (st.includes('early') || st.includes('sớm')) {
-            badgeHtml = '<span class="badge badge-early">Về sớm</span>';
+            badgeHtml = HrmI18n.fragment('<span class="badge badge-early">Về sớm</span>');
         } else if (st.includes('leave') || st.includes('phép')) {
-            badgeHtml = '<span class="badge badge-onleave">Nghỉ phép</span>';
+            badgeHtml = HrmI18n.fragment('<span class="badge badge-onleave">Nghỉ phép</span>');
         } else if (st.includes('absent') || st.includes('vắng')) {
-            badgeHtml = '<span class="badge badge-absent">Vắng mặt</span>';
+            badgeHtml = HrmI18n.fragment('<span class="badge badge-absent">Vắng mặt</span>');
         } else {
-            badgeHtml = '<span class="badge badge-present">Đúng giờ</span>';
+            badgeHtml = HrmI18n.fragment('<span class="badge badge-present">Đúng giờ</span>');
         }
 
         const credit = r.workCredit !== undefined && r.workCredit !== null
@@ -497,11 +485,11 @@ function renderPersonalRows(records) {
 
         let creditBadgeHtml = '';
         if (credit >= 1.0) {
-            creditBadgeHtml = '<span class="badge" style="background:#ecfdf3;color:#027a48;font-weight:700;">1 công</span>';
+            creditBadgeHtml = HrmI18n.fragment('<span class="badge" style="background:#ecfdf3;color:#027a48;font-weight:700;">1 công</span>');
         } else if (credit >= 0.5) {
-            creditBadgeHtml = '<span class="badge" style="background:#fffaeb;color:#b54708;font-weight:700;">0.5 công</span>';
+            creditBadgeHtml = HrmI18n.fragment('<span class="badge" style="background:#fffaeb;color:#b54708;font-weight:700;">0.5 công</span>');
         } else {
-            creditBadgeHtml = '<span class="badge" style="background:#f2f4f7;color:#667085;font-weight:600;">0 công</span>';
+            creditBadgeHtml = HrmI18n.fragment('<span class="badge" style="background:#f2f4f7;color:#667085;font-weight:600;">0 công</span>');
         }
 
         return `
@@ -515,13 +503,7 @@ function renderPersonalRows(records) {
                 <td>${badgeHtml}</td>
                 <td><span class="text-muted">${safe(r.note)}</span></td>
                 <td style="text-align:center;">
-                    <button class="button small secondary btn-open-exp-modal" data-date="${safe(r.attendanceDate)}" data-in="${r.checkInTime || '08:30:00'}" data-out="${r.checkOutTime || '17:30:00'}" style="padding:4px 8px;font-size:12px;display:inline-flex;align-items:center;gap:4px;">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                        Giải trình
-                    </button>
-                </td>
-            </tr>
-        `;
+                    <button class="button small secondary btn-open-exp-modal" data-date="${safe(r.attendanceDate)}" data-in="${r.checkInTime || '08:30:00'}" data-out="${r.checkOutTime || '17:30:00'}${HrmI18n.fragment("\" style=\"padding:4px 8px;font-size:12px;display:inline-flex;align-items:center;gap:4px;\">\n                        <svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M12 20h9\"></path><path d=\"M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z\"></path></svg>\n                        Giải trình\n                    </button>\n                </td>\n            </tr>\n        ")}`;
     }).join('');
 
     document.querySelectorAll('.btn-open-exp-modal').forEach(btn => {
@@ -569,13 +551,13 @@ async function initManagerAttendance() {
             currentRoleFilter = btn.dataset.role || 'ALL';
             
             const labelMap = {
-                'ALL': 'Tất cả nhân sự',
-                'MANAGER': 'Cấp Quản lý (Manager)',
-                'EMPLOYEE': 'Nhân viên (Employee)'
+                'ALL': HrmI18n.t('Tất cả nhân sự'),
+                'MANAGER': HrmI18n.t('Cấp Quản lý (Manager)'),
+                'EMPLOYEE': HrmI18n.t('Nhân viên (Employee)')
             };
             const statusLabel = document.getElementById('filterStatusText');
             if (statusLabel) {
-                statusLabel.textContent = labelMap[currentRoleFilter] || 'Tất cả nhân sự';
+                statusLabel.textContent = labelMap[currentRoleFilter] || HrmI18n.t('Tất cả nhân sự');
             }
             renderAllAttendanceTable();
         });
@@ -682,7 +664,7 @@ async function loadAllAttendance() {
         updateAllCounters(currentAttendanceList);
         updateRoleTabCounts(currentAttendanceList);
         renderAllAttendanceTable();
-        showMessage(`Đã tải danh sách điểm danh toàn bộ nhân sự ngày ${date}.`, 'success');
+        showMessage(`${HrmI18n.fragment("Đã tải danh sách điểm danh toàn bộ nhân sự ngày ")}${date}.`, 'success');
     } catch (err) {
         showMessage(err.message, 'error');
     }
@@ -768,7 +750,7 @@ function renderAllAttendanceTable() {
     }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#667085;padding:36px;">Không tìm thấy nhân sự nào phù hợp với bộ lọc hiện tại.</td></tr>';
+        tbody.innerHTML = HrmI18n.fragment('<tr><td colspan="10" style="text-align:center;color:#667085;padding:36px;">Không tìm thấy nhân sự nào phù hợp với bộ lọc hiện tại.</td></tr>');
         resetBatchState();
         return;
     }
@@ -781,15 +763,15 @@ function renderAllAttendanceTable() {
         let statusBadge = '';
         const st = m.status || '';
         if (st === 'Present') {
-            statusBadge = '<span class="badge badge-present">Có mặt</span>';
+            statusBadge = HrmI18n.fragment('<span class="badge badge-present">Có mặt</span>');
         } else if (st === 'Late') {
-            statusBadge = '<span class="badge badge-late">Đi muộn</span>';
+            statusBadge = HrmI18n.fragment('<span class="badge badge-late">Đi muộn</span>');
         } else if (st === 'Early Leave') {
-            statusBadge = '<span class="badge badge-early">Về sớm</span>';
+            statusBadge = HrmI18n.fragment('<span class="badge badge-early">Về sớm</span>');
         } else if (st === 'On Leave') {
-            statusBadge = '<span class="badge badge-onleave">Nghỉ phép</span>';
+            statusBadge = HrmI18n.fragment('<span class="badge badge-onleave">Nghỉ phép</span>');
         } else {
-            statusBadge = '<span class="badge badge-absent">Chưa vào ca</span>';
+            statusBadge = HrmI18n.fragment('<span class="badge badge-absent">Chưa vào ca</span>');
         }
 
         // Role badge
@@ -797,8 +779,8 @@ function renderAllAttendanceTable() {
         const pos = (m.positionTitle || '').toLowerCase();
         const isMgr = role === 'MANAGER' || role === 'COMPANY_ADMIN' || pos.includes('quản lý') || pos.includes('trưởng');
         const roleBadge = isMgr
-            ? '<span class="badge RoleBadge Manager">Quản lý</span>'
-            : '<span class="badge RoleBadge Employee">Nhân viên</span>';
+            ? HrmI18n.fragment('<span class="badge RoleBadge Manager">Quản lý</span>')
+            : HrmI18n.fragment('<span class="badge RoleBadge Employee">Nhân viên</span>');
 
         const todayStr = new Date().toISOString().split('T')[0];
         const isToday = (date === todayStr);
@@ -808,26 +790,14 @@ function renderAllAttendanceTable() {
         let btnCheckInHtml = '';
         if (!hasCheckIn) {
             btnCheckInHtml = `
-                <button class="button btn-checkin" style="padding:5px 9px; font-size:12px; display:inline-flex; align-items:center; gap:3px;" onclick="performSingleCheckIn(${m.employeeId}, '${date}', '${escapeAttr(m.fullName)}')">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
-                    Vào ca
-                </button>
-            `;
+                <button class="button btn-checkin" style="padding:5px 9px; font-size:12px; display:inline-flex; align-items:center; gap:3px;" onclick="performSingleCheckIn(${m.employeeId}, '${date}', '${escapeAttr(m.fullName)}${HrmI18n.fragment("')\">\n                    <svg width=\"11\" height=\"11\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\"><path d=\"M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4\"></path><polyline points=\"10 17 15 12 10 7\"></polyline><line x1=\"15\" y1=\"12\" x2=\"3\" y2=\"12\"></line></svg>\n                    Vào ca\n                </button>\n            ")}`;
         } else {
-            btnCheckInHtml = `
-                <button class="button" disabled style="padding:5px 8px; font-size:11px; font-weight:600; background:#ecfdf3; color:#027a48; border:1px solid #abefc6; cursor:default;" title="Đã ghi nhận vào ca: ${m.checkInTime}">
-                    ✓ Đã vào
-                </button>
-            `;
+            btnCheckInHtml = `${HrmI18n.fragment("\n                <button class=\"button\" disabled style=\"padding:5px 8px; font-size:11px; font-weight:600; background:#ecfdf3; color:#027a48; border:1px solid #abefc6; cursor:default;\" title=\"Đã ghi nhận vào ca: ")}${m.checkInTime}${HrmI18n.fragment("\">\n                    ✓ Đã vào\n                </button>\n            ")}`;
         }
 
         let btnCheckOutHtml = '';
         if (!hasCheckIn) {
-            btnCheckOutHtml = `
-                <button class="button" disabled style="padding:5px 8px; font-size:11px; background:#f2f4f7; color:#98a2b3; border:1px solid #eaecf0; cursor:not-allowed;" title="Chưa vào ca, không thể tan ca">
-                    Tan ca
-                </button>
-            `;
+            btnCheckOutHtml = `${HrmI18n.fragment("\n                <button class=\"button\" disabled style=\"padding:5px 8px; font-size:11px; background:#f2f4f7; color:#98a2b3; border:1px solid #eaecf0; cursor:not-allowed;\" title=\"Chưa vào ca, không thể tan ca\">\n                    Tan ca\n                </button>\n            ")}`;
         } else if (!hasCheckOut) {
             btnCheckOutHtml = `
                 <button class="button btn-checkout" style="padding:5px 9px; font-size:12px; display:inline-flex; align-items:center; gap:3px;" onclick="performSingleCheckOut(${m.employeeId}, '${date}', '${escapeAttr(m.fullName)}')">
@@ -836,19 +806,15 @@ function renderAllAttendanceTable() {
                 </button>
             `;
         } else {
-            btnCheckOutHtml = `
-                <button class="button" disabled style="padding:5px 8px; font-size:11px; font-weight:600; background:#fef3f2; color:#b42318; border:1px solid #fee4e2; cursor:default;" title="Đã ghi nhận tan ca: ${m.checkOutTime}">
-                    ✓ Đã tan
-                </button>
-            `;
+            btnCheckOutHtml = `${HrmI18n.fragment("\n                <button class=\"button\" disabled style=\"padding:5px 8px; font-size:11px; font-weight:600; background:#fef3f2; color:#b42318; border:1px solid #fee4e2; cursor:default;\" title=\"Đã ghi nhận tan ca: ")}${m.checkOutTime}${HrmI18n.fragment("\">\n                    ✓ Đã tan\n                </button>\n            ")}`;
         }
 
         const manualBadge = m.manualAdjusted
-            ? '<span class="badge badge-manual" title="Điểm danh bổ sung thủ công" style="font-size:10.5px; padding:2px 5px;">Bổ sung</span>'
+            ? HrmI18n.fragment('<span class="badge badge-manual" title="Điểm danh bổ sung thủ công" style="font-size:10.5px; padding:2px 5px;">Bổ sung</span>')
             : '';
 
         const expBadge = m.pendingExplanationId
-            ? `<span class="badge" style="background:#fef08a; color:#854d0e; font-size:10.5px; font-weight:700; border:1px solid #fde047;" title="Đơn giải trình: ${escapeAttr(m.explanationReason || '')}">Có giải trình</span>`
+            ? `${HrmI18n.fragment("<span class=\"badge\" style=\"background:#fef08a; color:#854d0e; font-size:10.5px; font-weight:700; border:1px solid #fde047;\" title=\"Đơn giải trình: ")}${escapeAttr(m.explanationReason || '')}${HrmI18n.fragment("\">Có giải trình</span>")}`
             : '';
 
         let actionHtml = '';
@@ -861,19 +827,12 @@ function renderAllAttendanceTable() {
             `;
         } else if (isPast) {
             if (m.pendingExplanationId) {
-                actionHtml = `
-                    <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
-                        <button class="button small" style="background:#059669; border-color:#059669; color:#fff; padding:4px 9px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:3px; border-radius:6px; cursor:pointer;" onclick="openExplanationsModal()" title="Nhân viên có đơn giải trình: ${escapeAttr(m.explanationReason || '')}. Bấm để mở duyệt đơn giải trình">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-                            Duyệt giải trình
-                        </button>
-                    </div>
-                `;
+                actionHtml = `${HrmI18n.fragment("\n                    <div style=\"display:flex; align-items:center; justify-content:center; gap:5px;\">\n                        <button class=\"button small\" style=\"background:#059669; border-color:#059669; color:#fff; padding:4px 9px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:3px; border-radius:6px; cursor:pointer;\" onclick=\"openExplanationsModal()\" title=\"Nhân viên có đơn giải trình: ")}${escapeAttr(m.explanationReason || '')}${HrmI18n.fragment(". Bấm để mở duyệt đơn giải trình\">\n                            <svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\"><path d=\"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\"></path><polyline points=\"14 2 14 8 20 8\"></polyline><line x1=\"16\" y1=\"13\" x2=\"8\" y2=\"13\"></line><line x1=\"16\" y1=\"17\" x2=\"8\" y2=\"17\"></line></svg>\n                            Duyệt giải trình\n                        </button>\n                    </div>\n                ")}`;
             } else {
                 actionHtml = `<span style="font-size:12px; color:#98a2b3; font-style:italic;">--</span>`;
             }
         } else {
-            actionHtml = `<span style="font-size:12px; color:#98a2b3;">Chưa đến ngày</span>`;
+            actionHtml = `${HrmI18n.fragment("<span style=\"font-size:12px; color:#98a2b3;\">Chưa đến ngày</span>")}`;
         }
 
         const empStatusBadge = m.employeeStatus && m.employeeStatus !== 'Active'
@@ -920,11 +879,11 @@ function updateBatchButtonState() {
     if (count === 0) {
         if (btnIn) {
             btnIn.disabled = true;
-            btnIn.title = 'Vui lòng tích chọn nhân sự để thực hiện Vào ca';
+            btnIn.title = HrmI18n.t('Vui lòng tích chọn nhân sự để thực hiện Vào ca');
         }
         if (btnOut) {
             btnOut.disabled = true;
-            btnOut.title = 'Vui lòng tích chọn nhân sự để thực hiện Tan ca';
+            btnOut.title = HrmI18n.t('Vui lòng tích chọn nhân sự để thực hiện Tan ca');
         }
     } else {
         const checkedIdSet = new Set(Array.from(checked).map(cb => Number(cb.value)));
@@ -935,14 +894,14 @@ function updateBatchButtonState() {
         if (btnIn) {
             btnIn.disabled = (needCheckIn === 0);
             btnIn.title = needCheckIn > 0
-                ? `Điểm danh Vào ca cho ${needCheckIn} nhân sự chưa vào ca (${selectedMembers.length - needCheckIn} nhân sự đã vào ca sẽ được giữ nguyên)`
-                : 'Tất cả nhân sự được chọn đã vào ca trước đó';
+                ? `${HrmI18n.fragment("Điểm danh Vào ca cho ")}${needCheckIn}${HrmI18n.fragment(" nhân sự chưa vào ca (")}${selectedMembers.length - needCheckIn}${HrmI18n.fragment(" nhân sự đã vào ca sẽ được giữ nguyên)")}`
+                : HrmI18n.t('Tất cả nhân sự được chọn đã vào ca trước đó');
         }
         if (btnOut) {
             btnOut.disabled = (needCheckOut === 0);
             btnOut.title = needCheckOut > 0
-                ? `Điểm danh Tan ca cho ${needCheckOut} nhân sự đang làm việc`
-                : 'Không có nhân sự nào được chọn đang làm việc cần điểm danh Tan ca';
+                ? `${HrmI18n.fragment("Điểm danh Tan ca cho ")}${needCheckOut}${HrmI18n.fragment(" nhân sự đang làm việc")}`
+                : HrmI18n.t('Không có nhân sự nào được chọn đang làm việc cần điểm danh Tan ca');
         }
     }
 
@@ -965,8 +924,8 @@ function resetBatchState() {
 async function performBatchAttendanceAction(action) {
     const checked = Array.from(document.querySelectorAll('.emp-checkbox:checked')).map(cb => cb.value);
     if (checked.length === 0) {
-        showMessage(`Vui lòng tích chọn ít nhất một nhân sự để thực hiện điểm danh.`, 'error');
-        await showAttendanceAlert('Vui lòng tích chọn ít nhất một nhân sự để thực hiện điểm danh.', 'warning');
+        showMessage(`${HrmI18n.fragment("Vui lòng tích chọn ít nhất một nhân sự để thực hiện điểm danh.")}`, 'error');
+        await showAttendanceAlert(HrmI18n.t('Vui lòng tích chọn ít nhất một nhân sự để thực hiện điểm danh.'), 'warning');
         return;
     }
 
@@ -978,28 +937,28 @@ async function performBatchAttendanceAction(action) {
     const selectedMembers = (currentAttendanceList || []).filter(m => checkedIdSet.has(m.employeeId));
 
     let confirmPrompt = '';
-    let confirmTitle = 'Xác nhận điểm danh hàng loạt';
-    let confirmBtnText = 'Điểm danh ngay';
+    let confirmTitle = HrmI18n.t('Xác nhận điểm danh hàng loạt');
+    let confirmBtnText = HrmI18n.t('Điểm danh ngay');
 
     if (action === 'check-in') {
-        confirmTitle = 'Xác nhận Vào ca hàng loạt (Check-in)';
-        confirmBtnText = 'Vào ca ngay';
+        confirmTitle = HrmI18n.t('Xác nhận Vào ca hàng loạt (Check-in)');
+        confirmBtnText = HrmI18n.t('Vào ca ngay');
         const eligible = selectedMembers.filter(m => !m.checkInTime);
         const alreadyDone = selectedMembers.filter(m => !!m.checkInTime);
 
         if (eligible.length === 0) {
-            showMessage('Tất cả các nhân sự được chọn đã được điểm danh Vào ca trước đó.', 'warning');
-            await showAttendanceAlert('Tất cả các nhân sự được chọn đã được điểm danh Vào ca trước đó.', 'warning');
+            showMessage(HrmI18n.t('Tất cả các nhân sự được chọn đã được điểm danh Vào ca trước đó.'), 'warning');
+            await showAttendanceAlert(HrmI18n.t('Tất cả các nhân sự được chọn đã được điểm danh Vào ca trước đó.'), 'warning');
             return;
         }
 
         if (alreadyDone.length > 0) {
-            confirmPrompt = `Xác nhận Vào ca (Check-in) cho [${eligible.length} nhân sự] chưa vào ca vào ngày ${date}?\n(${alreadyDone.length} nhân sự đã vào ca trước đó sẽ được giữ nguyên dữ liệu).`;
+            confirmPrompt = `${HrmI18n.fragment("Xác nhận Vào ca (Check-in) cho [")}${eligible.length}${HrmI18n.fragment(" nhân sự] chưa vào ca vào ngày ")}${date}?\n(${alreadyDone.length}${HrmI18n.fragment(" nhân sự đã vào ca trước đó sẽ được giữ nguyên dữ liệu).")}`;
         } else {
-            confirmPrompt = `Xác nhận Vào ca (Check-in) cho [${eligible.length} nhân sự] đã chọn vào ngày ${date}?`;
+            confirmPrompt = `${HrmI18n.fragment("Xác nhận Vào ca (Check-in) cho [")}${eligible.length}${HrmI18n.fragment(" nhân sự] đã chọn vào ngày ")}${date}?`;
         }
     } else if (action === 'check-out') {
-        confirmTitle = 'Xác nhận Tan ca hàng loạt (Check-out)';
+        confirmTitle = HrmI18n.t('Xác nhận Tan ca hàng loạt (Check-out)');
         confirmBtnText = 'Tan ca ngay';
         const eligible = selectedMembers.filter(m => m.checkInTime && !m.checkOutTime);
         const notEligible = selectedMembers.filter(m => !m.checkInTime || !!m.checkOutTime);
@@ -1007,28 +966,28 @@ async function performBatchAttendanceAction(action) {
         if (eligible.length === 0) {
             const noneCheckedIn = selectedMembers.every(m => !m.checkInTime);
             const msg = noneCheckedIn
-                ? 'Các nhân sự được chọn chưa điểm danh Vào ca nên chưa thể thực hiện Tan ca.'
-                : 'Tất cả các nhân sự được chọn đã hoàn tất điểm danh Tan ca trước đó.';
+                ? HrmI18n.t('Các nhân sự được chọn chưa điểm danh Vào ca nên chưa thể thực hiện Tan ca.')
+                : HrmI18n.t('Tất cả các nhân sự được chọn đã hoàn tất điểm danh Tan ca trước đó.');
             showMessage(msg, 'warning');
             await showAttendanceAlert(msg, 'warning');
             return;
         }
 
         if (notEligible.length > 0) {
-            confirmPrompt = `Xác nhận Tan ca (Check-out) cho [${eligible.length} nhân sự] đang làm việc vào ngày ${date}?\n(${notEligible.length} nhân sự chưa vào ca hoặc đã tan ca sẽ được bỏ qua).`;
+            confirmPrompt = `${HrmI18n.fragment("Xác nhận Tan ca (Check-out) cho [")}${eligible.length}${HrmI18n.fragment(" nhân sự] đang làm việc vào ngày ")}${date}?\n(${notEligible.length}${HrmI18n.fragment(" nhân sự chưa vào ca hoặc đã tan ca sẽ được bỏ qua).")}`;
         } else {
-            confirmPrompt = `Xác nhận Tan ca (Check-out) cho [${eligible.length} nhân sự] đã chọn vào ngày ${date}?`;
+            confirmPrompt = `${HrmI18n.fragment("Xác nhận Tan ca (Check-out) cho [")}${eligible.length}${HrmI18n.fragment(" nhân sự] đã chọn vào ngày ")}${date}?`;
         }
     } else { // 'auto' fallback
         action = 'auto';
-        confirmTitle = 'Xác nhận hoàn tất điểm danh hàng loạt';
+        confirmTitle = HrmI18n.t('Xác nhận hoàn tất điểm danh hàng loạt');
         const eligible = selectedMembers.filter(m => !m.checkInTime || !m.checkOutTime);
         if (eligible.length === 0) {
-            showMessage('Tất cả các nhân sự được chọn đã hoàn thành cả Vào ca và Tan ca hôm nay.', 'warning');
-            await showAttendanceAlert('Tất cả các nhân sự được chọn đã hoàn thành cả Vào ca và Tan ca hôm nay.', 'warning');
+            showMessage(HrmI18n.t('Tất cả các nhân sự được chọn đã hoàn thành cả Vào ca và Tan ca hôm nay.'), 'warning');
+            await showAttendanceAlert(HrmI18n.t('Tất cả các nhân sự được chọn đã hoàn thành cả Vào ca và Tan ca hôm nay.'), 'warning');
             return;
         }
-        confirmPrompt = `Xác nhận điểm danh tự động cho [${checked.length} nhân sự] đã chọn vào ngày ${date}?`;
+        confirmPrompt = `${HrmI18n.fragment("Xác nhận điểm danh tự động cho [")}${checked.length}${HrmI18n.fragment(" nhân sự] đã chọn vào ngày ")}${date}?`;
     }
 
     const confirmed = await showAttendanceConfirm(confirmPrompt, {
@@ -1046,8 +1005,8 @@ async function performBatchAttendanceAction(action) {
             date: date
         });
 
-        showMessage(payload.message || `Điểm danh thành công!`, 'success');
-        await showAttendanceAlert(payload.message || 'Điểm danh hàng loạt thành công!', 'success');
+        showMessage(payload.message || `${HrmI18n.fragment("Điểm danh thành công!")}`, 'success');
+        await showAttendanceAlert(payload.message || HrmI18n.t('Điểm danh hàng loạt thành công!'), 'success');
         if (payload.data) {
             currentAttendanceList = payload.data;
             updateAllCounters(currentAttendanceList);
@@ -1064,17 +1023,17 @@ async function performBatchAttendanceAction(action) {
 
 // Single Check-In Action
 async function performSingleCheckIn(employeeId, date, name) {
-    const confirmed = await showAttendanceConfirm(`Xác nhận ĐIỂM DANH VÀO CA (Check-in) cho [${name}] vào ngày ${date}?`, {
-        title: 'Điểm danh Vào ca',
-        confirmText: 'Vào ca'
+    const confirmed = await showAttendanceConfirm(`${HrmI18n.fragment("Xác nhận ĐIỂM DANH VÀO CA (Check-in) cho [")}${name}${HrmI18n.fragment("] vào ngày ")}${date}?`, {
+        title: HrmI18n.t('Điểm danh Vào ca'),
+        confirmText: HrmI18n.t('Vào ca')
     });
     if (!confirmed) {
         return;
     }
     try {
         const payload = await AttendanceApi.post('/attendance/check-in', { employeeId, date });
-        showMessage(payload.message || 'Vào ca thành công!', 'success');
-        await showAttendanceAlert(payload.message || 'Vào ca thành công!', 'success');
+        showMessage(payload.message || HrmI18n.t('Vào ca thành công!'), 'success');
+        await showAttendanceAlert(payload.message || HrmI18n.t('Vào ca thành công!'), 'success');
         await loadAllAttendance();
     } catch (err) {
         showMessage(err.message, 'error');
@@ -1084,8 +1043,8 @@ async function performSingleCheckIn(employeeId, date, name) {
 
 // Single Check-Out Action
 async function performSingleCheckOut(employeeId, date, name) {
-    const confirmed = await showAttendanceConfirm(`Xác nhận ĐIỂM DANH TAN CA (Check-out) cho [${name}] vào ngày ${date}?`, {
-        title: 'Điểm danh Tan ca',
+    const confirmed = await showAttendanceConfirm(`${HrmI18n.fragment("Xác nhận ĐIỂM DANH TAN CA (Check-out) cho [")}${name}${HrmI18n.fragment("] vào ngày ")}${date}?`, {
+        title: HrmI18n.t('Điểm danh Tan ca'),
         confirmText: 'Tan ca'
     });
     if (!confirmed) {
@@ -1093,8 +1052,8 @@ async function performSingleCheckOut(employeeId, date, name) {
     }
     try {
         const payload = await AttendanceApi.post('/attendance/check-out', { employeeId, date });
-        showMessage(payload.message || 'Tan ca thành công!', 'success');
-        await showAttendanceAlert(payload.message || 'Tan ca thành công!', 'success');
+        showMessage(payload.message || HrmI18n.t('Tan ca thành công!'), 'success');
+        await showAttendanceAlert(payload.message || HrmI18n.t('Tan ca thành công!'), 'success');
         await loadAllAttendance();
     } catch (err) {
         showMessage(err.message, 'error');
@@ -1130,7 +1089,7 @@ function updateShiftBanner(setting) {
     if (endEl && setting.shiftEndTime) endEl.textContent = setting.shiftEndTime.substring(0, 5);
     if (lunchEl && setting.lunchBreakMinutes !== undefined) lunchEl.textContent = setting.lunchBreakMinutes;
     if (graceEl) {
-        graceEl.textContent = (setting.gracePeriodMinutes > 0) ? ` (ân hạn ${setting.gracePeriodMinutes} phút)` : '';
+        graceEl.textContent = (setting.gracePeriodMinutes > 0) ? `${HrmI18n.fragment(" (ân hạn ")}${setting.gracePeriodMinutes}${HrmI18n.fragment(" phút)")}` : '';
     }
 }
 
@@ -1167,8 +1126,8 @@ async function openShiftModal() {
         const metaEl = document.getElementById('shiftSettingMetaInfo');
         if (metaEl) {
             metaEl.textContent = currentShiftSetting.updatedAt
-                ? `Lần cập nhật gần nhất: ${currentShiftSetting.updatedAt} bởi ${currentShiftSetting.updatedByName || 'Hệ thống'}.`
-                : 'Đang áp dụng thiết lập mặc định của công ty.';
+                ? `${HrmI18n.fragment("Lần cập nhật gần nhất: ")}${currentShiftSetting.updatedAt}${HrmI18n.fragment(" bởi ")}${currentShiftSetting.updatedByName || HrmI18n.t('Hệ thống')}.`
+                : HrmI18n.t('Đang áp dụng thiết lập mặc định của công ty.');
         }
     }
 
@@ -1235,31 +1194,31 @@ async function saveShiftSetting() {
     const minHoursFullDay = parseFloat(document.getElementById('inputMinHoursFullDay')?.value || '6.0');
 
     if (!startTime || !endTime) {
-        const msg = 'Vui lòng nhập đầy đủ giờ vào ca và giờ tan ca.';
+        const msg = HrmI18n.t('Vui lòng nhập đầy đủ giờ vào ca và giờ tan ca.');
         showShiftModalMessage(msg, 'error');
         await showAttendanceAlert(msg, 'warning');
         return;
     }
     if (endTime <= startTime) {
-        const msg = 'Giờ kết thúc ca làm việc phải sau giờ bắt đầu ca.';
+        const msg = HrmI18n.t('Giờ kết thúc ca làm việc phải sau giờ bắt đầu ca.');
         showShiftModalMessage(msg, 'error');
         await showAttendanceAlert(msg, 'warning');
         return;
     }
     if (isNaN(cutoffDay) || cutoffDay < 1 || cutoffDay > 31) {
-        const msg = 'Ngày chốt công hàng tháng phải từ ngày 1 đến ngày 31.';
+        const msg = HrmI18n.t('Ngày chốt công hàng tháng phải từ ngày 1 đến ngày 31.');
         showShiftModalMessage(msg, 'error');
         await showAttendanceAlert(msg, 'warning');
         return;
     }
     if (isNaN(minHoursHalfDay) || minHoursHalfDay <= 0 || minHoursHalfDay > 24) {
-        const msg = 'Mốc giờ tối thiểu tính nửa công (0.5 công) phải lớn hơn 0 và nhỏ hơn 24.';
+        const msg = HrmI18n.t('Mốc giờ tối thiểu tính nửa công (0.5 công) phải lớn hơn 0 và nhỏ hơn 24.');
         showShiftModalMessage(msg, 'error');
         await showAttendanceAlert(msg, 'warning');
         return;
     }
     if (isNaN(minHoursFullDay) || minHoursFullDay <= minHoursHalfDay || minHoursFullDay > 24) {
-        const msg = 'Mốc giờ tính 1.0 công phải lớn hơn mốc tính nửa công (0.5 công).';
+        const msg = HrmI18n.t('Mốc giờ tính 1.0 công phải lớn hơn mốc tính nửa công (0.5 công).');
         showShiftModalMessage(msg, 'error');
         await showAttendanceAlert(msg, 'warning');
         return;
@@ -1268,7 +1227,7 @@ async function saveShiftSetting() {
     const saveBtn = document.getElementById('btnSaveShiftSetting');
     if (saveBtn) {
         saveBtn.disabled = true;
-        saveBtn.textContent = 'Đang lưu...';
+        saveBtn.textContent = HrmI18n.t('Đang lưu...');
     }
 
     try {
@@ -1286,21 +1245,21 @@ async function saveShiftSetting() {
             currentShiftSetting = payload.data;
             updateShiftBanner(currentShiftSetting);
         }
-        showMessage(payload.message || 'Cập nhật giờ giấc làm việc & ngày chốt công thành công!', 'success');
+        showMessage(payload.message || HrmI18n.t('Cập nhật giờ giấc làm việc & ngày chốt công thành công!'), 'success');
         closeShiftModal();
-        await showAttendanceAlert(payload.message || 'Cập nhật cấu hình giờ giấc & ngày chốt công thành công!', 'success');
+        await showAttendanceAlert(payload.message || HrmI18n.t('Cập nhật cấu hình giờ giấc & ngày chốt công thành công!'), 'success');
         if (typeof searchCompanyAttendance === 'function' && document.getElementById('companyAttendanceRows')) {
             await searchCompanyAttendance();
         } else if (typeof loadAllAttendance === 'function' && document.getElementById('teamAttendanceRows')) {
             await loadAllAttendance();
         }
     } catch (err) {
-        showShiftModalMessage(err.message || 'Lỗi khi lưu cài đặt.', 'error');
-        await showAttendanceAlert(err.message || 'Lỗi khi lưu cài đặt.', 'error');
+        showShiftModalMessage(err.message || HrmI18n.t('Lỗi khi lưu cài đặt.'), 'error');
+        await showAttendanceAlert(err.message || HrmI18n.t('Lỗi khi lưu cài đặt.'), 'error');
     } finally {
         if (saveBtn) {
             saveBtn.disabled = false;
-            saveBtn.textContent = 'Lưu cài đặt';
+            saveBtn.textContent = HrmI18n.t('Lưu cài đặt');
         }
     }
 }
@@ -1333,7 +1292,7 @@ function openManualModal() {
     }
     const manualDateDisplay = document.getElementById('manualDateDisplay');
     if (manualDateDisplay) {
-        manualDateDisplay.textContent = `Hôm nay (${formattedToday})`;
+        manualDateDisplay.textContent = `${HrmI18n.fragment("Hôm nay (")}${formattedToday})`;
     }
 
     const inInput = document.getElementById('manualCheckInTime');
@@ -1344,7 +1303,7 @@ function openManualModal() {
     const select = document.getElementById('manualEmployeeSelect');
     if (select) {
         if (currentAttendanceList && currentAttendanceList.length > 0) {
-            select.innerHTML = '<option value="">-- Chọn nhân sự --</option>' + currentAttendanceList.map(m => {
+            select.innerHTML = HrmI18n.fragment('<option value="">-- Chọn nhân sự --</option>') + currentAttendanceList.map(m => {
                 return `<option value="${m.employeeId}">${safe(m.employeeCode)} - ${safe(m.fullName)}</option>`;
             }).join('');
         }
@@ -1409,7 +1368,7 @@ function updateManualPreview() {
     const lateThresholdStr = String(Math.floor(startTotalMin / 60)).padStart(2, '0') + ':' + String(startTotalMin % 60).padStart(2, '0');
 
     if (!inVal && !outVal) {
-        previewEl.innerHTML = '<span class="text-muted">Vui lòng nhập giờ vào ca hoặc giờ tan ca để xem dự tính.</span>';
+        previewEl.innerHTML = HrmI18n.fragment('<span class="text-muted">Vui lòng nhập giờ vào ca hoặc giờ tan ca để xem dự tính.</span>');
         return;
     }
 
@@ -1420,7 +1379,7 @@ function updateManualPreview() {
         const outMinutes = outH * 60 + outM;
 
         if (outMinutes <= inMinutes) {
-            previewEl.innerHTML = '<span style="color:#d92d20;font-weight:700;">⚠️ Giờ tan ca phải sau giờ vào ca!</span>';
+            previewEl.innerHTML = HrmI18n.fragment('<span style="color:#d92d20;font-weight:700;">⚠️ Giờ tan ca phải sau giờ vào ca!</span>');
             return;
         }
 
@@ -1441,41 +1400,31 @@ function updateManualPreview() {
         const isLate = inVal > lateThresholdStr;
         const isEarly = outVal < shiftEnd;
 
-        let statusBadge = '<span class="badge badge-present">Có mặt</span>';
+        let statusBadge = HrmI18n.fragment('<span class="badge badge-present">Có mặt</span>');
         if (isLate) {
-            statusBadge = '<span class="badge badge-late">Đi muộn</span>';
+            statusBadge = HrmI18n.fragment('<span class="badge badge-late">Đi muộn</span>');
         } else if (isEarly) {
-            statusBadge = '<span class="badge badge-early">Về sớm</span>';
+            statusBadge = HrmI18n.fragment('<span class="badge badge-early">Về sớm</span>');
         }
 
         let creditBadge = '';
         if (workCredit === 1.0) {
-            creditBadge = '<strong style="color:#027a48;">1.0 ngày công</strong>';
+            creditBadge = HrmI18n.fragment('<strong style="color:#027a48;">1.0 ngày công</strong>');
         } else if (workCredit === 0.5) {
-            creditBadge = '<strong style="color:#b54708;">0.5 ngày công (nửa công)</strong>';
+            creditBadge = HrmI18n.fragment('<strong style="color:#b54708;">0.5 ngày công (nửa công)</strong>');
         } else {
-            creditBadge = `<strong style="color:#667085;">0 công (&lt; ${minHalfDisplay} tiếng)</strong>`;
+            creditBadge = `${HrmI18n.fragment("<strong style=\"color:#667085;\">0 công (&lt; ")}${minHalfDisplay}${HrmI18n.fragment(" tiếng)</strong>")}`;
         }
 
-        previewEl.innerHTML = `
-            <div style="display:flex; flex-direction:column; gap:4px;">
-                <div>⏱️ <strong>Tổng giờ làm:</strong> <strong style="color:#062579;">${totalHours} hrs</strong> ${lunchDeducted ? `<span style="font-size:11.5px;color:#475467;">(đã trừ ${lunchMin}p nghỉ trưa)</span>` : ''}</div>
-                <div>💼 <strong>Số công tính được:</strong> ${creditBadge}</div>
-                <div>🏷️ <strong>Trạng thái ghi nhận:</strong> ${statusBadge} ${isLate ? `<span style="font-size:11.5px;color:#b54708;">(vào sau ${lateThresholdStr})</span>` : ''} ${isEarly ? `<span style="font-size:11.5px;color:#3538cd;">(tan trước ${shiftEnd})</span>` : ''}</div>
+        previewEl.innerHTML = `${HrmI18n.fragment("\n            <div style=\"display:flex; flex-direction:column; gap:4px;\">\n                <div>⏱️ <strong>Tổng giờ làm:</strong> <strong style=\"color:#062579;\">")}${totalHours} hrs</strong> ${lunchDeducted ? `${HrmI18n.fragment("<span style=\"font-size:11.5px;color:#475467;\">(đã trừ ")}${lunchMin}${HrmI18n.fragment("p nghỉ trưa)</span>")}` : ''}${HrmI18n.fragment("</div>\n                <div>💼 <strong>Số công tính được:</strong> ")}${creditBadge}${HrmI18n.fragment("</div>\n                <div>🏷️ <strong>Trạng thái ghi nhận:</strong> ")}${statusBadge} ${isLate ? `${HrmI18n.fragment("<span style=\"font-size:11.5px;color:#b54708;\">(vào sau ")}${lateThresholdStr})</span>` : ''} ${isEarly ? `${HrmI18n.fragment("<span style=\"font-size:11.5px;color:#3538cd;\">(tan trước ")}${shiftEnd})</span>` : ''}</div>
             </div>
         `;
     } else if (inVal) {
         const isLate = inVal > lateThresholdStr;
-        previewEl.innerHTML = `
-            <div>⏱️ Đã nhập giờ vào: <strong>${inVal}</strong> | Trạng thái: ${isLate ? '<span class="badge badge-late">Đi muộn</span>' : '<span class="badge badge-present">Đúng giờ</span>'}</div>
-            <div style="font-size:11.5px; color:#667085; margin-top:2px;">(Chưa nhập giờ tan ca - cần cả 2 mốc để tính tổng giờ và số ngày công)</div>
-        `;
+        previewEl.innerHTML = `${HrmI18n.fragment("\n            <div>⏱️ Đã nhập giờ vào: <strong>")}${inVal}${HrmI18n.fragment("</strong> | Trạng thái: ")}${isLate ? HrmI18n.fragment('<span class="badge badge-late">Đi muộn</span>') : HrmI18n.fragment('<span class="badge badge-present">Đúng giờ</span>')}${HrmI18n.fragment("</div>\n            <div style=\"font-size:11.5px; color:#667085; margin-top:2px;\">(Chưa nhập giờ tan ca - cần cả 2 mốc để tính tổng giờ và số ngày công)</div>\n        ")}`;
     } else {
         const isEarly = outVal < shiftEnd;
-        previewEl.innerHTML = `
-            <div>⏱️ Đã nhập giờ tan: <strong>${outVal}</strong> | Trạng thái: ${isEarly ? '<span class="badge badge-early">Về sớm</span>' : '<span class="badge badge-present">Đúng giờ</span>'}</div>
-            <div style="font-size:11.5px; color:#667085; margin-top:2px;">(Chưa nhập giờ vào ca - cần cả 2 mốc để tính tổng giờ và số ngày công)</div>
-        `;
+        previewEl.innerHTML = `${HrmI18n.fragment("\n            <div>⏱️ Đã nhập giờ tan: <strong>")}${outVal}${HrmI18n.fragment("</strong> | Trạng thái: ")}${isEarly ? HrmI18n.fragment('<span class="badge badge-early">Về sớm</span>') : HrmI18n.fragment('<span class="badge badge-present">Đúng giờ</span>')}${HrmI18n.fragment("</div>\n            <div style=\"font-size:11.5px; color:#667085; margin-top:2px;\">(Chưa nhập giờ vào ca - cần cả 2 mốc để tính tổng giờ và số ngày công)</div>\n        ")}`;
     }
 }
 
@@ -1488,20 +1437,20 @@ async function saveManualAttendance() {
     const note = document.getElementById('manualNote')?.value;
 
     if (!employeeId) {
-        const msg = 'Vui lòng chọn nhân sự cần điểm danh bổ sung.';
+        const msg = HrmI18n.t('Vui lòng chọn nhân sự cần điểm danh bổ sung.');
         showManualModalMessage(msg, 'error');
         await showAttendanceAlert(msg, 'warning');
         return;
     }
 
     if (!checkInTime && !checkOutTime) {
-        const msg = 'Vui lòng nhập giờ vào ca hoặc giờ tan ca.';
+        const msg = HrmI18n.t('Vui lòng nhập giờ vào ca hoặc giờ tan ca.');
         showManualModalMessage(msg, 'error');
         await showAttendanceAlert(msg, 'warning');
         return;
     }
     if (checkInTime && checkOutTime && checkOutTime <= checkInTime) {
-        const msg = 'Thời gian tan ca không thể sớm hơn hoặc bằng thời gian vào ca.';
+        const msg = HrmI18n.t('Thời gian tan ca không thể sớm hơn hoặc bằng thời gian vào ca.');
         showManualModalMessage(msg, 'error');
         await showAttendanceAlert(msg, 'warning');
         return;
@@ -1510,7 +1459,7 @@ async function saveManualAttendance() {
     const saveBtn = document.getElementById('btnSaveManualAttendance');
     if (saveBtn) {
         saveBtn.disabled = true;
-        saveBtn.textContent = 'Đang lưu...';
+        saveBtn.textContent = HrmI18n.t('Đang lưu...');
     }
 
     try {
@@ -1522,9 +1471,9 @@ async function saveManualAttendance() {
             note: note || ''
         });
 
-        showMessage(payload.message || 'Điểm danh bổ sung thành công!', 'success');
+        showMessage(payload.message || HrmI18n.t('Điểm danh bổ sung thành công!'), 'success');
         closeManualModal();
-        await showAttendanceAlert(payload.message || 'Điểm danh bổ sung thành công!', 'success');
+        await showAttendanceAlert(payload.message || HrmI18n.t('Điểm danh bổ sung thành công!'), 'success');
 
         const currentDate = document.getElementById('teamDate')?.value;
         if (currentDate === todayStr) {
@@ -1534,17 +1483,12 @@ async function saveManualAttendance() {
             await loadPendingExplanations();
         }
     } catch (err) {
-        showManualModalMessage(err.message || 'Lỗi khi điểm danh bổ sung.', 'error');
-        await showAttendanceAlert(err.message || 'Lỗi khi điểm danh bổ sung.', 'error');
+        showManualModalMessage(err.message || HrmI18n.t('Lỗi khi điểm danh bổ sung.'), 'error');
+        await showAttendanceAlert(err.message || HrmI18n.t('Lỗi khi điểm danh bổ sung.'), 'error');
     } finally {
         if (saveBtn) {
             saveBtn.disabled = false;
-            saveBtn.innerHTML = `
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-                Lưu điểm danh bổ sung
-            `;
+            saveBtn.innerHTML = `${HrmI18n.fragment("\n                <svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\">\n                    <polyline points=\"20 6 9 17 4 12\"></polyline>\n                </svg>\n                Lưu điểm danh bổ sung\n            ")}`;
         }
     }
 }
@@ -1644,7 +1588,7 @@ async function searchCompanyAttendance() {
         renderCompanyRows(payload.data);
         const elTotalRecords = document.getElementById('totalRecords');
         if (elTotalRecords) elTotalRecords.textContent = payload.data ? payload.data.length : 0;
-        showMessage(`Tìm thấy ${payload.data ? payload.data.length : 0} bản ghi chấm công.`, 'success');
+        showMessage(`${HrmI18n.fragment("Tìm thấy ")}${payload.data ? payload.data.length : 0}${HrmI18n.fragment(" bản ghi chấm công.")}`, 'success');
     } catch (err) {
         showMessage(err.message, 'error');
     }
@@ -1653,14 +1597,14 @@ async function searchCompanyAttendance() {
 function renderCompanyRows(records) {
     const tbody = document.getElementById('companyAttendanceRows');
     if (!records || records.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#667085;padding:32px;">Không tìm thấy bản ghi chấm công nào phù hợp với bộ lọc.</td></tr>';
+        tbody.innerHTML = HrmI18n.fragment('<tr><td colspan="9" style="text-align:center;color:#667085;padding:32px;">Không tìm thấy bản ghi chấm công nào phù hợp với bộ lọc.</td></tr>');
         return;
     }
 
     tbody.innerHTML = records.map(r => {
         const statusClass = (r.status || '').replace(/\s+/g, '');
         const manualBadge = (r.manualAdjusted || r.isManualAdjusted)
-            ? '<span class="badge" style="background:#e0e7ff;color:#4338ca;border:1px solid #c7d2fe;font-size:11px;margin-left:4px;">Bổ sung</span>'
+            ? HrmI18n.fragment('<span class="badge" style="background:#e0e7ff;color:#4338ca;border:1px solid #c7d2fe;font-size:11px;margin-left:4px;">Bổ sung</span>')
             : '';
         return `
             <tr>
@@ -1671,7 +1615,7 @@ function renderCompanyRows(records) {
                 <td>${r.checkInTime ? `<strong>${r.checkInTime}</strong>` : '<span class="text-muted">--:--:--</span>'}</td>
                 <td>${r.checkOutTime ? `<strong>${r.checkOutTime}</strong>` : '<span class="text-muted">--:--:--</span>'}</td>
                 <td><strong>${r.totalHours || '0.00'}</strong> hrs</td>
-                <td><span class="badge ${statusClass}">${safe(r.status)}</span>${manualBadge}</td>
+                <td><span class="badge ${statusClass}">${safe(HrmI18n.label(r.status))}</span>${manualBadge}</td>
                 <td><span class="text-muted">${safe(r.note)}</span></td>
             </tr>
         `;
@@ -1721,7 +1665,7 @@ async function loadAttendanceReport() {
         const payload = await AttendanceApi.get(`/attendance/report?${params.toString()}`);
         renderReportRows(payload.data);
         renderReportStats(payload.data);
-        showMessage(`Đã tải báo cáo chấm công tháng ${month}/${year}.`, 'success');
+        showMessage(`${HrmI18n.fragment("Đã tải báo cáo chấm công tháng ")}${month}/${year}.`, 'success');
     } catch (err) {
         showMessage(err.message, 'error');
     }
@@ -1753,7 +1697,7 @@ function renderReportStats(reports) {
 function renderReportRows(reports) {
     const tbody = document.getElementById('reportRows');
     if (!reports || reports.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#667085;padding:32px;">Không có dữ liệu báo cáo nào trong kỳ được chọn.</td></tr>';
+        tbody.innerHTML = HrmI18n.fragment('<tr><td colspan="10" style="text-align:center;color:#667085;padding:32px;">Không có dữ liệu báo cáo nào trong kỳ được chọn.</td></tr>');
         return;
     }
 
@@ -1764,8 +1708,7 @@ function renderReportRows(reports) {
                 <td><strong>${safe(r.employeeCode)}</strong></td>
                 <td><strong>${safe(r.fullName)}</strong></td>
                 <td>${safe(r.departmentName)}</td>
-                <td><strong>${r.totalWorkDays}</strong> ngày</td>
-                <td><strong>${r.totalHours}</strong> hrs</td>
+                <td><strong>${r.totalWorkDays}${HrmI18n.fragment("</strong> ngày</td>\n                <td><strong>")}${r.totalHours}</strong> hrs</td>
                 <td><span class="text-success">${r.presentCount}</span></td>
                 <td><span class="text-warning">${r.lateCount}</span></td>
                 <td><span class="text-muted">${r.earlyLeaveCount}</span></td>
@@ -1810,7 +1753,7 @@ function populateEmployeeSelect(selectId, employees, preferredId) {
     const select = document.getElementById(selectId);
     if (!select || !employees) return;
     if (employees.length === 0) {
-        select.innerHTML = '<option value="">-- Chưa có nhân viên --</option>';
+        select.innerHTML = HrmI18n.fragment('<option value="">-- Chưa có nhân viên --</option>');
         return;
     }
     select.innerHTML = employees.map(e => {
@@ -1827,7 +1770,7 @@ function populateEmployeeSelect(selectId, employees, preferredId) {
 function populateDepartmentSelect(selectId, departments) {
     const select = document.getElementById(selectId);
     if (!select || !departments) return;
-    select.innerHTML = '<option value="">-- Tất cả phòng ban --</option>' + departments.map(d => {
+    select.innerHTML = HrmI18n.fragment('<option value="">-- Tất cả phòng ban --</option>') + departments.map(d => {
         return `<option value="${d.departmentId}">${safe(d.departmentName)}</option>`;
     }).join('');
 }
@@ -1839,9 +1782,9 @@ function withContext(url) {
 }
 
 async function handleResponse(response) {
-    const payload = await response.json();
+    const payload = await response.json().then(HrmI18n.response);
     if (!response.ok || payload.success === false) {
-        throw new Error(payload.message || 'Yêu cầu không thành công.');
+        throw new Error(payload.message || HrmI18n.t('Yêu cầu không thành công.'));
     }
     return payload;
 }
@@ -1849,7 +1792,7 @@ async function handleResponse(response) {
 function showMessage(message, type = 'success') {
     const el = document.getElementById('message');
     if (!el) return;
-    el.textContent = message;
+    el.textContent = HrmI18n.t(message);
     el.className = `message show ${type}`;
     setTimeout(() => {
         if (el.className.includes('show')) {
@@ -2077,7 +2020,7 @@ async function loadTimesheetData() {
     checkTimesheetLockStatus(currentTimesheetMonth, currentTimesheetYear);
     const tbody = document.getElementById('timesheetRows');
     if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="32" style="text-align:center; padding:36px; color:#667085;">Đang tải bảng chấm công...</td></tr>';
+        tbody.innerHTML = HrmI18n.fragment('<tr><td colspan="32" style="text-align:center; padding:36px; color:#667085;">Đang tải bảng chấm công...</td></tr>');
     }
 
     try {
@@ -2087,7 +2030,7 @@ async function loadTimesheetData() {
         // Header Subtitle: "Tháng 10/2026 · 10 nhân sự"
         const sub = document.getElementById('timesheetHeaderSubtitle');
         if (sub) {
-            sub.textContent = `Tháng ${payload.month}/${payload.year} · ${payload.totalEmployees || (payload.employees ? payload.employees.length : 0)} nhân sự`;
+            sub.textContent = `${HrmI18n.fragment("Tháng ")}${payload.month}/${payload.year} · ${payload.totalEmployees || (payload.employees ? payload.employees.length : 0)}${HrmI18n.fragment(" nhân sự")}`;
         }
 
         // Populate department dropdown
@@ -2097,11 +2040,11 @@ async function loadTimesheetData() {
         renderTimesheetGrid(payload);
         renderDepartmentStats(payload.departmentStats || []);
 
-        showMessage(`Đã tải bảng chấm công tháng ${payload.month}/${payload.year}.`, 'success');
+        showMessage(`${HrmI18n.fragment("Đã tải bảng chấm công tháng ")}${payload.month}/${payload.year}.`, 'success');
     } catch (err) {
         showMessage(err.message, 'error');
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="32" style="text-align:center; padding:36px; color:#d92d20;">Lỗi: ${safe(err.message)}</td></tr>`;
+            tbody.innerHTML = `${HrmI18n.fragment("<tr><td colspan=\"32\" style=\"text-align:center; padding:36px; color:#d92d20;\">Lỗi: ")}${safe(err.message)}</td></tr>`;
         }
     }
 }
@@ -2109,7 +2052,7 @@ async function loadTimesheetData() {
 function populateTimesheetDeptSelect(departments) {
     const select = document.getElementById('timesheetDeptSelect');
     if (!select || select.dataset.loaded) return;
-    select.innerHTML = '<option value="">Tất cả phòng ban</option>' + departments.map(d => {
+    select.innerHTML = HrmI18n.fragment('<option value="">Tất cả phòng ban</option>') + departments.map(d => {
         return `<option value="${d.departmentId}">${safe(d.departmentName)}</option>`;
     }).join('');
     select.dataset.loaded = 'true';
@@ -2125,8 +2068,8 @@ function renderTimesheetGrid(data) {
     const month = data.month;
 
     // 1. Render Header columns
-    const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-    let headerHtml = '<th class="col-sticky-emp">NHÂN VIÊN</th>';
+    const dayNames = Array.from({length:7}, (_,index) => new Intl.DateTimeFormat(HrmI18n.locale,{weekday:'short'}).format(new Date(2026,10,index+1)));
+    let headerHtml = HrmI18n.fragment('<th class="col-sticky-emp">NHÂN VIÊN</th>');
 
     for (let d = 1; d <= daysInMonth; d++) {
         const dateObj = new Date(year, month - 1, d);
@@ -2162,7 +2105,7 @@ function renderTimesheetGrid(data) {
     }
 
     if (employees.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="${daysInMonth + 1}" style="text-align:center; padding:36px; color:#667085;">Không tìm thấy nhân sự nào phù hợp với bộ lọc.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${daysInMonth + 1}${HrmI18n.fragment("\" style=\"text-align:center; padding:36px; color:#667085;\">Không tìm thấy nhân sự nào phù hợp với bộ lọc.</td></tr>")}`;
         return;
     }
 
@@ -2195,23 +2138,23 @@ function renderTimesheetGrid(data) {
                 const st = (rec.status || '').toLowerCase();
                 if (st.includes('late') || st.includes('muộn') || st.includes('trễ')) {
                     // Orange pill L (matching Image 2)
-                    pillHtml = `<span class="cell-pill pill-late" title="Ngày ${d}/${month}: Vào ${rec.checkIn || '--'} - Tan ${rec.checkOut || '--'} (Đi trễ)">L</span>`;
+                    pillHtml = `${HrmI18n.fragment("<span class=\"cell-pill pill-late\" title=\"Ngày ")}${d}/${month}${HrmI18n.fragment(": Vào ")}${rec.checkIn || '--'} - Tan ${rec.checkOut || '--'}${HrmI18n.fragment(" (Đi trễ)\">L</span>")}`;
                 } else if (st.includes('early') || st.includes('sớm')) {
-                    pillHtml = `<span class="cell-pill pill-early" title="Ngày ${d}/${month}: Vào ${rec.checkIn || '--'} - Tan ${rec.checkOut || '--'} (Về sớm)">S</span>`;
+                    pillHtml = `${HrmI18n.fragment("<span class=\"cell-pill pill-early\" title=\"Ngày ")}${d}/${month}${HrmI18n.fragment(": Vào ")}${rec.checkIn || '--'} - Tan ${rec.checkOut || '--'}${HrmI18n.fragment(" (Về sớm)\">S</span>")}`;
                 } else if (st.includes('leave') || st.includes('phép')) {
-                    pillHtml = `<span class="cell-pill pill-onleave" title="Ngày ${d}/${month}: Nghỉ phép">P</span>`;
+                    pillHtml = `${HrmI18n.fragment("<span class=\"cell-pill pill-onleave\" title=\"Ngày ")}${d}/${month}${HrmI18n.fragment(": Nghỉ phép\">P</span>")}`;
                 } else if (st.includes('absent') || st.includes('vắng')) {
-                    pillHtml = `<span class="cell-pill pill-absent" title="Ngày ${d}/${month}: Vắng mặt">V</span>`;
+                    pillHtml = `${HrmI18n.fragment("<span class=\"cell-pill pill-absent\" title=\"Ngày ")}${d}/${month}${HrmI18n.fragment(": Vắng mặt\">V</span>")}`;
                 } else {
                     // Present (Đúng giờ / Có mặt)
-                    pillHtml = `<span class="cell-pill pill-present" title="Ngày ${d}/${month}: Vào ${rec.checkIn || '--'} - Tan ${rec.checkOut || '--'} (Đúng giờ)">✓</span>`;
+                    pillHtml = `${HrmI18n.fragment("<span class=\"cell-pill pill-present\" title=\"Ngày ")}${d}/${month}${HrmI18n.fragment(": Vào ")}${rec.checkIn || '--'} - Tan ${rec.checkOut || '--'}${HrmI18n.fragment(" (Đúng giờ)\">✓</span>")}`;
                 }
             } else {
                 // Day without attendance
                 if (isSunday || isSaturday) {
-                    pillHtml = `<span class="cell-pill pill-muted" title="Ngày ${d}/${month} (Nghỉ cuối tuần)">-</span>`;
+                    pillHtml = `${HrmI18n.fragment("<span class=\"cell-pill pill-muted\" title=\"Ngày ")}${d}/${month}${HrmI18n.fragment(" (Nghỉ cuối tuần)\">-</span>")}`;
                 } else {
-                    pillHtml = `<span class="cell-pill pill-muted" title="Ngày ${d}/${month} (Không có dữ liệu)">-</span>`;
+                    pillHtml = `${HrmI18n.fragment("<span class=\"cell-pill pill-muted\" title=\"Ngày ")}${d}/${month}${HrmI18n.fragment(" (Không có dữ liệu)\">-</span>")}`;
                 }
             }
 
@@ -2247,7 +2190,7 @@ function renderDepartmentStats(stats) {
     if (!tbody) return;
 
     if (!stats || stats.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:32px; color:#667085;">Chưa có dữ liệu thống kê phòng ban cho tháng này.</td></tr>';
+        tbody.innerHTML = HrmI18n.fragment('<tr><td colspan="8" style="text-align:center; padding:32px; color:#667085;">Chưa có dữ liệu thống kê phòng ban cho tháng này.</td></tr>');
         return;
     }
 
@@ -2324,11 +2267,11 @@ async function handleExplanationSubmit(e) {
     const detail = document.getElementById('expReasonDetail')?.value;
 
     if (!date) {
-        await showAttendanceAlert('Vui lòng chọn ngày cần giải trình.', 'warning');
+        await showAttendanceAlert(HrmI18n.t('Vui lòng chọn ngày cần giải trình.'), 'warning');
         return;
     }
     if (!detail || !detail.trim()) {
-        await showAttendanceAlert('Vui lòng nhập lý do giải trình chi tiết.', 'warning');
+        await showAttendanceAlert(HrmI18n.t('Vui lòng nhập lý do giải trình chi tiết.'), 'warning');
         return;
     }
 
@@ -2343,15 +2286,15 @@ async function handleExplanationSubmit(e) {
         if (payload && payload.success) {
             closeSubmitExplanationModal();
             document.getElementById('formSubmitExplanation')?.reset();
-            await showAttendanceAlert(payload.message || 'Gửi đơn giải trình chấm công thành công!', 'success');
+            await showAttendanceAlert(payload.message || HrmI18n.t('Gửi đơn giải trình chấm công thành công!'), 'success');
             if (typeof loadMyAttendanceData === 'function') {
                 await loadMyAttendanceData();
             }
         } else {
-            await showAttendanceAlert((payload && payload.message) ? payload.message : 'Không thể gửi đơn giải trình.', 'error');
+            await showAttendanceAlert((payload && payload.message) ? payload.message : HrmI18n.t('Không thể gửi đơn giải trình.'), 'error');
         }
     } catch (err) {
-        await showAttendanceAlert(err.message || 'Không thể kết nối đến máy chủ.', 'error');
+        await showAttendanceAlert(err.message || HrmI18n.t('Không thể kết nối đến máy chủ.'), 'error');
     }
 }
 
@@ -2370,37 +2313,37 @@ function closeMyExplanationsModal() {
 async function loadMyExplanations() {
     const tbody = document.getElementById('myExplanationsRows');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#667085;">Đang tải danh sách...</td></tr>';
+    tbody.innerHTML = HrmI18n.fragment('<tr><td colspan="6" style="text-align:center;padding:24px;color:#667085;">Đang tải danh sách...</td></tr>');
 
     try {
         const payload = await AttendanceApi.get('/attendance/explanation/my-requests');
         const list = (payload && payload.data) ? payload.data : [];
         if (list.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#667085;">Bạn chưa có đơn giải trình nào.</td></tr>';
+            tbody.innerHTML = HrmI18n.fragment('<tr><td colspan="6" style="text-align:center;padding:24px;color:#667085;">Bạn chưa có đơn giải trình nào.</td></tr>');
             return;
         }
 
         tbody.innerHTML = list.map(item => {
             let statusBadge = '';
             if (item.status === 'PENDING') {
-                statusBadge = '<span class="badge" style="background:#fffaeb;color:#b54708;font-weight:700;">Chờ duyệt</span>';
+                statusBadge = HrmI18n.fragment('<span class="badge" style="background:#fffaeb;color:#b54708;font-weight:700;">Chờ duyệt</span>');
             } else if (item.status === 'APPROVED') {
-                statusBadge = '<span class="badge" style="background:#ecfdf3;color:#027a48;font-weight:700;">Đã duyệt</span>';
+                statusBadge = HrmI18n.fragment('<span class="badge" style="background:#ecfdf3;color:#027a48;font-weight:700;">Đã duyệt</span>');
             } else if (item.status === 'REJECTED') {
-                statusBadge = '<span class="badge" style="background:#fef3f2;color:#b42318;font-weight:700;">Từ chối</span>';
+                statusBadge = HrmI18n.fragment('<span class="badge" style="background:#fef3f2;color:#b42318;font-weight:700;">Từ chối</span>');
             } else {
-                statusBadge = '<span class="badge" style="background:#f2f4f7;color:#667085;">Đã hủy</span>';
+                statusBadge = HrmI18n.fragment('<span class="badge" style="background:#f2f4f7;color:#667085;">Đã hủy</span>');
             }
 
             const inOut = (item.proposedCheckIn || '--:--') + ' - ' + (item.proposedCheckOut || '--:--');
             const cancelBtn = item.status === 'PENDING'
-                ? `<button class="button small secondary" onclick="cancelMyExplanation(${item.explanationId})" style="padding:3px 8px;font-size:12px;color:#b42318;">Hủy đơn</button>`
+                ? `<button class="button small secondary" onclick="cancelMyExplanation(${item.explanationId}${HrmI18n.fragment(")\" style=\"padding:3px 8px;font-size:12px;color:#b42318;\">Hủy đơn</button>")}`
                 : '-';
 
             return `
                 <tr style="border-bottom:1px solid #f2f4f7;">
                     <td style="padding:10px 8px;"><strong>${safe(item.attendanceDate)}</strong></td>
-                    <td style="padding:10px 8px;">${safe(item.reasonTypeDisplay || item.reasonType)}</td>
+                    <td style="padding:10px 8px;">${safe(HrmI18n.t(item.reasonTypeDisplay || item.reasonType))}</td>
                     <td style="padding:10px 8px;">${safe(inOut)}</td>
                     <td style="padding:10px 8px;">${statusBadge}</td>
                     <td style="padding:10px 8px;font-size:12px;color:#475467;">${item.reviewerComment ? safe(item.reviewerComment) : '-'}</td>
@@ -2409,16 +2352,16 @@ async function loadMyExplanations() {
             `;
         }).join('');
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#b42318;padding:20px;">Lỗi tải dữ liệu: ${safe(err.message)}</td></tr>`;
+        tbody.innerHTML = `${HrmI18n.fragment("<tr><td colspan=\"6\" style=\"text-align:center;color:#b42318;padding:20px;\">Lỗi tải dữ liệu: ")}${safe(err.message)}</td></tr>`;
     }
 }
 
 async function cancelMyExplanation(id) {
-    const confirmed = await showAttendanceConfirm('Bạn có chắc chắn muốn hủy đơn giải trình chấm công này không?', {
-        title: 'Hủy đơn giải trình',
+    const confirmed = await showAttendanceConfirm(HrmI18n.t('Bạn có chắc chắn muốn hủy đơn giải trình chấm công này không?'), {
+        title: HrmI18n.t('Hủy đơn giải trình'),
         type: 'warning',
-        confirmText: 'Đồng ý hủy',
-        cancelText: 'Giữ lại',
+        confirmText: HrmI18n.t('Đồng ý hủy'),
+        cancelText: HrmI18n.t('Giữ lại'),
         isDanger: true
     });
     if (!confirmed) return;
@@ -2426,16 +2369,16 @@ async function cancelMyExplanation(id) {
     try {
         const payload = await AttendanceApi.post('/attendance/explanation/cancel', { explanationId: id });
         if (payload && payload.success) {
-            await showAttendanceAlert('Hủy đơn giải trình thành công!', 'success');
+            await showAttendanceAlert(HrmI18n.t('Hủy đơn giải trình thành công!'), 'success');
             await loadMyExplanations();
             if (typeof loadMyAttendanceData === 'function') {
                 await loadMyAttendanceData();
             }
         } else {
-            await showAttendanceAlert((payload && payload.message) ? payload.message : 'Không thể hủy đơn.', 'error');
+            await showAttendanceAlert((payload && payload.message) ? payload.message : HrmI18n.t('Không thể hủy đơn.'), 'error');
         }
     } catch (err) {
-        await showAttendanceAlert(err.message || 'Không thể hủy đơn.', 'error');
+        await showAttendanceAlert(err.message || HrmI18n.t('Không thể hủy đơn.'), 'error');
     }
 }
 
@@ -2475,7 +2418,7 @@ async function loadPendingExplanationsCount() {
 async function loadPendingExplanations() {
     const tbody = document.getElementById('pendingExplanationsRows');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#667085;">Đang tải danh sách chờ duyệt...</td></tr>';
+    tbody.innerHTML = HrmI18n.fragment('<tr><td colspan="6" style="text-align:center;padding:24px;color:#667085;">Đang tải danh sách chờ duyệt...</td></tr>');
 
     try {
         const payload = await AttendanceApi.get('/attendance/explanation/pending');
@@ -2487,7 +2430,7 @@ async function loadPendingExplanations() {
         }
 
         if (list.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#667085;">Không có đơn giải trình nào đang chờ duyệt.</td></tr>';
+            tbody.innerHTML = HrmI18n.fragment('<tr><td colspan="6" style="text-align:center;padding:24px;color:#667085;">Không có đơn giải trình nào đang chờ duyệt.</td></tr>');
             return;
         }
 
@@ -2500,31 +2443,27 @@ async function loadPendingExplanations() {
                         <div style="font-size:12px;color:#667085;">${safe(item.employeeCode)} · ${safe(item.departmentName || 'Chung')}</div>
                     </td>
                     <td style="padding:10px 8px;"><strong>${safe(item.attendanceDate)}</strong></td>
-                    <td style="padding:10px 8px;"><span class="badge" style="background:#f4ebff;color:#6941c6;font-size:11px;">${safe(item.reasonTypeDisplay || item.reasonType)}</span></td>
+                    <td style="padding:10px 8px;"><span class="badge" style="background:#f4ebff;color:#6941c6;font-size:11px;">${safe(HrmI18n.t(item.reasonTypeDisplay || item.reasonType))}</span></td>
                     <td style="padding:10px 8px;">${safe(inOut)}</td>
                     <td style="padding:10px 8px;max-width:240px;font-size:12px;color:#344054;">${safe(item.reasonDetail)}</td>
                     <td style="padding:10px 8px;text-align:center;">
-                        <button class="button small" onclick="reviewExplanation(${item.explanationId}, 'APPROVE')" style="background:#059669;border-color:#059669;color:#fff;padding:4px 8px;font-size:12px;margin-right:4px;">Duyệt</button>
-                        <button class="button small secondary" onclick="reviewExplanation(${item.explanationId}, 'REJECT')" style="color:#b42318;padding:4px 8px;font-size:12px;">Từ chối</button>
-                    </td>
-                </tr>
-            `;
+                        <button class="button small" onclick="reviewExplanation(${item.explanationId}${HrmI18n.fragment(", 'APPROVE')\" style=\"background:#059669;border-color:#059669;color:#fff;padding:4px 8px;font-size:12px;margin-right:4px;\">Duyệt</button>\n                        <button class=\"button small secondary\" onclick=\"reviewExplanation(")}${item.explanationId}${HrmI18n.fragment(", 'REJECT')\" style=\"color:#b42318;padding:4px 8px;font-size:12px;\">Từ chối</button>\n                    </td>\n                </tr>\n            ")}`;
         }).join('');
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#b42318;padding:20px;">Lỗi tải dữ liệu: ${safe(err.message)}</td></tr>`;
+        tbody.innerHTML = `${HrmI18n.fragment("<tr><td colspan=\"6\" style=\"text-align:center;color:#b42318;padding:20px;\">Lỗi tải dữ liệu: ")}${safe(err.message)}</td></tr>`;
     }
 }
 
 async function reviewExplanation(id, decision) {
     const isApprove = decision === 'APPROVE';
-    const actionText = isApprove ? 'Duyệt đơn giải trình và tự động cập nhật ngày công' : 'Từ chối đơn giải trình';
+    const actionText = isApprove ? HrmI18n.t('Duyệt đơn giải trình và tự động cập nhật ngày công') : HrmI18n.t('Từ chối đơn giải trình');
     const comment = await showAttendancePrompt(
-        `Nhập phản hồi/ghi chú cho nhân viên (${actionText}):`,
-        isApprove ? 'Đồng ý bổ sung công' : 'Không đủ căn cứ giải trình',
+        `${HrmI18n.fragment("Nhập phản hồi/ghi chú cho nhân viên (")}${actionText}):`,
+        isApprove ? HrmI18n.t('Đồng ý bổ sung công') : HrmI18n.t('Không đủ căn cứ giải trình'),
         {
-            title: isApprove ? 'Duyệt giải trình công' : 'Từ chối giải trình công',
-            placeholder: 'Nhập ghi chú phản hồi...',
-            confirmText: isApprove ? 'Phê duyệt' : 'Xác nhận từ chối'
+            title: isApprove ? HrmI18n.t('Duyệt giải trình công') : HrmI18n.t('Từ chối giải trình công'),
+            placeholder: HrmI18n.t('Nhập ghi chú phản hồi...'),
+            confirmText: isApprove ? HrmI18n.t('Phê duyệt') : HrmI18n.t('Xác nhận từ chối')
         }
     );
     if (comment === null) return;
@@ -2536,16 +2475,16 @@ async function reviewExplanation(id, decision) {
             comment: comment
         });
         if (payload && payload.success) {
-            await showAttendanceAlert(payload.message || 'Đã xử lý đơn thành công!', 'success');
+            await showAttendanceAlert(payload.message || HrmI18n.t('Đã xử lý đơn thành công!'), 'success');
             await loadPendingExplanations();
             if (typeof loadTeamAttendanceData === 'function') {
                 await loadTeamAttendanceData();
             }
         } else {
-            await showAttendanceAlert((payload && payload.message) ? payload.message : 'Không thể xử lý đơn giải trình.', 'error');
+            await showAttendanceAlert((payload && payload.message) ? payload.message : HrmI18n.t('Không thể xử lý đơn giải trình.'), 'error');
         }
     } catch (err) {
-        await showAttendanceAlert(err.message || 'Không thể xử lý đơn.', 'error');
+        await showAttendanceAlert(err.message || HrmI18n.t('Không thể xử lý đơn.'), 'error');
     }
 }
 
@@ -2570,15 +2509,15 @@ async function checkTimesheetLockStatus(month, year) {
                 badge.style.background = '#fef3f2';
                 badge.style.color = '#b42318';
                 badge.style.border = '1px solid #fecdca';
-                const lockNote = (payload.data && payload.data.notes) ? payload.data.notes : 'Đã khóa chốt lương';
-                badge.innerHTML = `🔒 Đã khóa (Chốt lương)`;
+                const lockNote = (payload.data && payload.data.notes) ? payload.data.notes : HrmI18n.t('Đã khóa chốt lương');
+                badge.innerHTML = `${HrmI18n.fragment("🔒 Đã khóa (Chốt lương)")}`;
                 badge.title = lockNote;
             } else {
                 badge.style.background = '#ecfdf3';
                 badge.style.color = '#027a48';
                 badge.style.border = '1px solid #a6f4c5';
-                badge.innerHTML = `🟢 Chưa khóa (Đang mở)`;
-                badge.title = 'Bảng công đang mở cho kỳ này';
+                badge.innerHTML = `${HrmI18n.fragment("🟢 Chưa khóa (Đang mở)")}`;
+                badge.title = HrmI18n.t('Bảng công đang mở cho kỳ này');
             }
         }
 
@@ -2588,12 +2527,12 @@ async function checkTimesheetLockStatus(month, year) {
                 btn.style.background = '#f9fafb';
                 btn.style.borderColor = '#d0d5dd';
                 btn.style.color = '#344054';
-                if (btnText) btnText.textContent = 'Mở khóa công';
+                if (btnText) btnText.textContent = HrmI18n.t('Mở khóa công');
             } else {
                 btn.style.background = '#f79009';
                 btn.style.borderColor = '#f79009';
                 btn.style.color = '#ffffff';
-                if (btnText) btnText.textContent = 'Khóa công tháng';
+                if (btnText) btnText.textContent = HrmI18n.t('Khóa công tháng');
             }
         }
     } catch (err) {
@@ -2604,25 +2543,25 @@ async function checkTimesheetLockStatus(month, year) {
 async function toggleTimesheetLock() {
     const action = isCurrentTimesheetLocked ? 'UNLOCK' : 'LOCK';
     const actionText = isCurrentTimesheetLocked
-        ? `Mở khóa bảng chấm công tháng ${currentTimesheetMonth}/${currentTimesheetYear}?\n\n(Sau khi mở khóa, quản lý có thể sửa đổi hoặc duyệt công bù)`
-        : `Khóa bảng chấm công tháng ${currentTimesheetMonth}/${currentTimesheetYear}?\n\n(Sau khi khóa, mọi thao tác sửa công hoặc duyệt giải trình của tháng này sẽ bị chặn để chốt lương)`;
+        ? `${HrmI18n.fragment("Mở khóa bảng chấm công tháng ")}${currentTimesheetMonth}/${currentTimesheetYear}${HrmI18n.fragment("?\n\n(Sau khi mở khóa, quản lý có thể sửa đổi hoặc duyệt công bù)")}`
+        : `${HrmI18n.fragment("Khóa bảng chấm công tháng ")}${currentTimesheetMonth}/${currentTimesheetYear}${HrmI18n.fragment("?\n\n(Sau khi khóa, mọi thao tác sửa công hoặc duyệt giải trình của tháng này sẽ bị chặn để chốt lương)")}`;
 
     const confirmed = await showAttendanceConfirm(actionText, {
-        title: isCurrentTimesheetLocked ? 'Mở khóa bảng chấm công' : 'Khóa bảng chấm công',
+        title: isCurrentTimesheetLocked ? HrmI18n.t('Mở khóa bảng chấm công') : HrmI18n.t('Khóa bảng chấm công'),
         type: isCurrentTimesheetLocked ? 'info' : 'warning',
-        confirmText: isCurrentTimesheetLocked ? 'Mở khóa' : 'Khóa bảng công',
-        cancelText: 'Hủy bỏ'
+        confirmText: isCurrentTimesheetLocked ? HrmI18n.t('Mở khóa') : HrmI18n.t('Khóa bảng công'),
+        cancelText: HrmI18n.t('Hủy bỏ')
     });
     if (!confirmed) return;
 
     let notes = '';
     if (!isCurrentTimesheetLocked) {
         const inputNotes = await showAttendancePrompt(
-            'Nhập ghi chú chốt kỳ công (không bắt buộc):',
-            'Chốt công tháng phục vụ tính lương',
+            HrmI18n.t('Nhập ghi chú chốt kỳ công (không bắt buộc):'),
+            HrmI18n.t('Chốt công tháng phục vụ tính lương'),
             {
-                title: 'Ghi chú chốt kỳ công',
-                placeholder: 'Ví dụ: Đã đối soát bảng lương...'
+                title: HrmI18n.t('Ghi chú chốt kỳ công'),
+                placeholder: HrmI18n.t('Ví dụ: Đã đối soát bảng lương...')
             }
         );
         if (inputNotes === null) return;
@@ -2638,12 +2577,12 @@ async function toggleTimesheetLock() {
         });
 
         if (payload && payload.success) {
-            await showAttendanceAlert(payload.message || 'Thao tác thành công!', 'success');
+            await showAttendanceAlert(payload.message || HrmI18n.t('Thao tác thành công!'), 'success');
             await checkTimesheetLockStatus(currentTimesheetMonth, currentTimesheetYear);
         } else {
-            await showAttendanceAlert((payload && payload.message) ? payload.message : 'Thao tác không thành công.', 'error');
+            await showAttendanceAlert((payload && payload.message) ? payload.message : HrmI18n.t('Thao tác không thành công.'), 'error');
         }
     } catch (err) {
-        await showAttendanceAlert(err.message || 'Không thể thực hiện khóa/mở khóa.', 'error');
+        await showAttendanceAlert(err.message || HrmI18n.t('Không thể thực hiện khóa/mở khóa.'), 'error');
     }
 }

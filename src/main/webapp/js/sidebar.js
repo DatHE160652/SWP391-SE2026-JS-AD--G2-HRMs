@@ -27,7 +27,7 @@
         const backdrop = document.createElement('button');
         backdrop.type = 'button';
         backdrop.id = 'lc-sidebar-backdrop';
-        backdrop.setAttribute('aria-label', 'Đóng menu điều hướng');
+        backdrop.setAttribute('aria-label', HrmI18n.t('Đóng menu điều hướng'));
         backdrop.tabIndex = -1;
         document.body.append(backdrop);
         const groups = Array.from(sidebar.querySelectorAll('[data-nav-group]'));
@@ -39,8 +39,8 @@
         const apply = () => {
             document.documentElement.dataset.sidebar = collapsed ? 'collapsed' : 'expanded';
             toggle.setAttribute('aria-expanded', String(!collapsed));
-            toggle.setAttribute('aria-label', collapsed ? 'Mở rộng menu' : 'Thu gọn menu');
-            toggle.title = collapsed ? 'Mở rộng menu' : 'Thu gọn menu';
+            toggle.setAttribute('aria-label', collapsed ? HrmI18n.t('Mở rộng menu') : HrmI18n.t('Thu gọn menu'));
+            toggle.title = collapsed ? HrmI18n.t('Mở rộng menu') : HrmI18n.t('Thu gọn menu');
             backdrop.hidden = collapsed || !media.matches;
             groups.forEach(group => {
                 const button = group.querySelector('.lc-group-toggle');

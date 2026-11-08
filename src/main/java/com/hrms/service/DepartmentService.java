@@ -48,6 +48,10 @@ public class DepartmentService {
         if (departmentDAO.departmentCodeExists(department.getCompanyId(), department.getDepartmentCode(), excludeId)) {
             throw new FieldValidationException("departmentCode", "Mã phòng ban đã tồn tại trong công ty.");
         }
+        if (new com.hrms.dao.OrganizationNameDAO().exists(com.hrms.dao.OrganizationNameDAO.Catalog.DEPARTMENT,
+                department.getCompanyId(), department.getDepartmentName(), excludeId)) {
+            throw new FieldValidationException("departmentName", "Tên phòng ban đã tồn tại trong công ty.");
+        }
     }
 
     static String required(String field, String value, int maximum) {

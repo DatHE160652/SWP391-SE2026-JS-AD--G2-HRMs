@@ -1,12 +1,13 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="<%= com.hrms.i18n.Language.selected(request) %>">
 <head>
+<%@ include file="/WEB-INF/views/common/language.jspf" %>
     <%@ include file="/WEB-INF/views/common/form-validation.jspf" %>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hồ sơ cá nhân - HRMs Cloud</title>
+    <title><%= com.hrms.i18n.Language.text(request, "ui_6bf97329bdf0", "Hồ sơ cá nhân - HRMs Cloud") %></title>
     <link rel="stylesheet" href="../css/lifecycle.css">
     <link rel="stylesheet" href="../css/organization.css">
     <link rel="stylesheet" href="../css/profile-update.css">
@@ -18,103 +19,103 @@
 
     <aside class="lc-sidebar">
         <a class="lc-brand" href="my-profile"><span class="lc-logo">H</span><span class="lc-brand-name">HRMs Cloud</span></a>
-        <div class="lc-nav-label">CỔNG NHÂN VIÊN</div><nav aria-label="Chức năng cá nhân">
-        <a class="active" href="my-profile">Hồ sơ cá nhân</a>
-        <a  href="../attendance/employee-attendance">Chấm công cá nhân</a>
-        </nav><a href="../payslips">Phiếu lương của tôi</a>
-<a class="lc-signout" href="../logout">↪ <span>Đăng xuất</span></a>
+        <div class="lc-nav-label"><%= com.hrms.i18n.Language.text(request, "ui_add95b680d3c", "CỔNG NHÂN VIÊN") %></div><nav aria-label="<%= com.hrms.i18n.Language.text(request, "ui_0a2ac8dcdfc1", "Chức năng cá nhân") %>">
+        <a class="active" href="my-profile"><%= com.hrms.i18n.Language.text(request, "ui_b70d1e2772e9", "Hồ sơ cá nhân") %></a>
+        <a  href="../attendance/employee-attendance"><%= com.hrms.i18n.Language.text(request, "ui_5d058034330c", "Chấm công cá nhân") %></a>
+        </nav><a href="../payslips"><%= com.hrms.i18n.Language.text(request, "ui_2e59daf63e47", "Phiếu lương của tôi") %></a>
+<a class="lc-signout" href="../logout">↪ <span><%= com.hrms.i18n.Language.text(request, "ui_d513aac0be87", "Đăng xuất") %></span></a>
     </aside>
 
-    <header class="lc-topbar"><span>Cổng nhân viên <span class="lc-muted">/ Hồ sơ cá nhân</span></span><span class="lc-workspace">Workspace · <c:out value="${sessionScope.tenantPrincipal.workspaceCode}" default="—"/></span></header>
+    <header class="lc-topbar"><span><%= com.hrms.i18n.Language.text(request, "ui_c42485146656", "Cổng nhân viên") %> <span class="lc-muted"><%= com.hrms.i18n.Language.text(request, "ui_436f3ba8cb5c", "/ Hồ sơ cá nhân") %></span></span><span class="lc-workspace">Workspace · <c:out value="${sessionScope.tenantPrincipal.workspaceCode}" default="—"/></span></header>
 <%@ include file="/WEB-INF/views/common/appearance.jspf" %>
     <main class="lc-main content profile-update-page">
-        <div class="lc-breadcrumb">Cổng nhân viên &nbsp; / &nbsp; Hồ sơ cá nhân</div>
+        <div class="lc-breadcrumb"><%= com.hrms.i18n.Language.text(request, "ui_e53a24994284", "Cổng nhân viên &nbsp; / &nbsp; Hồ sơ cá nhân") %></div>
         <div class="page-header">
             <div>
-                <h1 id="profileName" class="page-title">Hồ sơ cá nhân</h1>
-                <p class="page-subtitle">Mã nhân viên: <span id="profileCode">-</span></p>
+                <h1 id="profileName" class="page-title"><%= com.hrms.i18n.Language.text(request, "ui_b70d1e2772e9", "Hồ sơ cá nhân") %></h1>
+                <p class="page-subtitle"><%= com.hrms.i18n.Language.text(request, "ui_2bb9e42b9f82", "Mã nhân viên:") %> <span id="profileCode">-</span></p>
             </div>
         </div>
 
         <div id="message" class="message"></div>
 
         <section class="panel personal-profile-layout">
-            <nav class="tabs lc-tabs personal-profile-navigation" aria-label="Các mục hồ sơ cá nhân">
-                <button type="button" class="tab-button active" data-tab="profile">Thông tin cá nhân</button>
-                <button type="button" class="tab-button" data-tab="employment">Công việc</button>
-                <button type="button" class="tab-button" data-tab="salary">Lương & phụ cấp</button>
-                <button type="button" class="tab-button" data-tab="account">Tài khoản</button>
-                <button type="button" class="tab-button" data-tab="documents">Tài liệu</button>
-                <button type="button" class="tab-button" data-tab="history">Lịch sử</button>
+            <nav class="tabs lc-tabs personal-profile-navigation" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_d94ee7c335a3", "Các mục hồ sơ cá nhân") %>">
+                <button type="button" class="tab-button active" data-tab="profile"><%= com.hrms.i18n.Language.text(request, "ui_5de3e5eb0281", "Thông tin cá nhân") %></button>
+                <button type="button" class="tab-button" data-tab="employment"><%= com.hrms.i18n.Language.text(request, "ui_4b7e9cc7b859", "Công việc") %></button>
+                <button type="button" class="tab-button" data-tab="salary"><%= com.hrms.i18n.Language.text(request, "ui_287294c55fa6", "Lương & phụ cấp") %></button>
+                <button type="button" class="tab-button" data-tab="account"><%= com.hrms.i18n.Language.text(request, "ui_4a60abe52524", "Tài khoản") %></button>
+                <button type="button" class="tab-button" data-tab="documents"><%= com.hrms.i18n.Language.text(request, "ui_e87eb38806a6", "Tài liệu") %></button>
+                <button type="button" class="tab-button" data-tab="history"><%= com.hrms.i18n.Language.text(request, "ui_ff72062b26de", "Lịch sử") %></button>
             </nav>
 
             <div class="personal-profile-content">
             <div id="profileTab" class="tab-panel">
                 <form id="myProfileForm">
                     <input type="hidden" name="csrfToken">
-                    <p id="profileUpdateStatus" role="status">Đang kiểm tra đợt cập nhật hồ sơ...</p>
+                    <p id="profileUpdateStatus" role="status"><%= com.hrms.i18n.Language.text(request, "ui_876481552761", "Đang kiểm tra đợt cập nhật hồ sơ...") %></p>
                     <div class="form-grid">
                         <div>
-                            <label>Mã nhân viên</label>
+                            <label><%= com.hrms.i18n.Language.text(request, "ui_84979604c762", "Mã nhân viên") %></label>
                             <input name="employeeCode" readonly>
                         </div>
                         <div>
-                            <label>Họ và tên</label>
+                            <label><%= com.hrms.i18n.Language.text(request, "ui_ad9f29940174", "Họ và tên") %></label>
                             <input name="fullName" readonly>
                         </div>
                         <div>
-                            <label>Giới tính</label>
+                            <label><%= com.hrms.i18n.Language.text(request, "ui_80bbce559524", "Giới tính") %></label>
                             <div class="radio-row">
-                                <label><input type="radio" name="gender" value="Male" disabled> Nam</label>
-                                <label><input type="radio" name="gender" value="Female" disabled> Nữ</label>
-                                <label><input type="radio" name="gender" value="Other" disabled> Khác</label>
+                                <label><input type="radio" name="gender" value="Male" disabled> <%= com.hrms.i18n.Language.text(request, "ui_b580ba1b67f1", "Nam") %></label>
+                                <label><input type="radio" name="gender" value="Female" disabled> <%= com.hrms.i18n.Language.text(request, "ui_feb92ccdb958", "Nữ") %></label>
+                                <label><input type="radio" name="gender" value="Other" disabled> <%= com.hrms.i18n.Language.text(request, "ui_5b8a28abf85c", "Khác") %></label>
                             </div>
                         </div>
                         <div>
-                            <label>Ngày sinh</label>
+                            <label><%= com.hrms.i18n.Language.text(request, "ui_6f8de3085b7b", "Ngày sinh") %></label>
                             <input name="dateOfBirth" type="date" readonly>
                         </div>
                         <div>
-                            <label>Điện thoại</label>
+                            <label><%= com.hrms.i18n.Language.text(request, "ui_08fc3ada4760", "Điện thoại") %></label>
                             <input name="phone" type="tel" inputmode="numeric" minlength="10" maxlength="10" pattern="0[0-9]{9}" required readonly>
                         </div>
                         <div>
-                            <label>Trạng thái làm việc</label>
+                            <label><%= com.hrms.i18n.Language.text(request, "ui_5e9c13e10f68", "Trạng thái làm việc") %></label>
                             <input name="status" readonly>
                         </div>
                         <div>
-                            <label for="profileEmail">Email liên hệ</label>
-                            <input id="profileEmail" name="email" type="email" maxlength="150" readonly placeholder="Chưa cập nhật">
+                            <label for="profileEmail"><%= com.hrms.i18n.Language.text(request, "ui_faaf5491ea05", "Email liên hệ *") %></label>
+                            <input id="profileEmail" name="email" type="email" required maxlength="150" readonly placeholder="<%= com.hrms.i18n.Language.text(request, "ui_443f1c4da0d2", "Chưa cập nhật") %>">
                         </div>
                         <div>
-                            <label for="profileIdentityNumber">Số CCCD/CMND</label>
-                            <input id="profileIdentityNumber" name="identityNumber" readonly autocomplete="off" placeholder="Chưa cập nhật">
+                            <label for="profileIdentityNumber"><%= com.hrms.i18n.Language.text(request, "ui_5dfa5a768186", "Số CCCD/CMND") %></label>
+                            <input id="profileIdentityNumber" name="identityNumber" readonly autocomplete="off" placeholder="<%= com.hrms.i18n.Language.text(request, "ui_443f1c4da0d2", "Chưa cập nhật") %>">
                         </div>
                         <div>
-                            <label for="profileIdentityIssuedDate">Ngày cấp CCCD/CMND</label>
+                            <label for="profileIdentityIssuedDate"><%= com.hrms.i18n.Language.text(request, "ui_b010b9a1b3e8", "Ngày cấp CCCD/CMND") %></label>
                             <input id="profileIdentityIssuedDate" name="identityIssuedDate" type="date" readonly>
                         </div>
                         <div>
-                            <label for="profileIdentityIssuedPlace">Nơi cấp CCCD/CMND</label>
-                            <input id="profileIdentityIssuedPlace" name="identityIssuedPlace" maxlength="200" readonly placeholder="Chưa cập nhật">
+                            <label for="profileIdentityIssuedPlace"><%= com.hrms.i18n.Language.text(request, "ui_14722ec2fffb", "Nơi cấp CCCD/CMND") %></label>
+                            <input id="profileIdentityIssuedPlace" name="identityIssuedPlace" maxlength="200" readonly placeholder="<%= com.hrms.i18n.Language.text(request, "ui_443f1c4da0d2", "Chưa cập nhật") %>">
                         </div>
                         <div>
-                            <label for="profilePermanentAddress">Địa chỉ thường trú</label>
-                            <textarea id="profilePermanentAddress" name="permanentAddress" rows="2" maxlength="500" readonly placeholder="Chưa cập nhật"></textarea>
+                            <label for="profilePermanentAddress"><%= com.hrms.i18n.Language.text(request, "ui_8eddf059a536", "Địa chỉ thường trú") %></label>
+                            <textarea id="profilePermanentAddress" name="permanentAddress" rows="2" maxlength="500" readonly placeholder="<%= com.hrms.i18n.Language.text(request, "ui_443f1c4da0d2", "Chưa cập nhật") %>"></textarea>
                         </div>
                         <div>
-                            <label for="profileHometown">Quê quán</label>
-                            <input id="profileHometown" name="hometown" maxlength="200" readonly placeholder="Chưa cập nhật">
+                            <label for="profileHometown"><%= com.hrms.i18n.Language.text(request, "ui_f80fa6db5941", "Quê quán") %></label>
+                            <input id="profileHometown" name="hometown" maxlength="200" readonly placeholder="<%= com.hrms.i18n.Language.text(request, "ui_443f1c4da0d2", "Chưa cập nhật") %>">
                         </div>
                         <div>
-                            <label for="profileMajor">Ngành học</label>
-                            <input id="profileMajor" name="major" readonly placeholder="Chưa cập nhật">
+                            <label for="profileMajor"><%= com.hrms.i18n.Language.text(request, "ui_c19d76692baf", "Ngành học") %></label>
+                            <input id="profileMajor" name="major" readonly placeholder="<%= com.hrms.i18n.Language.text(request, "ui_443f1c4da0d2", "Chưa cập nhật") %>">
                         </div>
                     </div>
                     <div class="form-actions">
-                        <button type="button" id="editProfileButton" class="hidden" disabled>Cập nhật thông tin cá nhân</button>
-                        <button type="submit" id="submitProfileButton" class="hidden">Lưu thay đổi</button>
-                        <button type="button" class="secondary hidden" id="discardProfileButton">Hủy thay đổi</button>
+                        <button type="button" id="editProfileButton" class="hidden" disabled><%= com.hrms.i18n.Language.text(request, "ui_605002477abd", "Cập nhật thông tin cá nhân") %></button>
+                        <button type="submit" id="submitProfileButton" class="hidden"><%= com.hrms.i18n.Language.text(request, "ui_c05f72bd8c78", "Lưu thay đổi") %></button>
+                        <button type="button" class="secondary hidden" id="discardProfileButton"><%= com.hrms.i18n.Language.text(request, "ui_043c52159fa5", "Hủy thay đổi") %></button>
                     </div>
                 </form>
             </div>
@@ -122,36 +123,36 @@
             <div id="salaryTab" class="tab-panel hidden"></div>
             <div id="accountTab" class="tab-panel detail-grid hidden"></div>
             <div id="documentsTab" class="tab-panel hidden">
-                <p id="documentUpdateStatus" class="page-subtitle" role="status" aria-live="polite">Chỉ được thay đổi tài liệu khi có đợt cập nhật tài liệu đang mở.</p>
+                <p id="documentUpdateStatus" class="page-subtitle" role="status" aria-live="polite"><%= com.hrms.i18n.Language.text(request, "ui_e668337508c3", "Chỉ được thay đổi tài liệu khi có đợt cập nhật tài liệu đang mở.") %></p>
                 <form id="myDocumentForm" class="form-grid" enctype="multipart/form-data">
                     <div>
-                        <label>Tên tài liệu</label>
+                        <label><%= com.hrms.i18n.Language.text(request, "ui_bb295b750c07", "Tên tài liệu") %></label>
                         <input name="documentName" required disabled>
                     </div>
                     <div>
-                        <label>Loại tài liệu</label>
-                        <input name="documentType" placeholder="Hợp đồng, căn cước, chứng chỉ…" disabled>
+                        <label><%= com.hrms.i18n.Language.text(request, "ui_7c8dd9841819", "Loại tài liệu") %></label>
+                        <input name="documentType" placeholder="<%= com.hrms.i18n.Language.text(request, "ui_8c2460772e05", "Hợp đồng, căn cước, chứng chỉ…") %>" disabled>
                     </div>
                     <div>
-                        <label>Chọn tệp</label>
+                        <label><%= com.hrms.i18n.Language.text(request, "ui_c7e9f7266ee2", "Chọn tệp") %></label>
                         <input name="file" type="file" accept=".pdf,.doc,.docx,.jpg,.png" required disabled>
                     </div>
                     <div class="form-actions">
-                        <button type="submit" disabled>Tải tài liệu lên</button>
+                        <button type="submit" disabled><%= com.hrms.i18n.Language.text(request, "ui_498f1d88e704", "Tải tài liệu lên") %></button>
                     </div>
                 </form>
                 <table data-pagination="my-documents">
                     <thead>
                     <tr>
-                        <th>Tên tài liệu</th>
-                        <th>Loại tài liệu</th>
-                        <th>Ngày tải lên</th>
-                        <th>Người tải lên</th>
-                        <th>Thao tác</th>
+                        <th><%= com.hrms.i18n.Language.text(request, "ui_bb295b750c07", "Tên tài liệu") %></th>
+                        <th><%= com.hrms.i18n.Language.text(request, "ui_7c8dd9841819", "Loại tài liệu") %></th>
+                        <th><%= com.hrms.i18n.Language.text(request, "ui_9c0863b0dcfc", "Ngày tải lên") %></th>
+                        <th><%= com.hrms.i18n.Language.text(request, "ui_04dcb5fbde87", "Người tải lên") %></th>
+                        <th><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th>
                     </tr>
                     </thead>
                     <tbody id="myDocumentRows">
-                    <tr><td colspan="5">Chưa có tài liệu.</td></tr>
+                    <tr><td colspan="5"><%= com.hrms.i18n.Language.text(request, "ui_5ce54c5a5e0c", "Chưa có tài liệu.") %></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -159,11 +160,11 @@
                 <table data-pagination="my-profile-history">
                     <thead>
                     <tr>
-                        <th>Ngày</th>
-                        <th>Thao tác</th>
-                        <th>Người thay đổi</th>
-                        <th>Giá trị trước</th>
-                        <th>Giá trị sau</th>
+                        <th><%= com.hrms.i18n.Language.text(request, "ui_368c4575744a", "Ngày") %></th>
+                        <th><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th>
+                        <th><%= com.hrms.i18n.Language.text(request, "ui_bee3922ac0cb", "Người thay đổi") %></th>
+                        <th><%= com.hrms.i18n.Language.text(request, "ui_bd652e6ba1c0", "Giá trị trước") %></th>
+                        <th><%= com.hrms.i18n.Language.text(request, "ui_41111d7751be", "Giá trị sau") %></th>
                     </tr>
                     </thead>
                     <tbody id="profileHistoryRows"></tbody>
@@ -172,7 +173,9 @@
             </div>
         </section>
     </main>
+
+
 <script src="../js/employee.js?v=<%= application.getResource("/js/employee.js").openConnection().getLastModified() %>"></script>
-<script src="../js/payroll-notifications.js"></script>
+<script src="../js/payroll-notifications.js?v=<%= application.getResource("/js/payroll-notifications.js").openConnection().getLastModified() %>"></script>
 </body>
 </html>

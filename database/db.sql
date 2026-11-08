@@ -1667,3 +1667,11 @@ BEGIN
         THROW 51004, 'Payroll reviewer references another company.', 1;
 END;
 GO
+
+-- Catalogue names are unique across the company, including inactive records.
+CREATE UNIQUE INDEX UX_Departments_Company_Name ON dbo.Departments(CompanyId,DepartmentName);
+GO
+CREATE UNIQUE INDEX UX_Positions_Company_Title ON dbo.Positions(CompanyId,PositionTitle);
+GO
+CREATE UNIQUE INDEX UX_ResponsibilityLevels_Company_Name ON dbo.ResponsibilityLevels(CompanyId,LevelName);
+GO

@@ -1,6 +1,6 @@
 <%@ page pageEncoding="UTF-8" %>
 <dialog id="lc-action-modal" class="lc-modal" aria-labelledby="lc-action-title"><form id="lc-action-form">
-<div class="lc-modal-header"><h2 id="lc-action-title"></h2><button class="lc-close" type="button" data-close aria-label="Đóng">×</button></div>
+<div class="lc-modal-header"><h2 id="lc-action-title"></h2><button class="lc-close" type="button" data-close aria-label="<%= com.hrms.i18n.Language.text(request, "ui_d2b73ab2ada1", "Đóng") %>"><%= com.hrms.i18n.Language.text(request, "ui_67fba2f357af", "×") %></button></div>
 <div class="lc-form-section"><div id="lc-action-error" class="lc-alert" role="alert"></div><div id="lc-action-fields" class="lc-form-grid"></div></div>
-<div class="lc-modal-footer"><button type="button" data-close class="secondary">Đóng</button><button id="lc-action-save" type="submit">Lưu</button></div>
+<div class="lc-modal-footer"><button type="button" data-close class="secondary"><%= com.hrms.i18n.Language.text(request, "ui_d2b73ab2ada1", "Đóng") %></button><button id="lc-action-save" type="submit"><%= com.hrms.i18n.Language.text(request, "ui_a306970e8b81", "Lưu") %></button></div>
 </form></dialog>

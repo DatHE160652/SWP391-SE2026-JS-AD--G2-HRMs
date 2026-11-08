@@ -4,35 +4,35 @@
     <a class="lc-brand" href="${pageContext.request.contextPath}/attendance/manager-attendance">
         <span class="lc-logo">H</span><span class="lc-brand-name">HRMs Cloud</span>
     </a>
-    <nav aria-label="Điều hướng Quản lý">
+    <nav aria-label="<%= com.hrms.i18n.Language.text(request, "ui_e2aa7ec2bba3", "Điều hướng Quản lý") %>">
         <section class="lc-nav-group" data-nav-group="attendance">
-            <button type="button" class="lc-group-toggle" aria-controls="lc-manager-att-links" aria-expanded="true">QUẢN LÝ CHẤM CÔNG</button>
+            <button type="button" class="lc-group-toggle" aria-controls="lc-manager-att-links" aria-expanded="true"><%= com.hrms.i18n.Language.text(request, "ui_12a06e115fec", "QUẢN LÝ CHẤM CÔNG") %></button>
             <div class="lc-nav-links" id="lc-manager-att-links">
-                <a class="${managerNavPage == 'team-attendance' ? 'active' : ''}" href="${pageContext.request.contextPath}/attendance/manager-attendance"><span class="lc-nav-icon" aria-hidden="true">✓</span><span>Điểm danh Nhân sự</span></a>
-                <a class="${managerNavPage == 'attendance-list' ? 'active' : ''}" href="${pageContext.request.contextPath}/attendance/manager-attendance?view=list"><span class="lc-nav-icon" aria-hidden="true">▦</span><span>Bảng chấm công</span></a>
-                <a class="${managerNavPage == 'personal-attendance' ? 'active' : ''}" href="${pageContext.request.contextPath}/attendance/manager-personal-attendance"><span class="lc-nav-icon" aria-hidden="true">◷</span><span>Chấm công Cá nhân</span></a>
-                <a class="${managerNavPage == 'attendance-report' ? 'active' : ''}" href="${pageContext.request.contextPath}/attendance/attendance-report"><span class="lc-nav-icon" aria-hidden="true">▤</span><span>Báo cáo Chấm công</span></a>
+                <a class="${managerNavPage == 'team-attendance' ? 'active' : ''}" href="${pageContext.request.contextPath}/attendance/manager-attendance"><span class="lc-nav-icon" aria-hidden="true">✓</span><span><%= com.hrms.i18n.Language.text(request, "ui_cc34d4e67fde", "Điểm danh Nhân sự") %></span></a>
+                <a class="${managerNavPage == 'attendance-list' ? 'active' : ''}" href="${pageContext.request.contextPath}/attendance/manager-attendance?view=list"><span class="lc-nav-icon" aria-hidden="true">▦</span><span><%= com.hrms.i18n.Language.text(request, "ui_b4d20486e1c3", "Bảng chấm công") %></span></a>
+                <a class="${managerNavPage == 'personal-attendance' ? 'active' : ''}" href="${pageContext.request.contextPath}/attendance/manager-personal-attendance"><span class="lc-nav-icon" aria-hidden="true">◷</span><span><%= com.hrms.i18n.Language.text(request, "ui_e846c0844ceb", "Chấm công Cá nhân") %></span></a>
+                <a class="${managerNavPage == 'attendance-report' ? 'active' : ''}" href="${pageContext.request.contextPath}/attendance/attendance-report"><span class="lc-nav-icon" aria-hidden="true">▤</span><span><%= com.hrms.i18n.Language.text(request, "ui_5cfe0baad77f", "Báo cáo Chấm công") %></span></a>
             </div>
         </section>
         <section class="lc-nav-group" data-nav-group="leave">
-            <button type="button" class="lc-group-toggle" aria-controls="lc-manager-leave-links" aria-expanded="true">NGHỈ PHÉP & LƯƠNG</button>
+            <button type="button" class="lc-group-toggle" aria-controls="lc-manager-leave-links" aria-expanded="true"><%= com.hrms.i18n.Language.text(request, "ui_ecfb48ac49a9", "NGHỈ PHÉP & LƯƠNG") %></button>
             <div class="lc-nav-links" id="lc-manager-leave-links">
-                <a class="${managerNavPage == 'leave-pending' ? 'active' : ''}" href="${pageContext.request.contextPath}/leave/pending-approvals"><span class="lc-nav-icon" aria-hidden="true">▢</span><span>Duyệt đơn nghỉ phép</span></a>
-                <a class="${managerNavPage == 'payroll' ? 'active' : ''}" href="${pageContext.request.contextPath}/payroll"><span class="lc-nav-icon" aria-hidden="true">◈</span><span>Quản lý lương</span></a>
+                <a class="${managerNavPage == 'leave-pending' ? 'active' : ''}" href="${pageContext.request.contextPath}/leave/pending-approvals"><span class="lc-nav-icon" aria-hidden="true">▢</span><span><%= com.hrms.i18n.Language.text(request, "ui_7b0a878a5449", "Duyệt đơn nghỉ phép") %></span></a>
+                <a class="${managerNavPage == 'payroll' ? 'active' : ''}" href="${pageContext.request.contextPath}/payroll"><span class="lc-nav-icon" aria-hidden="true">◈</span><span><%= com.hrms.i18n.Language.text(request, "ui_8b3b6553d5b5", "Quản lý lương") %></span></a>
             </div>
         </section>
         <section class="lc-nav-group" data-nav-group="personal">
-            <button type="button" class="lc-group-toggle" aria-controls="lc-manager-personal-links" aria-expanded="true">CÁ NHÂN</button>
+            <button type="button" class="lc-group-toggle" aria-controls="lc-manager-personal-links" aria-expanded="true"><%= com.hrms.i18n.Language.text(request, "ui_3874d4ffe564", "CÁ NHÂN") %></button>
             <div class="lc-nav-links" id="lc-manager-personal-links">
-                <a class="${managerNavPage == 'profile' ? 'active' : ''}" href="${pageContext.request.contextPath}/employee/my-profile?nav=manager"><span class="lc-nav-icon" aria-hidden="true">♙</span><span>Hồ sơ cá nhân</span></a>
-                <a class="${managerNavPage == 'payslips' ? 'active' : ''}" href="${pageContext.request.contextPath}/payslips"><span class="lc-nav-icon" aria-hidden="true">▱</span><span>Phiếu lương của tôi</span></a>
+                <a class="${managerNavPage == 'profile' ? 'active' : ''}" href="${pageContext.request.contextPath}/employee/my-profile?nav=manager"><span class="lc-nav-icon" aria-hidden="true">♙</span><span><%= com.hrms.i18n.Language.text(request, "ui_b70d1e2772e9", "Hồ sơ cá nhân") %></span></a>
+                <a class="${managerNavPage == 'payslips' ? 'active' : ''}" href="${pageContext.request.contextPath}/payslips"><span class="lc-nav-icon" aria-hidden="true">▱</span><span><%= com.hrms.i18n.Language.text(request, "ui_2e59daf63e47", "Phiếu lương của tôi") %></span></a>
             </div>
         </section>
     </nav>
-    <a class="lc-signout" href="${pageContext.request.contextPath}/logout" aria-label="Đăng xuất"><span class="lc-nav-icon" aria-hidden="true">↪</span><span>Đăng xuất</span></a>
+    <a class="lc-signout" href="${pageContext.request.contextPath}/logout" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_d513aac0be87", "Đăng xuất") %>"><span class="lc-nav-icon" aria-hidden="true">↪</span><span><%= com.hrms.i18n.Language.text(request, "ui_d513aac0be87", "Đăng xuất") %></span></a>
 </aside>
 <header class="lc-topbar">
-    <span>Cổng quản lý <span class="lc-muted">/ <c:out value="${managerNavTitle}" default="Chấm công"/></span></span>
+    <span><%= com.hrms.i18n.Language.text(request, "ui_3d11fc48b64c", "Cổng quản lý") %> <span class="lc-muted">/ <c:out value="${managerNavTitle}" default="Chấm công"/></span></span>
     <span class="lc-workspace" title="<c:out value='${sessionScope.tenantPrincipal.companyName}'/>">Workspace · <c:out value="${sessionScope.tenantPrincipal.workspaceCode}" default="—"/></span>
 </header>
 <%@ include file="/WEB-INF/views/common/appearance.jspf" %>

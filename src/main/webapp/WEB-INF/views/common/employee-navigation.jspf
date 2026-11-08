@@ -1,13 +1,13 @@
 <%@ page pageEncoding="UTF-8" %>
 <header class="employee-navigation">
     <a class="employee-navigation-brand" href="${pageContext.request.contextPath}/employee/my-profile"><span aria-hidden="true">H</span>HRMs Cloud</a>
-    <nav aria-label="Điều hướng nhân viên">
-        <a href="${pageContext.request.contextPath}/employee/my-profile" class="${employeeNavPage == 'profile' ? 'active' : ''}" ${employeeNavPage == 'profile' ? 'aria-current="page"' : ''}>Hồ sơ cá nhân</a>
-        <a href="${pageContext.request.contextPath}/employee/organization" class="${employeeNavPage == 'organization' ? 'active' : ''}" ${employeeNavPage == 'organization' ? 'aria-current="page"' : ''}>Sơ đồ tổ chức</a>
-        <a href="${pageContext.request.contextPath}/employee/my-contracts" class="${employeeNavPage == 'contracts' ? 'active' : ''}" ${employeeNavPage == 'contracts' ? 'aria-current="page"' : ''}>Hợp đồng của tôi</a>
-        <a href="${pageContext.request.contextPath}/attendance/employee-attendance" class="${employeeNavPage == 'attendance' ? 'active' : ''}" ${employeeNavPage == 'attendance' ? 'aria-current="page"' : ''}>Chấm công cá nhân</a>
-        <a href="${pageContext.request.contextPath}/payslips">Phiếu lương của tôi</a>
+    <nav aria-label="<%= com.hrms.i18n.Language.text(request, "ui_8fb3b2001ca1", "Điều hướng nhân viên") %>">
+        <a href="${pageContext.request.contextPath}/employee/my-profile" class="${employeeNavPage == 'profile' ? 'active' : ''}" ${employeeNavPage == 'profile' ? 'aria-current="page"' : ''}><%= com.hrms.i18n.Language.text(request, "ui_b70d1e2772e9", "Hồ sơ cá nhân") %></a>
+        <a href="${pageContext.request.contextPath}/employee/organization" class="${employeeNavPage == 'organization' ? 'active' : ''}" ${employeeNavPage == 'organization' ? 'aria-current="page"' : ''}><%= com.hrms.i18n.Language.text(request, "ui_964624eb861b", "Sơ đồ tổ chức") %></a>
+        <a href="${pageContext.request.contextPath}/employee/my-contracts" class="${employeeNavPage == 'contracts' ? 'active' : ''}" ${employeeNavPage == 'contracts' ? 'aria-current="page"' : ''}><%= com.hrms.i18n.Language.text(request, "ui_4939da54ffa3", "Hợp đồng của tôi") %></a>
+        <a href="${pageContext.request.contextPath}/attendance/employee-attendance" class="${employeeNavPage == 'attendance' ? 'active' : ''}" ${employeeNavPage == 'attendance' ? 'aria-current="page"' : ''}><%= com.hrms.i18n.Language.text(request, "ui_5d058034330c", "Chấm công cá nhân") %></a>
+        <a href="${pageContext.request.contextPath}/payslips"><%= com.hrms.i18n.Language.text(request, "ui_2e59daf63e47", "Phiếu lương của tôi") %></a>
     </nav>
     <span class="employee-navigation-workspace">Workspace · <c:out value="${sessionScope.tenantPrincipal.workspaceCode}" default="—"/></span>
-    <a class="employee-navigation-signout" href="${pageContext.request.contextPath}/logout">Đăng xuất</a>
+    <a class="employee-navigation-signout" href="${pageContext.request.contextPath}/logout"><%= com.hrms.i18n.Language.text(request, "ui_d513aac0be87", "Đăng xuất") %></a>
 </header>

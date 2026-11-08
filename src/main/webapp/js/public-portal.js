@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const button = form.querySelector('.submit-button');
       if (button && form.checkValidity()) {
         button.disabled = true;
-        button.innerHTML = 'Đang lưu yêu cầu...';
+        button.innerHTML = HrmI18n.t('Đang lưu yêu cầu...');
       }
     });
   });
