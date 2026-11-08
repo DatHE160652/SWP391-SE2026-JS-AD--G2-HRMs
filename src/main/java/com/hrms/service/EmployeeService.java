@@ -144,13 +144,19 @@ public class EmployeeService {
         }
     }
 
-    public boolean activateEmployee(int companyId, int employeeId, Integer actorId) throws SQLException {
+    public boolean activateEmployee(int companyId, int employeeId, Integer actorId, String reason) throws SQLException {
+        if (reason == null || reason.isBlank())
+            throw new FieldValidationException("reason", "Vui lòng nhập lý do kích hoạt lại.");
+        String activationReason = reason.strip();
+        if (activationReason.length() > 500)
+            throw new FieldValidationException("reason", "Lý do kích hoạt lại không được vượt quá 500 ký tự.");
         return OrganizationTransaction.execute(companyId,connection -> {
             new EmployeeLifecycleDAO().requireActor(connection,companyId,actorId);
             var employee=new EmployeeLifecycleDAO().employee(connection,companyId,employeeId);
-            if ("Active".equals(employee.get("Status"))) throw new IllegalArgumentException("Nhân viên đã ở trạng thái đang hoạt động.");
+            if ("Active".equals(employee.get("Status")))
+                throw new IllegalArgumentException("Nhân viên đã ở trạng thái đang hoạt động.");
             new EmployeeLifecycleDAO().execute(connection,"UPDATE Employees SET Status='Active',EndDate=NULL,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND EmployeeId=?",companyId,employeeId);
-            OrganizationTransaction.audit(connection,companyId,actorId,employeeId,"ACTIVATE_EMPLOYEE",String.valueOf(employee.get("Status")),"Active; portal access remains separately controlled");
+            OrganizationTransaction.audit(connection,companyId,actorId,employeeId,"ACTIVATE_EMPLOYEE",String.valueOf(employee.get("Status")),"Active; Lý do kích hoạt lại: " + activationReason);
             return true;
         });
     }
@@ -162,6 +168,7 @@ public class EmployeeService {
         if (employee.getFullName() == null || employee.getFullName().isBlank()) {
             throw new FieldValidationException("fullName", "Vui lòng nhập họ và tên.");
         }
+        validateEmail(employee.getEmail());
         employee.setPhone(com.hrms.util.ValidationSupport.validatePhone(employee.getPhone()));
         if (employee.getGender() == null || employee.getGender().isBlank()) {
             throw new FieldValidationException("gender", "Vui lòng chọn giới tính.");
@@ -224,10 +231,16 @@ public class EmployeeService {
             throw new FieldValidationException("identityIssuedDate", "Ngày cấp căn cước phải sau ngày sinh và không được ở tương lai.");
         if (!java.util.Set.of("Male", "Female", "Other").contains(employee.getGender() == null ? "" : employee.getGender()))
             throw new FieldValidationException("gender", "Vui lòng chọn giới tính hợp lệ.");
-        if (employee.getEmail() != null && (employee.getEmail().length() > 150 || !employee.getEmail().matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")))
-            throw new FieldValidationException("email", "Vui lòng nhập địa chỉ email hợp lệ.");
+        validateEmail(employee.getEmail());
         if (employee.getIntendedContractType() != null && !java.util.Set.of("PROBATION", "FIXED_TERM", "INDEFINITE").contains(employee.getIntendedContractType()))
             throw new FieldValidationException("intendedContractType", "Vui lòng chọn loại hợp đồng dự kiến hợp lệ.");
+    }
+
+    private static void validateEmail(String email) {
+        if (email == null || email.isBlank())
+            throw new FieldValidationException("email", "Vui lòng nhập email.");
+        if (email.length() > 150 || !email.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"))
+            throw new FieldValidationException("email", "Vui lòng nhập địa chỉ email hợp lệ.");
     }
 
     private static void checkLength(String field, String value, int maximum) {

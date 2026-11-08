@@ -45,6 +45,10 @@ public class ResponsibilityLevelService {
         if (levelDAO.valueExists(level.getCompanyId(),level.getLevelCode(),null,excludeId)) {
             throw new FieldValidationException("levelCode","Mã cấp trách nhiệm đã tồn tại trong công ty.");
         }
+        if (new com.hrms.dao.OrganizationNameDAO().exists(com.hrms.dao.OrganizationNameDAO.Catalog.RESPONSIBILITY_LEVEL,
+                level.getCompanyId(), level.getLevelName(), excludeId)) {
+            throw new FieldValidationException("levelName","Tên cấp trách nhiệm đã tồn tại trong công ty.");
+        }
         if (levelDAO.valueExists(level.getCompanyId(),null,level.getRankOrder(),excludeId)) {
             throw new FieldValidationException("rankOrder","Thứ bậc đã được sử dụng trong công ty. Vui lòng chọn giá trị khác.");
         }
