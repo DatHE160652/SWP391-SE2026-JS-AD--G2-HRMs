@@ -243,7 +243,14 @@ async function updateMyProfile(form) {
         if (!FormValidation.validate(form)) return;
         const changes = {csrfToken:form.csrfToken.value};
         if (form.dataset.profileVersion) changes.updatedAt = form.dataset.profileVersion;
-        ['email','phone','identityIssuedDate','identityIssuedPlace','permanentAddress','hometown'].forEach(name => {
+        const allowedKeys = (form.dataset.allowedProfileFields || 'email,phone,identityIssuedDate,identityIssuedPlace,permanentAddress,hometown')
+            .split(',').map(s => s.trim()).filter(Boolean);
+        allowedKeys.forEach(name => {
+            if (name === 'gender') {
+                const checked = form.querySelector('input[name="gender"]:checked');
+                changes.gender = checked ? checked.value : '';
+                return;
+            }
             const field = form.elements.namedItem(name);
             if (field) changes[name] = field.value;
         });
@@ -508,6 +515,14 @@ function renderMyProfile(employee) {
         form.dataset.updateDeadline = employee.profileUpdatePeriod ? employee.profileUpdatePeriod.endsAt : '';
         form.dataset.canUpdateDocuments = String(employee.canUpdateDocuments === true);
         form.dataset.documentUpdateDeadline = employee.documentUpdatePeriod ? employee.documentUpdatePeriod.endsAt : '';
+        form.dataset.documentPeriodTitle = employee.documentUpdatePeriod ? (employee.documentUpdatePeriod.title || '') : '';
+        const allowedDocTypes = employee.documentUpdatePeriod?.allowedDocumentTypes || [];
+        form.dataset.allowedDocumentTypes = allowedDocTypes.join(', ');
+        const docTypeField = document.querySelector('#myDocumentForm')?.elements.namedItem('documentType');
+        if (docTypeField && docTypeField.tagName === 'SELECT') {
+            docTypeField.innerHTML = `<option value="">${HrmI18n.t('-- Chọn loại tài liệu --')}</option>`
+                + allowedDocTypes.map(typeName => `<option value="${safe(typeName)}">${safe(typeName)}</option>`).join('');
+        }
         form.dataset.profileVersion = employee.updatedAt || '';
         globalThis.FormValidation?.clear(form);
         form.csrfToken.value = employee.csrfToken || '';
@@ -530,8 +545,16 @@ function renderMyProfile(employee) {
             input.checked = input.value === gender;
         });
         const period = employee.profileUpdatePeriod;
+        const allowedFieldKeys = period?.allowedFieldKeys?.length
+            ? period.allowedFieldKeys
+            : ['email','phone','identityIssuedDate','identityIssuedPlace','permanentAddress','hometown'];
+        const allowedFieldLabels = period?.allowedFieldLabels?.length
+            ? period.allowedFieldLabels
+            : ['Email liên hệ', 'Số điện thoại', 'Ngày cấp CCCD/CMND', 'Nơi cấp CCCD/CMND', 'Địa chỉ thường trú', 'Quê quán'];
+        form.dataset.allowedProfileFields = allowedFieldKeys.join(',');
+        form.dataset.allowedProfileFieldLabels = allowedFieldLabels.join(', ');
         document.querySelector('#profileUpdateStatus').textContent = (employee.canUpdateProfile ?? employee.canUpdatePhone) && period
-            ? `${HrmI18n.fragment("Đợt \"")}${period.title}${HrmI18n.fragment("\" đang mở đến ")}${new Date(period.endsAt).toLocaleString(HrmI18n.locale)}${HrmI18n.fragment(". Bạn được cập nhật email liên hệ, số điện thoại, ngày/nơi cấp căn cước, địa chỉ thường trú và quê quán.")}`
+            ? `${HrmI18n.fragment("Đợt \"")}${period.title}${HrmI18n.fragment("\" đang mở đến ")}${new Date(period.endsAt).toLocaleString(HrmI18n.locale)}${HrmI18n.fragment(". Các thông tin được phép cập nhật trong đợt này: ")}${allowedFieldLabels.join(', ')}${HrmI18n.fragment(" (Email đăng nhập tài khoản được giữ cố định).")}`
             : HrmI18n.t('Không có đợt cập nhật hồ sơ đang mở. Thông tin cá nhân hiện không thể chỉnh sửa.');
         setProfileEditMode(false);
         scheduleProfileUpdateExpiry(form);
@@ -550,7 +573,8 @@ function renderMyProfile(employee) {
     renderMyCompensation(employee.compensation);
     document.querySelector('#accountTab').innerHTML = `
         ${detailItem(HrmI18n.t('Tên đăng nhập'), employee.username)}
-        ${detailItem(HrmI18n.t('Email đăng nhập'), employee.accountEmail)}
+        ${detailItem(HrmI18n.t('Email đăng nhập (Dùng để đăng nhập hệ thống)'), employee.accountEmail)}
+        ${detailItem(HrmI18n.t('Email liên hệ (Hồ sơ cá nhân)'), employee.email)}
         ${detailItem(HrmI18n.t('Trạng thái tài khoản'), employee.accountActive === true ? HrmI18n.t('Hoạt động') : employee.accountActive === false ? HrmI18n.t('Ngừng hoạt động') : null)}
     `;
 }
@@ -597,16 +621,22 @@ function setProfileEditMode(editing) {
     const available = form.dataset.canUpdateProfile === 'true'
         && Date.parse(form.dataset.updateDeadline) > Date.now();
     const profileEditing = editing && available;
-    ['employeeCode','fullName','dateOfBirth','identityNumber','major','status'].forEach(name => {
+    const allowedSet = new Set(
+        (form.dataset.allowedProfileFields || 'email,phone,identityIssuedDate,identityIssuedPlace,permanentAddress,hometown')
+            .split(',').map(s => s.trim()).filter(Boolean)
+    );
+    ['employeeCode','fullName','dateOfBirth','major','status'].forEach(name => {
         const field = form.elements.namedItem(name);
         if (field) field.readOnly = true;
     });
+    ['email','phone','identityNumber','identityIssuedDate','identityIssuedPlace','permanentAddress','hometown'].forEach(name => {
+        const field = form.elements.namedItem(name);
+        if (field) {
+            field.readOnly = !(profileEditing && allowedSet.has(name));
+        }
+    });
     form.querySelectorAll('input[name="gender"]').forEach(input => {
         input.disabled = true;
-    });
-    ['email','phone','identityIssuedDate','identityIssuedPlace','permanentAddress','hometown'].forEach(name => {
-        const field = form.elements.namedItem(name);
-        if (field) field.readOnly = !profileEditing;
     });
     document.querySelector('#editProfileButton').disabled = !available;
     document.querySelector('#editProfileButton').classList.toggle('hidden', profileEditing || !available);
@@ -622,13 +652,21 @@ function canUpdateMyDocuments() {
 
 function updateMyDocumentPermissions() {
     const available = canUpdateMyDocuments();
+    const profile = document.querySelector('#myProfileForm');
     const form = document.querySelector('#myDocumentForm');
     if (form) Array.from(form.elements).forEach(field => { field.disabled = !available; });
     document.querySelectorAll('[data-my-document-write]').forEach(button => { button.disabled = !available; });
     const status = document.querySelector('#documentUpdateStatus');
-    if (status) status.textContent = available
-        ? HrmI18n.t('Đợt cập nhật tài liệu đang mở. Bạn có thể tải lên, lưu trữ hoặc kích hoạt lại tài liệu của mình.')
-        : HrmI18n.t('Tài liệu đang được khóa cập nhật. Bạn vẫn có thể xem và tải xuống; chỉ được thay đổi khi có đợt cập nhật tài liệu đang mở.');
+    if (status) {
+        if (available && profile) {
+            const title = profile.dataset.documentPeriodTitle || '';
+            const deadline = profile.dataset.documentUpdateDeadline ? new Date(profile.dataset.documentUpdateDeadline).toLocaleString(HrmI18n.locale) : '';
+            const types = profile.dataset.allowedDocumentTypes || '';
+            status.textContent = `Đợt cập nhật tài liệu "${title}" đang mở đến ${deadline}.${types ? ' Các loại tài liệu được phép cập nhật: ' + types + '.' : ''}`;
+        } else {
+            status.textContent = HrmI18n.t('Tài liệu đang được khóa cập nhật. Bạn vẫn có thể xem và tải xuống; chỉ được thay đổi khi có đợt cập nhật tài liệu đang mở dành cho bạn.');
+        }
+    }
 }
 
 function lockMyDocumentUpdates(error) {

@@ -77,8 +77,15 @@ public class EmployeeController extends HttpServlet {
                     writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Không tìm thấy nhân viên."));
                     return;
                 }
+                com.hrms.dao.ProfileUpdateDAO.ActiveEmployeeProfileContext profileContext = profileUpdateService.getActiveContext(principal);
+                ProfileUpdatePeriod fallbackPeriod = profileContext == null ? profileUpdateService.getAvailablePeriod(principal) : null;
+                com.hrms.dao.DocumentUpdatePeriodDAO.ActiveEmployeeDocumentContext docContext =
+                        (principal.getEmployeeId() != null && !principal.isMustChangePassword()
+                                && Set.of("EMPLOYEE", "MANAGER").contains(principal.getRoleCode()))
+                                ? new com.hrms.dao.DocumentUpdatePeriodDAO().getActiveContextForEmployee(companyId, principal.getEmployeeId())
+                                : null;
                 String personalJson = toJson(employee, principal.getRoleCode(),
-                        profileUpdateService.getAvailablePeriod(principal), new ProfileUpdateService("DOCUMENT").getAvailablePeriod(principal),
+                        profileContext, fallbackPeriod, docContext,
                         SecuritySupport.ensurePublicCsrfToken(request.getSession(true)));
                 writeJson(response, HttpServletResponse.SC_OK,
                         "{\"success\":true,\"data\":" + personalJson.substring(0,personalJson.length()-1)
@@ -311,15 +318,48 @@ public class EmployeeController extends HttpServlet {
                 + "}";
     }
 
-    private String toJson(Employee employee, String roleCode, ProfileUpdatePeriod period, ProfileUpdatePeriod documentPeriod, String csrfToken) {
+    private String toJson(Employee employee, String roleCode,
+                          com.hrms.dao.ProfileUpdateDAO.ActiveEmployeeProfileContext profileContext,
+                          ProfileUpdatePeriod fallbackPeriod,
+                          com.hrms.dao.DocumentUpdatePeriodDAO.ActiveEmployeeDocumentContext documentPeriod, String csrfToken) {
         String json = toJson(employee);
+        String profilePeriodJson = "null";
+        boolean canUpdateProfile = false;
+        if (profileContext != null) {
+            canUpdateProfile = true;
+            profilePeriodJson = "{\"periodId\":" + profileContext.periodId()
+                    + ",\"title\":" + quote(profileContext.title())
+                    + ",\"periodType\":\"PROFILE\""
+                    + ",\"startsAt\":" + quote(profileContext.startsAt().atOffset(java.time.ZoneOffset.UTC).toString())
+                    + ",\"endsAt\":" + quote(profileContext.endsAt().atOffset(java.time.ZoneOffset.UTC).toString())
+                    + ",\"closed\":false,\"open\":true"
+                    + ",\"allowedFieldKeys\":" + com.hrms.util.Json.encode(profileContext.allowedFieldKeys())
+                    + ",\"allowedFieldLabels\":" + com.hrms.util.Json.encode(profileContext.allowedFieldLabels())
+                    + ",\"activePeriods\":" + com.hrms.util.Json.encode(profileContext.activePeriods())
+                    + "}";
+        } else if (fallbackPeriod != null) {
+            canUpdateProfile = true;
+            profilePeriodJson = ProfileUpdatePeriodController.toJson(fallbackPeriod);
+        }
+        String docPeriodJson = "null";
+        if (documentPeriod != null) {
+            docPeriodJson = "{\"periodId\":" + documentPeriod.periodId()
+                    + ",\"title\":" + quote(documentPeriod.title())
+                    + ",\"periodType\":\"DOCUMENT\""
+                    + ",\"startsAt\":" + quote(documentPeriod.startsAt().atOffset(java.time.ZoneOffset.UTC).toString())
+                    + ",\"endsAt\":" + quote(documentPeriod.endsAt().atOffset(java.time.ZoneOffset.UTC).toString())
+                    + ",\"closed\":false,\"open\":true"
+                    + ",\"allowedDocumentTypes\":" + com.hrms.util.Json.encode(documentPeriod.allowedDocumentTypes())
+                    + ",\"activePeriods\":" + com.hrms.util.Json.encode(documentPeriod.activePeriods())
+                    + "}";
+        }
         return json.substring(0, json.length() - 1)
                 + ",\"roleCode\":" + quote(roleCode)
-                + ",\"canUpdatePhone\":" + (period != null)
-                + ",\"canUpdateProfile\":" + (period != null)
-                + ",\"profileUpdatePeriod\":" + ProfileUpdatePeriodController.toJson(period)
+                + ",\"canUpdatePhone\":" + canUpdateProfile
+                + ",\"canUpdateProfile\":" + canUpdateProfile
+                + ",\"profileUpdatePeriod\":" + profilePeriodJson
                 + ",\"canUpdateDocuments\":" + (documentPeriod != null)
-                + ",\"documentUpdatePeriod\":" + ProfileUpdatePeriodController.toJson(documentPeriod)
+                + ",\"documentUpdatePeriod\":" + docPeriodJson
                 + ",\"csrfToken\":" + quote(csrfToken)
                 + "}";
     }

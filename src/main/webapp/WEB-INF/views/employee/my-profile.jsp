@@ -74,6 +74,7 @@
                         <div>
                             <label for="profileEmail"><%= com.hrms.i18n.Language.text(request, "ui_faaf5491ea05", "Email liên hệ *") %></label>
                             <input id="profileEmail" name="email" type="email" required maxlength="150" readonly placeholder="<%= com.hrms.i18n.Language.text(request, "ui_443f1c4da0d2", "Chưa cập nhật") %>">
+                            <small class="lc-form-hint" style="display:block;margin-top:4px;font-size:11.5px;color:var(--lc-muted)">Email dùng để liên hệ trong hồ sơ nhân sự. Khi đăng nhập hệ thống, vui lòng dùng <strong>Email đăng nhập</strong> tại tab Tài khoản.</small>
                         </div>
                         <div>
                             <label for="profileIdentityNumber"><%= com.hrms.i18n.Language.text(request, "ui_5dfa5a768186", "Số CCCD/CMND") %></label>
@@ -119,7 +120,9 @@
                     </div>
                     <div>
                         <label><%= com.hrms.i18n.Language.text(request, "ui_7c8dd9841819", "Loại tài liệu") %></label>
-                        <input name="documentType" placeholder="<%= com.hrms.i18n.Language.text(request, "ui_8c2460772e05", "Hợp đồng, căn cước, chứng chỉ…") %>" disabled>
+                        <select name="documentType" required disabled>
+                            <option value=""><%= com.hrms.i18n.Language.text(request, "ui_8c2460772e05", "-- Chọn loại tài liệu --") %></option>
+                        </select>
                     </div>
                     <div>
                         <label><%= com.hrms.i18n.Language.text(request, "ui_c7e9f7266ee2", "Chọn tệp") %></label>
