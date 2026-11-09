@@ -17,7 +17,7 @@
         <div class="tenant-login-heading">
             <span class="eyebrow">WORKSPACE</span>
             <h1 id="change-password-title"><%= com.hrms.i18n.Language.text(request, "ui_d4e1de23305e", "Đổi mật khẩu") %></h1>
-            <p><%= com.hrms.i18n.Language.text(request, "ui_101fec028366", "Tài khoản đang dùng mật khẩu tạm. Vui lòng đặt mật khẩu mới để tiếp tục.") %></p>
+            <p><%= com.hrms.i18n.Language.text(request, "ui_101fec028366", "Tài khoản đang dùng mật khẩu tạm hoặc quên mật khẩu. Vui lòng đặt mật khẩu mới để tiếp tục.") %></p>
         </div>
         <c:if test="${not empty changePasswordError and empty changePasswordField}">
             <div class="alert alert-warning" role="alert"><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("changePasswordError")) %>'/></div>
