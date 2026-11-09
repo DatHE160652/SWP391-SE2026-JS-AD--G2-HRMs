@@ -9,9 +9,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><%= com.hrms.i18n.Language.text(request, "ui_8119b26bb800", "Đăng nhập | HRMs.Admin") %></title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/system-admin.css">
-<%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
-<body class="lc workspace-auth auth-page">
+<body class="auth-page">
 <c:set var="icons" value="${pageContext.request.contextPath}/images/admin-icons.svg"/>
 <main class="auth-card" aria-labelledby="login-title">
     <div class="accent-line" aria-hidden="true"></div>

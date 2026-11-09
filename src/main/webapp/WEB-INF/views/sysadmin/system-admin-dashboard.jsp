@@ -8,11 +8,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Dashboard | HRMs.Admin</title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/system-admin.css">
-<%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
-<body class="lc workspace-admin admin-page">
+<body class="admin-page">
 <%@ include file="/WEB-INF/views/sysadmin/admin-shell.jspf" %>
-<main class="lc-main admin-main" id="main-content">
+<main class="admin-main" id="main-content">
     <div class="page-heading">
         <h1>System Admin Overview</h1>
         <div class="dashboard-actions"><a class="button" href="${pageContext.request.contextPath}/systemadmin/company"><svg class="icon" aria-hidden="true"><use href="${icons}#building"/></svg><%= com.hrms.i18n.Language.text(request, "ui_47414364e415", "Xem danh sách Company") %></a><a class="button button-primary" href="${pageContext.request.contextPath}/systemadmin/registration-request?status=PENDING"><svg class="icon" aria-hidden="true"><use href="${icons}#shield"/></svg><%= com.hrms.i18n.Language.text(request, "ui_c809e872dcb8", "Xem yêu cầu cần xử lý (") %><c:out value="${stats.pendingCount}"/>)</a></div>
