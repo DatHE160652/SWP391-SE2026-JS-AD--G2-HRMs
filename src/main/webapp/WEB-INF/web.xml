@@ -429,6 +429,16 @@
     </servlet-mapping>
 
     <servlet>
+        <servlet-name>WorkspaceNotificationController</servlet-name>
+        <servlet-class>com.hrms.controller.WorkspaceNotificationController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>WorkspaceNotificationController</servlet-name>
+        <url-pattern>/notifications/api</url-pattern>
+        <url-pattern>/notifications/api/read</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
         <servlet-name>DataExportController</servlet-name>
         <servlet-class>com.hrms.controller.export.DataExportController</servlet-class>
     </servlet>
