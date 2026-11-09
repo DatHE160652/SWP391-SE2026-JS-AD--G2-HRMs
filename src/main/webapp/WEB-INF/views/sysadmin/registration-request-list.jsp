@@ -9,11 +9,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><%= com.hrms.i18n.Language.text(request, "ui_4aafdd49263f", "Yêu cầu đăng ký | HRMs.Admin") %></title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/system-admin.css">
-<%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
-<body class="lc workspace-admin admin-page">
+<body class="admin-page">
 <%@ include file="/WEB-INF/views/sysadmin/admin-shell.jspf" %>
-<main class="lc-main admin-main" id="main-content">
+<main class="admin-main" id="main-content">
     <c:if test="${not empty actionMessage}"><div class="alert alert-success" role="status"><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("actionMessage")) %>'/></div></c:if>
     <c:if test="${not empty actionWarning}"><div class="alert alert-warning" role="alert"><c:out value="${actionWarning}"/></div></c:if>
     <nav class="breadcrumb" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_50de7d02dcaa", "Đường dẫn") %>"><a href="${pageContext.request.contextPath}/systemadmin/dashboard"><%= com.hrms.i18n.Language.text(request, "ui_8201002cd9e8", "Quản lý tenant") %></a><svg class="icon" aria-hidden="true"><use href="${icons}#chevron"/></svg><span><%= com.hrms.i18n.Language.text(request, "ui_a262f997f733", "Yêu cầu đăng ký") %></span></nav>

@@ -8,11 +8,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><%= com.hrms.i18n.Language.text(request, "ui_997ee2572713", "Chi tiết yêu cầu | HRMs.Admin") %></title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/system-admin.css">
-<%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
-<body class="lc workspace-admin admin-page">
+<body class="admin-page">
 <%@ include file="/WEB-INF/views/sysadmin/admin-shell.jspf" %>
-<main class="lc-main admin-main" id="main-content">
+<main class="admin-main" id="main-content">
     <a class="back-link" href="${pageContext.request.contextPath}/systemadmin/registration-request"><svg class="icon" aria-hidden="true"><use href="${icons}#arrow-left"/></svg><%= com.hrms.i18n.Language.text(request, "ui_a7ed5c7e2129", "Quay lại danh sách yêu cầu") %></a>
     <c:set var="item" value="${registrationRequest}"/>
     <section class="panel detail-heading" aria-labelledby="detail-title">
