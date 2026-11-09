@@ -148,7 +148,7 @@ CREATE TABLE Users (
     CONSTRAINT CK_Users_DisplayName CHECK (LEN(LTRIM(RTRIM(DisplayName))) > 0),
     CONSTRAINT CK_Users_Activation CHECK (
         (ActivatedAt IS NULL AND MustChangePassword = 1)
-        OR (ActivatedAt IS NOT NULL AND MustChangePassword = 0 AND PasswordChangedAt IS NOT NULL)
+        OR (ActivatedAt IS NOT NULL AND PasswordChangedAt IS NOT NULL)
     )
 );
 

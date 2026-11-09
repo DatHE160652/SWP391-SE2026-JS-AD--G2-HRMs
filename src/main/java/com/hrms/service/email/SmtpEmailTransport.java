@@ -11,7 +11,10 @@ import jakarta.mail.internet.MimeMessage;
 /** Shared SMTP transport. Never includes provider payloads or message bodies in errors. */
 final class SmtpEmailTransport {
     void send(String recipient, String subject, String body) throws EmailDeliveryException {
-        SmtpConfiguration configuration = SmtpConfiguration.load();
+        send(SmtpConfiguration.load(), recipient, subject, body);
+    }
+
+    void send(SmtpConfiguration configuration, String recipient, String subject, String body) throws EmailDeliveryException {
         boolean sending = false;
         try {
             MimeMessage message = new MimeMessage(Session.getInstance(configuration.properties));
@@ -35,7 +38,7 @@ final class SmtpEmailTransport {
             throw new EmailDeliveryException(sending ? "MAIL_PROVIDER_UNAVAILABLE" : "MAIL_SEND_FAILED",
                     "SMTP could not send the message.");
         } catch (RuntimeException exception) {
-            throw new EmailDeliveryException("MAIL_CONFIGURATION_INVALID", "SMTP configuration is invalid.");
+            throw new EmailDeliveryException(sending ? "MAIL_PROVIDER_UNAVAILABLE" : "MAIL_CONFIGURATION_INVALID", "SMTP configuration or delivery is unavailable.");
         }
     }
 }
