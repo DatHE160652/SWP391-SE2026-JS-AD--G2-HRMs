@@ -1,4 +1,5 @@
 :root{--lc-radius:14px;--lc-surface:#fff;--lc-soft:#f7f8fc;--lc-control:40px;--lc-cell:16px;--lc-space:20px;--lc-input-pad:10px}
+.lc .appearance-language-label{display:block;margin-bottom:8px}.lc #appearance-language{width:100%;margin-bottom:22px;padding:8px 10px;border:1px solid var(--lc-line);border-radius:8px;font:inherit}
 html[data-theme=dark]{color-scheme:dark;--lc-bg:#111522;--lc-surface:#1b2132;--lc-soft:#242c40;--lc-ink:#edf0f8;--lc-muted:#a3adc3;--lc-line:#343d53}
 html[data-density=compact]{--lc-control:32px;--lc-cell:10px;--lc-space:14px;--lc-input-pad:6px}
 html[data-density=comfortable]{--lc-control:48px;--lc-cell:22px;--lc-space:26px;--lc-input-pad:14px}

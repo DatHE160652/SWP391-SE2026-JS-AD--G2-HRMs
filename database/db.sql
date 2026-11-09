@@ -312,7 +312,6 @@ CREATE TABLE Employees (
     Major NVARCHAR(200) NULL,
     IntendedContractType VARCHAR(30) NULL,
     TerminationReason NVARCHAR(500) NULL,
-    StartDate DATE NULL,                            -- Tương thích legacy; hồ sơ có thể được tạo trước hợp đồng
     EndDate DATE NULL,
     BaseSalary DECIMAL(18,2) NOT NULL DEFAULT 0.00 CHECK (BaseSalary >= 0), -- Chỉ tương thích; payroll đọc lịch sử lương
     Status NVARCHAR(30) NOT NULL DEFAULT 'Active'
@@ -335,7 +334,38 @@ CREATE TABLE Employees (
 -- ========================================================================
 
 -- ------------------------------------------------------------------------
--- BẢNG 9: Attendances (Bản ghi chấm công theo ca)
+-- BẢNG 9: CompanyShiftSettings (Cấu hình ca làm việc theo từng công ty)
+-- ------------------------------------------------------------------------
+-- TimesheetCutoffDay và ngưỡng số giờ được ứng dụng hiện tại sử dụng để
+-- tính công và tự động khóa chốt công.
+IF OBJECT_ID(N'dbo.CompanyShiftSettings', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.CompanyShiftSettings (
+        CompanyId          INT PRIMARY KEY,
+        ShiftStartTime     TIME(0) NOT NULL DEFAULT '08:30:00',
+        ShiftEndTime       TIME(0) NOT NULL DEFAULT '17:30:00',
+        LunchBreakMinutes  INT NOT NULL DEFAULT 60,
+        GracePeriodMinutes INT NOT NULL DEFAULT 0,
+        TimesheetCutoffDay INT NOT NULL DEFAULT 5,
+        MinHoursHalfDay    DECIMAL(4,2) NOT NULL DEFAULT 4.00,
+        MinHoursFullDay    DECIMAL(4,2) NOT NULL DEFAULT 6.00,
+        UpdatedAt          DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        UpdatedByUserId    INT NULL,
+        CONSTRAINT FK_CompanyShiftSettings_Companies FOREIGN KEY (CompanyId)
+            REFERENCES dbo.Companies(CompanyId) ON DELETE CASCADE,
+        CONSTRAINT FK_CompanyShiftSettings_Users FOREIGN KEY (UpdatedByUserId)
+            REFERENCES dbo.Users(UserId),
+        CONSTRAINT CK_CompanyShiftSettings_Times CHECK (ShiftEndTime > ShiftStartTime),
+        CONSTRAINT CK_CompanyShiftSettings_CutoffDay CHECK (TimesheetCutoffDay BETWEEN 1 AND 31),
+        CONSTRAINT CK_CompanyShiftSettings_Hours CHECK (
+            MinHoursFullDay > MinHoursHalfDay AND MinHoursHalfDay > 0
+        )
+    );
+END;
+GO
+
+-- ------------------------------------------------------------------------
+-- BẢNG 10: Attendances (Bản ghi chấm công theo ca)
 -- ------------------------------------------------------------------------
 CREATE TABLE Attendances (
     AttendanceId BIGINT IDENTITY(1,1) PRIMARY KEY,
@@ -358,6 +388,67 @@ CREATE TABLE Attendances (
     -- Đảm bảo mỗi nhân viên chỉ có 1 bản ghi chấm công mỗi ngày
     CONSTRAINT UQ_Employee_AttendanceDate UNIQUE (EmployeeId, AttendanceDate)
 );
+GO
+
+-- ------------------------------------------------------------------------
+-- BẢNG 11: AttendanceExplanations (Giải trình chấm công và quy trình duyệt)
+-- ------------------------------------------------------------------------
+IF OBJECT_ID(N'dbo.AttendanceExplanations', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.AttendanceExplanations (
+        ExplanationId    INT IDENTITY(1,1) PRIMARY KEY,
+        CompanyId        INT NOT NULL,
+        EmployeeId       INT NOT NULL,
+        AttendanceDate   DATE NOT NULL,
+        ProposedCheckIn  TIME(0) NULL,
+        ProposedCheckOut TIME(0) NULL,
+        ReasonType       NVARCHAR(50) NOT NULL,
+        ReasonDetail     NVARCHAR(500) NOT NULL,
+        Status           NVARCHAR(20) NOT NULL DEFAULT 'PENDING',
+        ReviewerId       INT NULL,
+        ReviewerComment  NVARCHAR(500) NULL,
+        ReviewedAt       DATETIME NULL,
+        CreatedAt        DATETIME NOT NULL DEFAULT GETDATE(),
+        CONSTRAINT FK_AttExp_Company FOREIGN KEY (CompanyId)
+            REFERENCES dbo.Companies(CompanyId) ON DELETE CASCADE,
+        CONSTRAINT FK_AttExp_Employee FOREIGN KEY (EmployeeId)
+            REFERENCES dbo.Employees(EmployeeId),
+        CONSTRAINT FK_AttExp_Reviewer FOREIGN KEY (ReviewerId)
+            REFERENCES dbo.Users(UserId),
+        CONSTRAINT CK_AttExp_ReasonType CHECK (
+            ReasonType IN (N'FORGOT_PUNCH', N'BUSINESS_TRIP', N'TECHNICAL_ISSUE', N'OTHER')
+        ),
+        CONSTRAINT CK_AttExp_Status CHECK (
+            Status IN (N'PENDING', N'APPROVED', N'REJECTED', N'CANCELLED')
+        )
+    );
+END;
+GO
+
+-- ------------------------------------------------------------------------
+-- BẢNG 12: TimesheetLocks (Khóa chốt công theo tháng)
+-- ------------------------------------------------------------------------
+IF OBJECT_ID(N'dbo.TimesheetLocks', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.TimesheetLocks (
+        LockId         INT IDENTITY(1,1) PRIMARY KEY,
+        CompanyId      INT NOT NULL,
+        [Month]        INT NOT NULL,
+        [Year]         INT NOT NULL,
+        IsLocked       BIT NOT NULL DEFAULT 1,
+        LockedByUserId INT NOT NULL,
+        LockedAt       DATETIME NOT NULL DEFAULT GETDATE(),
+        Notes          NVARCHAR(255) NULL,
+        CONSTRAINT UQ_TimesheetLocks UNIQUE (CompanyId, [Month], [Year]),
+        CONSTRAINT FK_TimesheetLocks_Company FOREIGN KEY (CompanyId)
+            REFERENCES dbo.Companies(CompanyId) ON DELETE CASCADE,
+        CONSTRAINT FK_TimesheetLocks_User FOREIGN KEY (LockedByUserId)
+            REFERENCES dbo.Users(UserId),
+        CONSTRAINT CK_TimesheetLocks_Month CHECK ([Month] BETWEEN 1 AND 12),
+        CONSTRAINT CK_TimesheetLocks_Year CHECK ([Year] >= 2000)
+    );
+END;
+GO
 
 -- ========================================================================
 -- PHẦN 5: QUẢN LÝ NGHỈ PHÉP VÀ XÉT DUYỆT
@@ -365,7 +456,7 @@ CREATE TABLE Attendances (
 -- ========================================================================
 
 -- ------------------------------------------------------------------------
--- BẢNG 10: LeaveTypes (Danh mục chính sách các loại ngày nghỉ)
+-- BẢNG 14: LeaveTypes (Danh mục chính sách các loại ngày nghỉ)
 -- ------------------------------------------------------------------------
 CREATE TABLE LeaveTypes (
     LeaveTypeId INT IDENTITY(1,1) PRIMARY KEY,
@@ -566,6 +657,84 @@ CREATE INDEX IX_Users_CompanyId ON Users(CompanyId);
 CREATE INDEX IX_Employees_CompanyId ON Employees(CompanyId);
 CREATE INDEX IX_Employees_ManagerId ON Employees(ManagerId);
 CREATE INDEX IX_Employees_DepartmentId ON Employees(DepartmentId);
+
+-- Enforce each tenant's subscribed MaxAccounts limit for every Users insert/update.
+-- CompanyId NULL is reserved for platform accounts and is not part of a tenant quota.
+CREATE OR ALTER TRIGGER dbo.TR_Users_MaxAccounts
+ON dbo.Users
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @AffectedCompanies TABLE (
+        CompanyId INT NOT NULL PRIMARY KEY
+    );
+
+    INSERT INTO @AffectedCompanies (CompanyId)
+    SELECT CompanyId FROM inserted WHERE CompanyId IS NOT NULL
+    UNION
+    SELECT CompanyId FROM deleted WHERE CompanyId IS NOT NULL;
+
+    DECLARE @CompanyId INT;
+    DECLARE @LockResult INT;
+    DECLARE @Resource NVARCHAR(255);
+    DECLARE @AccountCount BIGINT;
+    DECLARE @MaxAccounts INT;
+
+    DECLARE CompanyQuotaCursor CURSOR LOCAL FAST_FORWARD FOR
+        SELECT CompanyId FROM @AffectedCompanies ORDER BY CompanyId;
+
+    OPEN CompanyQuotaCursor;
+    FETCH NEXT FROM CompanyQuotaCursor INTO @CompanyId;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        SET @MaxAccounts = NULL;
+        SET @Resource = N'Users.MaxAccounts.Company.' + CONVERT(NVARCHAR(20), @CompanyId);
+        EXEC @LockResult = sys.sp_getapplock
+            @Resource = @Resource,
+            @LockMode = 'Exclusive',
+            @LockOwner = 'Transaction',
+            @LockTimeout = 10000;
+
+        IF @LockResult < 0
+        BEGIN
+            CLOSE CompanyQuotaCursor;
+            DEALLOCATE CompanyQuotaCursor;
+            THROW 51160, 'Could not acquire the tenant account quota lock.', 1;
+        END;
+
+        SELECT @MaxAccounts = p.MaxAccounts
+        FROM dbo.Subscriptions s WITH (UPDLOCK, HOLDLOCK)
+        INNER JOIN dbo.Plans p WITH (UPDLOCK, HOLDLOCK) ON p.PlanId = s.PlanId
+        WHERE s.CompanyId = @CompanyId;
+
+        IF @MaxAccounts IS NULL
+        BEGIN
+            CLOSE CompanyQuotaCursor;
+            DEALLOCATE CompanyQuotaCursor;
+            THROW 51161, 'A tenant account requires an active Subscription and Plan.', 1;
+        END;
+
+        SELECT @AccountCount = COUNT_BIG(*)
+        FROM dbo.Users WITH (UPDLOCK, HOLDLOCK, INDEX(IX_Users_CompanyId))
+        WHERE CompanyId = @CompanyId;
+
+        IF @AccountCount > @MaxAccounts
+        BEGIN
+            CLOSE CompanyQuotaCursor;
+            DEALLOCATE CompanyQuotaCursor;
+            THROW 51162, 'The tenant account limit for its Subscription Plan has been reached.', 1;
+        END;
+
+        FETCH NEXT FROM CompanyQuotaCursor INTO @CompanyId;
+    END;
+
+    CLOSE CompanyQuotaCursor;
+    DEALLOCATE CompanyQuotaCursor;
+END;
+GO
 
 -- 2. Truy vấn chấm công theo nhân viên và khoảng thời gian
 CREATE INDEX IX_Attendances_Date_Employee ON Attendances(AttendanceDate, EmployeeId);
@@ -1574,4 +1743,23 @@ BEGIN
         WHERE i.ReviewedByUserId IS NOT NULL AND (u.CompanyId IS NULL OR u.CompanyId<>i.CompanyId))
         THROW 51004, 'Payroll reviewer references another company.', 1;
 END;
+GO
+
+-- Company-scoped catalogue names, including inactive records.
+-- Existing duplicates must be resolved before this migration; never rename them automatically.
+SET XACT_ABORT ON;
+BEGIN TRY
+    BEGIN TRANSACTION;
+    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('dbo.Departments') AND name='UX_Departments_Company_Name')
+        CREATE UNIQUE INDEX UX_Departments_Company_Name ON dbo.Departments(CompanyId,DepartmentName);
+    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('dbo.Positions') AND name='UX_Positions_Company_Title')
+        CREATE UNIQUE INDEX UX_Positions_Company_Title ON dbo.Positions(CompanyId,PositionTitle);
+    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('dbo.ResponsibilityLevels') AND name='UX_ResponsibilityLevels_Company_Name')
+        CREATE UNIQUE INDEX UX_ResponsibilityLevels_Company_Name ON dbo.ResponsibilityLevels(CompanyId,LevelName);
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+    THROW;
+END CATCH;
 GO

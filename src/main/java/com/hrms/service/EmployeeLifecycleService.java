@@ -10,9 +10,7 @@ import com.hrms.util.DBConnection;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.math.BigDecimal;
-import java.security.SecureRandom;
 import java.time.LocalDate;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -315,7 +313,7 @@ public class EmployeeLifecycleService {
         requireEditor(principal);
         if (!principal.isCompanyAdministrator()) throw new SecurityException("Chỉ quản trị viên công ty được quản lý tài khoản nhân viên.");
         if ("role".equals(action)) throw new FieldValidationException("roleCode","Vai trò Employee/Manager được đồng bộ khi phân công phòng ban và chức danh, không phân quyền riêng tại đây.");
-        if (!Set.of("create","reset","lock","unlock","revoke","role").contains(action == null ? "" : action)) throw new IllegalArgumentException("Vui lòng chọn thao tác tài khoản hợp lệ.");
+        if (!Set.of("create","lock","unlock","role").contains(action == null ? "" : action)) throw new IllegalArgumentException("Vui lòng chọn thao tác tài khoản hợp lệ.");
         return OrganizationTransaction.execute(principal.getCompanyId(), connection -> {
             requireCurrentActor(connection, principal);
             var employee = dao.employee(connection, principal.getCompanyId(), employeeId);
@@ -324,12 +322,8 @@ public class EmployeeLifecycleService {
             if (userId != null && userId.equals(principal.getUserId())) throw new IllegalArgumentException("Vui lòng dùng cài đặt bảo mật cá nhân để thay đổi quyền truy cập của chính mình.");
             if ("create".equals(action)) {
                 temporaryPassword=EmployeeService.validateIdentityNumber((String)employee.get("IdentityNumber"),true);
-            } else if ("reset".equals(action)) {
-                byte[] entropy = new byte[24];
-                new SecureRandom().nextBytes(entropy);
-                temporaryPassword = Base64.getUrlEncoder().withoutPadding().encodeToString(entropy);
             }
-            if (Set.of("create","unlock","reset","role").contains(action) && !"Active".equals(employee.get("Status")))
+            if (Set.of("create","unlock","role").contains(action) && !"Active".equals(employee.get("Status")))
                 throw new IllegalArgumentException("Chỉ cấp quyền truy cập cho nhân viên đang hoạt động.");
             if ("unlock".equals(action) && userId != null && dao.query(connection,
                     "SELECT 1 FROM Users u WHERE u.CompanyId=? AND u.UserId=? AND " + com.hrms.dao.ContractAccessPolicy.ALLOWED,
@@ -359,8 +353,6 @@ public class EmployeeLifecycleService {
                 switch (action) {
                     case "lock" -> dao.execute(connection, "UPDATE Users SET IsLocked=1,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND UserId=?", principal.getCompanyId(), userId);
                     case "unlock" -> dao.execute(connection, "UPDATE Users SET IsLocked=0,IsActive=1,LockedUntil=NULL,FailedLoginAttempts=0,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND UserId=?", principal.getCompanyId(), userId);
-                    case "revoke" -> dao.execute(connection, "UPDATE Users SET IsActive=0,IsLocked=1,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND UserId=?", principal.getCompanyId(), userId);
-                    case "reset" -> dao.execute(connection, "UPDATE Users SET Password=?,MustChangePassword=1,ActivatedAt=NULL,PasswordChangedAt=NULL,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND UserId=?", temporaryPassword, principal.getCompanyId(), userId);
                     default -> throw new IllegalArgumentException("Thao tác tài khoản không hợp lệ.");
                 }
             }
@@ -408,7 +400,7 @@ public class EmployeeLifecycleService {
         try (Connection connection = DBConnection.getConnection()) {
             Map<String, Object> result = new java.util.LinkedHashMap<>();
             result.put("employees", dao.query(connection, "SELECT COUNT(*) AS Total,SUM(CASE WHEN Status='Active' THEN 1 ELSE 0 END) AS Active FROM Employees WHERE CompanyId=?", companyId));
-            result.put("departments", dao.query(connection, "SELECT COALESCE(d.DepartmentName,N'Chưa phân công') AS Label,COUNT(*) AS Total FROM Employees e LEFT JOIN Departments d ON d.CompanyId=e.CompanyId AND d.DepartmentId=e.DepartmentId WHERE e.CompanyId=? GROUP BY d.DepartmentName", companyId));
+            result.put("departments", dao.query(connection, "SELECT COALESCE(d.DepartmentName,N'Chưa phân công') AS Label,CASE WHEN d.DepartmentId IS NULL THEN 'UNASSIGNED' END AS LabelCode,COUNT(*) AS Total FROM Employees e LEFT JOIN Departments d ON d.CompanyId=e.CompanyId AND d.DepartmentId=e.DepartmentId WHERE e.CompanyId=? GROUP BY d.DepartmentId,d.DepartmentName", companyId));
             result.put("gender", dao.query(connection, "SELECT COALESCE(Gender,N'Chưa có dữ liệu') AS Label,COUNT(*) AS Total FROM Employees WHERE CompanyId=? GROUP BY Gender", companyId));
             result.put("age", dao.query(connection, "SELECT CASE WHEN DateOfBirth IS NULL THEN N'Chưa có dữ liệu' WHEN DATEADD(year,30,DateOfBirth)>CONVERT(date,SYSDATETIME()) THEN N'Dưới 30' WHEN DATEADD(year,40,DateOfBirth)>CONVERT(date,SYSDATETIME()) THEN N'30–39' ELSE N'40+' END AS Label,COUNT(*) AS Total FROM Employees WHERE CompanyId=? GROUP BY CASE WHEN DateOfBirth IS NULL THEN N'Chưa có dữ liệu' WHEN DATEADD(year,30,DateOfBirth)>CONVERT(date,SYSDATETIME()) THEN N'Dưới 30' WHEN DATEADD(year,40,DateOfBirth)>CONVERT(date,SYSDATETIME()) THEN N'30–39' ELSE N'40+' END", companyId));
             result.put("tenure", dao.query(connection, "SELECT CASE WHEN DATEDIFF(day,FirstAssignment,CONVERT(date,SYSDATETIME()))<365 THEN N'Dưới 1 năm' WHEN DATEDIFF(day,FirstAssignment,CONVERT(date,SYSDATETIME()))<1096 THEN N'1–3 năm' ELSE N'3+ năm' END AS Label,COUNT(*) AS Total FROM (SELECT MIN(EffectiveFrom) FirstAssignment FROM EmployeePositionAssignments WHERE CompanyId=? GROUP BY EmployeeId) history GROUP BY CASE WHEN DATEDIFF(day,FirstAssignment,CONVERT(date,SYSDATETIME()))<365 THEN N'Dưới 1 năm' WHEN DATEDIFF(day,FirstAssignment,CONVERT(date,SYSDATETIME()))<1096 THEN N'1–3 năm' ELSE N'3+ năm' END", companyId));

@@ -25,12 +25,12 @@
         };
         host.classList.add('hrm-pagination');
         host.classList.toggle('hrm-pagination--compact',Boolean(options.compact));
-        host.setAttribute('aria-label',options.label || 'Phân trang');
+        host.setAttribute('aria-label',options.label || HrmI18n.t('Phân trang'));
         host.replaceChildren();
         const meta = create('div','hrm-pagination__meta');
-        const sizeLabel = create('label','hrm-pagination__size','Số dòng');
+        const sizeLabel = create('label','hrm-pagination__size',HrmI18n.t('Số dòng'));
         const sizeSelect = create('select');
-        sizeSelect.setAttribute('aria-label','Số dòng mỗi trang');
+        sizeSelect.setAttribute('aria-label',HrmI18n.t('Số dòng mỗi trang'));
         if (prefix) sizeSelect.id = prefix+'-size';
         for (const value of sizes) sizeSelect.add(new Option(String(value),String(value)));
         sizeSelect.value = String(size);
@@ -39,8 +39,8 @@
             host.querySelector('select')?.focus({preventScroll:true});
         });
         sizeLabel.append(sizeSelect);
-        const range = create('span','hrm-pagination__range',total ? `${(page-1)*size+1}–${Math.min(page*size,total)} / ${total}` : '0 nhân viên');
-        if (!total && !options.compact) range.textContent = '0 kết quả';
+        const range = create('span','hrm-pagination__range',total ? `${(page-1)*size+1}–${Math.min(page*size,total)} / ${total}` : HrmI18n.t('0 nhân viên'));
+        if (!total && !options.compact) range.textContent = HrmI18n.t('0 kết quả');
         range.setAttribute('aria-live','polite');
         if (prefix) range.id = prefix+'-range';
         meta.append(sizeLabel,range);
@@ -61,7 +61,7 @@
             });
             controls.append(button);
         };
-        addButton('‹',page-1,'Trang trước',page<=1,prefix ? prefix+'-prev' : '');
+        addButton('‹',page-1,HrmI18n.t('Trang trước'),page<=1,prefix ? prefix+'-prev' : '');
         let previous = 0;
         for (const number of pageNumbers(page,pages,options.compact)) {
             if (previous && number-previous>1) controls.append(create('span','hrm-pagination__ellipsis','…'));
@@ -90,7 +90,7 @@
         state.page = Math.max(1,Math.min(state.page,Math.ceil(rows.length/state.pageSize) || 1));
         const start = (state.page-1)*state.pageSize;
         rows.forEach((row,index) => row.toggleAttribute('data-page-hidden',index<start || index>=start+state.pageSize));
-        render(instance.host,{total:rows.length,page:state.page,pageSize:state.pageSize,label:'Phân trang '+(target.dataset.pageLabel || 'danh sách'),onChange(page,pageSize) {
+        render(instance.host,{total:rows.length,page:state.page,pageSize:state.pageSize,label:HrmI18n.t('Phân trang ')+(target.dataset.pageLabel || HrmI18n.t('danh sách')),onChange(page,pageSize) {
             state.page = page; state.pageSize = pageSize;
             refresh(target,true);
         }});

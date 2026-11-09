@@ -74,17 +74,17 @@ const LeaveApp = (() => {
 
         // Load employee balances to show available quota
         fetch("../leave/api/my-balances")
-            .then(res => res.json())
+            .then(res => res.json().then(HrmI18n.response))
             .then(async data => {
                 if (data.success && data.data) {
-                    typeSelect.innerHTML = '<option value="">-- Chọn loại nghỉ phép --</option>';
-                    const activeTypes = new Set((await fetch("../leave/api/types").then(response => response.json())).data
+                    typeSelect.innerHTML = HrmI18n.fragment('<option value="">-- Chọn loại nghỉ phép --</option>');
+                    const activeTypes = new Set((await fetch("../leave/api/types").then(response => response.json().then(HrmI18n.response))).data
                         .filter(type => type.isActive).map(type => type.leaveTypeId));
                     data.data.filter(balance => activeTypes.has(balance.leaveTypeId)).forEach(b => {
                         cachedBalances[b.leaveTypeId] = b;
                         const opt = document.createElement("option");
                         opt.value = b.leaveTypeId;
-                        opt.textContent = `${b.leaveTypeName} (Còn lại: ${b.remainingDays} ngày)`;
+                        opt.textContent = `${b.leaveTypeName}${HrmI18n.fragment(" (Còn lại: ")}${b.remainingDays}${HrmI18n.fragment(" ngày)")}`;
                         typeSelect.appendChild(opt);
                     });
                 }
@@ -115,9 +115,9 @@ const LeaveApp = (() => {
             banner.style.display = "flex";
 
             if (days <= 0) {
-                FormValidation.setError(form, 'endDate', 'Khoảng thời gian đã chọn không có ngày làm việc.');
+                FormValidation.setError(form, 'endDate', HrmI18n.t('Khoảng thời gian đã chọn không có ngày làm việc.'));
                 banner.className = "calc-banner error";
-                banner.querySelector(".calc-text").textContent = "Khoảng thời gian đã chọn không có ngày làm việc (rơi vào T7, CN).";
+                banner.querySelector(".calc-text").textContent = HrmI18n.t("Khoảng thời gian đã chọn không có ngày làm việc (rơi vào T7, CN).");
                 if (crossYearBanner) crossYearBanner.style.display = "none";
                 btnSubmit.disabled = true;
                 return;
@@ -125,7 +125,7 @@ const LeaveApp = (() => {
 
             banner.className = "calc-banner";
             FormValidation.setError(form, 'endDate', '');
-            banner.querySelector(".calc-text").innerHTML = `Số ngày làm việc tính toán: <strong><span id="calcWorkingDays">${days}</span> ngày</strong> (đã trừ Thứ 7, Chủ Nhật)`;
+            banner.querySelector(".calc-text").innerHTML = `${HrmI18n.fragment("Số ngày làm việc tính toán: <strong><span id=\"calcWorkingDays\">")}${days}${HrmI18n.fragment("</span> ngày</strong> (đã trừ Thứ 7, Chủ Nhật)")}`;
 
             // Kiểm tra khoảng thời gian có vắt qua năm tài chính hay không
             const sYear = parseInt(sVal.split("-")[0], 10);
@@ -135,11 +135,7 @@ const LeaveApp = (() => {
                 const daysPart1 = computeWorkingDays(sVal, `${sYear}-12-31`);
                 const daysPart2 = computeWorkingDays(`${eYear}-01-01`, eVal);
 
-                crossYearDetails.innerHTML = `
-                    <div style="margin-bottom: 4px;">• <strong>Đơn 1 (Năm ${sYear}):</strong> từ ${sVal} đến 31/12/${sYear} — <strong>${daysPart1} ngày</strong> làm việc</div>
-                    <div style="margin-bottom: 4px;">• <strong>Đơn 2 (Năm ${eYear}):</strong> từ 01/01/${eYear} đến ${eVal} — <strong>${daysPart2} ngày</strong> làm việc</div>
-                    <div style="font-size: 12px; color: #475467; margin-top: 6px;">* Hệ thống sẽ tự động tách và giữ nguyên toàn bộ lý do và loại nghỉ phép cho từng đơn.</div>
-                `;
+                crossYearDetails.innerHTML = `${HrmI18n.fragment("\n                    <div style=\"margin-bottom: 4px;\">• <strong>Đơn 1 (Năm ")}${sYear}${HrmI18n.fragment("):</strong> từ ")}${sVal}${HrmI18n.fragment(" đến 31/12/")}${sYear} — <strong>${daysPart1}${HrmI18n.fragment(" ngày</strong> làm việc</div>\n                    <div style=\"margin-bottom: 4px;\">• <strong>Đơn 2 (Năm ")}${eYear}${HrmI18n.fragment("):</strong> từ 01/01/")}${eYear}${HrmI18n.fragment(" đến ")}${eVal} — <strong>${daysPart2}${HrmI18n.fragment(" ngày</strong> làm việc</div>\n                    <div style=\"font-size: 12px; color: #475467; margin-top: 6px;\">* Hệ thống sẽ tự động tách và giữ nguyên toàn bộ lý do và loại nghỉ phép cho từng đơn.</div>\n                ")}`;
                 crossYearBanner.style.display = "flex";
             } else if (crossYearBanner) {
                 crossYearBanner.style.display = "none";
@@ -148,14 +144,14 @@ const LeaveApp = (() => {
             if (tId && cachedBalances[tId]) {
                 const rem = parseFloat(cachedBalances[tId].remainingDays || 0);
                 if (sYear === eYear && days > rem) {
-                    FormValidation.setError(form, 'endDate', `Số ngày nghỉ vượt quá số dư hiện tại (${rem} ngày).`);
+                    FormValidation.setError(form, 'endDate', `${HrmI18n.fragment("Số ngày nghỉ vượt quá số dư hiện tại (")}${rem}${HrmI18n.fragment(" ngày).")}`);
                     banner.className = "calc-banner error";
-                    balanceNotice.innerHTML = `<span style="color:#b42318;font-weight:700;">Vượt quá số dư hiện tại (${rem} ngày còn lại)!</span>`;
+                    balanceNotice.innerHTML = `${HrmI18n.fragment("<span style=\"color:#b42318;font-weight:700;\">Vượt quá số dư hiện tại (")}${rem}${HrmI18n.fragment(" ngày còn lại)!</span>")}`;
                     btnSubmit.disabled = true;
                     return;
                 } else {
                     FormValidation.setError(form, 'endDate', '');
-                    balanceNotice.innerHTML = `<span style="color:#027a48;">Đủ hạn mức (${rem - days} ngày còn lại sau khi trừ).</span>`;
+                    balanceNotice.innerHTML = `${HrmI18n.fragment("<span style=\"color:#027a48;\">Đủ hạn mức (")}${rem - days}${HrmI18n.fragment(" ngày còn lại sau khi trừ).</span>")}`;
                     btnSubmit.disabled = false;
                 }
             } else {
@@ -173,7 +169,7 @@ const LeaveApp = (() => {
         endDateInput.addEventListener("change", updateCalculation);
         typeSelect.addEventListener("change", updateCalculation);
 
-        form.addEventListener("submit", e => {
+        form.addEventListener("submit", async e => {
             e.preventDefault();
             const formData = new URLSearchParams(new FormData(form));
             formData.set("csrfToken", document.querySelector('meta[name="organization-csrf-token"]')?.content || "");
@@ -186,13 +182,13 @@ const LeaveApp = (() => {
             if (sYear !== eYear) {
                 const daysPart1 = computeWorkingDays(sVal, `${sYear}-12-31`);
                 const daysPart2 = computeWorkingDays(`${eYear}-01-01`, eVal);
-                const confirmed = confirm(
-                    `Khoảng thời gian xin nghỉ vắt qua 2 năm tài chính (${sYear} và ${eYear}).\n` +
-                    `Hệ thống sẽ tự động tách thành 2 đơn riêng biệt:\n` +
-                    `1. Đơn năm ${sYear}: từ ${sVal} đến 31/12/${sYear} (${daysPart1} ngày làm việc)\n` +
-                    `2. Đơn năm ${eYear}: từ 01/01/${eYear} đến ${eVal} (${daysPart2} ngày làm việc)\n\n` +
-                    `Toàn bộ nội dung lý do sẽ được giữ nguyên cho cả 2 đơn.\n` +
-                    `Bạn có đồng ý tách và nộp các đơn này không?`
+                const confirmed = await AppDialog.confirm(
+                    `${HrmI18n.fragment("Khoảng thời gian xin nghỉ vắt qua 2 năm tài chính (")}${sYear}${HrmI18n.fragment(" và ")}${eYear}).\n` +
+                    `${HrmI18n.fragment("Hệ thống sẽ tự động tách thành 2 đơn riêng biệt:\n")}` +
+                    `${HrmI18n.fragment("1. Đơn năm ")}${sYear}${HrmI18n.fragment(": từ ")}${sVal}${HrmI18n.fragment(" đến 31/12/")}${sYear} (${daysPart1}${HrmI18n.fragment(" ngày làm việc)\n")}` +
+                    `${HrmI18n.fragment("2. Đơn năm ")}${eYear}${HrmI18n.fragment(": từ 01/01/")}${eYear}${HrmI18n.fragment(" đến ")}${eVal} (${daysPart2}${HrmI18n.fragment(" ngày làm việc)\n\n")}` +
+                    `${HrmI18n.fragment("Toàn bộ nội dung lý do sẽ được giữ nguyên cho cả 2 đơn.\n")}` +
+                    `${HrmI18n.fragment("Bạn có đồng ý tách và nộp các đơn này không?")}`
                 );
                 if (!confirmed) {
                     return;
@@ -201,7 +197,7 @@ const LeaveApp = (() => {
             }
 
             btnSubmit.disabled = true;
-            btnSubmit.textContent = "Đang gửi đơn...";
+            btnSubmit.textContent = HrmI18n.t("Đang gửi đơn...");
 
             function submitRequestData(dataToSend) {
                 fetch("../leave/api/submit", {
@@ -209,38 +205,38 @@ const LeaveApp = (() => {
                     headers: { "Content-Type": "application/x-www-form-urlencoded" },
                     body: dataToSend.toString()
                 })
-                    .then(res => res.json())
-                    .then(data => {
+                    .then(res => res.json().then(HrmI18n.response))
+                    .then(async data => {
                         if (data.success) {
-                            alert(data.message || "Nộp đơn xin nghỉ phép thành công!");
+                            await AppDialog.alert(data.message || HrmI18n.t("Nộp đơn xin nghỉ phép thành công!"));
                             window.location.href = "my-requests";
                         } else if (data.requiresSplit) {
-                            let splitMsg = data.message + "\n\nChi tiết các đơn đề xuất:\n";
+                            let splitMsg = data.message + HrmI18n.t("\n\nChi tiết các đơn đề xuất:\n");
                             if (data.splits && data.splits.length > 0) {
                                 data.splits.forEach((s, idx) => {
-                                    splitMsg += `${idx + 1}. Năm ${s.year}: từ ${s.startDate} đến ${s.endDate} (${s.totalDays} ngày làm việc)\n`;
+                                    splitMsg += `${idx + 1}${HrmI18n.fragment(". Năm ")}${s.year}${HrmI18n.fragment(": từ ")}${s.startDate}${HrmI18n.fragment(" đến ")}${s.endDate} (${s.totalDays}${HrmI18n.fragment(" ngày làm việc)\n")}`;
                                 });
                             }
-                            splitMsg += "\nToàn bộ lý do và loại phép giữ nguyên. Bạn có muốn gửi các đơn này không?";
-                            if (confirm(splitMsg)) {
+                            splitMsg += HrmI18n.t("\nToàn bộ lý do và loại phép giữ nguyên. Bạn có muốn gửi các đơn này không?");
+                            if (await AppDialog.confirm(splitMsg)) {
                                 dataToSend.set("confirmSplit", "true");
                                 submitRequestData(dataToSend);
                             } else {
                                 btnSubmit.disabled = false;
-                                btnSubmit.textContent = "Nộp đơn xin nghỉ";
+                                btnSubmit.textContent = HrmI18n.t("Nộp đơn xin nghỉ");
                             }
                         } else {
                             if (!FormValidation.showErrors(form, data)) {
-                                showMessage('submitMessage', data.message || 'Không thể nộp đơn.', true);
+                                showMessage('submitMessage', data.message || HrmI18n.t('Không thể nộp đơn.'), true);
                             }
                             btnSubmit.disabled = false;
-                            btnSubmit.textContent = "Nộp đơn xin nghỉ";
+                            btnSubmit.textContent = HrmI18n.t("Nộp đơn xin nghỉ");
                         }
                     })
-                    .catch(err => {
-                        alert("Lỗi kết nối máy chủ: " + err);
+                    .catch(async err => {
+                        await AppDialog.alert(HrmI18n.t("Lỗi kết nối máy chủ: ") + err);
                         btnSubmit.disabled = false;
-                        btnSubmit.textContent = "Nộp đơn xin nghỉ";
+                        btnSubmit.textContent = HrmI18n.t("Nộp đơn xin nghỉ");
                     });
             }
 
@@ -256,13 +252,13 @@ const LeaveApp = (() => {
         const yearSelect = document.getElementById("yearSelect");
 
         function loadBalances(year) {
-            container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #667085; padding: 32px;">Đang tải số dư ngày phép...</div>';
+            container.innerHTML = HrmI18n.fragment('<div style="grid-column: 1/-1; text-align: center; color: #667085; padding: 32px;">Đang tải số dư ngày phép...</div>');
 
             fetch(`../leave/api/my-balances?year=${year}`)
-                .then(res => res.json())
-                .then(data => {
+                .then(res => res.json().then(HrmI18n.response))
+                .then(async data => {
                     if (!data.success || !data.data || data.data.length === 0) {
-                        container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #667085; padding: 32px;">Chưa có chính sách ngày phép cho năm này.</div>';
+                        container.innerHTML = HrmI18n.fragment('<div style="grid-column: 1/-1; text-align: center; color: #667085; padding: 32px;">Chưa có chính sách ngày phép cho năm này.</div>');
                         return;
                     }
 
@@ -272,8 +268,8 @@ const LeaveApp = (() => {
                         card.className = "balance-card";
 
                         const paidBadge = b.isPaid
-                            ? '<span class="badge badge-paid">Có hưởng lương</span>'
-                            : '<span class="badge badge-unpaid">Không lương</span>';
+                            ? HrmI18n.fragment('<span class="badge badge-paid">Có hưởng lương</span>')
+                            : HrmI18n.fragment('<span class="badge badge-unpaid">Không lương</span>');
 
                         card.innerHTML = `
                             <div>
@@ -285,26 +281,12 @@ const LeaveApp = (() => {
                                     ${paidBadge}
                                 </div>
                                 <div class="balance-stat-primary">
-                                    <div class="balance-number-lg">${b.remainingDays}</div>
-                                    <div class="balance-number-label">ngày còn lại</div>
-                                </div>
-                            </div>
-                            <div class="balance-details-row">
-                                <div class="balance-details-item">
-                                    <span>Được cấp:</span>
-                                    <span>${b.entitledDays} ngày</span>
-                                </div>
-                                <div class="balance-details-item">
-                                    <span>Đã dùng:</span>
-                                    <span>${b.usedDays} ngày</span>
-                                </div>
-                            </div>
-                        `;
+                                    <div class="balance-number-lg">${b.remainingDays}${HrmI18n.fragment("</div>\n                                    <div class=\"balance-number-label\">ngày còn lại</div>\n                                </div>\n                            </div>\n                            <div class=\"balance-details-row\">\n                                <div class=\"balance-details-item\">\n                                    <span>Được cấp:</span>\n                                    <span>")}${b.entitledDays}${HrmI18n.fragment(" ngày</span>\n                                </div>\n                                <div class=\"balance-details-item\">\n                                    <span>Đã dùng:</span>\n                                    <span>")}${b.usedDays}${HrmI18n.fragment(" ngày</span>\n                                </div>\n                            </div>\n                        ")}`;
                         container.appendChild(card);
                     });
                 })
                 .catch(() => {
-                    container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #b42318; padding: 32px;">Lỗi tải dữ liệu số dư.</div>';
+                    container.innerHTML = HrmI18n.fragment('<div style="grid-column: 1/-1; text-align: center; color: #b42318; padding: 32px;">Lỗi tải dữ liệu số dư.</div>');
                 });
         }
 
@@ -329,13 +311,13 @@ const LeaveApp = (() => {
             const status = statusFilter ? statusFilter.value : "ALL";
             const year = yearFilter ? yearFilter.value : "";
 
-            tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #667085; padding: 24px;">Đang tải danh sách đơn...</td></tr>';
+            tableBody.innerHTML = HrmI18n.fragment('<tr><td colspan="8" style="text-align: center; color: #667085; padding: 24px;">Đang tải danh sách đơn...</td></tr>');
 
             fetch(`../leave/api/my-requests?status=${encodeURIComponent(status)}&year=${encodeURIComponent(year)}&page=${page}`)
-                .then(res => res.json())
-                .then(data => {
+                .then(res => res.json().then(HrmI18n.response))
+                .then(async data => {
                     if (!data.success || !data.data || data.data.length === 0) {
-                        tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #667085; padding: 24px;">Không tìm thấy đơn nghỉ phép nào.</td></tr>';
+                        tableBody.innerHTML = HrmI18n.fragment('<tr><td colspan="8" style="text-align: center; color: #667085; padding: 24px;">Không tìm thấy đơn nghỉ phép nào.</td></tr>');
                         renderPagination(paginationContainer, 0, 1, 20, loadRequests);
                         return;
                     }
@@ -346,23 +328,21 @@ const LeaveApp = (() => {
 
                         let cancelBtn = "";
                         if (r.status === "Pending") {
-                            cancelBtn = `<button class="btn-action cancel" onclick="LeaveApp.cancelRequest(${r.leaveRequestId})">Hủy đơn</button>`;
+                            cancelBtn = `<button class="btn-action cancel" onclick="LeaveApp.cancelRequest(${r.leaveRequestId}${HrmI18n.fragment(")\">Hủy đơn</button>")}`;
                         }
 
                         tr.innerHTML = `
                             <td>#${r.leaveRequestId}</td>
                             <td><strong>${r.leaveTypeName}</strong></td>
                             <td>${formatDate(r.startDate)} - ${formatDate(r.endDate)}</td>
-                            <td style="font-weight:700; color:var(--navy,#062579);">${r.totalDays} ngày</td>
-                            <td><span style="max-width:200px; display:inline-block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(r.reason)}">${escapeHtml(r.reason)}</span></td>
+                            <td style="font-weight:700; color:var(--navy,#062579);">${r.totalDays}${HrmI18n.fragment(" ngày</td>\n                            <td><span style=\"max-width:200px; display:inline-block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;\" title=\"")}${escapeHtml(r.reason)}">${escapeHtml(r.reason)}</span></td>
                             <td><span class="badge ${r.status}">${translateStatus(r.status)}</span></td>
                             <td>
                                 ${r.approverComment ? `<span style="font-size:12px; color:#475467;" title="${escapeHtml(r.approverComment)}">${escapeHtml(r.approverComment)}</span>` : '<span style="color:#98a2b3;">—</span>'}
                             </td>
                             <td>
                                 <div class="btn-action-group">
-                                    <button class="btn-action view" onclick='LeaveApp.viewRequestDetail(${JSON.stringify(r)})'>Chi tiết</button>
-                                    ${cancelBtn}
+                                    <button class="btn-action view" onclick='LeaveApp.viewRequestDetail(${JSON.stringify(r)}${HrmI18n.fragment(")'>Chi tiết</button>\n                                    ")}${cancelBtn}
                                 </div>
                             </td>
                         `;
@@ -372,7 +352,7 @@ const LeaveApp = (() => {
                     renderPagination(paginationContainer, data.total, data.page, data.pageSize, loadRequests);
                 })
                 .catch(() => {
-                    tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #b42318; padding: 24px;">Lỗi khi tải dữ liệu đơn.</td></tr>';
+                    tableBody.innerHTML = HrmI18n.fragment('<tr><td colspan="8" style="text-align: center; color: #b42318; padding: 24px;">Lỗi khi tải dữ liệu đơn.</td></tr>');
                 });
         }
 
@@ -391,13 +371,13 @@ const LeaveApp = (() => {
 
         function loadPending(page = 1) {
             currentPage = page;
-            tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #667085; padding: 24px;">Đang tải danh sách chờ duyệt...</td></tr>';
+            tableBody.innerHTML = HrmI18n.fragment('<tr><td colspan="8" style="text-align: center; color: #667085; padding: 24px;">Đang tải danh sách chờ duyệt...</td></tr>');
 
             fetch(`../leave/api/pending-approvals?page=${page}`)
-                .then(res => res.json())
-                .then(data => {
+                .then(res => res.json().then(HrmI18n.response))
+                .then(async data => {
                     if (!data.success || !data.data || data.data.length === 0) {
-                        tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #667085; padding: 24px;">Không có đơn xin nghỉ phép nào đang chờ duyệt.</td></tr>';
+                        tableBody.innerHTML = HrmI18n.fragment('<tr><td colspan="8" style="text-align: center; color: #667085; padding: 24px;">Không có đơn xin nghỉ phép nào đang chờ duyệt.</td></tr>');
                         renderPagination(paginationContainer, 0, 1, 20, loadPending);
                         return;
                     }
@@ -413,23 +393,18 @@ const LeaveApp = (() => {
                             </td>
                             <td><strong>${r.leaveTypeName}</strong></td>
                             <td>${formatDate(r.startDate)} - ${formatDate(r.endDate)}</td>
-                            <td style="font-weight:700; color:var(--navy,#062579);">${r.totalDays} ngày</td>
-                            <td style="max-width:220px;"><div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(r.reason)}">${escapeHtml(r.reason)}</div></td>
+                            <td style="font-weight:700; color:var(--navy,#062579);">${r.totalDays}${HrmI18n.fragment(" ngày</td>\n                            <td style=\"max-width:220px;\"><div style=\"overflow:hidden; text-overflow:ellipsis; white-space:nowrap;\" title=\"")}${escapeHtml(r.reason)}">${escapeHtml(r.reason)}</div></td>
                             <td><span style="font-size:12px;color:#667085;">${r.createdAt}</span></td>
                             <td>
                                 <div class="btn-action-group">
-                                    <button class="btn-action approve" onclick="LeaveApp.openApproveModal(${r.leaveRequestId}, '${escapeHtml(r.employeeFullName)}')">Duyệt</button>
-                                    <button class="btn-action reject" onclick="LeaveApp.openRejectModal(${r.leaveRequestId}, '${escapeHtml(r.employeeFullName)}')">Từ chối</button>
-                                </div>
-                            </td>
-                        `;
+                                    <button class="btn-action approve" onclick="LeaveApp.openApproveModal(${r.leaveRequestId}, '${escapeHtml(r.employeeFullName)}${HrmI18n.fragment("')\">Duyệt</button>\n                                    <button class=\"btn-action reject\" onclick=\"LeaveApp.openRejectModal(")}${r.leaveRequestId}, '${escapeHtml(r.employeeFullName)}${HrmI18n.fragment("')\">Từ chối</button>\n                                </div>\n                            </td>\n                        ")}`;
                         tableBody.appendChild(tr);
                     });
 
                     // renderPagination(paginationContainer, data.total, data.page, data.pageSize, loadPending);
                 })
                 .catch(() => {
-                    tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #b42318; padding: 24px;">Lỗi khi tải danh sách chờ duyệt.</td></tr>';
+                    tableBody.innerHTML = HrmI18n.fragment('<tr><td colspan="8" style="text-align: center; color: #b42318; padding: 24px;">Lỗi khi tải danh sách chờ duyệt.</td></tr>');
                 });
         }
 
@@ -453,8 +428,8 @@ const LeaveApp = (() => {
 
         // Load departments dropdown
         fetch("../attendance/meta")
-            .then(res => res.json())
-            .then(data => {
+            .then(res => res.json().then(HrmI18n.response))
+            .then(async data => {
                 if (data.departments && deptFilter) {
                     data.departments.forEach(d => {
                         const opt = document.createElement("option");
@@ -477,13 +452,13 @@ const LeaveApp = (() => {
                 page: page
             });
 
-            tableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #667085; padding: 24px;">Đang tải danh sách đơn toàn công ty...</td></tr>';
+            tableBody.innerHTML = HrmI18n.fragment('<tr><td colspan="9" style="text-align: center; color: #667085; padding: 24px;">Đang tải danh sách đơn toàn công ty...</td></tr>');
 
             fetch(`../leave/api/all-requests?${params.toString()}`)
-                .then(res => res.json())
-                .then(data => {
+                .then(res => res.json().then(HrmI18n.response))
+                .then(async data => {
                     if (!data.success || !data.data || data.data.length === 0) {
-                        tableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #667085; padding: 24px;">Không tìm thấy đơn nghỉ phép phù hợp.</td></tr>';
+                        tableBody.innerHTML = HrmI18n.fragment('<tr><td colspan="9" style="text-align: center; color: #667085; padding: 24px;">Không tìm thấy đơn nghỉ phép phù hợp.</td></tr>');
                         renderPagination(paginationContainer, 0, 1, 20, loadAll);
                         return;
                     }
@@ -495,9 +470,7 @@ const LeaveApp = (() => {
                         let actions = `<button class="btn-action view" onclick='LeaveApp.viewRequestDetail(${JSON.stringify(r)})'>Xem</button>`;
                         if (r.status === "Pending") {
                             actions += `
-                                <button class="btn-action approve" onclick="LeaveApp.openApproveModal(${r.leaveRequestId}, '${escapeHtml(r.employeeFullName)}')">Duyệt</button>
-                                <button class="btn-action reject" onclick="LeaveApp.openRejectModal(${r.leaveRequestId}, '${escapeHtml(r.employeeFullName)}')">Từ chối</button>
-                            `;
+                                <button class="btn-action approve" onclick="LeaveApp.openApproveModal(${r.leaveRequestId}, '${escapeHtml(r.employeeFullName)}${HrmI18n.fragment("')\">Duyệt</button>\n                                <button class=\"btn-action reject\" onclick=\"LeaveApp.openRejectModal(")}${r.leaveRequestId}, '${escapeHtml(r.employeeFullName)}${HrmI18n.fragment("')\">Từ chối</button>\n                            ")}`;
                         }
 
                         tr.innerHTML = `
@@ -508,8 +481,7 @@ const LeaveApp = (() => {
                             </td>
                             <td><strong>${r.leaveTypeName}</strong></td>
                             <td>${formatDate(r.startDate)} - ${formatDate(r.endDate)}</td>
-                            <td style="font-weight:700; color:var(--navy,#062579);">${r.totalDays} ngày</td>
-                            <td style="max-width:200px;"><div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(r.reason)}">${escapeHtml(r.reason)}</div></td>
+                            <td style="font-weight:700; color:var(--navy,#062579);">${r.totalDays}${HrmI18n.fragment(" ngày</td>\n                            <td style=\"max-width:200px;\"><div style=\"overflow:hidden; text-overflow:ellipsis; white-space:nowrap;\" title=\"")}${escapeHtml(r.reason)}">${escapeHtml(r.reason)}</div></td>
                             <td><span class="badge ${r.status}">${translateStatus(r.status)}</span></td>
                             <td><span style="font-size:12px;color:#667085;">${r.approverDisplayName || "—"}</span></td>
                             <td><div class="btn-action-group">${actions}</div></td>
@@ -520,7 +492,7 @@ const LeaveApp = (() => {
                     renderPagination(paginationContainer, data.total, data.page, data.pageSize, loadAll);
                 })
                 .catch(() => {
-                    tableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #b42318; padding: 24px;">Lỗi tải danh sách đơn.</td></tr>';
+                    tableBody.innerHTML = HrmI18n.fragment('<tr><td colspan="9" style="text-align: center; color: #b42318; padding: 24px;">Lỗi tải danh sách đơn.</td></tr>');
                 });
         }
 
@@ -549,13 +521,13 @@ const LeaveApp = (() => {
         const form = document.getElementById("leaveTypeForm");
 
         function loadTypes() {
-            tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#667085;padding:24px;">Đang tải danh mục...</td></tr>';
+            tableBody.innerHTML = HrmI18n.fragment('<tr><td colspan="6" style="text-align:center;color:#667085;padding:24px;">Đang tải danh mục...</td></tr>');
 
             fetch("../leave/api/types")
-                .then(res => res.json())
-                .then(data => {
+                .then(res => res.json().then(HrmI18n.response))
+                .then(async data => {
                     if (!data.success || !data.data || data.data.length === 0) {
-                        tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#667085;padding:24px;">Chưa có loại nghỉ phép nào. Hãy tạo mới.</td></tr>';
+                        tableBody.innerHTML = HrmI18n.fragment('<tr><td colspan="6" style="text-align:center;color:#667085;padding:24px;">Chưa có loại nghỉ phép nào. Hãy tạo mới.</td></tr>');
                         return;
                     }
 
@@ -564,19 +536,17 @@ const LeaveApp = (() => {
                     data.data.filter(type => !status || type.isActive === (status === 'Active')).forEach(t => {
                         const tr = document.createElement("tr");
                         const paidBadge = t.isPaid
-                            ? '<span class="badge badge-paid">Có hưởng lương</span>'
-                            : '<span class="badge badge-unpaid">Không lương</span>';
+                            ? HrmI18n.fragment('<span class="badge badge-paid">Có hưởng lương</span>')
+                            : HrmI18n.fragment('<span class="badge badge-unpaid">Không lương</span>');
 
                         tr.innerHTML = `
                             <td>#${t.leaveTypeId}</td>
                             <td><span style="font-family:monospace;font-weight:700;color:var(--navy,#062579);">${t.typeCode}</span></td>
                             <td><strong>${escapeHtml(t.typeName)}</strong></td>
-                            <td style="font-weight:700;">${t.defaultDaysPerYear} ngày</td>
-                            <td>${paidBadge}<br>${t.isActive ? 'Active' : 'Inactive'}</td>
+                            <td style="font-weight:700;">${t.defaultDaysPerYear}${HrmI18n.fragment(" ngày</td>\n                            <td>")}${paidBadge}<br>${t.isActive ? 'Active' : 'Inactive'}</td>
                             <td>
                                 <div class="btn-action-group">
-                                    <button class="btn-action view" onclick='LeaveApp.editLeaveType(${JSON.stringify(t)})'>Sửa</button>
-                                    <button class="btn-action reject" onclick="LeaveApp.setLeaveTypeActive(${t.leaveTypeId}, ${!t.isActive})">${t.isActive ? 'Vô hiệu hóa' : 'Kích hoạt lại'}</button>
+                                    <button class="btn-action view" onclick='LeaveApp.editLeaveType(${JSON.stringify(t)}${HrmI18n.fragment(")'>Sửa</button>\n                                    <button class=\"btn-action reject\" onclick=\"LeaveApp.setLeaveTypeActive(")}${t.leaveTypeId}, ${!t.isActive})">${t.isActive ? HrmI18n.t('Vô hiệu hóa') : HrmI18n.t('Kích hoạt lại')}</button>
                                 </div>
                             </td>
                         `;
@@ -584,12 +554,12 @@ const LeaveApp = (() => {
                     });
                 })
                 .catch(() => {
-                    tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#b42318;padding:24px;">Lỗi tải danh mục.</td></tr>';
+                    tableBody.innerHTML = HrmI18n.fragment('<tr><td colspan="6" style="text-align:center;color:#b42318;padding:24px;">Lỗi tải danh mục.</td></tr>');
                 });
         }
 
         if (form) {
-            form.addEventListener("submit", e => {
+            form.addEventListener("submit", async e => {
                 e.preventDefault();
                 const formData = new URLSearchParams(new FormData(form));
 
@@ -598,20 +568,20 @@ const LeaveApp = (() => {
                     headers: { "Content-Type": "application/x-www-form-urlencoded" },
                     body: formData.toString()
                 })
-                    .then(res => res.json())
-                    .then(data => {
+                    .then(res => res.json().then(HrmI18n.response))
+                    .then(async data => {
                         if (data.success) {
-                            alert(data.message || "Lưu loại nghỉ phép thành công!");
+                            await AppDialog.alert(data.message || HrmI18n.t("Lưu loại nghỉ phép thành công!"));
                             closeModal("modalLeaveType");
                             form.reset();
                             loadTypes();
                         } else {
                             if (!FormValidation.showErrors(form, data)) {
-                                showMessage('typeMessage', data.message || 'Không thể lưu loại nghỉ phép.', true);
+                                showMessage('typeMessage', data.message || HrmI18n.t('Không thể lưu loại nghỉ phép.'), true);
                             }
                         }
                     })
-                    .catch(err => alert("Lỗi kết nối: " + err));
+                    .catch(async err => await AppDialog.alert(HrmI18n.t("Lỗi kết nối: ") + err));
             });
         }
 
@@ -635,8 +605,8 @@ const LeaveApp = (() => {
 
         if (deptFilter && !isEmployeeOnly) {
             fetch("../attendance/meta")
-                .then(res => res.json())
-                .then(data => {
+                .then(res => res.json().then(HrmI18n.response))
+                .then(async data => {
                     if (data.departments) {
                         data.departments.forEach(d => {
                             const opt = document.createElement("option");
@@ -652,20 +622,20 @@ const LeaveApp = (() => {
         }
 
         function renderMonth(year, month) {
-            monthTitle.textContent = `Tháng ${month} / ${year}`;
-            daysContainer.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:32px;background:#fff;color:#667085;">Đang tải lịch...</div>';
+            monthTitle.textContent = `${HrmI18n.fragment("Tháng ")}${month} / ${year}`;
+            daysContainer.innerHTML = HrmI18n.fragment('<div style="grid-column:1/-1;text-align:center;padding:32px;background:#fff;color:#667085;">Đang tải lịch...</div>');
 
             const deptId = (deptFilter && !isEmployeeOnly) ? deptFilter.value : "";
             const url = `../leave/api/calendar-events?year=${year}&month=${month}&departmentId=${encodeURIComponent(deptId)}`;
 
             fetch(url)
-                .then(res => res.json())
-                .then(data => {
+                .then(res => res.json().then(HrmI18n.response))
+                .then(async data => {
                     const events = (data.success && data.data) ? data.data : [];
                     buildCalendarGrid(year, month, events);
                 })
                 .catch(() => {
-                    daysContainer.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:32px;background:#fff;color:#b42318;">Lỗi khi tải lịch nghỉ phép.</div>';
+                    daysContainer.innerHTML = HrmI18n.fragment('<div style="grid-column:1/-1;text-align:center;padding:32px;background:#fff;color:#b42318;">Lỗi khi tải lịch nghỉ phép.</div>');
                 });
         }
 
@@ -797,8 +767,8 @@ const LeaveApp = (() => {
 
         // Load departments
         fetch("../attendance/meta")
-            .then(res => res.json())
-            .then(data => {
+            .then(res => res.json().then(HrmI18n.response))
+            .then(async data => {
                 if (data.departments && deptFilter) {
                     data.departments.forEach(d => {
                         const opt = document.createElement("option");
@@ -814,13 +784,13 @@ const LeaveApp = (() => {
             const year = yearSelect ? yearSelect.value : new Date().getFullYear();
             const deptId = deptFilter ? deptFilter.value : "";
 
-            tableBody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#667085;padding:24px;">Đang tổng hợp báo cáo...</td></tr>';
+            tableBody.innerHTML = HrmI18n.fragment('<tr><td colspan="12" style="text-align:center;color:#667085;padding:24px;">Đang tổng hợp báo cáo...</td></tr>');
 
             fetch(`../leave/api/report?year=${year}&departmentId=${encodeURIComponent(deptId)}`)
-                .then(res => res.json())
-                .then(data => {
+                .then(res => res.json().then(HrmI18n.response))
+                .then(async data => {
                     if (!data.success || !data.data || data.data.length === 0) {
-                        tableBody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#667085;padding:24px;">Không có dữ liệu báo cáo cho năm này.</td></tr>';
+                        tableBody.innerHTML = HrmI18n.fragment('<tr><td colspan="12" style="text-align:center;color:#667085;padding:24px;">Không có dữ liệu báo cáo cho năm này.</td></tr>');
                         return;
                     }
 
@@ -846,7 +816,7 @@ const LeaveApp = (() => {
                     });
                 })
                 .catch(() => {
-                    tableBody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#b42318;padding:24px;">Lỗi khi tổng hợp báo cáo.</td></tr>';
+                    tableBody.innerHTML = HrmI18n.fragment('<tr><td colspan="12" style="text-align:center;color:#b42318;padding:24px;">Lỗi khi tổng hợp báo cáo.</td></tr>');
                 });
         }
 
@@ -875,7 +845,7 @@ const LeaveApp = (() => {
     function renderPagination(container, totalRecords, curPage, pageSize, onPageChange) {
         if (!container) return;
         if (totalRecords <= 0) {
-            container.innerHTML = '<span style="color:#667085;">Tổng cộng: 0 kết quả</span>';
+            container.innerHTML = HrmI18n.fragment('<span style="color:#667085;">Tổng cộng: 0 kết quả</span>');
             return;
         }
 
@@ -884,8 +854,7 @@ const LeaveApp = (() => {
         const endRecord = Math.min(curPage * pageSize, totalRecords);
 
         let buttonsHtml = `
-            <button class="page-btn" ${curPage <= 1 ? "disabled" : ""} onclick="(${onPageChange})(${curPage - 1})">Trang trước</button>
-        `;
+            <button class="page-btn" ${curPage <= 1 ? "disabled" : ""} onclick="(${onPageChange})(${curPage - 1}${HrmI18n.fragment(")\">Trang trước</button>\n        ")}`;
 
         for (let p = 1; p <= totalPages; p++) {
             if (p === 1 || p === totalPages || (p >= curPage - 1 && p <= curPage + 1)) {
@@ -901,9 +870,7 @@ const LeaveApp = (() => {
             <button class="page-btn" ${curPage >= totalPages ? "disabled" : ""} onclick="(${onPageChange})(${curPage + 1})">Trang sau</button>
         `;
 
-        container.innerHTML = `
-            <div>Hiển thị <strong>${startRecord}</strong> - <strong>${endRecord}</strong> trong <strong>${totalRecords}</strong> bản ghi</div>
-            <div class="pagination-controls">${buttonsHtml}</div>
+        container.innerHTML = `${HrmI18n.fragment("\n            <div>Hiển thị <strong>")}${startRecord}</strong> - <strong>${endRecord}</strong> trong <strong>${totalRecords}${HrmI18n.fragment("</strong> bản ghi</div>\n            <div class=\"pagination-controls\">")}${buttonsHtml}</div>
         `;
     }
 
@@ -923,30 +890,30 @@ const LeaveApp = (() => {
         const btn = document.getElementById("btnConfirmApprove");
 
         btn.disabled = true;
-        btn.textContent = "Đang xử lý...";
+        btn.textContent = HrmI18n.t("Đang xử lý...");
 
         fetch("../leave/api/approve", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: new URLSearchParams({ leaveRequestId: reqId, comment: comment }).toString()
         })
-            .then(res => res.json())
-            .then(data => {
+            .then(res => res.json().then(HrmI18n.response))
+            .then(async data => {
                 btn.disabled = false;
-                btn.textContent = "Xác nhận duyệt";
+                btn.textContent = HrmI18n.t("Xác nhận duyệt");
                 if (data.success) {
-                    alert(data.message || "Phê duyệt thành công!");
+                    await AppDialog.alert(data.message || HrmI18n.t("Phê duyệt thành công!"));
                     closeModal("modalApprove");
                     if (window.LeaveAppReloadPending) window.LeaveAppReloadPending();
                     if (window.LeaveAppReloadAll) window.LeaveAppReloadAll();
                 } else {
-                    alert(data.message || "Không thể phê duyệt đơn.");
+                    await AppDialog.alert(data.message || HrmI18n.t("Không thể phê duyệt đơn."));
                 }
             })
-            .catch(err => {
+            .catch(async err => {
                 btn.disabled = false;
-                btn.textContent = "Xác nhận duyệt";
-                alert("Lỗi: " + err);
+                btn.textContent = HrmI18n.t("Xác nhận duyệt");
+                await AppDialog.alert(HrmI18n.t("Lỗi: ") + err);
             });
     }
 
@@ -963,44 +930,44 @@ const LeaveApp = (() => {
         const btn = document.getElementById("btnConfirmReject");
 
         if (!comment || comment.trim().length === 0) {
-            FormValidation.setError(document, 'rejectComment', 'Vui lòng nhập lý do từ chối đơn xin nghỉ phép.');
+            FormValidation.setError(document, 'rejectComment', HrmI18n.t('Vui lòng nhập lý do từ chối đơn xin nghỉ phép.'));
             document.getElementById('rejectComment').focus();
             return;
         }
         FormValidation.setError(document, 'rejectComment', '');
 
         btn.disabled = true;
-        btn.textContent = "Đang xử lý...";
+        btn.textContent = HrmI18n.t("Đang xử lý...");
 
         fetch("../leave/api/reject", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: new URLSearchParams({ leaveRequestId: reqId, comment: comment.trim() }).toString()
         })
-            .then(res => res.json())
-            .then(data => {
+            .then(res => res.json().then(HrmI18n.response))
+            .then(async data => {
                 btn.disabled = false;
-                btn.textContent = "Từ chối đơn";
+                btn.textContent = HrmI18n.t("Từ chối đơn");
                 if (data.success) {
-                    alert(data.message || "Đã từ chối đơn.");
+                    await AppDialog.alert(data.message || HrmI18n.t("Đã từ chối đơn."));
                     closeModal("modalReject");
                     if (window.LeaveAppReloadPending) window.LeaveAppReloadPending();
                     if (window.LeaveAppReloadAll) window.LeaveAppReloadAll();
                 } else {
                     if (!FormValidation.showErrors(document, data)) {
-                        alert(data.message || "Lỗi khi từ chối đơn.");
+                        await AppDialog.alert(data.message || HrmI18n.t("Lỗi khi từ chối đơn."));
                     }
                 }
             })
-            .catch(err => {
+            .catch(async err => {
                 btn.disabled = false;
-                btn.textContent = "Từ chối đơn";
-                alert("Lỗi: " + err);
+                btn.textContent = HrmI18n.t("Từ chối đơn");
+                await AppDialog.alert(HrmI18n.t("Lỗi: ") + err);
             });
     }
 
-    function cancelRequest(reqId) {
-        if (!confirm("Bạn có chắc chắn muốn hủy đơn xin nghỉ phép này không?")) {
+    async function cancelRequest(reqId) {
+        if (!(await AppDialog.confirm(HrmI18n.t("Bạn có chắc chắn muốn hủy đơn xin nghỉ phép này không?")))) {
             return;
         }
 
@@ -1009,56 +976,23 @@ const LeaveApp = (() => {
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: new URLSearchParams({ leaveRequestId: reqId }).toString()
         })
-            .then(res => res.json())
-            .then(data => {
+            .then(res => res.json().then(HrmI18n.response))
+            .then(async data => {
                 if (data.success) {
-                    alert(data.message || "Đã hủy đơn thành công.");
+                    await AppDialog.alert(data.message || HrmI18n.t("Đã hủy đơn thành công."));
                     window.location.reload();
                 } else {
-                    alert(data.message || "Không thể hủy đơn.");
+                    await AppDialog.alert(data.message || HrmI18n.t("Không thể hủy đơn."));
                 }
             })
-            .catch(err => alert("Lỗi: " + err));
+            .catch(async err => await AppDialog.alert(HrmI18n.t("Lỗi: ") + err));
     }
 
     function viewRequestDetail(r) {
         const b = document.getElementById("detailModalBody");
         if (!b) return;
 
-        b.innerHTML = `
-            <div style="display:grid; grid-template-columns: 140px 1fr; gap: 10px; font-size: 13px;">
-                <div style="color:#667085;">Mã đơn:</div>
-                <div><strong>#${r.leaveRequestId}</strong></div>
-
-                <div style="color:#667085;">Nhân viên:</div>
-                <div><strong>${escapeHtml(r.employeeFullName || "")}</strong> (${escapeHtml(r.employeeCode || "")})</div>
-
-                <div style="color:#667085;">Phòng ban:</div>
-                <div>${escapeHtml(r.departmentName || "—")}</div>
-
-                <div style="color:#667085;">Loại nghỉ phép:</div>
-                <div><strong>${escapeHtml(r.leaveTypeName || "")}</strong> (${r.isPaid ? "Có lương" : "Không lương"})</div>
-
-                <div style="color:#667085;">Khoảng thời gian:</div>
-                <div>${formatDate(r.startDate)} đến ${formatDate(r.endDate)}</div>
-
-                <div style="color:#667085;">Số ngày làm việc:</div>
-                <div style="font-weight:800; color:var(--navy,#062579);">${r.totalDays} ngày</div>
-
-                <div style="color:#667085;">Trạng thái:</div>
-                <div><span class="badge ${r.status}">${translateStatus(r.status)}</span></div>
-
-                <div style="color:#667085;">Lý do nghỉ:</div>
-                <div style="background:#f8f9fc; padding: 8px 12px; border-radius:6px; border:1px solid #e5e9f5;">${escapeHtml(r.reason || "")}</div>
-
-                <div style="color:#667085;">Người duyệt:</div>
-                <div>${escapeHtml(r.approverDisplayName || "—")}</div>
-
-                <div style="color:#667085;">Phản hồi người duyệt:</div>
-                <div>${r.approverComment ? escapeHtml(r.approverComment) : '<span style="color:#98a2b3;">—</span>'}</div>
-
-                <div style="color:#667085;">Thời gian nộp:</div>
-                <div style="color:#667085;">${r.createdAt || "—"}</div>
+        b.innerHTML = `${HrmI18n.fragment("\n            <div style=\"display:grid; grid-template-columns: 140px 1fr; gap: 10px; font-size: 13px;\">\n                <div style=\"color:#667085;\">Mã đơn:</div>\n                <div><strong>#")}${r.leaveRequestId}${HrmI18n.fragment("</strong></div>\n\n                <div style=\"color:#667085;\">Nhân viên:</div>\n                <div><strong>")}${escapeHtml(r.employeeFullName || "")}</strong> (${escapeHtml(r.employeeCode || "")}${HrmI18n.fragment(")</div>\n\n                <div style=\"color:#667085;\">Phòng ban:</div>\n                <div>")}${escapeHtml(r.departmentName || "—")}${HrmI18n.fragment("</div>\n\n                <div style=\"color:#667085;\">Loại nghỉ phép:</div>\n                <div><strong>")}${escapeHtml(r.leaveTypeName || "")}</strong> (${r.isPaid ? HrmI18n.t("Có lương") : HrmI18n.t("Không lương")}${HrmI18n.fragment(")</div>\n\n                <div style=\"color:#667085;\">Khoảng thời gian:</div>\n                <div>")}${formatDate(r.startDate)}${HrmI18n.fragment(" đến ")}${formatDate(r.endDate)}${HrmI18n.fragment("</div>\n\n                <div style=\"color:#667085;\">Số ngày làm việc:</div>\n                <div style=\"font-weight:800; color:var(--navy,#062579);\">")}${r.totalDays}${HrmI18n.fragment(" ngày</div>\n\n                <div style=\"color:#667085;\">Trạng thái:</div>\n                <div><span class=\"badge ")}${r.status}">${translateStatus(r.status)}${HrmI18n.fragment("</span></div>\n\n                <div style=\"color:#667085;\">Lý do nghỉ:</div>\n                <div style=\"background:#f8f9fc; padding: 8px 12px; border-radius:6px; border:1px solid #e5e9f5;\">")}${escapeHtml(r.reason || "")}${HrmI18n.fragment("</div>\n\n                <div style=\"color:#667085;\">Người duyệt:</div>\n                <div>")}${escapeHtml(r.approverDisplayName || "—")}${HrmI18n.fragment("</div>\n\n                <div style=\"color:#667085;\">Phản hồi người duyệt:</div>\n                <div>")}${r.approverComment ? escapeHtml(r.approverComment) : '<span style="color:#98a2b3;">—</span>'}${HrmI18n.fragment("</div>\n\n                <div style=\"color:#667085;\">Thời gian nộp:</div>\n                <div style=\"color:#667085;\">")}${r.createdAt || "—"}</div>
             </div>
         `;
         openModal("modalDetail");
@@ -1075,7 +1009,7 @@ const LeaveApp = (() => {
         document.getElementById("formTypeName").value = t.typeName;
         document.getElementById("formDefaultDays").value = t.defaultDaysPerYear;
         document.getElementById("formIsPaid").checked = t.isPaid;
-        document.getElementById("modalLeaveTypeTitle").textContent = "Chỉnh sửa loại nghỉ phép";
+        document.getElementById("modalLeaveTypeTitle").textContent = HrmI18n.t("Chỉnh sửa loại nghỉ phép");
         openModal("modalLeaveType");
     }
 
@@ -1084,12 +1018,12 @@ const LeaveApp = (() => {
         if (form) form.reset();
         document.getElementById("formLeaveTypeId").value = "";
         document.getElementById("formTypeCode").readOnly = false;
-        document.getElementById("modalLeaveTypeTitle").textContent = "Thêm loại nghỉ phép mới";
+        document.getElementById("modalLeaveTypeTitle").textContent = HrmI18n.t("Thêm loại nghỉ phép mới");
         openModal("modalLeaveType");
     }
 
-    function setLeaveTypeActive(id, active) {
-        if (!confirm(active ? 'Kích hoạt lại loại nghỉ phép này?' : 'Vô hiệu hóa loại nghỉ phép này?')) {
+    async function setLeaveTypeActive(id, active) {
+        if (!(await AppDialog.confirm(active ? HrmI18n.t('Kích hoạt lại loại nghỉ phép này?') : HrmI18n.t('Vô hiệu hóa loại nghỉ phép này?')))) {
             return;
         }
 
@@ -1099,16 +1033,16 @@ const LeaveApp = (() => {
             body: new URLSearchParams({ action: active ? "activate" : "deactivate", leaveTypeId: id,
                 csrfToken: document.querySelector('meta[name="organization-csrf-token"]')?.content || "" }).toString()
         })
-            .then(res => res.json())
-            .then(data => {
+            .then(res => res.json().then(HrmI18n.response))
+            .then(async data => {
                 if (data.success) {
-                    alert(data.message || "Đã cập nhật trạng thái!");
+                    await AppDialog.alert(data.message || HrmI18n.t("Đã cập nhật trạng thái!"));
                     window.location.reload();
                 } else {
-                    alert(data.message || "Không thể cập nhật trạng thái.");
+                    await AppDialog.alert(data.message || HrmI18n.t("Không thể cập nhật trạng thái."));
                 }
             })
-            .catch(err => alert("Lỗi: " + err));
+            .catch(async err => await AppDialog.alert(HrmI18n.t("Lỗi: ") + err));
     }
 
     // Helpers
@@ -1123,10 +1057,10 @@ const LeaveApp = (() => {
 
     function translateStatus(s) {
         switch (s) {
-            case "Pending": return "Chờ duyệt";
-            case "Approved": return "Đã duyệt";
-            case "Rejected": return "Từ chối";
-            case "Cancelled": return "Đã hủy";
+            case "Pending": return HrmI18n.t("Chờ duyệt");
+            case "Approved": return HrmI18n.t("Đã duyệt");
+            case "Rejected": return HrmI18n.t("Từ chối");
+            case "Cancelled": return HrmI18n.t("Đã hủy");
             default: return s || "—";
         }
     }

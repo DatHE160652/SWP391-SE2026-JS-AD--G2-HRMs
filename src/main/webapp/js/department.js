@@ -50,20 +50,12 @@ async function setupDepartmentForm() {
     const form = document.querySelector('#departmentForm');
 
     if (departmentId) {
-        document.querySelector('#departmentFormTitle').textContent = 'Cập nhật phòng ban';
+        document.querySelector('#departmentFormTitle').textContent = HrmI18n.t('Cập nhật phòng ban');
         const payload = await DepartmentApi.get(`/departments/detail?id=${departmentId}`);
         fillDepartmentForm(form, payload.data);
-        const assignButton = document.querySelector('#departmentInitialAssignment');
-        if (assignButton && payload.data.isActive) { assignButton.hidden = false; assignButton.dataset.initialDepartment = departmentId; }
-        const links = document.querySelector('#departmentPositionLinks');
-        const view = document.createElement('a');
-        view.href = '../position/position-list?departmentId=' + encodeURIComponent(departmentId);
-        view.textContent = 'Xem chức danh';
-        const create = document.createElement('a');
-        create.href = '../position/position-form?departmentId=' + encodeURIComponent(departmentId);
-        create.textContent = ' Thêm chức danh';
-        links.replaceChildren(view, create);
-        await loadDepartmentMembers(departmentId);
+        document.querySelectorAll('a[href="department-list"]').forEach(link => {
+            link.href = 'department-detail?id=' + encodeURIComponent(departmentId);
+        });
     }
 
     form.addEventListener('submit', async event => {
@@ -81,18 +73,18 @@ async function loadDepartmentMembers(departmentId) {
     const list = document.querySelector('#departmentMemberList');
     if (!panel || !list) return;
     panel.classList.remove('hidden');
-    list.innerHTML = '<div class="lc-spinner">Đang tải nhân viên…</div>';
+    list.innerHTML = HrmI18n.fragment('<div class="lc-spinner">Đang tải nhân viên…</div>');
     document.querySelector('#departmentMemberCount').textContent = '—';
     try {
         const payload = await DepartmentApi.get('/departments/members?departmentId=' + encodeURIComponent(departmentId));
         const employees = (payload.data || []).filter(employee => String(employee.departmentId) === String(departmentId));
         document.querySelector('#departmentMemberCount').textContent = String(employees.length);
         list.innerHTML = employees.length ? '<div class="lc-table-wrap"><table data-pagination="department-members"><thead><tr>'
-            + '<th>Mã nhân viên</th><th>Họ tên</th><th>Chức danh</th><th>Quản lý trực tiếp</th></tr></thead><tbody>'
+            + HrmI18n.fragment('<th>Mã nhân viên</th><th>Họ tên</th><th>Chức danh</th><th>Quản lý trực tiếp</th></tr></thead><tbody>')
             + employees.map(employee => '<tr><td>' + safeDepartmentValue(employee.employeeCode) + '</td><td>'
-                + safeDepartmentValue(employee.fullName) + '</td><td>' + safeDepartmentValue(employee.positionTitle || 'Chưa phân công')
-                + '</td><td>' + safeDepartmentValue(employee.managerName || 'Chưa có quản lý') + '</td></tr>').join('')
-            + '</tbody></table></div>' : '<div class="lc-empty">Phòng ban chưa có nhân viên.</div>';
+                + safeDepartmentValue(employee.fullName) + '</td><td>' + safeDepartmentValue(employee.positionTitle || HrmI18n.t('Chưa phân công'))
+                + '</td><td>' + safeDepartmentValue(employee.managerName || HrmI18n.t('Chưa có quản lý')) + '</td></tr>').join('')
+            + '</tbody></table></div>' : HrmI18n.fragment('<div class="lc-empty">Phòng ban chưa có nhân viên.</div>');
     } catch (error) {
         document.querySelector('#departmentMemberCount').textContent = '—';
         list.textContent = error.message;
@@ -115,7 +107,7 @@ async function updateDepartment(form) {
     try {
         const payload = await DepartmentApi.post('/departments/update', readDepartmentForm(form));
         sessionStorage.setItem('departmentMessage', payload.message);
-        location.assign('department-list');
+        location.assign('department-detail?id=' + encodeURIComponent(form.elements.namedItem('departmentId').value));
     } catch (error) {
         if (!FormValidation.showErrors(form, error)) {
             showDepartmentMessage(error.message, 'error');
@@ -124,7 +116,7 @@ async function updateDepartment(form) {
 }
 
 async function setDepartmentActive(departmentId, active) {
-    if (!confirm(active ? 'Kích hoạt lại bản ghi này?' : 'Vô hiệu hóa bản ghi này?')) {
+    if (!(await AppDialog.confirm(active ? HrmI18n.t('Kích hoạt lại bản ghi này?') : HrmI18n.t('Vô hiệu hóa bản ghi này?')))) {
         return;
     }
 
@@ -142,7 +134,7 @@ function renderDepartmentRows(departments) {
     departments = departments.filter(item => !status || (item.isActive) === (status === 'Active'));
     const tbody = document.querySelector('#departmentRows');
     if (!departments.length) {
-        tbody.innerHTML = '<tr><td colspan="5">Chưa có phòng ban.</td></tr>';
+        tbody.innerHTML = HrmI18n.fragment('<tr><td colspan="5">Chưa có phòng ban.</td></tr>');
         return;
     }
 
@@ -150,14 +142,11 @@ function renderDepartmentRows(departments) {
         <tr>
             <td><strong>${safeDepartmentValue(department.departmentCode)}</strong></td>
             <td>${safeDepartmentValue(department.departmentName)}</td>
-            <td>${department.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}</td>
-            <td>${department.createdAt ? safeDepartmentValue(new Date(department.createdAt).toLocaleDateString('vi-VN')) : '-'}</td>
+            <td>${department.isActive ? HrmI18n.t('Đang hoạt động') : HrmI18n.t('Ngừng hoạt động')}</td>
+            <td>${department.createdAt ? safeDepartmentValue(new Date(department.createdAt).toLocaleDateString(HrmI18n.locale)) : '-'}</td>
             <td class="actions">
-                ${department.isActive ? `<button type="button" data-initial-department="${department.departmentId}">Phân công</button>` : ''}
-                <a href="department-form?id=${department.departmentId}">Xem / Sửa</a>
-                <a href="../position/position-list?departmentId=${department.departmentId}">Chức danh</a>
-                <a href="../position/position-form?departmentId=${department.departmentId}">Thêm chức danh</a>
-                <button class="danger" onclick="setDepartmentActive(${department.departmentId}, ${!department.isActive})">${department.isActive ? 'Vô hiệu hóa' : 'Kích hoạt lại'}</button>
+                ${department.isActive ? `<button type="button" data-initial-department="${department.departmentId}${HrmI18n.fragment("\">Phân công</button>")}` : ''}
+                <a href="department-detail?id=${department.departmentId}${HrmI18n.fragment("\">Chi tiết</a>\n                <a href=\"department-form?id=")}${department.departmentId}${HrmI18n.fragment("\">Sửa</a>\n                <a href=\"../position/position-list?departmentId=")}${department.departmentId}${HrmI18n.fragment("\">Chức danh</a>\n                <a href=\"../position/position-form?departmentId=")}${department.departmentId}${HrmI18n.fragment("\">Thêm chức danh</a>\n                <button class=\"danger\" onclick=\"setDepartmentActive(")}${department.departmentId}, ${!department.isActive})">${department.isActive ? HrmI18n.t('Vô hiệu hóa') : HrmI18n.t('Kích hoạt lại')}</button>
             </td>
         </tr>
     `).join('');
@@ -182,7 +171,7 @@ function departmentApiUrl(url) {
 }
 
 async function handleDepartmentResponse(response) {
-    const payload = await response.json();
+    const payload = await response.json().then(HrmI18n.response);
     if (!response.ok || payload.success === false) {
         throw FormValidation.responseError(payload);
     }
@@ -191,7 +180,7 @@ async function handleDepartmentResponse(response) {
 
 function showDepartmentMessage(message, type = 'success') {
     const element = document.querySelector('#message');
-    element.textContent = message;
+    element.textContent = HrmI18n.t(message);
     element.className = `message show ${type}`;
 }
 

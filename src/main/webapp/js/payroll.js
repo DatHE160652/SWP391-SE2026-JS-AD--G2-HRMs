@@ -11,7 +11,7 @@
         const text=String(value);const negative=text.startsWith('-');
         const [whole,fraction='']=text.replace(/^-/, '').split('.');
         const decimals=fraction.replace(/0+$/,'');
-        return (negative?'-':'')+new Intl.NumberFormat('vi-VN').format(BigInt(whole))+(decimals?','+decimals:'');
+        return (negative?'-':'')+new Intl.NumberFormat(HrmI18n.locale).format(BigInt(whole))+(decimals?(HrmI18n.language==='en'?'.':',')+decimals:'');
     };
     const cents = value => {
         const text=String(value??'0');const negative=text.startsWith('-');
@@ -34,9 +34,9 @@
         }
         let response;
         try { response=await fetch(context+path,options); }
-        catch (_) { throw new Error('Không thể kết nối máy chủ. Vui lòng thử lại.'); }
+        catch (_) { throw new Error(HrmI18n.t('Không thể kết nối máy chủ. Vui lòng thử lại.')); }
         let payload;
-        try { payload=await response.json(); } catch (_) { throw new Error('Không đọc được phản hồi. Hãy kiểm tra kết nối hoặc đăng nhập lại.'); }
+        try { payload=await response.json().then(HrmI18n.response); } catch (_) { throw new Error(HrmI18n.t('Không đọc được phản hồi. Hãy kiểm tra kết nối hoặc đăng nhập lại.')); }
         if (!response.ok || !payload.success) {
             const error=new Error([payload.message,...(payload.errors||[])].join('\n'));error.status=response.status;throw error;
         }
@@ -49,7 +49,7 @@
     function openDialog(id) { const dialog=$(id);dialog.querySelector('.dialog-error').hidden=true;dialog.showModal(); }
     function employee(row,showCode=true) {
         const initials=row.fullName.trim().split(/\s+/).slice(-2).map(word=>word[0]).join('').toUpperCase();
-        return `<div class="employee-cell"><span class="employee-avatar">${safe(initials)}</span><div><strong>${safe(row.fullName)}</strong>${showCode?`<small>${safe(row.employeeCode)}</small>`:''}${row.salaryIssue?`<small class="negative">${safe(row.salaryIssue)}</small>`:""}</div></div>`;
+        return `<div class="employee-cell"><span class="employee-avatar">${safe(initials)}</span><div><strong>${safe(row.fullName)}</strong>${showCode?`<small>${safe(row.employeeCode)}</small>`:''}${row.salaryIssue?`<small class="negative">${safe(HrmI18n.t(row.salaryIssue))}</small>`:""}</div></div>`;
     }
     function editable() { return state.selected && !state.selected.closed && state.selected.status!=='Approved' && !state.selected.publishedAt; }
     function savedTotals() {
@@ -75,9 +75,9 @@
         return !!confirmations[action];
     }
     function actorTime(name,userId,time) {
-        return `${name||'#'+userId} · ${new Date(time+'Z').toLocaleString('vi-VN')}`;
+        return `${name||'#'+userId} · ${new Date(time+'Z').toLocaleString(HrmI18n.locale)}`;
     }
-    const badges=p=>`<span class="badge ${safe(p.status)}">${safe(p.status)}</span>${p.publishedAt?'<span class="badge Approved">Đã công bố</span>':p.closed?'<span class="badge closed">Đã đóng</span>':''}`;
+    const badges=p=>`<span class="badge ${safe(p.status)}">${safe(HrmI18n.label(p.status))}</span>${p.publishedAt?HrmI18n.fragment('<span class="badge Approved">Đã công bố</span>'):p.closed?HrmI18n.fragment('<span class="badge closed">Đã đóng</span>'):''}`;
 
     function adjustmentValues() {
         const form=$('#adjustmentForm');
@@ -92,26 +92,26 @@
         state.adjustmentDraft=null;
         $('#adjustmentDialog')?.close();
     }
-    function discardAdjustment() {
+    async function discardAdjustment() {
         if(state.adjustmentDraft && state.busy) return false;
-        if(adjustmentDirty() && !window.confirm('Có thay đổi điều chỉnh chưa được lưu. Bạn có muốn bỏ các thay đổi này?')) return false;
+        if(adjustmentDirty() && !(await AppDialog.confirm(HrmI18n.t('Có thay đổi điều chỉnh chưa được lưu. Bạn có muốn bỏ các thay đổi này?')))) return false;
         clearAdjustmentDraft();return true;
     }
     function updateAdjustmentState() {
         const dirty=adjustmentDirty(),saving=!!state.adjustmentDraft && state.busy;
         const status=$('#adjustmentSaveState');
-        status.textContent=saving?'Đang lưu điều chỉnh…':dirty?'Có thay đổi chưa lưu.':'Chưa có thay đổi.';
+        status.textContent=saving?HrmI18n.t('Đang lưu điều chỉnh…'):dirty?HrmI18n.t('Có thay đổi chưa lưu.'):HrmI18n.t('Chưa có thay đổi.');
         status.className='subtle'+(saving?' saving':dirty?' dirty':'');
         $('#adjustmentForm [type="submit"]').disabled=saving || !dirty || !editable();
     }
     function validateAdjustment() {
         const form=$('#adjustmentForm'),values=adjustmentValues(),errors={};
-        for(const [key,label] of [['bonus','Thưởng'],['deduction','Khấu trừ']]) {
+        for(const [key,label] of [['bonus',HrmI18n.t('Thưởng')],['deduction',HrmI18n.t('Khấu trừ')]]) {
             const value=values[key];
             if(!/^(?:\d+(?:\.\d{0,2})?|\.\d{1,2})$/.test(value) || cents(value)>999999999999999999n)
-                errors[key]=`${label} phải là số không âm, tối đa 2 chữ số thập phân và không vượt 9999999999999999.99.`;
+                errors[key]=`${label}${HrmI18n.fragment(" phải là số không âm, tối đa 2 chữ số thập phân và không vượt 9999999999999999.99.")}`;
         }
-        if(values.note.trim().length>300) errors.note='Ghi chú không được vượt quá 300 ký tự.';
+        if(values.note.trim().length>300) errors.note=HrmI18n.t('Ghi chú không được vượt quá 300 ký tự.');
         for(const key of ['bonus','deduction','note']) {
             const message=form.querySelector(`[data-adjustment-error="${key}"]`);
             message.textContent=errors[key]||'';message.hidden=!errors[key];
@@ -122,27 +122,27 @@
     }
     async function saveAdjustment() {
         if(state.busy || !state.adjustmentDraft || !adjustmentDirty()) return;
-        if(!editable()) {dialogError($('#adjustmentDialog'),new Error('Kỳ lương đã khóa hoặc phê duyệt. Không thể lưu điều chỉnh.'));return;}
+        if(!editable()) {dialogError($('#adjustmentDialog'),new Error(HrmI18n.t('Kỳ lương đã khóa hoặc phê duyệt. Không thể lưu điều chỉnh.')));return;}
         if(!validateAdjustment()) return;
         const draft=state.adjustmentDraft,form=$('#adjustmentForm'),dialog=$('#adjustmentDialog');
         const data={...adjustmentValues(),periodId:draft.periodId,employeeId:draft.employeeId};
         const controls=[...form.querySelectorAll('input,textarea,button')];
         state.busy=true;controls.forEach(control=>control.disabled=true);
         form.setAttribute('aria-busy','true');form.querySelector('.dialog-error').hidden=true;
-        const button=form.querySelector('[type="submit"]');button.textContent='Đang lưu…';updateAdjustmentState();
+        const button=form.querySelector('[type="submit"]');button.textContent=HrmI18n.t('Đang lưu…');updateAdjustmentState();
         let saved=false;
         try {
             const result=await api('/payroll/api/adjustment',data);saved=true;
             clearAdjustmentDraft();feedback(result.message);
             await loadPeriods(draft.periodId);
         } catch(error) {
-            if(saved) feedback('Đã lưu điều chỉnh nhưng chưa tải lại được kỳ lương. Hãy chọn Tải lại. '+error.message,true);
+            if(saved) feedback(HrmI18n.t('Đã lưu điều chỉnh nhưng chưa tải lại được kỳ lương. Hãy chọn Tải lại. ')+error.message,true);
             else {
                 dialogError(dialog,error);
-                $('#adjustmentSaveState').textContent='Chưa lưu được. Các giá trị vừa nhập vẫn được giữ để bạn kiểm tra và thử lại.';
+                $('#adjustmentSaveState').textContent=HrmI18n.t('Chưa lưu được. Các giá trị vừa nhập vẫn được giữ để bạn kiểm tra và thử lại.');
             }
         } finally {
-            state.busy=false;controls.forEach(control=>control.disabled=false);form.setAttribute('aria-busy','false');button.textContent='Lưu điều chỉnh';
+            state.busy=false;controls.forEach(control=>control.disabled=false);form.setAttribute('aria-busy','false');button.textContent=HrmI18n.t('Lưu điều chỉnh');
             if(saved) updateAdjustmentState();
             else button.disabled=!adjustmentDirty();
         }
@@ -167,11 +167,11 @@
         return state.periods.filter(p=>(!$('#yearFilter').value||p.year===Number($('#yearFilter').value))&&(!$('#statusFilter').value||p.status===$('#statusFilter').value));
     }
     async function loadPeriods(preferred) {
-        if(!discardAdjustment()) return;
+        if(!(await discardAdjustment())) return;
         const sequence=++state.listRequest;
         const requested=preferred ?? state.failedPeriodId ?? new URLSearchParams(location.search).get('periodId') ?? state.selected?.payrollPeriodId;
         clearPeriodSelection(false);periodListBusy(true);
-        $('#periodList').innerHTML='<div class="empty">Đang tải kỳ lương…</div>';
+        $('#periodList').innerHTML=HrmI18n.fragment('<div class="empty">Đang tải kỳ lương…</div>');
         try {
             const result=await api('/payroll/api/periods');
             if(sequence!==state.listRequest) return;
@@ -179,13 +179,13 @@
         } catch(error) {
             if(sequence!==state.listRequest) return;
             state.periods=[];$('#periodCount').textContent='0';
-            $('#periodList').innerHTML='<div class="empty"><strong>Không tải được danh sách kỳ lương</strong>Kiểm tra kết nối hoặc đăng nhập lại, sau đó chọn Tải lại.</div>';
+            $('#periodList').innerHTML=HrmI18n.fragment('<div class="empty"><strong>Không tải được danh sách kỳ lương</strong>Kiểm tra kết nối hoặc đăng nhập lại, sau đó chọn Tải lại.</div>');
             throw error;
         } finally { if(sequence===state.listRequest) periodListBusy(false); }
         clearPeriodFailure();
         const year=$('#yearFilter').value;
         const years=[...new Set(state.periods.map(p=>p.year))].sort((a,b)=>b-a);
-        $('#yearFilter').innerHTML='<option value="">Tất cả năm</option>'+years.map(y=>`<option>${y}</option>`).join('');
+        $('#yearFilter').innerHTML=HrmI18n.fragment('<option value="">Tất cả năm</option>')+years.map(y=>`<option>${y}</option>`).join('');
         $('#yearFilter').value=years.includes(Number(year))?year:'';
         // A newly created or updated period must remain visible after a successful action.
         if(preferred!=null && state.periods.some(p=>p.payrollPeriodId===Number(preferred)) && !filteredPeriods().some(p=>p.payrollPeriodId===Number(preferred))) {
@@ -203,12 +203,12 @@
         state.filters={year:$('#yearFilter').value,status:$('#statusFilter').value};
         const items=filteredPeriods();
         $('#periodCount').textContent=items.length;
-        $('#periodCount').title=`${items.length} / ${state.periods.length} kỳ lương`;
-        $('#periodList').innerHTML=items.length ? items.map(p=>`<button class="period-tile ${state.selected?.payrollPeriodId===p.payrollPeriodId?'active':''}" data-period="${p.payrollPeriodId}" aria-pressed="${state.selected?.payrollPeriodId===p.payrollPeriodId}"><strong>Tháng ${String(p.month).padStart(2,'0')} / ${p.year}</strong>${badges(p)}<small>${p.employeeCount?`${p.employeeCount} nhân viên · ${money(p.totalNetSalary)} ₫`:'Chưa có kết quả tính lương'}</small></button>`).join('') : `<div class="empty"><strong>${state.periods.length?'Không có kỳ phù hợp':'Bắt đầu kỳ lương đầu tiên'}</strong>${state.periods.length?'Thử thay đổi bộ lọc.':'Tạo kỳ lương để nhập thưởng, khấu trừ và tính thu nhập cho nhân viên.'}</div>`;
+        $('#periodCount').title=`${items.length} / ${state.periods.length}${HrmI18n.fragment(" kỳ lương")}`;
+        $('#periodList').innerHTML=items.length ? items.map(p=>`<button class="period-tile ${state.selected?.payrollPeriodId===p.payrollPeriodId?'active':''}" data-period="${p.payrollPeriodId}" aria-pressed="${state.selected?.payrollPeriodId===p.payrollPeriodId}${HrmI18n.fragment("\"><strong>Tháng ")}${String(p.month).padStart(2,'0')} / ${p.year}</strong>${badges(p)}<small>${p.employeeCount?`${p.employeeCount}${HrmI18n.fragment(" nhân viên · ")}${money(p.totalNetSalary)} ₫`:HrmI18n.t('Chưa có kết quả tính lương')}</small></button>`).join('') : `<div class="empty"><strong>${state.periods.length?HrmI18n.t('Không có kỳ phù hợp'):HrmI18n.t('Bắt đầu kỳ lương đầu tiên')}</strong>${state.periods.length?HrmI18n.t('Thử thay đổi bộ lọc.'):HrmI18n.t('Tạo kỳ lương để nhập thưởng, khấu trừ và tính thu nhập cho nhân viên.')}</div>`;
         return items;
     }
     async function changePeriodFilters() {
-        if(!discardAdjustment()) {
+        if(!(await discardAdjustment())) {
             if(state.filters) {$('#yearFilter').value=state.filters.year;$('#statusFilter').value=state.filters.status;}
             return;
         }
@@ -219,11 +219,11 @@
         await selectPeriod(items[0].payrollPeriodId);
     }
     async function selectPeriod(id) {
-        if(!discardAdjustment()) return;
+        if(!(await discardAdjustment())) return;
         const sequence=++state.request;
         clearPeriodFailure();state.selected=null;state.rows=[];state.adjustments=[];state.failedPeriodId=id;
         $('#periodWorkspace').hidden=true;
-        const message=$('#periodDetailState');message.className='info-note';message.textContent='Đang tải chi tiết kỳ lương…';message.hidden=false;
+        const message=$('#periodDetailState');message.className='info-note';message.textContent=HrmI18n.t('Đang tải chi tiết kỳ lương…');message.hidden=false;
         renderPeriods();
         try {
             const result=(await api('/payroll/api/period?periodId='+encodeURIComponent(id))).data;
@@ -237,7 +237,7 @@
         } catch(error) {
             if(sequence!==state.request) return;
             message.className='feedback error';
-            message.innerHTML=`Không tải được chi tiết kỳ lương. ${safe(error.message)} <button class="text-button" type="button" data-retry-period>Thử lại</button>`;
+            message.innerHTML=`${HrmI18n.fragment("Không tải được chi tiết kỳ lương. ")}${safe(error.message)}${HrmI18n.fragment(" <button class=\"text-button\" type=\"button\" data-retry-period>Thử lại</button>")}`;
             throw error;
         }
     }
@@ -246,74 +246,74 @@
         $('#periodTitle').textContent=p.periodName;$('#periodBadges').innerHTML=badges(p);
         const buttons=[];
         if(!p.publishedAt) {
-            if(!p.closed&&p.status!=='Approved') buttons.push(['calculate',p.status==='Draft'?'Tính lương':'Tính lại','primary']);
-            if(!p.closed&&p.status==='Calculated') buttons.push(['review','Hoàn tất rà soát','secondary']);
-            if(!p.closed&&p.status==='Reviewed') buttons.push(['approve','Phê duyệt','success']);
-            if(!p.closed&&p.status==='Approved') buttons.push(['publish','Công bố phiếu lương','primary']);
-            if(p.closed||p.status==='Approved') buttons.push(['reopen','Mở lại về Draft','secondary']);
-            if(!p.closed) buttons.push(['close','Đóng kỳ','secondary']);
+            if(!p.closed&&p.status!=='Approved') buttons.push(['calculate',p.status==='Draft'?HrmI18n.t('Tính lương'):HrmI18n.t('Tính lại'),'primary']);
+            if(!p.closed&&p.status==='Calculated') buttons.push(['review',HrmI18n.t('Hoàn tất rà soát'),'secondary']);
+            if(!p.closed&&p.status==='Reviewed') buttons.push(['approve',HrmI18n.t('Phê duyệt'),'success']);
+            if(!p.closed&&p.status==='Approved') buttons.push(['publish',HrmI18n.t('Công bố phiếu lương'),'primary']);
+            if(p.closed||p.status==='Approved') buttons.push(['reopen',HrmI18n.t('Mở lại về Draft'),'secondary']);
+            if(!p.closed) buttons.push(['close',HrmI18n.t('Đóng kỳ'),'secondary']);
         }
-        $('#periodActions').innerHTML=(editable()?'<button class="btn secondary" type="button" data-preview-payroll>Xem trước</button>':'')+buttons.map(([action,label,style])=>`<button class="btn ${style}" data-action="${action}" ${!canConfirm(action)?'disabled':''}>${label}</button>`).join('');
-        $('#periodNotice').textContent=p.publishedAt?'Phiếu lương đã công bố và nhân viên đã nhận thông báo trong hệ thống. Kỳ được khóa để bảo toàn kết quả.':p.closed?'Kỳ đang đóng. Mở lại sẽ đưa kỳ về Draft để tính và duyệt lại.':({Draft:'Chuẩn bị lương cơ bản và các khoản điều chỉnh, sau đó chọn Tính lương. Chấm công và nghỉ phép không tự thay đổi mức lương.',Calculated:'Kết quả đã được tính. Kiểm tra các khoản thu nhập rồi hoàn tất rà soát. Chỉnh sửa điều chỉnh sẽ yêu cầu tính lại.',Reviewed:'Bảng lương đã được rà soát. Phê duyệt để chuẩn bị công bố phiếu lương.',Approved:'Bảng lương đã phê duyệt. Công bố để nhân viên xem phiếu lương và nhận thông báo.'}[p.status]);
+        $('#periodActions').innerHTML=(editable()?HrmI18n.fragment('<button class="btn secondary" type="button" data-preview-payroll>Xem trước</button>'):'')+buttons.map(([action,label,style])=>`<button class="btn ${style}" data-action="${action}" ${!canConfirm(action)?'disabled':''}>${label}</button>`).join('');
+        $('#periodNotice').textContent=p.publishedAt?HrmI18n.t('Phiếu lương đã công bố và nhân viên đã nhận thông báo trong hệ thống. Kỳ được khóa để bảo toàn kết quả.'):p.closed?HrmI18n.t('Kỳ đang đóng. Mở lại sẽ đưa kỳ về Draft để tính và duyệt lại.'):({Draft:HrmI18n.t('Chuẩn bị lương cơ bản và các khoản điều chỉnh, sau đó chọn Tính lương. Chấm công và nghỉ phép không tự thay đổi mức lương.'),Calculated:HrmI18n.t('Kết quả đã được tính. Kiểm tra các khoản thu nhập rồi hoàn tất rà soát. Chỉnh sửa điều chỉnh sẽ yêu cầu tính lại.'),Reviewed:HrmI18n.t('Bảng lương đã được rà soát. Phê duyệt để chuẩn bị công bố phiếu lương.'),Approved:HrmI18n.t('Bảng lương đã phê duyệt. Công bố để nhân viên xem phiếu lương và nhận thông báo.')}[p.status]);
         $('#metricEmployees').textContent=state.rows.length;
         const total=key=>state.rows.reduce((sum,row)=>sum+cents(row[key]),0n);
         const validIncome=state.rows.every(row=>!row.salaryIssue && row.baseSalary!=null && row.responsibilityAllowance!=null);
         $('#metricIncome').textContent=validIncome?money(decimal(total('baseSalary')+total('responsibilityAllowance')+total('bonus'))):'—';
         $('#metricDeduction').textContent=money(decimal(total('deduction')));
         $('#metricNet').textContent=p.status==='Draft'?'—':money(decimal(total('netSalary')));
-        $('#metricNetNote').textContent=p.status==='Draft'?'Chưa tính lương':'VND · Kết quả tính lương';
+        $('#metricNetNote').textContent=p.status==='Draft'?HrmI18n.t('Chưa tính lương'):HrmI18n.t('VND · Kết quả tính lương');
         const history=[];
-        if(p.reviewedAt && p.reviewedByUserId!=null) history.push('Đã rà soát: '+actorTime(p.reviewedByName,p.reviewedByUserId,p.reviewedAt));
-        if(p.approvedAt && p.approvedByUserId!=null) history.push('Đã phê duyệt: '+actorTime(p.approvedByName,p.approvedByUserId,p.approvedAt));
+        if(p.reviewedAt && p.reviewedByUserId!=null) history.push(HrmI18n.t('Đã rà soát: ')+actorTime(p.reviewedByName,p.reviewedByUserId,p.reviewedAt));
+        if(p.approvedAt && p.approvedByUserId!=null) history.push(HrmI18n.t('Đã phê duyệt: ')+actorTime(p.approvedByName,p.approvedByUserId,p.approvedAt));
         $('#periodReviewHistory').textContent=history.join(' | ');$('#periodReviewHistory').hidden=!history.length;
         if(!p.closed && !p.publishedAt && ['Calculated','Reviewed'].includes(p.status)) {
-            if(!validSavedResults()) $('#periodNotice').textContent+=' Kết quả chưa đầy đủ hoặc chưa hợp lệ. Hãy tải lại hoặc tính lại trước khi rà soát và duyệt.';
+            if(!validSavedResults()) $('#periodNotice').textContent+=HrmI18n.t(' Kết quả chưa đầy đủ hoặc chưa hợp lệ. Hãy tải lại hoặc tính lại trước khi rà soát và duyệt.');
             else if(p.status==='Reviewed' && (p.reviewedByUserId==null || !p.reviewedAt))
-                $('#periodNotice').textContent+=' Kỳ cũ chưa ghi nhận người/thời điểm rà soát. Hãy tính lại và hoàn tất rà soát trước khi duyệt.';
+                $('#periodNotice').textContent+=HrmI18n.t(' Kỳ cũ chưa ghi nhận người/thời điểm rà soát. Hãy tính lại và hoàn tất rà soát trước khi duyệt.');
         }
         $('#importButton').disabled=!editable();$('#templateButton').disabled=!state.adjustments.length;
         $('#adjustmentLock').hidden=editable();
         renderRows();renderAdjustmentRows();
     }
-    function pagination(id,current,count,kind,label='nhân viên') {
+    function pagination(id,current,count,kind,label=HrmI18n.t('nhân viên')) {
         const pages=Math.max(1,Math.ceil(count/25));
-        $(id).innerHTML=`<span>${count} ${label} · Trang ${current}/${pages}</span><button class="btn secondary" data-page-kind="${kind}" data-page-step="-1" ${current<=1?'disabled':''} aria-label="Trang trước">←</button><button class="btn secondary" data-page-kind="${kind}" data-page-step="1" ${current>=pages?'disabled':''} aria-label="Trang sau">→</button>`;
+        $(id).innerHTML=`<span>${count} ${label} · ${HrmI18n.t("Trang")} ${current}/${pages}</span><button class="btn secondary" data-page-kind="${kind}" data-page-step="-1" ${current<=1?'disabled':''}${HrmI18n.fragment(" aria-label=\"Trang trước\">←</button><button class=\"btn secondary\" data-page-kind=\"")}${kind}" data-page-step="1" ${current>=pages?'disabled':''} aria-label="${HrmI18n.t("Trang sau")}">→</button>`;
     }
     function renderRows() {
         const q=$('#rowSearch').value.trim().toLocaleLowerCase('vi');
         const rows=state.rows.filter(row=>(row.fullName+' '+row.employeeCode).toLocaleLowerCase('vi').includes(q));
-        $('#rowCount').textContent=`${rows.length} nhân viên`;
+        $('#rowCount').textContent=`${rows.length}${HrmI18n.fragment(" nhân viên")}`;
         $('#payrollRows').innerHTML=rows.slice((state.rowPage-1)*25,state.rowPage*25).map(row=>`<tr>
             <td>${safe(row.employeeCode)}</td><td>${employee(row,false)}</td>
             <td class="number">${money(row.baseSalary)}</td><td class="number">${money(row.responsibilityAllowance)}</td>
             <td class="number">${money(row.bonus)}</td><td class="number">${money(row.deduction)}</td>
             <td class="number net-value ${row.netSalary!=null&&cents(row.netSalary)<0n?'negative':''}">${money(row.netSalary)}</td>
-            <td>${row.payslipId?`<a class="text-button" href="${context}/payroll/payslip?id=${row.payslipId}">Xem phiếu</a>`:
-                `<span class="subtle">${editable()?'Chưa tính lương':'Đã khóa'}</span>`}</td>
-            </tr>`).join('')||'<tr><td colspan="8" class="empty">Không có nhân viên phù hợp. Kiểm tra thời gian làm việc và trạng thái hồ sơ.</td></tr>';
+            <td>${row.payslipId?`<a class="text-button" href="${context}/payroll/payslip?id=${row.payslipId}${HrmI18n.fragment("\">Xem phiếu</a>")}`:
+                `<span class="subtle">${editable()?HrmI18n.t('Chưa tính lương'):HrmI18n.t('Đã khóa')}</span>`}</td>
+            </tr>`).join('')||HrmI18n.fragment('<tr><td colspan="8" class="empty">Không có nhân viên phù hợp. Kiểm tra thời gian làm việc và trạng thái hồ sơ.</td></tr>');
         pagination('#rowPagination',state.rowPage,rows.length,'rows');
     }
     function renderAdjustmentRows() {
         const q=$('#adjustmentSearch').value.trim().toLocaleLowerCase('vi');
         const rows=state.adjustments.filter(row=>(row.fullName+' '+row.employeeCode).toLocaleLowerCase('vi').includes(q));
-        $('#adjustmentCount').textContent=`${rows.length} nhân viên`;
+        $('#adjustmentCount').textContent=`${rows.length}${HrmI18n.fragment(" nhân viên")}`;
         $('#adjustmentRows').innerHTML=rows.slice((state.adjustmentPage-1)*25,state.adjustmentPage*25).map(row=>`<tr>
             <td>${safe(row.employeeCode)}</td><td>${safe(row.fullName)}</td><td class="number">${money(row.baseSalary)}</td>
             <td class="number">${money(row.bonus)}</td><td class="number">${money(row.deduction)}</td>
             <td class="adjustment-note">${safe(row.note||'—')}</td>
-            <td>${editable()?`<button type="button" class="text-button" data-adjust="${row.employeeId}">Điều chỉnh</button>`:'<span class="subtle">Chỉ xem</span>'}</td>
-            </tr>`).join('')||'<tr><td colspan="7" class="empty">Không có nhân viên phù hợp trong công ty.</td></tr>';
+            <td>${editable()?`<button type="button" class="text-button" data-adjust="${row.employeeId}${HrmI18n.fragment("\">Điều chỉnh</button>")}`:HrmI18n.fragment('<span class="subtle">Chỉ xem</span>')}</td>
+            </tr>`).join('')||HrmI18n.fragment('<tr><td colspan="7" class="empty">Không có nhân viên phù hợp trong công ty.</td></tr>');
         pagination('#adjustmentPagination',state.adjustmentPage,rows.length,'adjustments');
     }
     async function loadSalaries() { state.salaries=(await api('/payroll/api/salaries')).data;renderSalaries(); }
     function renderSalaries() {
         const q=$('#salarySearch').value.trim().toLocaleLowerCase('vi');
         const rows=state.salaries.filter(row=>(row.fullName+' '+row.employeeCode+' '+(row.departmentName||'')).toLocaleLowerCase('vi').includes(q));
-        $('#salaryRows').innerHTML=rows.slice((state.salaryPage-1)*25,state.salaryPage*25).map(row=>`<tr><td>${employee(row)}</td><td>${safe(row.departmentName||'Chưa phân công')}</td><td><span class="badge ${row.status==='Active'?'Approved':''}">${safe(row.status)}</span></td><td class="number net-value">${money(row.baseSalary)}${row.salaryEffectiveFrom?`<small class="subtle">Từ ${safe(row.salaryEffectiveFrom)}${row.salaryEffectiveTo?` đến trước ${safe(row.salaryEffectiveTo)}`:""}</small>`:""}</td><td class="number">${money(row.responsibilityAllowance)}</td><td><button class="text-button" data-salary="${row.employeeId}">Cập nhật</button></td></tr>`).join('')||'<tr><td colspan="6" class="empty">Không có nhân viên phù hợp.</td></tr>';
+        $('#salaryRows').innerHTML=rows.slice((state.salaryPage-1)*25,state.salaryPage*25).map(row=>`<tr><td>${employee(row)}</td><td>${safe(row.departmentName||HrmI18n.t('Chưa phân công'))}</td><td><span class="badge ${row.status==='Active'?'Approved':''}">${safe(HrmI18n.label(row.status))}</span></td><td class="number net-value">${money(row.baseSalary)}${row.salaryEffectiveFrom?`${HrmI18n.fragment("<small class=\"subtle\">Từ ")}${safe(row.salaryEffectiveFrom)}${row.salaryEffectiveTo?`${HrmI18n.fragment(" đến trước ")}${safe(row.salaryEffectiveTo)}`:""}</small>`:""}</td><td class="number">${money(row.responsibilityAllowance)}</td><td><button class="text-button" data-salary="${row.employeeId}${HrmI18n.fragment("\">Cập nhật</button></td></tr>")}`).join('')||HrmI18n.fragment('<tr><td colspan="6" class="empty">Không có nhân viên phù hợp.</td></tr>');
         pagination('#salaryPagination',state.salaryPage,rows.length,'salaries');
     }
-    function openAdjustment(id) {
-        if(!editable() || !discardAdjustment()) return;
+    async function openAdjustment(id) {
+        if(!editable() || !(await discardAdjustment())) return;
         const row=state.adjustments.find(r=>r.employeeId===id);if(!row) return;
         const form=$('#adjustmentForm');form.reset();
         form.elements.employeeId.value=id;form.elements.bonus.value=row.bonus;form.elements.deduction.value=row.deduction;form.elements.note.value=row.note||'';
@@ -340,12 +340,12 @@
         input.dispatchEvent(new Event('input',{bubbles:true}));
     }
     const confirmations={
-        calculate:['Tính bảng lương?','Hệ thống kiểm tra lịch sử lương, chính sách phụ cấp và điều chỉnh của toàn bộ nhân viên trước khi lưu. Thay đổi giữa tháng cần có quy tắc được xác nhận.'],
-        review:['Hoàn tất rà soát?','Xác nhận bạn đã kiểm tra lương cơ bản, phụ cấp trách nhiệm, thưởng, khấu trừ và thực nhận. Kỳ sẽ chuyển sang Reviewed.'],
-        approve:['Phê duyệt bảng lương?','Bảng lương sẽ chuyển sang Approved và khóa chỉnh sửa. Nếu cần sửa trước khi công bố, hãy mở lại về Draft và duyệt lại.'],
-        publish:['Công bố phiếu lương?','Phiếu lương sẽ hiển thị cho từng nhân viên và tạo thông báo trong hệ thống. Kỳ sẽ được khóa sau khi công bố.'],
-        close:['Đóng kỳ lương?','Kỳ sẽ tạm khóa các thao tác. Bạn có thể mở lại kỳ chưa công bố về Draft.'],
-        reopen:['Mở lại kỳ về Draft?','Kết quả tính và phê duyệt hiện tại sẽ được xóa. Các khoản điều chỉnh được giữ để tính lại.']
+        calculate:[HrmI18n.t('Tính bảng lương?'),HrmI18n.t('Hệ thống kiểm tra lịch sử lương, chính sách phụ cấp và điều chỉnh của toàn bộ nhân viên trước khi lưu. Thay đổi giữa tháng cần có quy tắc được xác nhận.')],
+        review:[HrmI18n.t('Hoàn tất rà soát?'),HrmI18n.t('Xác nhận bạn đã kiểm tra lương cơ bản, phụ cấp trách nhiệm, thưởng, khấu trừ và thực nhận. Kỳ sẽ chuyển sang Reviewed.')],
+        approve:[HrmI18n.t('Phê duyệt bảng lương?'),HrmI18n.t('Bảng lương sẽ chuyển sang Approved và khóa chỉnh sửa. Nếu cần sửa trước khi công bố, hãy mở lại về Draft và duyệt lại.')],
+        publish:[HrmI18n.t('Công bố phiếu lương?'),HrmI18n.t('Phiếu lương sẽ hiển thị cho từng nhân viên và tạo thông báo trong hệ thống. Kỳ sẽ được khóa sau khi công bố.')],
+        close:[HrmI18n.t('Đóng kỳ lương?'),HrmI18n.t('Kỳ sẽ tạm khóa các thao tác. Bạn có thể mở lại kỳ chưa công bố về Draft.')],
+        reopen:[HrmI18n.t('Mở lại kỳ về Draft?'),HrmI18n.t('Kết quả tính và phê duyệt hiện tại sẽ được xóa. Các khoản điều chỉnh được giữ để tính lại.')]
     };
     function confirmAction(action) {
         if(!canConfirm(action)) return;
@@ -354,31 +354,29 @@
         const summary=$('#confirmSummary');summary.hidden=!['review','approve'].includes(action);
         if(!summary.hidden) {
             const totals=savedTotals();
-            summary.innerHTML=`<strong>${safe(state.selected.periodName)}</strong><br>Tổng nhân viên: <strong>${totals.employeeCount}</strong><br>Tổng thu nhập: <strong>${money(totals.totalIncome)} ₫</strong><br>Tổng khấu trừ: <strong>${money(totals.totalDeduction)} ₫</strong><br>Tổng thực nhận: <strong>${money(totals.totalNetSalary)} ₫</strong>`;
+            summary.innerHTML=`<strong>${safe(state.selected.periodName)}${HrmI18n.fragment("</strong><br>Tổng nhân viên: <strong>")}${totals.employeeCount}${HrmI18n.fragment("</strong><br>Tổng thu nhập: <strong>")}${money(totals.totalIncome)}${HrmI18n.fragment(" ₫</strong><br>Tổng khấu trừ: <strong>")}${money(totals.totalDeduction)}${HrmI18n.fragment(" ₫</strong><br>Tổng thực nhận: <strong>")}${money(totals.totalNetSalary)} ₫</strong>`;
         }
-        $('#confirmSubmit').textContent=action==='review'?'Xác nhận rà soát':action==='approve'?'Xác nhận phê duyệt':'Xác nhận';
+        $('#confirmSubmit').textContent=action==='review'?HrmI18n.t('Xác nhận rà soát'):action==='approve'?HrmI18n.t('Xác nhận phê duyệt'):HrmI18n.t('Xác nhận');
         openDialog('#confirmDialog');
     }
     async function previewPayroll(button) {
-        if(state.busy || !editable() || !discardAdjustment()) return;
+        if(state.busy || !editable() || !(await discardAdjustment())) return;
         const id=state.selected.payrollPeriodId,sequence=state.request;
         const dialog=$('#calculationPreviewDialog');
-        $('#calculationPreviewTitle').textContent='Xem trước · '+state.selected.periodName;
-        $('#calculationPreviewContent').textContent='Đang kiểm tra dữ liệu và tính lương…';
+        $('#calculationPreviewTitle').textContent=HrmI18n.t('Xem trước · ')+state.selected.periodName;
+        $('#calculationPreviewContent').textContent=HrmI18n.t('Đang kiểm tra dữ liệu và tính lương…');
         openDialog('#calculationPreviewDialog');state.busy=true;button.disabled=true;
         try {
             const result=(await api('/payroll/api/preview?periodId='+encodeURIComponent(id))).data;
             if(sequence!==state.request || state.selected?.payrollPeriodId!==id) {dialog.close();return;}
-            $('#calculationPreviewContent').innerHTML=`<p>${result.rows.length} nhân viên · Kết quả xem trước chưa được lưu.</p>
-                <div class="info-note">Tổng thu nhập: <strong>${money(result.totalIncome)} ₫</strong><br>Tổng khấu trừ: <strong>${money(result.totalDeduction)} ₫</strong><br>Tổng thực nhận: <strong>${money(result.totalNetSalary)} ₫</strong></div>
-                <div class="table-scroll"><table><thead><tr><th>Mã nhân viên</th><th>Họ tên</th><th class="number">Lương cơ bản</th><th class="number">Phụ cấp trách nhiệm</th><th class="number">Thưởng</th><th class="number">Khấu trừ</th><th class="number">Thực nhận</th></tr></thead><tbody>${result.rows.map(row=>`<tr><td>${safe(row.employeeCode)}</td><td>${safe(row.fullName)}</td><td class="number">${money(row.baseSalary)}</td><td class="number">${money(row.responsibilityAllowance)}</td><td class="number">${money(row.bonus)}</td><td class="number">${money(row.deduction)}</td><td class="number net-value">${money(row.netSalary)}</td></tr>`).join('')}</tbody></table></div>`;
-        } catch(error) {$('#calculationPreviewContent').textContent='Chưa có kết quả xem trước.';dialogError(dialog,error);}
+            $('#calculationPreviewContent').innerHTML=`<p>${result.rows.length}${HrmI18n.fragment(" nhân viên · Kết quả xem trước chưa được lưu.</p>\n                <div class=\"info-note\">Tổng thu nhập: <strong>")}${money(result.totalIncome)}${HrmI18n.fragment(" ₫</strong><br>Tổng khấu trừ: <strong>")}${money(result.totalDeduction)}${HrmI18n.fragment(" ₫</strong><br>Tổng thực nhận: <strong>")}${money(result.totalNetSalary)}${HrmI18n.fragment(" ₫</strong></div>\n                <div class=\"table-scroll\"><table><thead><tr><th>Mã nhân viên</th><th>Họ tên</th><th class=\"number\">Lương cơ bản</th><th class=\"number\">Phụ cấp trách nhiệm</th><th class=\"number\">Thưởng</th><th class=\"number\">Khấu trừ</th><th class=\"number\">Thực nhận</th></tr></thead><tbody>")}${result.rows.map(row=>`<tr><td>${safe(row.employeeCode)}</td><td>${safe(row.fullName)}</td><td class="number">${money(row.baseSalary)}</td><td class="number">${money(row.responsibilityAllowance)}</td><td class="number">${money(row.bonus)}</td><td class="number">${money(row.deduction)}</td><td class="number net-value">${money(row.netSalary)}</td></tr>`).join('')}</tbody></table></div>`;
+        } catch(error) {$('#calculationPreviewContent').textContent=HrmI18n.t('Chưa có kết quả xem trước.');dialogError(dialog,error);}
         finally {state.busy=false;button.disabled=false;}
     }
     async function submit(form,path,data,after) {
         if(state.busy) return;
         state.busy=true;const dialog=form.closest('dialog');const button=form.querySelector('[type="submit"]');button.disabled=true;
-        const label=button.textContent;button.textContent='Đang xử lý…';form.setAttribute('aria-busy','true');
+        const label=button.textContent;button.textContent=HrmI18n.t('Đang xử lý…');form.setAttribute('aria-busy','true');
         try {
             const result=await api(path,data);dialog.close();feedback(result.message);
             await after(result);
@@ -398,7 +396,7 @@
         }));
         document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('cancel',event=>{
             if(state.busy) event.preventDefault();
-            else if(dialog.id==='adjustmentDialog' && !discardAdjustment()) event.preventDefault();
+            else if(dialog.id==='adjustmentDialog') {event.preventDefault();discardAdjustment();}
         }));
         $('#adjustmentForm').addEventListener('input',event=>{
             const key=event.target.name,message=event.currentTarget.querySelector(`[data-adjustment-error="${key}"]`);
@@ -427,7 +425,7 @@
             try {
                 const data=new FormData($('#importForm'));data.set('periodId',state.selected.payrollPeriodId);
                 const rows=(await api('/payroll/api/import-preview',data)).data;
-                $('#importPreview').innerHTML=`<p class="subtle">${rows.length} dòng hợp lệ. Bản xem trước hiển thị tối đa 30 dòng. Nhập sẽ cập nhật điều chỉnh hiện có theo mã nhân viên.</p><div class="preview-table"><table><thead><tr><th>Mã nhân viên</th><th class="number">Thưởng</th><th class="number">Khấu trừ</th><th>Ghi chú</th></tr></thead><tbody>${rows.slice(0,30).map(row=>`<tr><td>${safe(row.employeeCode)}</td><td class="number">${money(row.bonus)}</td><td class="number">${money(row.deduction)}</td><td>${safe(row.note)}</td></tr>`).join('')}</tbody></table></div>`;
+                $('#importPreview').innerHTML=`<p class="subtle">${rows.length}${HrmI18n.fragment(" dòng hợp lệ. Bản xem trước hiển thị tối đa 30 dòng. Nhập sẽ cập nhật điều chỉnh hiện có theo mã nhân viên.</p><div class=\"preview-table\"><table><thead><tr><th>Mã nhân viên</th><th class=\"number\">Thưởng</th><th class=\"number\">Khấu trừ</th><th>Ghi chú</th></tr></thead><tbody>")}${rows.slice(0,30).map(row=>`<tr><td>${safe(row.employeeCode)}</td><td class="number">${money(row.bonus)}</td><td class="number">${money(row.deduction)}</td><td>${safe(row.note)}</td></tr>`).join('')}</tbody></table></div>`;
                 $('#importPreview').hidden=false;$('#saveImport').disabled=false;
             } catch(error){dialogError($('#importDialog'),error);}
             finally {state.busy=false;$('#previewImport').disabled=false;}
@@ -445,25 +443,25 @@
     }
     async function loadSlips() {
         const request=++state.slipRequest;
-        state.slips=[];slipPlaceholder('Đang tải phiếu lương…',true);$('#notifications').innerHTML='';
+        state.slips=[];slipPlaceholder(HrmI18n.t('Đang tải phiếu lương…'),true);$('#notifications').innerHTML='';
         try {
             const [slips,notifications]=await Promise.all([api('/payslips/api/slips'),api('/payslips/api/notifications')]);
             if(request!==state.slipRequest) return;
             state.slips=slips.data;state.slipPage=1;const year=$('#slipYear').value;
-            $('#slipYear').innerHTML='<option value="">Tất cả năm</option>'+[...new Set(state.slips.map(s=>s.year))].map(y=>`<option>${safe(y)}</option>`).join('');
+            $('#slipYear').innerHTML=HrmI18n.fragment('<option value="">Tất cả năm</option>')+[...new Set(state.slips.map(s=>s.year))].map(y=>`<option>${safe(y)}</option>`).join('');
             $('#slipYear').value=state.slips.some(s=>String(s.year)===year)?year:'';
             $('#feedback').hidden=true;renderSlips();
-            $('#notifications').innerHTML=notifications.data.filter(n=>!n.readAt).map(n=>`<div class="notification-item"><p><strong>Phiếu lương mới đã sẵn sàng</strong><br>${safe(n.periodName)}<br><small>${safe(new Date(n.createdAt+'Z').toLocaleString('vi-VN'))}</small></p><div><a class="btn secondary" href="${context}/payslips/view?id=${safe(n.payslipId)}">Xem phiếu</a><button class="text-button" data-read="${safe(n.notificationId)}">Đã đọc</button></div></div>`).join('');
+            $('#notifications').innerHTML=notifications.data.filter(n=>!n.readAt).map(n=>`${HrmI18n.fragment("<div class=\"notification-item\"><p><strong>Phiếu lương mới đã sẵn sàng</strong><br>")}${safe(n.periodName)}<br><small>${safe(new Date(n.createdAt+'Z').toLocaleString(HrmI18n.locale))}</small></p><div><a class="btn secondary" href="${context}/payslips/view?id=${safe(n.payslipId)}${HrmI18n.fragment("\">Xem phiếu</a><button class=\"text-button\" data-read=\"")}${safe(n.notificationId)}${HrmI18n.fragment("\">Đã đọc</button></div></div>")}`).join('');
         } catch(error) {
             if(request!==state.slipRequest) return;
-            slipPlaceholder('Không tải được phiếu lương. Chọn Làm mới để thử lại.');throw error;
+            slipPlaceholder(HrmI18n.t('Không tải được phiếu lương. Chọn Làm mới để thử lại.'));throw error;
         }
     }
     async function loadSlipPeriods() {
         const request=++state.slipListRequest;
         ++state.slipRequest;state.slips=[];state.selected=null;
-        slipPlaceholder('Đang tải kỳ lương…',true);$('#slipPeriod').disabled=true;
-        $('#slipPeriodStatus').textContent='Đang tải kỳ lương…';
+        slipPlaceholder(HrmI18n.t('Đang tải kỳ lương…'),true);$('#slipPeriod').disabled=true;
+        $('#slipPeriodStatus').textContent=HrmI18n.t('Đang tải kỳ lương…');
         try {
             const data=await api('/payroll/api/periods');
             if(request!==state.slipListRequest) return;
@@ -472,34 +470,34 @@
             const requested=new URLSearchParams(location.search).get('periodId');
             const selected=requested??String(state.periods[0]?.payrollPeriodId??'');
             if(requested!==null && !state.periods.some(p=>String(p.payrollPeriodId)===requested))
-                $('#slipPeriod').insertAdjacentHTML('afterbegin',`<option value="${safe(requested)}">Kỳ lương không khả dụng</option>`);
+                $('#slipPeriod').insertAdjacentHTML('afterbegin',`<option value="${safe(requested)}${HrmI18n.fragment("\">Kỳ lương không khả dụng</option>")}`);
             $('#slipPeriod').value=selected;$('#slipPeriod').disabled=false;
             if(!selected && requested===null) {
-                $('#slipPeriodStatus').textContent='Công ty chưa có kỳ lương.';slipPlaceholder('Chưa có phiếu lương.');return;
+                $('#slipPeriodStatus').textContent=HrmI18n.t('Công ty chưa có kỳ lương.');slipPlaceholder(HrmI18n.t('Chưa có phiếu lương.'));return;
             }
             await loadPeriodSlips(selected);
         } catch(error) {
             if(request!==state.slipListRequest) return;
-            $('#slipPeriodStatus').textContent='Không tải được kỳ lương.';
-            slipPlaceholder('Không tải được phiếu lương. Chọn Làm mới để thử lại.');throw error;
+            $('#slipPeriodStatus').textContent=HrmI18n.t('Không tải được kỳ lương.');
+            slipPlaceholder(HrmI18n.t('Không tải được phiếu lương. Chọn Làm mới để thử lại.'));throw error;
         }
     }
     async function loadPeriodSlips(periodId) {
         const request=++state.slipRequest;
         state.selected=null;state.slips=[];state.slipPage=1;
-        slipPlaceholder('Đang tải phiếu lương…',true);$('#slipPeriodStatus').textContent='Đang tải phiếu lương…';
+        slipPlaceholder(HrmI18n.t('Đang tải phiếu lương…'),true);$('#slipPeriodStatus').textContent=HrmI18n.t('Đang tải phiếu lương…');
         const url=new URL(location.href);url.searchParams.set('periodId',periodId);history.replaceState(null,'',url);
         try {
             const result=await api('/payroll/api/period?view=payslips&periodId='+encodeURIComponent(periodId));
             if(request!==state.slipRequest) return;
             state.selected=result.data.period;state.slips=result.data.slips;
             const p=state.selected;
-            $('#slipPeriodStatus').innerHTML=`${badges(p)} <span>${p.publishedAt?'Nhân viên đã có thể xem phiếu lương.':'Chưa công bố cho nhân viên.'}</span> <a class="text-button" href="${context}/payroll?periodId=${p.payrollPeriodId}">Mở kỳ lương →</a>`;
+            $('#slipPeriodStatus').innerHTML=`${badges(p)} <span>${p.publishedAt?HrmI18n.t('Nhân viên đã có thể xem phiếu lương.'):HrmI18n.t('Chưa công bố cho nhân viên.')}</span> <a class="text-button" href="${context}/payroll?periodId=${p.payrollPeriodId}${HrmI18n.fragment("\">Mở kỳ lương →</a>")}`;
             $('#feedback').hidden=true;renderSlips();
         } catch(error) {
             if(request!==state.slipRequest) return;
-            $('#slipPeriodStatus').textContent='Không xem được phiếu lương của kỳ đã chọn.';
-            slipPlaceholder('Không tải được phiếu lương. Chọn Làm mới để thử lại.');throw error;
+            $('#slipPeriodStatus').textContent=HrmI18n.t('Không xem được phiếu lương của kỳ đã chọn.');
+            slipPlaceholder(HrmI18n.t('Không tải được phiếu lương. Chọn Làm mới để thử lại.'));throw error;
         }
     }
     function renderSlips() {
@@ -509,8 +507,8 @@
                 !$('#slipYear').value||s.year===Number($('#slipYear').value));
         state.slipPage=Math.min(state.slipPage,Math.max(1,Math.ceil(slips.length/25)));
         $('#slipRows').setAttribute('aria-busy','false');
-        $('#slipRows').innerHTML=slips.slice((state.slipPage-1)*25,state.slipPage*25).map(s=>`<tr>${manageSlips?`<td>${employee(s)}</td>`:`<td><strong>${safe(s.periodName)}</strong><br><small class="subtle">Tháng ${s.month}/${s.year}</small></td>`}<td class="number">${money(s.baseSalary)}</td><td class="number">${money(s.responsibilityAllowance)}</td><td class="number">${money(s.bonus)}</td><td class="number">${money(s.deduction)}</td><td class="number net-value ${cents(s.netSalary)<0n?'negative':''}">${money(s.netSalary)} ₫</td>${manageSlips?`<td><span class="badge ${s.publishedAt?'Approved':'closed'}">${s.publishedAt?'Đã công bố':'Chưa công bố'}</span></td>`:''}<td><a class="text-button" href="${context}/${manageSlips?'payroll/payslip':'payslips/view'}?id=${safe(s.payslipId)}">Xem chi tiết →</a></td></tr>`).join('')||`<tr><td colspan="${manageSlips?8:7}" class="empty"><strong>${q?'Không tìm thấy nhân viên':'Chưa có phiếu lương'}</strong>${manageSlips?'Chọn kỳ khác hoặc kiểm tra kết quả tính lương.':'Phiếu sẽ xuất hiện sau khi công ty công bố kỳ lương.'}</td></tr>`;
-        pagination('#slipPagination',state.slipPage,slips.length,'slips','phiếu');
+        $('#slipRows').innerHTML=slips.slice((state.slipPage-1)*25,state.slipPage*25).map(s=>`<tr>${manageSlips?`<td>${employee(s)}</td>`:`<td><strong>${safe(s.periodName)}${HrmI18n.fragment("</strong><br><small class=\"subtle\">Tháng ")}${s.month}/${s.year}</small></td>`}<td class="number">${money(s.baseSalary)}</td><td class="number">${money(s.responsibilityAllowance)}</td><td class="number">${money(s.bonus)}</td><td class="number">${money(s.deduction)}</td><td class="number net-value ${cents(s.netSalary)<0n?'negative':''}">${money(s.netSalary)} ₫</td>${manageSlips?`<td><span class="badge ${s.publishedAt?'Approved':'closed'}">${s.publishedAt?HrmI18n.t('Đã công bố'):HrmI18n.t('Chưa công bố')}</span></td>`:''}<td><a class="text-button" href="${context}/${manageSlips?'payroll/payslip':'payslips/view'}?id=${safe(s.payslipId)}${HrmI18n.fragment("\">Xem chi tiết →</a></td></tr>")}`).join('')||`<tr><td colspan="${manageSlips?8:7}" class="empty"><strong>${q?HrmI18n.t('Không tìm thấy nhân viên'):HrmI18n.t('Chưa có phiếu lương')}</strong>${manageSlips?HrmI18n.t('Chọn kỳ khác hoặc kiểm tra kết quả tính lương.'):HrmI18n.t('Phiếu sẽ xuất hiện sau khi công ty công bố kỳ lương.')}</td></tr>`;
+        pagination('#slipPagination',state.slipPage,slips.length,'slips',HrmI18n.t('phiếu'));
     }
     document.addEventListener('click',event=>{
         const button=event.target.closest('button');if(!button||state.busy) return;
@@ -536,7 +534,7 @@
     document.addEventListener('click',event=>{
         const link=event.target.closest('a[href]');
         if(!link || link.target==='_blank' || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button!==0) return;
-        if(state.adjustmentDraft && !discardAdjustment()) event.preventDefault();
+        if(state.adjustmentDraft) {event.preventDefault();const href=link.href;discardAdjustment().then(confirmed=>{if(confirmed) location.assign(href);});}
     });
     if(page==='payslips') {
         if(manageSlips) {

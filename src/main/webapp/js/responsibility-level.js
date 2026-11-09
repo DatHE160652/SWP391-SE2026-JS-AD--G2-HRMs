@@ -9,7 +9,7 @@ const ResponsibilityLevelApi = {
             options.body = new URLSearchParams({...data, csrfToken: document.querySelector('meta[name="organization-csrf-token"]').content});
         }
         const response = await fetch(contextPath + url, options);
-        const payload = await response.json();
+        const payload = await response.json().then(HrmI18n.response);
         if (!response.ok || payload.success === false) throw FormValidation.responseError(payload);
         return payload;
     }
@@ -40,26 +40,30 @@ function renderResponsibilityLevelRows(levels) {
     if (!levels.length) {
         const cell = rows.insertRow().insertCell();
         cell.colSpan = 6;
-        cell.textContent = 'Chưa có cấp trách nhiệm.';
+        cell.textContent = HrmI18n.t('Chưa có cấp trách nhiệm.');
     }
     levels.forEach(level => {
         const row = rows.insertRow();
-        [level.levelCode, level.levelName, String(level.rankOrder), level.defaultAllowance == null ? 'Chưa cấu hình' : Number(level.defaultAllowance).toLocaleString('vi-VN') + ' ₫', level.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động']
+        [level.levelCode, level.levelName, String(level.rankOrder), level.defaultAllowance == null ? HrmI18n.t('Chưa cấu hình') : Number(level.defaultAllowance).toLocaleString(HrmI18n.locale) + ' ₫', level.isActive ? HrmI18n.t('Đang hoạt động') : HrmI18n.t('Ngừng hoạt động')]
             .forEach(value => { row.insertCell().textContent = value; });
         const actions = row.insertCell();
         actions.className = 'actions';
+        const view = document.createElement('a');
+        view.href = 'responsibility-level-detail?id=' + encodeURIComponent(level.responsibilityLevelId);
+        view.textContent = HrmI18n.t('Chi tiết');
+        actions.append(view);
         const edit = document.createElement('a');
         edit.href = 'responsibility-level-form?id=' + encodeURIComponent(level.responsibilityLevelId);
-        edit.textContent = 'Sửa';
+        edit.textContent = HrmI18n.t('Sửa');
         actions.append(edit);
         const positions=document.createElement('a');
         positions.href='../position/position-list?responsibilityLevelId='+encodeURIComponent(level.responsibilityLevelId);
-        positions.textContent='Xem chức danh';
+        positions.textContent=HrmI18n.t('Xem chức danh');
         actions.append(positions);
         {
 
             const deactivate = document.createElement('button');
-            deactivate.type = 'button'; deactivate.className = 'danger'; deactivate.textContent = level.isActive ? 'Vô hiệu hóa' : 'Kích hoạt lại';
+            deactivate.type = 'button'; deactivate.className = 'danger'; deactivate.textContent = level.isActive ? HrmI18n.t('Vô hiệu hóa') : HrmI18n.t('Kích hoạt lại');
             deactivate.addEventListener('click', () => setResponsibilityLevelActive(level.responsibilityLevelId, !level.isActive));
             actions.append(deactivate);
         }
@@ -75,7 +79,10 @@ async function setupResponsibilityLevelForm() {
             const control = form.elements.namedItem(key);
             if (control) control.value = value === null ? (key === 'defaultAllowance' ? '0' : '') : String(value);
         });
-        document.querySelector('#levelFormTitle').textContent = 'Cập nhật cấp trách nhiệm';
+        document.querySelector('#levelFormTitle').textContent = HrmI18n.t('Cập nhật cấp trách nhiệm');
+        document.querySelectorAll('a[href="responsibility-level-list"]').forEach(link => {
+            link.href = 'responsibility-level-detail?id=' + encodeURIComponent(id);
+        });
     }
     form.addEventListener('submit', async event => {
         event.preventDefault();
@@ -86,7 +93,7 @@ async function setupResponsibilityLevelForm() {
             const payload = await ResponsibilityLevelApi.request(id ? '/responsibility-levels/update' : '/responsibility-levels/create',
                 Object.fromEntries(new FormData(form).entries()));
             sessionStorage.setItem('responsibilityLevelMessage', payload.message);
-            location.assign('responsibility-level-list');
+            location.assign(id ? 'responsibility-level-detail?id=' + encodeURIComponent(id) : 'responsibility-level-list');
         } catch (error) {
             if (!FormValidation.showErrors(form, error)) showLevelMessage(error.message, 'error');
         } finally { button.disabled = false; }
@@ -94,7 +101,7 @@ async function setupResponsibilityLevelForm() {
 }
 
 async function setResponsibilityLevelActive(id, active) {
-    if (!confirm(active ? 'Kích hoạt lại bản ghi này?' : 'Vô hiệu hóa bản ghi này?')) return;
+    if (!(await AppDialog.confirm(active ? HrmI18n.t('Kích hoạt lại bản ghi này?') : HrmI18n.t('Vô hiệu hóa bản ghi này?')))) return;
     try {
         const payload = await ResponsibilityLevelApi.request(active ? '/responsibility-levels/activate' : '/responsibility-levels/deactivate', {responsibilityLevelId: id});
         showLevelMessage(payload.message);
@@ -104,6 +111,6 @@ async function setResponsibilityLevelActive(id, active) {
 
 function showLevelMessage(message, type = 'success') {
     const element = document.querySelector('#message');
-    element.textContent = message;
+    element.textContent = HrmI18n.t(message);
     element.className = 'message show ' + type;
 }
