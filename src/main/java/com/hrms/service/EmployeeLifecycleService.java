@@ -101,7 +101,9 @@ public class EmployeeLifecycleService {
                 case "contracts" -> dao.query(connection, """
                         SELECT c.*,e.FullName,e.EmployeeCode,
                             CONVERT(varchar(33),COALESCE(c.UpdatedAt,c.CreatedAt),126) AS Version,
-                            CASE WHEN c.Status='ACTIVE' AND c.EndDate<CONVERT(date,SYSDATETIME()) THEN 'EXPIRED' ELSE c.Status END AS DisplayStatus,
+                            CASE WHEN c.Status='ACTIVE' AND c.EndDate<CONVERT(date,SYSDATETIME()) THEN 'EXPIRED'
+                                 WHEN c.Status='ACTIVE' AND c.StartDate>CONVERT(date,SYSDATETIME()) THEN 'SCHEDULED'
+                                 ELSE c.Status END AS DisplayStatus,
                             CASE WHEN c.Status='ACTIVE' AND c.EndDate BETWEEN CONVERT(date,SYSDATETIME()) AND DATEADD(day,30,CONVERT(date,SYSDATETIME())) THEN 1 ELSE 0 END AS Expiring
                         FROM EmploymentContracts c JOIN Employees e ON e.CompanyId=c.CompanyId AND e.EmployeeId=c.EmployeeId
                         WHERE c.CompanyId=? AND (? IS NULL OR c.EmployeeId=?) ORDER BY c.StartDate DESC,c.ContractId DESC
@@ -248,10 +250,13 @@ public class EmployeeLifecycleService {
             LocalDate startDate, LocalDate endDate) throws SQLException {
         if (!dao.query(connection, """
                 SELECT 1 FROM EmploymentContracts WITH (UPDLOCK,HOLDLOCK)
-                WHERE CompanyId=? AND EmployeeId=? AND (? IS NULL OR ContractId<>?) AND Status IN ('ACTIVE','EXPIRED','TERMINATED')
+                WHERE CompanyId=? AND EmployeeId=? AND (? IS NULL OR ContractId<>?)
                     AND StartDate<=COALESCE(CONVERT(date,?),CONVERT(date,'99991231'))
-                    AND COALESCE(TerminatedDate,EndDate,CONVERT(date,'99991231'))>=?
-                """, companyId, employeeId, excludedContractId, excludedContractId, endDate, startDate).isEmpty())
+                    AND (
+                        (Status IN ('ACTIVE','EXPIRED') AND COALESCE(EndDate,CONVERT(date,'99991231'))>=?)
+                        OR (Status='TERMINATED' AND COALESCE(TerminatedDate,EndDate,CONVERT(date,'99991231'))>?)
+                    )
+                """, companyId, employeeId, excludedContractId, excludedContractId, endDate, startDate, startDate).isEmpty())
             throw new IllegalArgumentException("Thời hạn hợp đồng bị trùng với hợp đồng đã ký. Vui lòng kiểm tra bản ghi hiện có.");
     }
 
@@ -284,27 +289,42 @@ public class EmployeeLifecycleService {
             var contract = records.get(0);
             int employeeId = ((Number) contract.get("EmployeeId")).intValue();
             String status = (String) contract.get("Status");
+            LocalDate today = LocalDate.parse(dao.query(connection, "SELECT CONVERT(date,SYSDATETIME()) AS Today").get(0).get("Today").toString());
+            LocalDate start = LocalDate.parse(contract.get("StartDate").toString());
+            LocalDate end = contract.get("EndDate") == null ? null : LocalDate.parse(contract.get("EndDate").toString());
+            String auditAction = "CONTRACT_" + (action == null ? "" : action.toUpperCase(java.util.Locale.ROOT));
             if ("activate".equals(action)) {
                 if (!"DRAFT".equals(status)) throw new IllegalArgumentException("Chỉ được kích hoạt hợp đồng ở trạng thái bản nháp.");
                 if (!"Active".equals(dao.employee(connection, principal.getCompanyId(), employeeId).get("Status")))
                     throw new IllegalArgumentException("Nhân viên phải đang hoạt động.");
-                LocalDate end = contract.get("EndDate") == null ? null : LocalDate.parse(contract.get("EndDate").toString());
-                if (end != null && end.isBefore(LocalDate.now())) throw new IllegalArgumentException("Không thể kích hoạt hợp đồng đã hết hạn.");
-                requireNoContractOverlap(connection, principal.getCompanyId(), employeeId, contractId,
-                        LocalDate.parse(contract.get("StartDate").toString()), end);
+                if (end != null && end.isBefore(today)) throw new IllegalArgumentException("Không thể kích hoạt hợp đồng đã hết hạn.");
+                requireNoContractOverlap(connection, principal.getCompanyId(), employeeId, contractId, start, end);
                 dao.execute(connection, "UPDATE EmploymentContracts SET Status='ACTIVE',SignedDate=CONVERT(date,SYSDATETIME()),UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND ContractId=?", principal.getCompanyId(), contractId);
                 new com.hrms.dao.ContractCompensationDAO().synchronize(connection,principal.getCompanyId(),employeeId,contractId,
-                        (String)contract.get("ContractCode"),LocalDate.parse(contract.get("StartDate").toString()),
+                        (String)contract.get("ContractCode"),start,
                         (BigDecimal)contract.get("GrossSalary"),(BigDecimal)contract.get("TravelAllowance"),principal.getUserId());
+            } else if ("cancel".equals(action) || ("terminate".equals(action) && ("DRAFT".equals(status) || start.isAfter(today)))) {
+                if (!Set.of("DRAFT", "ACTIVE").contains(status))
+                    throw new IllegalArgumentException("Chỉ được hủy hợp đồng ở trạng thái bản nháp hoặc chờ hiệu lực.");
+                if ("ACTIVE".equals(status) && !start.isAfter(today))
+                    throw new IllegalArgumentException("Hợp đồng đã đến ngày hiệu lực; vui lòng sử dụng thao tác Chấm dứt hợp đồng.");
+                requireReason(reason);
+                dao.execute(connection, "UPDATE EmploymentContracts SET Status='CANCELLED',TerminatedDate=CONVERT(date,SYSDATETIME()),TerminationReason=?,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND ContractId=?", reason, principal.getCompanyId(), contractId);
+                if ("ACTIVE".equals(status)) {
+                    new com.hrms.dao.ContractCompensationDAO().revertContractCompensation(connection, principal.getCompanyId(), employeeId, contractId, principal.getUserId());
+                }
+                auditAction = "CONTRACT_CANCEL";
             } else if ("terminate".equals(action)) {
-                if (!"ACTIVE".equals(status) || LocalDate.parse(contract.get("StartDate").toString()).isAfter(LocalDate.now()))
-                    throw new IllegalArgumentException("Chỉ được chấm dứt hợp đồng đã kích hoạt và đã đến ngày hiệu lực.");
-                if (contract.get("EndDate") != null && LocalDate.parse(contract.get("EndDate").toString()).isBefore(LocalDate.now()))
+                if (!"ACTIVE".equals(status))
+                    throw new IllegalArgumentException("Chỉ được chấm dứt hợp đồng đang hoạt động.");
+                if (end != null && end.isBefore(today))
                     throw new IllegalArgumentException("Hợp đồng đã hết hạn.");
                 requireReason(reason);
                 dao.execute(connection, "UPDATE EmploymentContracts SET Status='TERMINATED',TerminatedDate=CONVERT(date,SYSDATETIME()),TerminationReason=?,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND ContractId=?", reason, principal.getCompanyId(), contractId);
+                new com.hrms.dao.ContractCompensationDAO().closeContractCompensation(connection, principal.getCompanyId(), employeeId, contractId, today);
+                auditAction = "CONTRACT_TERMINATE";
             } else throw new IllegalArgumentException("Thao tác hợp đồng không hợp lệ.");
-            OrganizationTransaction.audit(connection, principal.getCompanyId(), principal.getUserId(), employeeId, "CONTRACT_"+action.toUpperCase(java.util.Locale.ROOT), status, "ContractId="+contractId);
+            OrganizationTransaction.audit(connection, principal.getCompanyId(), principal.getUserId(), employeeId, auditAction, status, "ContractId="+contractId);
             return null;
         });
     }
@@ -387,6 +407,13 @@ public class EmployeeLifecycleService {
                         TerminationReason=CASE WHEN Status='ACTIVE' AND EndDate<CONVERT(date,SYSDATETIME()) THEN TerminationReason ELSE ? END,
                         UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND EmployeeId=? AND Status IN ('ACTIVE','DRAFT')
                     """,reason,principal.getCompanyId(),employeeId);
+            dao.execute(connection,"""
+                    DELETE FROM EmployeeCompensationHistories
+                    WHERE CompanyId=? AND EmployeeId=? AND EffectiveFrom>CONVERT(date,SYSDATETIME());
+                    UPDATE EmployeeCompensationHistories SET EffectiveTo=CONVERT(date,SYSDATETIME())
+                    WHERE CompanyId=? AND EmployeeId=? AND EffectiveFrom<=CONVERT(date,SYSDATETIME())
+                        AND (EffectiveTo IS NULL OR EffectiveTo>CONVERT(date,SYSDATETIME()));
+                    """,principal.getCompanyId(),employeeId,principal.getCompanyId(),employeeId);
             dao.execute(connection, "UPDATE Users SET IsActive=0,IsLocked=1,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND UserId=?", principal.getCompanyId(), employee.get("UserId"));
             dao.execute(connection, "UPDATE Employees SET Status='Inactive',EndDate=CONVERT(date,SYSDATETIME()),TerminationReason=?,DepartmentId=NULL,PositionId=NULL,ManagerId=NULL,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND EmployeeId=?", reason, principal.getCompanyId(), employeeId);
             OrganizationTransaction.audit(connection, principal.getCompanyId(), principal.getUserId(), employeeId, "TERMINATE_EMPLOYEE", "Active", reason);
@@ -404,7 +431,7 @@ public class EmployeeLifecycleService {
             result.put("gender", dao.query(connection, "SELECT COALESCE(Gender,N'Chưa có dữ liệu') AS Label,COUNT(*) AS Total FROM Employees WHERE CompanyId=? GROUP BY Gender", companyId));
             result.put("age", dao.query(connection, "SELECT CASE WHEN DateOfBirth IS NULL THEN N'Chưa có dữ liệu' WHEN DATEADD(year,30,DateOfBirth)>CONVERT(date,SYSDATETIME()) THEN N'Dưới 30' WHEN DATEADD(year,40,DateOfBirth)>CONVERT(date,SYSDATETIME()) THEN N'30–39' ELSE N'40+' END AS Label,COUNT(*) AS Total FROM Employees WHERE CompanyId=? GROUP BY CASE WHEN DateOfBirth IS NULL THEN N'Chưa có dữ liệu' WHEN DATEADD(year,30,DateOfBirth)>CONVERT(date,SYSDATETIME()) THEN N'Dưới 30' WHEN DATEADD(year,40,DateOfBirth)>CONVERT(date,SYSDATETIME()) THEN N'30–39' ELSE N'40+' END", companyId));
             result.put("tenure", dao.query(connection, "SELECT CASE WHEN DATEDIFF(day,FirstAssignment,CONVERT(date,SYSDATETIME()))<365 THEN N'Dưới 1 năm' WHEN DATEDIFF(day,FirstAssignment,CONVERT(date,SYSDATETIME()))<1096 THEN N'1–3 năm' ELSE N'3+ năm' END AS Label,COUNT(*) AS Total FROM (SELECT MIN(EffectiveFrom) FirstAssignment FROM EmployeePositionAssignments WHERE CompanyId=? GROUP BY EmployeeId) history GROUP BY CASE WHEN DATEDIFF(day,FirstAssignment,CONVERT(date,SYSDATETIME()))<365 THEN N'Dưới 1 năm' WHEN DATEDIFF(day,FirstAssignment,CONVERT(date,SYSDATETIME()))<1096 THEN N'1–3 năm' ELSE N'3+ năm' END", companyId));
-            result.put("contracts", dao.query(connection, "SELECT CASE WHEN Status='ACTIVE' AND EndDate<CONVERT(date,SYSDATETIME()) THEN 'EXPIRED' ELSE Status END AS Label,COUNT(*) AS Total FROM EmploymentContracts WHERE CompanyId=? GROUP BY CASE WHEN Status='ACTIVE' AND EndDate<CONVERT(date,SYSDATETIME()) THEN 'EXPIRED' ELSE Status END", companyId));
+            result.put("contracts", dao.query(connection, "SELECT CASE WHEN Status='ACTIVE' AND EndDate<CONVERT(date,SYSDATETIME()) THEN 'EXPIRED' WHEN Status='ACTIVE' AND StartDate>CONVERT(date,SYSDATETIME()) THEN 'SCHEDULED' ELSE Status END AS Label,COUNT(*) AS Total FROM EmploymentContracts WHERE CompanyId=? GROUP BY CASE WHEN Status='ACTIVE' AND EndDate<CONVERT(date,SYSDATETIME()) THEN 'EXPIRED' WHEN Status='ACTIVE' AND StartDate>CONVERT(date,SYSDATETIME()) THEN 'SCHEDULED' ELSE Status END", companyId));
             result.put("expiring", dao.query(connection, "SELECT COUNT(*) AS Total FROM EmploymentContracts WHERE CompanyId=? AND Status='ACTIVE' AND EndDate BETWEEN CONVERT(date,SYSDATETIME()) AND DATEADD(day,90,CONVERT(date,SYSDATETIME()))", companyId));
             if (!dao.query(connection, "SELECT 1 FROM sys.tables WHERE object_id=OBJECT_ID('dbo.Attendances')").isEmpty())
                 result.put("attendance", dao.query(connection, "SELECT COUNT(DISTINCT EmployeeId) AS Total FROM Attendances WHERE CompanyId=? AND AttendanceDate=CONVERT(date,SYSDATETIME()) AND CheckInTime IS NOT NULL", companyId));
@@ -503,9 +530,10 @@ public class EmployeeLifecycleService {
                         """,principal.getCompanyId(),change.get("NewManagerId"),departmentId,change.get("EffectiveDate"),change.get("EffectiveDate")).isEmpty())
                     throw new IllegalArgumentException("Quản lý đã chọn không đủ điều kiện tại ngày hiệu lực của phân công.");
                 new com.hrms.dao.OrganizationAssignmentDAO().validateSelection(connection,principal.getCompanyId(),departmentId,((Number)change.get("NewPositionId")).intValue());
+                new com.hrms.dao.OrganizationRoleDAO().synchronize(connection,principal.getCompanyId(),employeeId,(Integer)change.get("NewPositionId"),principal.getUserId());
                 var assignments=new com.hrms.dao.EmployeeAssignmentDAO();
+                assignments.releaseDirectReportsIfNeeded(connection,principal.getCompanyId(),employeeId,departmentId,(Integer)change.get("NewPositionId"),principal.getUserId(),(String)change.get("Reason"));
                 assignments.validateManagerAssignment(connection,principal.getCompanyId(),employeeId,(Integer)change.get("NewManagerId"),departmentId,(Integer)change.get("NewPositionId"));
-                assignments.validateDirectReports(connection,principal.getCompanyId(),employeeId,departmentId,(Integer)change.get("NewPositionId"));
                 try(java.sql.CallableStatement statement=connection.prepareCall("{call dbo.usp_ApplyApprovedPositionChange(?,?)}")) {
                     statement.setLong(1,changeId); statement.setDate(2,java.sql.Date.valueOf(today)); statement.execute();
                 }

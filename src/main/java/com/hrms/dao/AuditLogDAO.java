@@ -46,8 +46,8 @@ public class AuditLogDAO {
         ensureTableExists();
         String sql = """
                 SELECT TOP 100 subject.CompanyId, l.CreatedAt, l.Action, l.OldValues, l.NewValues,
-                       COALESCE(actor.FullName COLLATE DATABASE_DEFAULT, u.Email COLLATE DATABASE_DEFAULT,
-                           u.Username COLLATE DATABASE_DEFAULT, N'System') AS ChangedBy
+                       COALESCE(actor.FullName COLLATE DATABASE_DEFAULT, NULLIF(u.DisplayName, '') COLLATE DATABASE_DEFAULT,
+                           u.Email COLLATE DATABASE_DEFAULT, u.Username COLLATE DATABASE_DEFAULT, N'System') AS ChangedBy
                 FROM AuditLogs l
                 JOIN Employees subject ON subject.EmployeeId=? AND (l.CompanyId=subject.CompanyId OR l.CompanyId IS NULL)
                 LEFT JOIN Users u ON u.UserId = l.UserId
@@ -82,7 +82,12 @@ public class AuditLogDAO {
                 EmployeeHistoryValues.Values values = formatter.format(entry.oldValue(), entry.newValue());
                 values = displays.computeIfAbsent(row.companyId(), company -> new EmployeeHistoryDisplay(connection, company, employeeId))
                         .format(values.oldValue(), values.newValue());
-                history.add(new HistoryEntry(entry.createdAt(),entry.action(),entry.changedBy(),values.oldValue(),values.newValue()));
+                String newValue = values.newValue();
+                if ("TERMINATE_EMPLOYEE".equals(entry.action()) && newValue != null && !newValue.isBlank()
+                        && !newValue.startsWith("Ngừng hoạt động") && !newValue.startsWith("Inactive")) {
+                    newValue = "Ngừng hoạt động\nLý do: " + newValue;
+                }
+                history.add(new HistoryEntry(entry.createdAt(),entry.action(),entry.changedBy(),values.oldValue(),newValue));
             }
             return history;
         }

@@ -228,7 +228,7 @@ public class OrganizationAssignmentDAO {
                 }
             }
             reporting.requireManagerSnapshot(connection,companyId,employeeId,oldManager);
-            reporting.validateManagerAssignment(connection, companyId, employeeId, managerId, departmentId, positionId);
+            boolean changed = !Objects.equals(oldDepartment, departmentId) || !Objects.equals(oldPosition, positionId);
             if (!Objects.equals(oldDepartment,departmentId) || !Objects.equals(oldPosition,positionId) || !Objects.equals(oldManager,managerId)) {
                 requireOpenPayroll(connection,companyId);
                 var pending = dao.query(connection,"SELECT PositionChangeId,Status FROM EmployeePositionChanges WHERE CompanyId=? AND EmployeeId=? AND Status IN ('PENDING','APPROVED')",companyId,employeeId);
@@ -238,10 +238,12 @@ public class OrganizationAssignmentDAO {
                             proposal.get("Status").toString(),"Được thay thế bằng phân công trực tiếp của nhân sự.");
                 }
             }
-            boolean changed = !Objects.equals(oldDepartment, departmentId) || !Objects.equals(oldPosition, positionId);
+            if (changed) {
+                reporting.releaseDirectReportsIfNeeded(connection, companyId, employeeId, departmentId, positionId, actorUserId, reason);
+            }
+            reporting.validateManagerAssignment(connection, companyId, employeeId, managerId, departmentId, positionId);
             if (changed) {
                 validateSelection(connection, companyId, departmentId, positionId);
-                reporting.validateDirectReports(connection, companyId, employeeId, departmentId, positionId);
                 requireActor(connection, companyId, actorUserId);
                 if (oldPosition == null) {
                     reporting.updateManager(connection, companyId, employeeId, null);
