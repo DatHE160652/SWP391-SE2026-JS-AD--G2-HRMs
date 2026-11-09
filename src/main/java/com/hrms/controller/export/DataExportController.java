@@ -32,13 +32,15 @@ import java.util.Map;
  * 3. /lifecycle/contracts/export : Danh sách hợp đồng lao động
  * 4. /departments/export : Danh sách phòng ban
  * 5. /positions/export : Danh sách chức danh
+ * 6. /lifecycle/organization/export : Sơ đồ / Cơ cấu tổ chức
  */
 @WebServlet(name = "DataExportController", urlPatterns = {
         "/employees/export",
         "/leave/export-requests",
         "/lifecycle/contracts/export",
         "/departments/export",
-        "/positions/export"
+        "/positions/export",
+        "/lifecycle/organization/export"
 })
 public class DataExportController extends HttpServlet {
 
@@ -83,6 +85,7 @@ public class DataExportController extends HttpServlet {
                 case "/lifecycle/contracts/export" -> handleExportContracts(request, response);
                 case "/departments/export" -> handleExportDepartments(request, response);
                 case "/positions/export" -> handleExportPositions(request, response);
+                case "/lifecycle/organization/export" -> handleExportOrganization(request, response);
                 default -> response.sendError(HttpServletResponse.SC_NOT_FOUND);
             }
         } catch (SecurityException e) {
@@ -260,6 +263,80 @@ public class DataExportController extends HttpServlet {
         response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
 
         exportExcelService.exportPositions(companyName, list, response.getOutputStream());
+    }
+
+    /**
+     * 6. Xuất sơ đồ / cơ cấu tổ chức
+     */
+    private void handleExportOrganization(HttpServletRequest request, HttpServletResponse response)
+            throws SQLException, IOException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        lifecycleService.requireEditor(principal);
+        int companyId = principal.getCompanyId();
+        String companyName = principal.getCompanyName() != null ? principal.getCompanyName() : "HRMs Cloud";
+
+        Integer departmentId = parseNullableInt(request.getParameter("departmentId"));
+        String keyword = trimToNull(request.getParameter("keyword"));
+
+        List<Map<String, Object>> assignments = lifecycleService.read(principal, "organization", null);
+        List<Employee> employees = employeeService.getAllEmployees(companyId);
+
+        Map<Integer, Map<String, Object>> assignedByEmpId = new java.util.LinkedHashMap<>();
+        for (Map<String, Object> a : assignments) {
+            if ("Active".equalsIgnoreCase(String.valueOf(a.get("Status"))) && a.get("EmployeeId") instanceof Number num) {
+                assignedByEmpId.put(num.intValue(), a);
+            }
+        }
+
+        List<Map<String, Object>> combined = new java.util.ArrayList<>();
+        for (Employee e : employees) {
+            if (!"Active".equalsIgnoreCase(e.getStatus())) continue;
+            Map<String, Object> assignment = assignedByEmpId.remove(e.getEmployeeId());
+            Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("EmployeeId", e.getEmployeeId());
+            row.put("EmployeeCode", e.getEmployeeCode());
+            row.put("FullName", e.getFullName());
+            row.put("Email", e.getEmail());
+            row.put("Phone", e.getPhone());
+            row.put("DepartmentId", assignment != null ? assignment.get("DepartmentId") : null);
+            row.put("DepartmentName", assignment != null ? assignment.get("DepartmentName") : null);
+            row.put("PositionTitle", assignment != null ? assignment.get("PositionTitle") : null);
+            row.put("LevelName", assignment != null ? assignment.get("LevelName") : null);
+            row.put("ManagerName", assignment != null ? assignment.get("ManagerName") : null);
+            row.put("HasAssignment", assignment != null);
+            combined.add(row);
+        }
+        for (Map<String, Object> remaining : assignedByEmpId.values()) {
+            Map<String, Object> row = new java.util.LinkedHashMap<>(remaining);
+            row.put("HasAssignment", true);
+            combined.add(row);
+        }
+
+        if (departmentId != null && departmentId > 0) {
+            combined = combined.stream().filter(m ->
+                    m.get("DepartmentId") instanceof Number num && num.intValue() == departmentId
+            ).toList();
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            String kw = keyword.toLowerCase();
+            combined = combined.stream().filter(m -> {
+                String haystack = String.join(" ",
+                        String.valueOf(m.getOrDefault("FullName", "")),
+                        String.valueOf(m.getOrDefault("EmployeeCode", "")),
+                        String.valueOf(m.getOrDefault("DepartmentName", "")),
+                        String.valueOf(m.getOrDefault("PositionTitle", "")),
+                        String.valueOf(m.getOrDefault("Email", "")),
+                        String.valueOf(m.getOrDefault("ManagerName", ""))
+                ).toLowerCase();
+                return haystack.contains(kw);
+            }).toList();
+        }
+
+        String filename = "Co_Cau_To_Chuc_" + LocalDate.now().format(DateTimeFormatter.ofPattern("dd_MM_yyyy")) + ".xlsx";
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+
+        exportExcelService.exportOrganization(companyName, combined, response.getOutputStream());
     }
 
     private Integer parseNullableInt(String value) {
