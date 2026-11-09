@@ -92,6 +92,7 @@ globalThis.HrmTranslations = {
   "↑ Tải tài liệu lên": "↑ Upload documents",
   "↓ File mẫu Excel": "↓ Excel template",
   "↧ Xuất CSV": "↧ Export CSV",
+  "↧ Xuất Excel": "↧ Export Excel",
   "↪ Đăng xuất": "↪ Log out",
   "↻ Làm mới": "↻ Refresh",
   "↻ Tải lại": "↻ Reload",

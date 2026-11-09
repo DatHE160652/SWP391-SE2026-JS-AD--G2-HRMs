@@ -74,7 +74,7 @@
         const views=new Set(['list','directory','chart']);
         const state={view:views.has(parameters.get('view'))?parameters.get('view'):'chart',
             department:parameters.get('departmentId') || '',query:parameters.get('q') || '',
-            selected:parameters.get('employeeId') || '',depth:2,zoom:1,collapsed:new Set()};
+            selected:parameters.get('employeeId') || '',depth:6,zoom:1,collapsed:new Set()};
         const departments=[...new Map(members.filter(member => member.DepartmentId).map(member => [String(member.DepartmentId),member.DepartmentName])).entries()];
         if (!departments.some(([id]) => id===state.department)) state.department='';
         if (!members.some(member => String(member.EmployeeId)===state.selected)) state.selected='';
@@ -84,9 +84,8 @@
             +HrmI18n.fragment('<div class="oe-toolbar"><input id="oe-search" type="search" placeholder="Tìm nhân viên, mã, chức danh…" aria-label="Tìm nhân viên">')
             +HrmI18n.fragment('<select id="oe-department" aria-label="Lọc phòng ban">')+option('',HrmI18n.t('Tất cả phòng ban'))+departments.map(([id,name]) => option(id,name)).join('')+'</select>'
             +HrmI18n.fragment('<select id="oe-jump" aria-label="Đi đến nhân viên">')+option('',HrmI18n.t('Toàn bộ cơ cấu'))+members.map(member => option(member.EmployeeId,member.FullName+' · '+member.EmployeeCode)).join('')+'</select>'
-            +HrmI18n.fragment('<div class="oe-chart-tools"><select id="oe-depth" aria-label="Số cấp hiển thị"><option value="1">1 cấp dưới</option><option value="2" selected>2 cấp dưới</option><option value="3">3 cấp dưới</option><option value="6">6 cấp dưới</option></select>')
-            +HrmI18n.fragment('<button type="button" class="secondary small" data-org-action="collapse">Thu gọn</button><button type="button" class="secondary small" data-org-action="expand">Mở rộng</button></div>')
-            +HrmI18n.fragment('<button type="button" class="secondary small oe-export" data-org-action="export">↧ Xuất CSV</button></div>')
+            +HrmI18n.fragment('<div class="oe-chart-tools"><button type="button" class="secondary small" data-org-action="collapse">Thu gọn</button><button type="button" class="secondary small" data-org-action="expand">Mở rộng</button></div>')
+            +HrmI18n.fragment('<button type="button" class="secondary small oe-export" data-org-action="export">↧ Xuất Excel</button></div>')
             +'<div class="oe-status" role="status" aria-live="polite"></div>'
             +'<div class="oe-administration-summary"></div>'
             +'<div class="oe-panel" role="tabpanel" id="oe-panel"><div class="oe-results"></div></div>'
@@ -123,8 +122,6 @@
             if (isChart) {
                 const chartMembers=chartContext(members,matches,state.department);
                 const focus=chartMembers.some(member => String(member.EmployeeId)===state.selected)?state.selected:'';
-                const maximum=root.HrmOrganizationChart.availableDepth(chartMembers,focus,administrators.length>0);
-                get('.oe-status').textContent+=HrmI18n.t(' · Hiển thị ')+Math.min(state.depth,maximum)+' / '+maximum+HrmI18n.t(' cấp dưới thực tế')+(focus?HrmI18n.t(' tính từ nhân viên đang chọn'):administrators.length?HrmI18n.t(' tính từ Quản trị công ty'):HrmI18n.t(' tính từ nhánh gốc'));
                 get('.oe-canvas').innerHTML=selected && !selected.HasAssignment?HrmI18n.fragment('<div class="lc-empty">Nhân viên đã chọn chưa có phân công hiệu lực. Xem hồ sơ tại Danh sách / Danh bạ.</div>'):state.selected && !focus?HrmI18n.fragment('<div class="lc-empty">Nhân viên đã chọn nằm ngoài phạm vi bộ lọc hiện tại.</div>'):root.HrmOrganizationChart.render(chartMembers,focus,context,{depth:state.depth,collapsed:state.collapsed,administrationHtml:administrators.length?administratorsPanel(administrators,context):''});
                 updateZoom();
                 const viewport=get('.oe-viewport');
@@ -150,20 +147,21 @@
             if (toggle) {
                 const id=toggle.dataset.orgToggle;
                 if (toggle.getAttribute('aria-expanded')==='true') state.collapsed.add(id);
-                else { state.collapsed.delete(id); state.depth=6; get('#oe-depth').value='6'; }
+                else { state.collapsed.delete(id); state.depth=6; }
                 render(); return;
             }
             const action=event.target.closest('[data-org-action]')?.dataset.orgAction;
             if (!action) return;
-            if (action==='collapse') { state.depth=1; state.collapsed.clear(); get('#oe-depth').value='1'; render(); }
-            if (action==='expand') { state.depth=6; state.collapsed.clear(); get('#oe-depth').value='6'; render(); }
+            if (action==='collapse') { state.depth=1; state.collapsed.clear(); render(); }
+            if (action==='expand') { state.depth=6; state.collapsed.clear(); render(); }
             if (action==='zoom-in') { state.zoom=Math.min(1.6,Math.round((state.zoom+.1)*10)/10); updateZoom(); }
             if (action==='zoom-out') { state.zoom=Math.max(.5,Math.round((state.zoom-.1)*10)/10); updateZoom(); }
             if (action==='zoom-reset') { state.zoom=1; updateZoom(); }
             if (action==='export') {
-                const url=URL.createObjectURL(new Blob([csv(filter(members,state.department,state.query))],{type:'text/csv;charset=utf-8'}));
-                const link=document.createElement('a'); link.href=url; link.download='co-cau-nhan-su.csv'; link.click();
-                setTimeout(() => URL.revokeObjectURL(url),1000);
+                const params=new URLSearchParams();
+                if (state.department) params.set('departmentId',state.department);
+                if (state.query) params.set('keyword',state.query);
+                window.location.href=context+'/lifecycle/organization/export'+(params.toString()?'?'+params.toString():'');
             }
         });
         get('.oe-view-tabs').addEventListener('keydown',event => {
@@ -184,7 +182,6 @@
             }
             render();
         });
-        get('#oe-depth').addEventListener('change',event => { state.depth=Number(event.target.value); state.collapsed.clear(); render(); });
         const viewport=get('.oe-viewport');
         let drag=null;
         viewport.addEventListener('pointerdown',event => {

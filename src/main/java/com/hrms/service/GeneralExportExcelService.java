@@ -362,6 +362,67 @@ public class GeneralExportExcelService {
             wb.write(os);
         }
     }
+
+    // ==========================================
+    // 6. XUẤT SƠ ĐỒ / CƠ CẤU TỔ CHỨC
+    // ==========================================
+    public void exportOrganization(String companyName, List<Map<String, Object>> members, OutputStream os) throws IOException {
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet("Co cau to chuc");
+            sheet.setDisplayGridlines(true);
+
+            CellStyle titleStyle = createTitleStyle(wb, IndexedColors.DARK_BLUE);
+            CellStyle subtitleStyle = createSubtitleStyle(wb);
+            CellStyle headerStyle = createHeaderStyle(wb, IndexedColors.ROYAL_BLUE);
+            CellStyle dataStyle = createDataStyle(wb);
+            CellStyle centerStyle = createCenterStyle(wb);
+
+            Row r0 = sheet.createRow(0);
+            Cell c0 = r0.createCell(0);
+            c0.setCellValue("CƠ CẤU TỔ CHỨC NHÂN SỰ");
+            c0.setCellStyle(titleStyle);
+
+            Row r1 = sheet.createRow(1);
+            Cell c1 = r1.createCell(0);
+            c1.setCellValue("Công ty: " + (companyName != null ? companyName : "HRMs Cloud") + " | Ngày xuất: " + LocalDate.now().format(DATE_FMT));
+            c1.setCellStyle(subtitleStyle);
+
+            String[] headers = {
+                    "STT", "Mã NV", "Họ và tên", "Phòng ban", "Chức danh",
+                    "Cấp trách nhiệm", "Quản lý trực tiếp", "Email", "Số điện thoại", "Trạng thái phân công"
+            };
+
+            Row headerRow = sheet.createRow(3);
+            headerRow.setHeightInPoints(26);
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            int rowIdx = 4;
+            int stt = 1;
+            for (Map<String, Object> m : members) {
+                Row row = sheet.createRow(rowIdx++);
+                row.setHeightInPoints(20);
+
+                boolean hasAssignment = Boolean.TRUE.equals(m.get("HasAssignment"));
+                createCell(row, 0, String.valueOf(stt++), centerStyle);
+                createCell(row, 1, val(m.get("EmployeeCode")), centerStyle);
+                createCell(row, 2, val(m.get("FullName")), dataStyle);
+                createCell(row, 3, !val(m.get("DepartmentName")).isBlank() ? val(m.get("DepartmentName")) : "Chưa phân công", dataStyle);
+                createCell(row, 4, !val(m.get("PositionTitle")).isBlank() ? val(m.get("PositionTitle")) : "Chưa phân công", dataStyle);
+                createCell(row, 5, val(m.get("LevelName")), centerStyle);
+                createCell(row, 6, val(m.get("ManagerName")), dataStyle);
+                createCell(row, 7, val(m.get("Email")), dataStyle);
+                createCell(row, 8, val(m.get("Phone")), centerStyle);
+                createCell(row, 9, hasAssignment ? "Đã phân công" : "Chưa phân công", centerStyle);
+            }
+
+            autoSizeColumns(sheet, headers.length);
+            wb.write(os);
+        }
+    }
     // ==========================================
     // HELPER STYLES & METHODS
     // ==========================================
