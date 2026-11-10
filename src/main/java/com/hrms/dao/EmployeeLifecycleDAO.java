@@ -57,11 +57,9 @@ public class EmployeeLifecycleDAO {
                     WHEN e.Status='Active'
                         AND h.EffectiveFrom<=CONVERT(date,SYSDATETIME())
                         AND (h.EffectiveTo IS NULL OR h.EffectiveTo>CONVERT(date,SYSDATETIME()))
-                        AND (h.SourceContractId IS NULL OR (
-                            c.Status='ACTIVE'
-                            AND c.StartDate<=CONVERT(date,SYSDATETIME())
-                            AND (c.EndDate IS NULL OR c.EndDate>=CONVERT(date,SYSDATETIME()))
-                        ))
+                        AND c.Status='ACTIVE'
+                        AND c.StartDate<=CONVERT(date,SYSDATETIME())
+                        AND (c.EndDate IS NULL OR c.EndDate>=CONVERT(date,SYSDATETIME()))
                     THEN 1 ELSE 0
                 END AS IsCurrent
             FROM EmployeeCompensationHistories h

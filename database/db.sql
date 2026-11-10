@@ -1954,3 +1954,43 @@ BEGIN
     );
 END;
 GO
+
+-- ========================================================================
+-- CẤU HÌNH CÔNG THỨC TÍNH LƯƠNG THEO CÔNG TY & CỘT CHI TIẾT PHIẾU LƯƠNG
+-- ========================================================================
+IF OBJECT_ID('dbo.CompanyPayrollSettings', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.CompanyPayrollSettings (
+        CompanyId INT NOT NULL PRIMARY KEY,
+        SalaryCalculationMode VARCHAR(25) NOT NULL CONSTRAINT DF_CompanyPayrollSettings_CalcMode DEFAULT ('WORKDAYS'),
+        StandardDaysMode VARCHAR(25) NOT NULL CONSTRAINT DF_CompanyPayrollSettings_StdMode DEFAULT ('MON_FRI'),
+        FixedStandardDays DECIMAL(5,2) NOT NULL CONSTRAINT DF_CompanyPayrollSettings_FixedDays DEFAULT (22.00),
+        WeekdayWeights VARCHAR(40) NOT NULL CONSTRAINT DF_CompanyPayrollSettings_WeekdayWeights DEFAULT ('1,1,1,1,1,0,0'),
+        IncludePaidLeave BIT NOT NULL CONSTRAINT DF_CompanyPayrollSettings_PaidLeave DEFAULT (1),
+        IncludeResponsibilityAllowance BIT NOT NULL CONSTRAINT DF_CompanyPayrollSettings_RespAllow DEFAULT (1),
+        IncludeTravelAllowance BIT NOT NULL CONSTRAINT DF_CompanyPayrollSettings_TravelAllow DEFAULT (1),
+        UpdatedAt DATETIME2(7) NOT NULL CONSTRAINT DF_CompanyPayrollSettings_UpdatedAt DEFAULT (SYSUTCDATETIME()),
+        UpdatedByUserId INT NULL,
+        CONSTRAINT FK_CompanyPayrollSettings_Companies FOREIGN KEY (CompanyId) REFERENCES dbo.Companies(CompanyId) ON DELETE CASCADE,
+        CONSTRAINT CK_CompanyPayrollSettings_CalcMode CHECK (SalaryCalculationMode IN ('WORKDAYS', 'FIXED_MONTHLY')),
+        CONSTRAINT CK_CompanyPayrollSettings_StdMode CHECK (StandardDaysMode IN ('MON_FRI', 'MON_SAT_HALF', 'MON_SAT', 'CUSTOM_WEEKDAYS', 'FIXED')),
+        CONSTRAINT CK_CompanyPayrollSettings_FixedDays CHECK (FixedStandardDays >= 1 AND FixedStandardDays <= 31)
+    );
+END;
+IF COL_LENGTH('dbo.CompanyPayrollSettings', 'WeekdayWeights') IS NULL
+BEGIN
+    ALTER TABLE dbo.CompanyPayrollSettings ADD WeekdayWeights VARCHAR(40) NOT NULL CONSTRAINT DF_CompanyPayrollSettings_WeekdayWeights DEFAULT ('1,1,1,1,1,0,0');
+END;
+GO
+
+IF COL_LENGTH('dbo.Payslips', 'ContractBaseSalary') IS NULL
+BEGIN
+    ALTER TABLE dbo.Payslips ADD
+        ContractBaseSalary DECIMAL(18, 2) NOT NULL CONSTRAINT DF_Payslips_ContractBase DEFAULT (0),
+        ActualWorkDays DECIMAL(5, 2) NOT NULL CONSTRAINT DF_Payslips_ActualDays DEFAULT (0),
+        StandardWorkDays DECIMAL(5, 2) NOT NULL CONSTRAINT DF_Payslips_StandardDays DEFAULT (22),
+        TravelAllowance DECIMAL(18, 2) NOT NULL CONSTRAINT DF_Payslips_TravelAllow DEFAULT (0);
+    ALTER TABLE dbo.Payslips DROP COLUMN NetSalary;
+    ALTER TABLE dbo.Payslips ADD NetSalary AS (BaseSalary + ResponsibilityAllowance + TravelAllowance + Bonus - Deduction);
+END;
+GO

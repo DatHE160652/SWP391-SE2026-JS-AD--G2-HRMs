@@ -48,6 +48,23 @@ public class PayrollController extends HttpServlet {
                     request.getRequestDispatcher(slips?"/WEB-INF/views/employee/payslips.jsp":
                             "/WEB-INF/views/comadmin-hr/payroll.jsp").forward(request,response);
                 }
+                case "/payroll/bonus-campaign" -> {
+                    preparePage(request, p);
+                    int periodId = id(request, "periodId");
+                    PayrollPeriod period = service.period(p, periodId);
+                    var candidates = service.bonusCandidates(p, periodId);
+                    request.setAttribute("period", period);
+                    request.setAttribute("candidates", candidates);
+                    request.setAttribute("candidatesJson", PayrollJson.encode(candidates));
+                    request.getRequestDispatcher("/WEB-INF/views/comadmin-hr/bonus-campaign.jsp").forward(request, response);
+                }
+                case "/payroll/api/bonus-candidates" -> {
+                    int periodId = id(request, "periodId");
+                    ok(response, object(
+                        "period", periodJson(service.period(p, periodId)),
+                        "candidates", service.bonusCandidates(p, periodId)
+                    ));
+                }
                 case "/payroll/api/periods" -> ok(response,service.periods(p).stream().map(this::periodJson).toList());
                 case "/payroll/api/period" -> {
                     int id=id(request,"periodId");
@@ -57,12 +74,14 @@ public class PayrollController extends HttpServlet {
                             "adjustments",dao.adjustmentRows(p.getCompanyId(),id)));
                 }
                 case "/payroll/api/salaries" -> ok(response,dao.salaries(p.getCompanyId()));
+                case "/payroll/api/settings" -> ok(response,service.formulaSettings(p));
                 case "/payroll/api/preview" -> ok(response,service.preview(p,id(request,"periodId")));
                 case "/payroll/api/template" -> {
-                    int id=id(request,"periodId");
+                    int id = id(request, "periodId");
+                    PayrollPeriod period = dao.findPeriod(p.getCompanyId(), id);
                     response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-                    response.setHeader("Content-Disposition","attachment; filename=payroll-adjustments-"+id+".xlsx");
-                    excel.template(dao.adjustmentRows(p.getCompanyId(),id),response.getOutputStream());
+                    response.setHeader("Content-Disposition", "attachment; filename=bang-luong-thang-" + period.getMonth() + "-" + period.getYear() + ".xlsx");
+                    excel.template(period, dao.adjustmentRows(p.getCompanyId(), id), response.getOutputStream());
                 }
                 case "/payroll/payslip" -> {
                     request.setAttribute("slip",service.payslip(p,longId(request,"id"),true));
@@ -106,14 +125,54 @@ public class PayrollController extends HttpServlet {
                     json(response,object("success",true,"message","Đã tạo kỳ lương Draft.","periodId",id));
                 }
                 case "/payroll/api/salary" -> {
-                    service.setSalary(p,id(request,"employeeId"),request.getParameter("baseSalary"),request.getParameter("effectiveFrom"));
-                    message(response,"Đã lưu lịch sử lương theo ngày hiệu lực. Các kỳ chưa duyệt bị ảnh hưởng đã về Draft để tính lại.");
+                    throw new PayrollException(403,"Lương cơ bản không được cập nhật thủ công. Lương cơ bản chỉ được cập nhật tự động theo hợp đồng lao động đã kích hoạt.");
+                }
+                case "/payroll/api/settings" -> {
+                    var saved = service.saveFormulaSettings(
+                            p,
+                            request.getParameter("salaryCalculationMode"),
+                            request.getParameter("standardDaysMode"),
+                            request.getParameter("fixedStandardDays"),
+                            request.getParameter("weekdayWeights"),
+                            "true".equalsIgnoreCase(request.getParameter("includePaidLeave")) || "1".equals(request.getParameter("includePaidLeave")) || "on".equalsIgnoreCase(request.getParameter("includePaidLeave")),
+                            "true".equalsIgnoreCase(request.getParameter("includeResponsibilityAllowance")) || "1".equals(request.getParameter("includeResponsibilityAllowance")) || "on".equalsIgnoreCase(request.getParameter("includeResponsibilityAllowance")),
+                            "true".equalsIgnoreCase(request.getParameter("includeTravelAllowance")) || "1".equals(request.getParameter("includeTravelAllowance")) || "on".equalsIgnoreCase(request.getParameter("includeTravelAllowance"))
+                    );
+                    json(response,object("success",true,"message","Đã lưu cấu hình công thức tính lương của công ty. Các kỳ chưa duyệt đã về Draft để tính lại.","data",saved));
                 }
                 case "/payroll/api/adjustment" -> {
-                    boolean changed=service.adjustment(p,id(request,"periodId"),id(request,"employeeId"),request.getParameter("bonus"),request.getParameter("deduction"),request.getParameter("note"));
+                    boolean changed=service.adjustment(p,id(request,"periodId"),id(request,"employeeId"),request.getParameter("bonus"),request.getParameter("deduction") == null ? "0" : request.getParameter("deduction"),request.getParameter("note"));
                     json(response,object("success",true,"changed",changed,"message",changed?
                             "Đã lưu điều chỉnh. Kỳ đã về Draft; kết quả cũ được xóa để tính và duyệt lại.":
                             "Dữ liệu điều chỉnh không thay đổi. Trạng thái kỳ lương được giữ nguyên."));
+                }
+                case "/payroll/api/bonus-campaign" -> {
+                    int periodId = id(request, "periodId");
+                    String[] empIdsStr = request.getParameterValues("employeeId");
+                    String[] bonusesStr = request.getParameterValues("bonus");
+                    String[] notes = request.getParameterValues("note");
+                    if (empIdsStr != null && empIdsStr.length > 0 && bonusesStr != null && bonusesStr.length == empIdsStr.length) {
+                        int[] empIds = new int[empIdsStr.length];
+                        java.math.BigDecimal[] bonuses = new java.math.BigDecimal[bonusesStr.length];
+                        for (int i = 0; i < empIdsStr.length; i++) {
+                            empIds[i] = Integer.parseInt(empIdsStr[i].trim());
+                            bonuses[i] = (bonusesStr[i] == null || bonusesStr[i].isBlank()) ? java.math.BigDecimal.ZERO : new java.math.BigDecimal(bonusesStr[i].trim());
+                        }
+                        var res = service.saveBonusAdjustments(p, periodId, empIds, bonuses, notes);
+                        json(response, object("success", true, "message", "Đã lưu đợt thưởng cho " + res.get("employeeCount") + " nhân viên thành công.", "data", res));
+                    } else {
+                        var res = service.applyBonusCampaign(
+                                p,
+                                periodId,
+                                request.getParameter("campaignName"),
+                                request.getParameter("calcType"),
+                                request.getParameter("monthsMultiplier"),
+                                "true".equalsIgnoreCase(request.getParameter("prorateByTenure")) || "1".equals(request.getParameter("prorateByTenure")) || "on".equalsIgnoreCase(request.getParameter("prorateByTenure")),
+                                request.getParameter("fixedAmount"),
+                                request.getParameter("applyMode")
+                        );
+                        json(response, object("success", true, "message", "Đã áp dụng đợt thưởng cho " + res.get("employeeCount") + " nhân viên. Bảng lương đã được cập nhật.", "data", res));
+                    }
                 }
                 case "/payroll/api/import", "/payroll/api/import-preview" -> {
                     Part file=request.getPart("file");
@@ -121,7 +180,7 @@ public class PayrollController extends HttpServlet {
                         throw new PayrollException(400,"Chọn file Excel tối đa 5 MB.");
                     String name=file.getSubmittedFileName()==null?"":file.getSubmittedFileName().toLowerCase(Locale.ROOT);
                     if(!name.endsWith(".xlsx") && !name.endsWith(".xls")) throw new PayrollException(400,"Chỉ hỗ trợ Excel .xlsx hoặc .xls.");
-                    java.util.List<com.hrms.model.PayrollAdjustmentInput> rows;
+                    java.util.List<com.hrms.model.PayrollImportInput> rows;
                     try(var input=file.getInputStream()) { rows=excel.read(input); }
                     int periodId=id(request,"periodId");
                     if(path.endsWith("import-preview")) {
@@ -131,12 +190,12 @@ public class PayrollController extends HttpServlet {
                         java.util.Set<String> codes=dao.adjustmentRows(p.getCompanyId(),periodId).stream()
                                 .map(row->row.employeeCode().toUpperCase(Locale.ROOT)).collect(java.util.stream.Collectors.toSet());
                         java.util.List<String> errors=rows.stream().filter(row->!codes.contains(row.employeeCode().toUpperCase(Locale.ROOT)))
-                                .map(row->"Dòng "+row.rowNumber()+": mã "+row.employeeCode()+" không thuộc công ty hoặc không có trong kỳ lương.").toList();
+                                .map(row->"Dòng "+row.rowNumber()+": mã "+row.employeeCode()+" không thuộc công ty của bạn.").toList();
                         if(!errors.isEmpty()) throw new PayrollException(400,"Chưa nhập dữ liệu. Hãy sửa các dòng lỗi.",errors);
                         ok(response,rows);
                     } else {
-                        int count=service.importRows(p,periodId,rows);
-                        message(response,"Đã nhập "+count+" dòng điều chỉnh. Hãy tính lại bảng lương.");
+                        int count=service.importPayroll(p,periodId,rows);
+                        message(response,"Đã nhập bảng lương cho "+count+" nhân viên thành công.");
                     }
                 }
                 case "/payroll/api/calculate" -> {

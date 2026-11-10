@@ -2,6 +2,8 @@ package com.hrms.service;
 
 import com.hrms.dao.PayrollDAO;
 import com.hrms.model.PayrollAdjustmentInput;
+import com.hrms.model.PayrollFormulaSettings;
+import com.hrms.model.PayrollImportInput;
 import com.hrms.model.PayrollPeriod;
 import com.hrms.model.PayrollCalculation;
 import com.hrms.model.PayrollSlipView;
@@ -66,6 +68,10 @@ public class PayrollService {
         if(month<1 || month>12) throw new PayrollException(400,"Tháng phải từ 1 đến 12.");
         // SQL Server DATEFROMPARTS supports years through 9999.
         if(year<2000 || year>9999) throw new PayrollException(400,"Năm phải từ 2000 đến 9999.");
+        LocalDate now = LocalDate.now();
+        if (year > now.getYear() || (year == now.getYear() && month >= now.getMonthValue())) {
+            throw new PayrollException(400, "Chỉ được tạo kỳ lương cho các tháng đã kết thúc (từ tháng trước trở về trước).");
+        }
     }
 
     public static BigDecimal money(String raw,String label) {
@@ -140,6 +146,74 @@ public class PayrollService {
         return dao.importAdjustments(p.getCompanyId(),p.getUserId(),periodId,rows);
     }
 
+    public int importPayroll(TenantPrincipal p, int periodId, List<PayrollImportInput> rows) throws SQLException {
+        requirePayrollAccess(p);
+        if (periodId < 1) throw new PayrollException(400, "Mã kỳ lương không hợp lệ.");
+        if (rows == null || rows.isEmpty() || rows.size() > 5000)
+            throw new PayrollException(400, "File cần có từ 1 đến 5.000 dòng dữ liệu.");
+        Set<String> codes = new HashSet<>();
+        for (PayrollImportInput row : rows) {
+            if (row.employeeCode() == null || row.employeeCode().isBlank() || !codes.add(row.employeeCode().toUpperCase(Locale.ROOT)))
+                throw new PayrollException(400, "Mã nhân viên bị trống hoặc trùng tại dòng " + row.rowNumber() + ".");
+            if (row.contractBaseSalary() == null || row.contractBaseSalary().compareTo(BigDecimal.ZERO) < 0)
+                throw new PayrollException(400, "Lương cơ bản không hợp lệ tại dòng " + row.rowNumber() + ".");
+            if (row.actualWorkDays() == null || row.actualWorkDays().compareTo(BigDecimal.ZERO) < 0)
+                throw new PayrollException(400, "Ngày công thực tế không hợp lệ tại dòng " + row.rowNumber() + ".");
+            if (row.standardWorkDays() == null || row.standardWorkDays().compareTo(BigDecimal.ZERO) <= 0)
+                throw new PayrollException(400, "Ngày công chuẩn phải lớn hơn 0 tại dòng " + row.rowNumber() + ".");
+            if (row.bonus() != null) money(row.bonus().toPlainString(), "Thưởng");
+            note(row.note());
+        }
+        return dao.importPayroll(p.getCompanyId(), p.getUserId(), periodId, rows);
+    }
+
+    public java.util.Map<String, Object> applyBonusCampaign(TenantPrincipal p, int periodId,
+                                                            String campaignName, String calcType,
+                                                            String rawMonthsMultiplier, boolean prorateByTenure,
+                                                            String rawFixedAmount, String applyMode) throws SQLException {
+        requirePayrollAccess(p);
+        if (periodId < 1) throw new PayrollException(400, "Mã kỳ lương không hợp lệ.");
+        String name = campaignName == null ? "" : campaignName.trim();
+        if (name.isBlank()) name = "Đợt thưởng";
+        if (name.length() > 100) throw new PayrollException(400, "Tên đợt thưởng không được vượt quá 100 ký tự.");
+
+        String type = "CONTRACT_SALARY".equalsIgnoreCase(calcType) ? "CONTRACT_SALARY" : "FIXED_AMOUNT";
+        BigDecimal multiplier = BigDecimal.ONE;
+        if ("CONTRACT_SALARY".equals(type)) {
+            try {
+                if (rawMonthsMultiplier != null && !rawMonthsMultiplier.isBlank()) {
+                    multiplier = new BigDecimal(rawMonthsMultiplier.trim());
+                    if (multiplier.compareTo(BigDecimal.ZERO) <= 0 || multiplier.compareTo(new BigDecimal("12.00")) > 0) {
+                        throw new NumberFormatException();
+                    }
+                }
+            } catch (NumberFormatException e) {
+                throw new PayrollException(400, "Số tháng lương thưởng phải lớn hơn 0 và không vượt quá 12 tháng.");
+            }
+        }
+
+        BigDecimal fixedAmt = BigDecimal.ZERO;
+        if ("FIXED_AMOUNT".equals(type)) {
+            fixedAmt = money(rawFixedAmount, "Số tiền thưởng");
+        }
+
+        String mode = "ADD".equalsIgnoreCase(applyMode) ? "ADD" : "REPLACE";
+        return dao.applyBonusCampaign(p.getCompanyId(), p.getUserId(), periodId, name, type, multiplier, prorateByTenure, fixedAmt, mode);
+    }
+
+    public List<java.util.Map<String, Object>> bonusCandidates(TenantPrincipal p, int periodId) throws SQLException {
+        requirePayrollAccess(p);
+        period(p, periodId);
+        return dao.bonusCandidates(p.getCompanyId(), periodId);
+    }
+
+    public java.util.Map<String, Object> saveBonusAdjustments(TenantPrincipal p, int periodId, int[] employeeIds, BigDecimal[] bonuses, String[] notes) throws SQLException {
+        requirePayrollAccess(p);
+        if (periodId < 1) throw new PayrollException(400, "Mã kỳ lương không hợp lệ.");
+        if (employeeIds == null || employeeIds.length == 0) throw new PayrollException(400, "Danh sách nhân viên không được để trống.");
+        return dao.saveBonusAdjustments(p.getCompanyId(), p.getUserId(), periodId, employeeIds, bonuses, notes);
+    }
+
     public int calculate(TenantPrincipal p,int periodId) throws SQLException {
         requirePayrollAccess(p);
         if (periodId<1) throw new PayrollException(400,"Mã kỳ lương không hợp lệ.");
@@ -158,5 +232,78 @@ public class PayrollService {
     }
     public int publish(TenantPrincipal p,int periodId) throws SQLException {
         requirePayrollAccess(p); return dao.publish(p.getCompanyId(),p.getUserId(),periodId);
+    }
+
+    public PayrollFormulaSettings formulaSettings(TenantPrincipal p) throws SQLException {
+        requirePayrollAccess(p);
+        return dao.getFormulaSettings(p.getCompanyId());
+    }
+
+    public PayrollFormulaSettings saveFormulaSettings(TenantPrincipal p, String salaryCalculationMode,
+                                                      String standardDaysMode, String rawFixedStandardDays,
+                                                      String rawWeekdayWeights,
+                                                      boolean includePaidLeave, boolean includeResponsibilityAllowance,
+                                                      boolean includeTravelAllowance) throws SQLException {
+        requirePayrollAccess(p);
+        String calcMode = salaryCalculationMode == null ? "WORKDAYS" : salaryCalculationMode.trim().toUpperCase(Locale.ROOT);
+        if (!Set.of("WORKDAYS", "FIXED_MONTHLY").contains(calcMode)) {
+            throw new PayrollException(400, "Chế độ tính lương cơ bản không hợp lệ.");
+        }
+        String stdMode = standardDaysMode == null ? "MON_FRI" : standardDaysMode.trim().toUpperCase(Locale.ROOT);
+        if (!Set.of("MON_FRI", "MON_SAT_HALF", "MON_SAT", "CUSTOM_WEEKDAYS", "FIXED").contains(stdMode)) {
+            throw new PayrollException(400, "Cách tính số công tiêu chuẩn không hợp lệ.");
+        }
+        BigDecimal fixedDays = new BigDecimal("22.00");
+        if (rawFixedStandardDays != null && !rawFixedStandardDays.isBlank()) {
+            try {
+                fixedDays = new BigDecimal(rawFixedStandardDays.trim()).setScale(2, java.math.RoundingMode.HALF_UP);
+                if (fixedDays.compareTo(BigDecimal.ONE) < 0 || fixedDays.compareTo(new BigDecimal("31.00")) > 0) {
+                    throw new NumberFormatException();
+                }
+            } catch (NumberFormatException e) {
+                throw new PayrollException(400, "Số công tiêu chuẩn cố định phải từ 1 đến 31 ngày.");
+            }
+        }
+        String weights = PayrollFormulaSettings.defaultWeightsForMode(stdMode);
+        if ("CUSTOM_WEEKDAYS".equals(stdMode)) {
+            if (rawWeekdayWeights == null || rawWeekdayWeights.isBlank()) {
+                weights = "1,1,1,1,1,0,0";
+            } else {
+                String[] parts = rawWeekdayWeights.trim().split(",");
+                if (parts.length != 7) {
+                    throw new PayrollException(400, "Cấu hình ngày công trong tuần phải đủ 7 ngày (Thứ 2 đến Chủ nhật).");
+                }
+                StringBuilder normalized = new StringBuilder();
+                BigDecimal weeklySum = BigDecimal.ZERO;
+                for (int i = 0; i < 7; i++) {
+                    try {
+                        BigDecimal w = new BigDecimal(parts[i].trim()).stripTrailingZeros();
+                        if (w.compareTo(BigDecimal.ZERO) < 0 || w.compareTo(BigDecimal.ONE) > 0) {
+                            throw new NumberFormatException();
+                        }
+                        weeklySum = weeklySum.add(w);
+                        if (i > 0) normalized.append(',');
+                        normalized.append(w.toPlainString());
+                    } catch (NumberFormatException e) {
+                        throw new PayrollException(400, "Hệ số công mỗi ngày trong tuần phải từ 0 đến 1 (ví dụ: 0, 0.5 hoặc 1).");
+                    }
+                }
+                if (weeklySum.compareTo(BigDecimal.ZERO) <= 0) {
+                    throw new PayrollException(400, "Tổng số công tiêu chuẩn trong tuần phải lớn hơn 0.");
+                }
+                weights = normalized.toString();
+            }
+        }
+        PayrollFormulaSettings settings = new PayrollFormulaSettings(
+                p.getCompanyId(),
+                calcMode,
+                stdMode,
+                fixedDays,
+                weights,
+                includePaidLeave,
+                includeResponsibilityAllowance,
+                includeTravelAllowance
+        );
+        return dao.saveFormulaSettings(p.getCompanyId(), p.getUserId(), settings);
     }
 }

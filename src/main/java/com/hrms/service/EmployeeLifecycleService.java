@@ -439,6 +439,24 @@ public class EmployeeLifecycleService {
                 result.put("pendingLeave", dao.query(connection, "SELECT COUNT(*) AS Total FROM LeaveRequests WHERE CompanyId=? AND Status='Pending'", companyId));
                 result.put("recentLeave", dao.query(connection, "SELECT TOP(5) e.FullName,l.StartDate,l.EndDate,l.Status FROM LeaveRequests l JOIN Employees e ON e.CompanyId=l.CompanyId AND e.EmployeeId=l.EmployeeId WHERE l.CompanyId=? ORDER BY l.CreatedAt DESC", companyId));
             }
+            if (!dao.query(connection, "SELECT 1 FROM sys.tables WHERE object_id=OBJECT_ID('dbo.PayrollPeriods')").isEmpty()) {
+                result.put("payrollTrend", dao.query(connection, """
+                    SELECT TOP 6 
+                        p.PayrollPeriodId,
+                        p.Month,
+                        p.Year,
+                        CONCAT(N'T', p.Month, '/', p.Year) AS Label,
+                        p.Status,
+                        COUNT(s.PayslipId) AS EmployeeCount,
+                        COALESCE(SUM(s.BaseSalary + s.ResponsibilityAllowance + s.TravelAllowance + s.Bonus), 0) AS GrossTotal,
+                        COALESCE(SUM(s.NetSalary), 0) AS NetTotal
+                    FROM PayrollPeriods p
+                    JOIN Payslips s ON s.PayrollPeriodId = p.PayrollPeriodId
+                    WHERE p.CompanyId = ? AND p.Status IN ('Calculated', 'Reviewed', 'Approved')
+                    GROUP BY p.PayrollPeriodId, p.Month, p.Year, p.Status
+                    ORDER BY p.Year ASC, p.Month ASC
+                """, companyId));
+            }
             return result;
         }
     }
