@@ -61,6 +61,17 @@
     </mime-mapping>
 
     <servlet>
+        <servlet-name>EmployeePasswordResetController</servlet-name>
+        <servlet-class>com.hrms.controller.hr.EmployeePasswordResetController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>EmployeePasswordResetController</servlet-name>
+        <url-pattern>/comadmin-hr/reset-employee-password</url-pattern>
+        <url-pattern>/comadmin-hr/reset-employee-password/search</url-pattern>
+        <url-pattern>/comadmin-hr/reset-employee-password/reset</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
         <servlet-name>PublicPortalController</servlet-name>
         <servlet-class>com.hrms.controller.publicportal.PublicPortalController</servlet-class>
     </servlet>

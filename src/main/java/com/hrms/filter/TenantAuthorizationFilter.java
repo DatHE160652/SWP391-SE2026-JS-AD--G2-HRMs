@@ -80,7 +80,9 @@ public class TenantAuthorizationFilter implements Filter {
                 return;
             }
         } catch (java.sql.SQLException exception) {
-            httpResponse.sendError(503, "Không xác minh được quyền truy cập tài khoản.");
+            if (RESET_ROUTES.contains(path)) {
+                writeJson(httpResponse, 500, "{\"success\":false,\"message\":\"Không xác minh được quyền truy cập. Vui lòng tải lại trang.\"}");
+            } else httpResponse.sendError(503, "Không xác minh được quyền truy cập tài khoản.");
             return;
         }
 
@@ -232,8 +234,14 @@ public class TenantAuthorizationFilter implements Filter {
         return false;
     }
 
+    private static final Set<String> RESET_ROUTES = Set.of(
+            "/comadmin-hr/reset-employee-password",
+            "/comadmin-hr/reset-employee-password/search",
+            "/comadmin-hr/reset-employee-password/reset");
+
     private boolean isTenantPath(String path) {
         if (path.equals("/change-password") || path.startsWith("/leave/") || path.startsWith("/notifications/")) return true;
+        if (RESET_ROUTES.contains(path)) return true;
         if (path.startsWith("/lifecycle/")) return true;
         if (path.startsWith("/responsibility-level/") || path.equals("/responsibility-levels") || path.startsWith("/responsibility-levels/")) return true;
         return path.equals("/payroll") || path.startsWith("/payroll/")
@@ -259,7 +267,7 @@ public class TenantAuthorizationFilter implements Filter {
 
     private void rejectUnauthenticated(HttpServletRequest request, HttpServletResponse response) throws IOException {
         if (expectsJson(request)) {
-            writeJson(response, HttpServletResponse.SC_UNAUTHORIZED,
+            writeJson(response, RESET_ROUTES.contains(fullPath(request)) ? HttpServletResponse.SC_FORBIDDEN : HttpServletResponse.SC_UNAUTHORIZED,
                     "{\"success\":false,\"message\":\"Please sign in to continue.\"}");
             return;
         }
@@ -292,6 +300,7 @@ public class TenantAuthorizationFilter implements Filter {
     }
 
     private boolean expectsJson(HttpServletRequest request) {
+        if (RESET_ROUTES.contains(fullPath(request)) && !fullPath(request).equals("/comadmin-hr/reset-employee-password")) return true;
         if (request.getServletPath().startsWith("/lifecycle/api/") || request.getServletPath().startsWith("/leave/api/") || request.getServletPath().startsWith("/notifications/")) return true;
         if (request.getServletPath().equals("/responsibility-levels") || request.getServletPath().startsWith("/responsibility-levels/")) return true;
         String accept = request.getHeader("Accept");

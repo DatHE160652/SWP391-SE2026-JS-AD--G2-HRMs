@@ -576,6 +576,7 @@ function renderMyProfile(employee) {
         ${detailItem(HrmI18n.t('Email đăng nhập (Dùng để đăng nhập hệ thống)'), employee.accountEmail)}
         ${detailItem(HrmI18n.t('Email liên hệ (Hồ sơ cá nhân)'), employee.email)}
         ${detailItem(HrmI18n.t('Trạng thái tài khoản'), employee.accountActive === true ? HrmI18n.t('Hoạt động') : employee.accountActive === false ? HrmI18n.t('Ngừng hoạt động') : null)}
+        <div><a class="button" href="${safe(withContext('/change-password'))}">${HrmI18n.t('Đổi mật khẩu')}</a></div>
     `;
 }
 
