@@ -93,10 +93,10 @@ public class OrganizationAssignmentDAO {
             if (employee.get("PositionId") != null || employee.get("ManagerId") != null
                     || (employee.get("DepartmentId") != null && !Objects.equals(employee.get("DepartmentId"), departmentId))
                     || !dao.query(connection, """
-                        SELECT 1 FROM EmployeePositionAssignments WITH (UPDLOCK,HOLDLOCK) WHERE CompanyId=? AND EmployeeId=?
-                        UNION ALL SELECT 1 FROM EmployeePositionChanges WITH (UPDLOCK,HOLDLOCK) WHERE CompanyId=? AND EmployeeId=?
+                        SELECT 1 FROM EmployeePositionAssignments WITH (UPDLOCK,HOLDLOCK) WHERE CompanyId=? AND EmployeeId=? AND EffectiveTo IS NULL
+                        UNION ALL SELECT 1 FROM EmployeePositionChanges WITH (UPDLOCK,HOLDLOCK) WHERE CompanyId=? AND EmployeeId=? AND Status IN ('PENDING','APPROVED')
                         """, companyId, employeeId, companyId, employeeId).isEmpty())
-                throw new FieldValidationException("employeeId", "Nhân viên đã được phân công hoặc có lịch sử thay đổi. Vui lòng sử dụng Lịch sử & công tác, không ghi đè phân công hiện có.");
+                throw new FieldValidationException("employeeId", "Nhân viên đang có phân công còn hiệu lực hoặc có đề xuất thay đổi đang chờ xử lý.");
             validateSelection(connection, companyId, departmentId, positionId);
             new PositionOccupancyDAO().validate(connection, companyId, employeeId, positionId, effectiveFrom, null);
             new EmployeeAssignmentDAO().validateDirectReports(connection, companyId, employeeId, departmentId, positionId);
@@ -161,13 +161,13 @@ public class OrganizationAssignmentDAO {
             }
         }
         try (PreparedStatement statement=connection.prepareStatement("""
-                SELECT 1 FROM EmployeePositionAssignments WITH (UPDLOCK,HOLDLOCK) WHERE CompanyId=? AND EmployeeId=?
-                UNION ALL SELECT 1 FROM EmployeePositionChanges WITH (UPDLOCK,HOLDLOCK) WHERE CompanyId=? AND EmployeeId=?
+                SELECT 1 FROM EmployeePositionAssignments WITH (UPDLOCK,HOLDLOCK) WHERE CompanyId=? AND EmployeeId=? AND EffectiveTo IS NULL
+                UNION ALL SELECT 1 FROM EmployeePositionChanges WITH (UPDLOCK,HOLDLOCK) WHERE CompanyId=? AND EmployeeId=? AND Status IN ('PENDING','APPROVED')
                 """)) {
             statement.setInt(1,companyId); statement.setInt(2,employeeId);
             statement.setInt(3,companyId); statement.setInt(4,employeeId);
             try(ResultSet rows=statement.executeQuery()) {
-                if(rows.next()) throw new FieldValidationException("positionId","Nhân viên đã có lịch sử phân công. Vui lòng sử dụng quy trình thay đổi có ngày hiệu lực.");
+                if(rows.next()) throw new FieldValidationException("positionId","Nhân viên đang có phân công chức danh còn hiệu lực hoặc có đề xuất đang chờ xử lý.");
             }
         }
         validateSelection(connection,companyId,departmentId,positionId);
@@ -228,7 +228,7 @@ public class OrganizationAssignmentDAO {
                 }
             }
             reporting.requireManagerSnapshot(connection,companyId,employeeId,oldManager);
-            reporting.validateManagerAssignment(connection, companyId, employeeId, managerId, departmentId, positionId);
+            boolean changed = !Objects.equals(oldDepartment, departmentId) || !Objects.equals(oldPosition, positionId);
             if (!Objects.equals(oldDepartment,departmentId) || !Objects.equals(oldPosition,positionId) || !Objects.equals(oldManager,managerId)) {
                 requireOpenPayroll(connection,companyId);
                 var pending = dao.query(connection,"SELECT PositionChangeId,Status FROM EmployeePositionChanges WHERE CompanyId=? AND EmployeeId=? AND Status IN ('PENDING','APPROVED')",companyId,employeeId);
@@ -238,10 +238,12 @@ public class OrganizationAssignmentDAO {
                             proposal.get("Status").toString(),"Được thay thế bằng phân công trực tiếp của nhân sự.");
                 }
             }
-            boolean changed = !Objects.equals(oldDepartment, departmentId) || !Objects.equals(oldPosition, positionId);
+            if (changed) {
+                reporting.releaseDirectReportsIfNeeded(connection, companyId, employeeId, departmentId, positionId, actorUserId, reason);
+            }
+            reporting.validateManagerAssignment(connection, companyId, employeeId, managerId, departmentId, positionId);
             if (changed) {
                 validateSelection(connection, companyId, departmentId, positionId);
-                reporting.validateDirectReports(connection, companyId, employeeId, departmentId, positionId);
                 requireActor(connection, companyId, actorUserId);
                 if (oldPosition == null) {
                     reporting.updateManager(connection, companyId, employeeId, null);
@@ -258,8 +260,9 @@ public class OrganizationAssignmentDAO {
                 var values=new EmployeeHistoryValues(connection,companyId).format(
                         "DepartmentId="+oldDepartment+";PositionId="+oldPosition,
                         "DepartmentId="+departmentId+";PositionId="+positionId);
+                String safeReason = reason == null ? "" : reason.replace('\r',' ').replace('\n',' ');
                 OrganizationTransaction.audit(connection,companyId,actorUserId,employeeId,"CHANGE_ORGANIZATION",
-                        values.oldValue(),values.newValue()+"\nLý do: "+reason.replace('\r',' ').replace('\n',' '));
+                        values.oldValue(),values.newValue() + (safeReason.isBlank() ? "" : "\nLý do: " + safeReason));
             }
             OrganizationTransaction.recordManagerChange(connection,companyId,actorUserId,employeeId,oldManager,managerId,reason);
             new OrganizationRoleDAO().synchronize(connection, companyId, employeeId, positionId, actorUserId);
@@ -306,7 +309,8 @@ public class OrganizationAssignmentDAO {
         log.setCompanyId(companyId); log.setUserId(actorId); log.setTableName("EmployeePositionAssignments");
         log.setRecordId(String.valueOf(assignmentId)); log.setAction("ASSIGN_POSITION");
         log.setOldValues(values.oldValue());
-        log.setNewValues(values.newValue()+"\nLý do: "+reason.replace('\r',' ').replace('\n',' '));
+        String safeReason = reason == null ? "" : reason.replace('\r',' ').replace('\n',' ');
+        log.setNewValues(values.newValue() + (safeReason.isBlank() ? "" : "\nLý do: " + safeReason));
         new AuditLogDAO().insert(connection,log);
     }
 

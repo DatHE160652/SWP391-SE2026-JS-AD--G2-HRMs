@@ -14,11 +14,14 @@ public class EmployeeDocument {
     private String status;
     private String mimeType;
     private Long fileSizeBytes;
+    private Long documentPeriodId;
 
     public String getMimeType() { return mimeType; }
     public void setMimeType(String value) { mimeType=value; }
     public Long getFileSizeBytes() { return fileSizeBytes; }
     public void setFileSizeBytes(Long value) { fileSizeBytes=value; }
+    public Long getDocumentPeriodId() { return documentPeriodId; }
+    public void setDocumentPeriodId(Long value) { documentPeriodId=value; }
 
     public EmployeeDocument() {
     }

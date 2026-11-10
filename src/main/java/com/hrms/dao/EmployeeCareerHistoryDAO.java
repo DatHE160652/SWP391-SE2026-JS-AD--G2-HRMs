@@ -13,8 +13,7 @@ public class EmployeeCareerHistoryDAO {
             List<EmployeeCareerEvent> events=new ArrayList<>();
             readPositionChanges(connection,companyId,employeeId,formatter,events);
             readInitialAssignments(connection,companyId,employeeId,formatter,events);
-            readManagerChanges(connection,companyId,employeeId,formatter,events);
-            readLifecycleEvents(connection,companyId,employeeId,events);
+            readDepartmentChanges(connection,companyId,employeeId,formatter,events);
             events.sort(Comparator.comparing(EmployeeCareerEvent::effectiveDate,Comparator.nullsLast(Comparator.reverseOrder()))
                     .thenComparing(EmployeeCareerEvent::recordedAt,Comparator.nullsLast(Comparator.reverseOrder()))
                     .thenComparing(EmployeeCareerEvent::eventId,Comparator.reverseOrder()));
@@ -27,41 +26,6 @@ public class EmployeeCareerHistoryDAO {
             statement.setInt(1,companyId); statement.setInt(2,employeeId);
             try (ResultSet rows=statement.executeQuery()) {
                 if (!rows.next()) throw new SecurityException("Không tìm thấy nhân viên trong công ty của bạn.");
-            }
-        }
-    }
-
-    private void readLifecycleEvents(Connection connection,int companyId,int employeeId,List<EmployeeCareerEvent> events) throws SQLException {
-        String sql = """
-                SELECT CONCAT('lifecycle-',l.LogId) AS EventId,l.Action AS EventType,l.CreatedAt,
-                    CONVERT(varchar(10),CONVERT(date,l.CreatedAt AT TIME ZONE 'UTC' AT TIME ZONE 'SE Asia Standard Time'),23) AS EffectiveDate,
-                    l.NewValues AS Description,COALESCE(u.DisplayName,N'Chưa ghi nhận người thực hiện') AS ChangedBy
-                FROM AuditLogs l JOIN Employees e ON e.CompanyId=l.CompanyId AND CONVERT(varchar(100),e.EmployeeId)=l.RecordId
-                LEFT JOIN Users u ON u.CompanyId=l.CompanyId AND u.UserId=l.UserId
-                WHERE l.CompanyId=? AND e.EmployeeId=? AND l.TableName='Employees' AND l.Action='TERMINATE_EMPLOYEE'
-                UNION ALL
-                SELECT CONCAT('onboard-',e.EmployeeId),'ONBOARDING',e.CreatedAt,CONVERT(varchar(10),e.CreatedAt,23),
-                    e.EmployeeCode,COALESCE(creator.DisplayName,N'Chưa ghi nhận người thực hiện')
-                FROM Employees e
-                OUTER APPLY (
-                    SELECT TOP (1) l.UserId FROM AuditLogs l
-                    WHERE l.CompanyId=e.CompanyId AND l.TableName='Employees'
-                        AND l.RecordId=CONVERT(varchar(100),e.EmployeeId) AND l.Action='CREATE_EMPLOYEE'
-                    ORDER BY l.CreatedAt,l.LogId
-                ) creation
-                LEFT JOIN Users creator ON creator.CompanyId=e.CompanyId AND creator.UserId=creation.UserId
-                WHERE e.CompanyId=? AND e.EmployeeId=?
-                UNION ALL
-                SELECT CONCAT('salary-',s.CompensationHistoryId),'SALARY_ADJUSTMENT',s.CreatedAt,
-                    CONVERT(varchar(10),s.EffectiveFrom,23),CONCAT(N'Gross: ',s.BaseSalary,N' · ',s.Reason),COALESCE(u.DisplayName,N'Chưa ghi nhận người thực hiện')
-                FROM EmployeeCompensationHistories s LEFT JOIN Users u ON u.CompanyId=s.CompanyId AND u.UserId=s.CreatedByUserId
-                WHERE s.CompanyId=? AND s.EmployeeId=?
-                """;
-        try (PreparedStatement statement=connection.prepareStatement(sql)) {
-            for (int index=1;index<=6;index+=2) { statement.setInt(index,companyId); statement.setInt(index+1,employeeId); }
-            try (ResultSet rows=statement.executeQuery()) {
-                while(rows.next()) events.add(new EmployeeCareerEvent(rows.getString("EventId"),rows.getString("EventType"),
-                        timestamp(rows,"CreatedAt"),rows.getString("EffectiveDate"),"APPLIED",null,rows.getString("Description"),null,rows.getString("ChangedBy")));
             }
         }
     }
@@ -83,7 +47,7 @@ public class EmployeeCareerHistoryDAO {
                 LEFT JOIN ResponsibilityLevels newLevel ON newLevel.CompanyId=newPosition.CompanyId AND newLevel.ResponsibilityLevelId=newPosition.ResponsibilityLevelId
                 LEFT JOIN Users creator ON creator.CompanyId=c.CompanyId AND creator.UserId=c.CreatedByUserId
                 LEFT JOIN Users approver ON approver.CompanyId=c.CompanyId AND approver.UserId=c.ApprovedByUserId
-                WHERE c.CompanyId=? AND c.EmployeeId=? AND NOT(c.ChangeType='MANAGER_CHANGE' AND c.Status='APPLIED')
+                WHERE c.CompanyId=? AND c.EmployeeId=? AND c.ChangeType<>'MANAGER_CHANGE'
                 ORDER BY COALESCE(c.AppliedAt,c.ApprovedAt,c.CreatedAt) DESC,c.PositionChangeId DESC
                 """;
         List<PositionRow> pending=new ArrayList<>();
@@ -146,17 +110,15 @@ public class EmployeeCareerHistoryDAO {
         }
     }
 
-    private void readManagerChanges(Connection connection,int companyId,int employeeId,EmployeeHistoryValues formatter,
-                                     List<EmployeeCareerEvent> events) throws SQLException {
+    private void readDepartmentChanges(Connection connection,int companyId,int employeeId,EmployeeHistoryValues formatter,
+                                      List<EmployeeCareerEvent> events) throws SQLException {
         String sql="""
                 SELECT TOP (100) l.LogId,l.Action,l.CreatedAt,l.OldValues,l.NewValues,
                     CONVERT(date,l.CreatedAt AT TIME ZONE 'UTC' AT TIME ZONE 'SE Asia Standard Time') AS EffectiveDate,
                     COALESCE(u.DisplayName,N'Không ghi nhận') AS ChangedBy
                 FROM AuditLogs l LEFT JOIN Users u ON u.CompanyId=? AND u.UserId=l.UserId
                 WHERE (l.CompanyId=? OR l.CompanyId IS NULL) AND l.TableName='Employees' AND l.RecordId=?
-                    AND l.Action IN ('CHANGE_MANAGER','CHANGE_ORGANIZATION','ASSIGN_TO_MANAGER',
-                        'MANAGER_ASSIGNED','MANAGER_TRANSFERRED','MANAGER_REMOVED',
-                        'TEAM_MEMBER_ASSIGNED','TEAM_MEMBER_TRANSFERRED','TEAM_MEMBER_REMOVED')
+                    AND l.Action IN ('CHANGE_ORGANIZATION','CHANGE_DEPARTMENT')
                 ORDER BY l.CreatedAt DESC,l.LogId DESC
                 """;
         List<ManagerRow> pending=new ArrayList<>();
@@ -169,26 +131,13 @@ public class EmployeeCareerHistoryDAO {
         }
         for (ManagerRow row:pending) {
             var values=formatter.format(row.oldValue(),row.newValue());
-            boolean team=row.action().startsWith("TEAM_MEMBER_");
-            String before=team?values.oldValue():line(values.oldValue(),"Quản lý trực tiếp:");
-            String after=team?values.newValue():line(values.newValue(),"Quản lý trực tiếp:");
-            if (before==null && after==null && "CHANGE_ORGANIZATION".equals(row.action())
-                    && line(values.oldValue(),"Chức vụ:")==null && line(values.newValue(),"Chức vụ:")==null) {
+            if (line(values.oldValue(),"Chức vụ:")==null && line(values.newValue(),"Chức vụ:")==null) {
                 String oldDepartment=line(values.oldValue(),"Phòng ban:");
                 String newDepartment=line(values.newValue(),"Phòng ban:");
                 if (!Objects.equals(oldDepartment,newDepartment)) events.add(new EmployeeCareerEvent("audit-"+row.logId(),
                         oldDepartment!=null && oldDepartment.endsWith("Chưa có phòng ban")?"DEPARTMENT_ASSIGNED":"DEPARTMENT_TRANSFERRED",
                         row.createdAt(),row.effectiveDate(),"APPLIED",oldDepartment,newDepartment,reason(values.newValue()),row.changedBy()));
             }
-            if (before==null && after==null || Objects.equals(before,after)) continue;
-            String type=row.action();
-            if (!team && !type.startsWith("MANAGER_")) {
-                type=before==null || after==null?"MANAGER_CHANGED":before.endsWith("Chưa có người quản lý")?"MANAGER_ASSIGNED"
-                        :after!=null && after.endsWith("Chưa có người quản lý")?"MANAGER_REMOVED":"MANAGER_TRANSFERRED";
-            }
-            events.add(new EmployeeCareerEvent("audit-"+row.logId(),type,row.createdAt(),row.effectiveDate(),"APPLIED",
-                    team?withoutReason(before):before,team?withoutReason(after):after,
-                    reason(values.newValue()),row.changedBy()));
         }
     }
 

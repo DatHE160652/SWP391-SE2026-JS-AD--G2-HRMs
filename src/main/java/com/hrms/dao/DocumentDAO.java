@@ -66,9 +66,9 @@ public class DocumentDAO {
     public boolean insertDocument(Connection connection,EmployeeDocument document,String mimeType,Long size) throws SQLException {
         String sql = """
                 INSERT INTO EmployeeDocuments (
-                    EmployeeId, DocumentName, DocumentType, FileName, FilePath, UploadedBy, Status, MimeType, FileSizeBytes
+                    EmployeeId, DocumentName, DocumentType, FileName, FilePath, UploadedBy, Status, MimeType, FileSizeBytes, DocumentPeriodId
                 )
-                VALUES (?, ?, ?, ?, ?, ?, 'Active', ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, 'Active', ?, ?, ?)
                 """;
 
         try (PreparedStatement statement = connection.prepareStatement(sql,java.sql.Statement.RETURN_GENERATED_KEYS)) {
@@ -79,6 +79,7 @@ public class DocumentDAO {
             statement.setString(5, document.getFilePath());
             statement.setString(7, mimeType);
             statement.setObject(8, size, java.sql.Types.BIGINT);
+            statement.setObject(9, document.getDocumentPeriodId(), java.sql.Types.BIGINT);
             if (document.getUploadedBy() == null) {
                 statement.setNull(6, java.sql.Types.INTEGER);
             } else {
@@ -126,6 +127,8 @@ public class DocumentDAO {
         String sql = """
                 IF OBJECT_ID('dbo.EmployeeDocuments', 'U') IS NULL
                     THROW 51000, 'EmployeeDocuments is missing. Apply the document migration.', 1;
+                IF COL_LENGTH('dbo.EmployeeDocuments', 'DocumentPeriodId') IS NULL
+                    ALTER TABLE dbo.EmployeeDocuments ADD DocumentPeriodId BIGINT NULL;
                 """;
 
         try (Connection connection = DBConnection.getConnection();

@@ -18,10 +18,50 @@
         const description = entries.map(item => labelFor(item) + ': ' + count(item.Total)).join(', ');
         return '<section class="lc-card db-chart"><h3>' + escape(title) + '</h3><div class="db-donut-content"><div class="db-donut" role="img" aria-label="' + escape(title + ' — ' + (description || HrmI18n.t('Chưa có dữ liệu'))) + '" style="background:' + (total ? 'conic-gradient(' + slices.join(',') + ')' : 'var(--lc-line)') + '"><div><strong>' + total + HrmI18n.fragment('</strong><small>Tổng cộng</small></div></div><ul class="db-legend">') + (entries.length ? entries.map((item, index) => '<li><i style="background:' + colors[index % colors.length] + '"></i><span>' + escape(labelFor(item)) + '</span><b>' + count(item.Total) + '</b><small>' + Math.round(count(item.Total) / total * 100) + '%</small></li>').join('') : HrmI18n.fragment('<li>Chưa có dữ liệu</li>')) + '</ul></div>' + (footer ? '<a class="db-footer" href="' + escape(context + footer[0]) + '">' + footer[1] + ' <span>→</span></a>' : '') + '</section>';
     }
+    function payrollSection(trend, context) {
+        const list = Array.isArray(trend) ? trend : [];
+        let body;
+        if (list.length) {
+            const maxVal = Math.max(...list.map(t => Math.max(Number(t.GrossTotal || 0), Number(t.NetTotal || 0))), 1);
+            const money = val => new Intl.NumberFormat('vi-VN').format(Math.round(val)) + ' ₫';
+            body = '<div class="db-payroll-chart">' + list.map(item => {
+                const gross = Number(item.GrossTotal || 0);
+                const net = Number(item.NetTotal || 0);
+                const grossH = Math.max(6, Math.round((gross / maxVal) * 125));
+                const netH = Math.max(6, Math.round((net / maxVal) * 125));
+                return '<div class="db-payroll-col">'
+                    + '<div class="db-payroll-bars-group">'
+                    + '<div class="db-payroll-bar net" style="height:' + netH + 'px" data-value="' + HrmI18n.t('Thực nhận') + ': ' + money(net) + '"></div>'
+                    + '<div class="db-payroll-bar gross" style="height:' + grossH + 'px" data-value="' + HrmI18n.t('Trước khấu trừ') + ': ' + money(gross) + '"></div>'
+                    + '</div>'
+                    + '<span class="db-payroll-col-label">' + escape(item.Label || (item.Month + '/' + item.Year)) + '</span>'
+                    + '</div>';
+            }).join('') + '</div>';
+        } else {
+            body = '<div class="db-payroll-empty"><span>'
+                + HrmI18n.t('Chưa có dữ liệu quỹ lương trước khấu trừ / thực nhận đã duyệt')
+                + '</span><small>'
+                + HrmI18n.t('Số liệu sẽ hiển thị khi phân hệ bảng lương cung cấp dữ liệu. Không tự suy tính lương thực nhận từ hợp đồng.')
+                + '</small></div>';
+        }
+        return '<section class="lc-card db-payroll"><div class="db-card-heading"><div><h3>'
+            + HrmI18n.t('Diễn biến quỹ lương')
+            + '</h3><small>'
+            + HrmI18n.t('Lương trước khấu trừ &amp; thực nhận · 6 tháng gần nhất')
+            + '</small></div><div class="db-payroll-legend"><span>● '
+            + HrmI18n.t('Thực nhận')
+            + '</span><span>● '
+            + HrmI18n.t('Trước khấu trừ')
+            + '</span></div></div>'
+            + body
+            + '<a class="db-footer" href="' + escape(context + '/payroll') + '">' + HrmI18n.t('Quản lý kỳ lương') + ' <span>→</span></a>'
+            + '</section>';
+    }
     function render(data, context) {
         const metric = (title, value, hint, tone, icon) => '<section class="lc-card db-metric"><div><span>' + title + '</span><strong>' + (value == null ? '—' : count(value)) + '</strong><small>' + escape(value == null ? HrmI18n.t('Chưa có tích hợp dữ liệu') : hint) + '</small></div><i class="db-metric-icon ' + tone + '" aria-hidden="true">' + icon + '</i></section>';
         const recent = data.recentLeave;
         return '<div class="db-metrics">' + metric(HrmI18n.t('Có mặt hôm nay'), data.attendance?.[0]?.Total, HrmI18n.t('Nhân viên đã chấm công'), 'green', '✓') + metric(HrmI18n.t('HĐ sắp hết hạn'), data.expiring?.[0]?.Total, HrmI18n.t('Trong vòng 90 ngày tới'), 'orange', '▤') + metric(HrmI18n.t('Đơn phép chờ duyệt'), data.pendingLeave?.[0]?.Total, HrmI18n.t('Đang chờ phê duyệt'), 'purple', '◷') + metric(HrmI18n.t('Tổng nhân viên'), data.employees?.[0]?.Total, count(data.employees?.[0]?.Active) + HrmI18n.t(' đang làm việc'), 'blue', '♙') + '</div>'
+            + payrollSection(data.payrollTrend, context)
             + '<div class="db-two">' + donut(HrmI18n.t('Phân bổ nhân sự'), data.departments, ['/employee/employee-list', HrmI18n.t('Quản lý nhân viên')], context) + donut(HrmI18n.t('Trạng thái hợp đồng'), data.contracts, ['/lifecycle/contracts', HrmI18n.t('Quản lý hợp đồng')], context, true) + '</div>'
             + '<div class="db-three">' + donut(HrmI18n.t('Giới tính'), data.gender, null, context, true) + donut(HrmI18n.t('Độ tuổi'), data.age, null, context, true) + donut(HrmI18n.t('Thâm niên'), data.tenure, null, context, true) + '</div>'
             + HrmI18n.fragment('<section class="lc-card db-leave"><div class="db-card-heading"><h3>Đơn nghỉ gần đây</h3><a href="') + escape(context) + HrmI18n.fragment('/leave/all-requests">Xem tất cả →</a></div>') + (recent?.length ? HrmI18n.fragment('<div class="lc-table-wrap"><table><thead><tr><th>Nhân viên</th><th>Từ ngày</th><th>Đến ngày</th><th>Trạng thái</th></tr></thead><tbody>') + recent.map(item => '<tr><td>' + escape(item.FullName) + '</td><td>' + escape(item.StartDate) + '</td><td>' + escape(item.EndDate) + '</td><td><span class="lc-badge">' + escape(labels[item.Status] || item.Status) + '</span></td></tr>').join('') + '</tbody></table></div>' : '<div class="lc-empty">' + (recent ? HrmI18n.t('Chưa có đơn nghỉ phép nào') : HrmI18n.t('Phân hệ nghỉ phép chưa cung cấp dữ liệu')) + '</div>') + '</section>';

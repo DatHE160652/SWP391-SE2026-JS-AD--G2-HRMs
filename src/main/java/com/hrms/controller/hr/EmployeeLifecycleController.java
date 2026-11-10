@@ -89,10 +89,7 @@ public class EmployeeLifecycleController extends HttpServlet {
                         "Đã ngừng quy trình đề xuất. Vui lòng phân công hoặc chuyển chức danh trực tiếp tại Phòng ban."));
                 return;
             } else if (path.equals("/lifecycle/api/compensation/save")) {
-                service.adjustCompensation(principal, requiredInt(request.getParameter("employeeId")),date(request.getParameter("effectiveDate")),
-                        new com.hrms.model.EmployeeCompensation(decimal(request.getParameter("grossSalary")),
-                                null,decimal(request.getParameter("travelAllowance"))),request.getParameter("reason"));
-                data = "Đã cập nhật lịch sử lương.";
+                throw new IllegalArgumentException("Lương cơ bản không được cập nhật thủ công. Chỉ được cập nhật tự động theo hợp đồng lao động đã kích hoạt.");
             } else if (path.equals("/lifecycle/api/terminate")) {
                 service.terminate(principal, requiredInt(request.getParameter("employeeId")), request.getParameter("reason"));
                 data = "Đã ghi nhận ngừng làm việc. Lịch sử nhân viên được giữ nguyên.";

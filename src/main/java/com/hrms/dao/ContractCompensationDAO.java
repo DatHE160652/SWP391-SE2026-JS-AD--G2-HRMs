@@ -17,12 +17,13 @@ public class ContractCompensationDAO {
                     AND ([Year]>YEAR(?) OR ([Year]=YEAR(?) AND [Month]>=MONTH(?)))
                 """,companyId,effectiveDate,effectiveDate,effectiveDate).isEmpty())
             throw new IllegalArgumentException("Kỳ lương đã duyệt không cho phép đồng bộ Gross tại ngày bắt đầu hợp đồng.");
-        if (!dao.query(connection,"""
-                SELECT 1 FROM EmployeeCompensationHistories WITH (UPDLOCK,HOLDLOCK)
+        var future=dao.query(connection,"""
+                SELECT TOP(1) EffectiveFrom FROM EmployeeCompensationHistories WITH (UPDLOCK,HOLDLOCK)
                 WHERE CompanyId=? AND EmployeeId=? AND EffectiveFrom>?
                     AND (EffectiveTo IS NULL OR EffectiveTo>EffectiveFrom)
-                """,companyId,employeeId,effectiveDate).isEmpty())
-            throw new IllegalArgumentException("Có lịch lương sau ngày bắt đầu hợp đồng. Cần xử lý lịch lương trước; hệ thống không ghi đè tự động.");
+                ORDER BY EffectiveFrom ASC,CompensationHistoryId ASC
+                """,companyId,employeeId,effectiveDate);
+        Object nextEffectiveFrom=future.isEmpty()?null:future.get(0).get("EffectiveFrom");
         var current=dao.query(connection,"""
                 SELECT CompensationHistoryId,BaseSalary,TravelAllowance FROM EmployeeCompensationHistories WITH (UPDLOCK,HOLDLOCK)
                 WHERE CompanyId=? AND EmployeeId=? AND EffectiveFrom<=?
@@ -39,11 +40,71 @@ public class ContractCompensationDAO {
         BigDecimal allowance=new OrganizationAllowanceDAO().employeeAllowance(connection,companyId,employeeId,effectiveDate);
         dao.execute(connection,"""
                 INSERT INTO EmployeeCompensationHistories(CompanyId,EmployeeId,BaseSalary,PositionAllowance,TravelAllowance,
-                    EffectiveFrom,Reason,CreatedByUserId,SourceContractId)
-                VALUES(?,?,?,?,?,?,?,?,?)
-                """,companyId,employeeId,grossSalary,allowance,travel,effectiveDate,
+                    EffectiveFrom,EffectiveTo,Reason,CreatedByUserId,SourceContractId)
+                VALUES(?,?,?,?,?,?,?,?,?,?)
+                """,companyId,employeeId,grossSalary,allowance,travel,effectiveDate,nextEffectiveFrom,
                 "Gross theo hợp đồng "+contractCode,actorId,contractId);
         OrganizationTransaction.audit(connection,companyId,actorId,employeeId,"CONTRACT_COMPENSATION_SYNC",
                 current.isEmpty()?null:"Gross="+current.get(0).get("BaseSalary"),"ContractId="+contractId+"; Gross="+grossSalary);
+        invalidateUnapprovedPayrollPeriods(connection,companyId,effectiveDate);
+    }
+
+    public void revertContractCompensation(Connection connection,int companyId,int employeeId,long contractId,Integer actorId) throws SQLException {
+        var rows=dao.query(connection,"""
+                SELECT CompensationHistoryId,EffectiveFrom,EffectiveTo,BaseSalary
+                FROM EmployeeCompensationHistories WITH (UPDLOCK,HOLDLOCK)
+                WHERE CompanyId=? AND EmployeeId=? AND SourceContractId=?
+                ORDER BY EffectiveFrom DESC,CompensationHistoryId DESC
+                """,companyId,employeeId,contractId);
+        for (var row : rows) {
+            Object compId=row.get("CompensationHistoryId");
+            Object effectiveFrom=row.get("EffectiveFrom");
+            Object effectiveTo=row.get("EffectiveTo");
+            var prev=dao.query(connection,"""
+                    SELECT TOP(1) CompensationHistoryId FROM EmployeeCompensationHistories WITH (UPDLOCK,HOLDLOCK)
+                    WHERE CompanyId=? AND EmployeeId=? AND CompensationHistoryId<>? AND EffectiveTo=?
+                    ORDER BY EffectiveFrom DESC,CompensationHistoryId DESC
+                    """,companyId,employeeId,compId,effectiveFrom);
+            dao.execute(connection,"""
+                    DELETE FROM EmployeeCompensationHistories
+                    WHERE CompanyId=? AND EmployeeId=? AND CompensationHistoryId=?
+                    """,companyId,employeeId,compId);
+            if (!prev.isEmpty()) {
+                dao.execute(connection,"""
+                        UPDATE EmployeeCompensationHistories SET EffectiveTo=?
+                        WHERE CompanyId=? AND EmployeeId=? AND CompensationHistoryId=?
+                        """,effectiveTo,companyId,employeeId,prev.get(0).get("CompensationHistoryId"));
+            }
+            OrganizationTransaction.audit(connection,companyId,actorId,employeeId,"CONTRACT_COMPENSATION_REVERT",
+                    "ContractId="+contractId+"; Gross="+row.get("BaseSalary"),null);
+            if (effectiveFrom != null) {
+                invalidateUnapprovedPayrollPeriods(connection,companyId,LocalDate.parse(effectiveFrom.toString()));
+            }
+        }
+    }
+
+    public void closeContractCompensation(Connection connection,int companyId,int employeeId,long contractId,LocalDate terminatedDate) throws SQLException {
+        dao.execute(connection,"""
+                UPDATE EmployeeCompensationHistories SET EffectiveTo=?
+                WHERE CompanyId=? AND EmployeeId=? AND SourceContractId=?
+                    AND EffectiveFrom<=? AND (EffectiveTo IS NULL OR EffectiveTo>?)
+                """,terminatedDate,companyId,employeeId,contractId,terminatedDate,terminatedDate);
+        if (terminatedDate != null) {
+            invalidateUnapprovedPayrollPeriods(connection,companyId,terminatedDate);
+        }
+    }
+
+    private void invalidateUnapprovedPayrollPeriods(Connection connection,int companyId,LocalDate fromDate) throws SQLException {
+        if (fromDate == null) return;
+        var periods=dao.query(connection,"""
+                SELECT PayrollPeriodId FROM PayrollPeriods WITH (UPDLOCK,HOLDLOCK)
+                WHERE CompanyId=? AND Status IN ('Calculated','Reviewed') AND PublishedAt IS NULL
+                    AND ([Year]>YEAR(?) OR ([Year]=YEAR(?) AND [Month]>=MONTH(?)))
+                """,companyId,fromDate,fromDate,fromDate);
+        for (var p : periods) {
+            Object periodId=p.get("PayrollPeriodId");
+            dao.execute(connection,"DELETE s FROM Payslips s JOIN PayrollPeriods p ON p.PayrollPeriodId=s.PayrollPeriodId WHERE p.CompanyId=? AND p.PayrollPeriodId=?",companyId,periodId);
+            dao.execute(connection,"UPDATE PayrollPeriods SET Status='Draft',ReviewedAt=NULL,ReviewedByUserId=NULL,ApprovedAt=NULL,ApprovedByUserId=NULL WHERE CompanyId=? AND PayrollPeriodId=?",companyId,periodId);
+        }
     }
 }

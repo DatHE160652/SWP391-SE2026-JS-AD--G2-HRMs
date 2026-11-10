@@ -173,8 +173,17 @@ public class EmployeeAssignmentDAO {
 
     public void validateManagerAssignment(Connection connection, int companyId, int employeeId,
             Integer managerId, Integer departmentId, Integer positionId) throws SQLException {
-        validateManagerAssignment(members(connection,companyId),employeeId,managerId,departmentId);
-        new ReportingPositionDAO().validateManager(connection,companyId,positionId,managerId);
+        var employees = members(connection, companyId);
+        if (positionId != null) {
+            String targetRole = new OrganizationRoleDAO().roleForPosition(connection, companyId, positionId);
+            var existing = requireEmployee(employees, employeeId);
+            employees.put(employeeId, new DepartmentMemberOption(existing.employeeId(), existing.employeeCode(),
+                    existing.fullName(), existing.departmentId(), existing.managerId(), positionId,
+                    existing.positionTitle(), targetRole, existing.selected(), existing.canManageTeam(),
+                    existing.departmentName(), existing.managerName(), existing.assignable()));
+        }
+        validateManagerAssignment(employees, employeeId, managerId, departmentId);
+        new ReportingPositionDAO().validateManager(connection, companyId, positionId, managerId);
     }
 
     public static void requireInitialManagerAssignment(Integer existing,Integer requested) {
@@ -227,26 +236,64 @@ public class EmployeeAssignmentDAO {
 
     public void validateDirectReports(Connection connection, int companyId, int employeeId,
                                       Integer departmentId, Integer positionId) throws SQLException {
+        releaseDirectReportsIfNeeded(connection, companyId, employeeId, departmentId, positionId, null, null);
+    }
+
+    public int releaseDirectReportsIfNeeded(Connection connection, int companyId, int employeeId,
+                                            Integer departmentId, Integer positionId,
+                                            Integer actorUserId, String reason) throws SQLException {
         var employees = members(connection, companyId);
-        boolean hasReports = employees.values().stream().anyMatch(member -> Objects.equals(member.managerId(), employeeId));
-        if (!hasReports) return;
-        try (PreparedStatement statement = connection.prepareStatement("""
-                SELECT 1 FROM Positions WHERE CompanyId=? AND PositionId=? AND DepartmentId=?
-                    AND IsActive=1 AND CanManageEmployees=1
-                    AND EXISTS (SELECT 1 FROM ResponsibilityLevels level WHERE level.CompanyId=Positions.CompanyId
-                        AND level.ResponsibilityLevelId=Positions.ResponsibilityLevelId AND level.IsActive=1
-                        AND UPPER(LTRIM(RTRIM(level.LevelCode))) NOT IN ('EMP','EMPLOYEE')
-                        AND UPPER(LTRIM(RTRIM(level.LevelName)))<>'EMPLOYEE')
-                """)) {
-            statement.setInt(1, companyId);
-            statement.setObject(2, positionId, Types.INTEGER);
-            statement.setObject(3, departmentId, Types.INTEGER);
-            try (ResultSet rows = statement.executeQuery()) {
-                if (!rows.next() || !Objects.equals(requireEmployee(employees, employeeId).departmentId(), departmentId)) {
-                    throw new FieldValidationException("positionId", "Vui lòng xử lý các cấp dưới hiện tại trước khi bỏ khả năng quản lý hoặc chuyển phòng ban.");
+        var currentEmployee = requireEmployee(employees, employeeId);
+        var directReports = employees.values().stream()
+                .filter(member -> Objects.equals(member.managerId(), employeeId))
+                .toList();
+        if (directReports.isEmpty()) return 0;
+
+        boolean canKeepDepartmentReports = false;
+        if (positionId != null && departmentId != null && Objects.equals(currentEmployee.departmentId(), departmentId)) {
+            try (PreparedStatement statement = connection.prepareStatement("""
+                    SELECT 1 FROM Positions WHERE CompanyId=? AND PositionId=? AND DepartmentId=?
+                        AND IsActive=1 AND CanManageEmployees=1
+                        AND EXISTS (SELECT 1 FROM ResponsibilityLevels level WHERE level.CompanyId=Positions.CompanyId
+                            AND level.ResponsibilityLevelId=Positions.ResponsibilityLevelId AND level.IsActive=1
+                            AND UPPER(LTRIM(RTRIM(level.LevelCode))) NOT IN ('EMP','EMPLOYEE')
+                            AND UPPER(LTRIM(RTRIM(level.LevelName)))<>'EMPLOYEE')
+                    """)) {
+                statement.setInt(1, companyId);
+                statement.setObject(2, positionId, Types.INTEGER);
+                statement.setObject(3, departmentId, Types.INTEGER);
+                try (ResultSet rows = statement.executeQuery()) {
+                    canKeepDepartmentReports = rows.next();
                 }
             }
         }
+
+        Map<Integer, Integer> reportsToByPosition = new HashMap<>();
+        if (canKeepDepartmentReports) {
+            for (var link : new EmployeeLifecycleDAO().query(connection,
+                    "SELECT PositionId,ReportsToPositionId FROM Positions WHERE CompanyId=?", companyId)) {
+                reportsToByPosition.put((Integer) link.get("PositionId"), (Integer) link.get("ReportsToPositionId"));
+            }
+        }
+
+        String detachReason = (reason != null && !reason.isBlank())
+                ? reason
+                : "Tự động gỡ quản lý trực tiếp do quản lý cũ thay đổi chức danh/phòng ban";
+        int detachedCount = 0;
+        for (var report : directReports) {
+            Integer requiredManagerPosition = report.positionId() == null ? null : reportsToByPosition.get(report.positionId());
+            boolean compatibleWithNewPosition = canKeepDepartmentReports
+                    && (requiredManagerPosition == null || Objects.equals(requiredManagerPosition, positionId));
+            if (!compatibleWithNewPosition) {
+                updateManager(connection, companyId, report.employeeId(), null);
+                if (actorUserId != null) {
+                    OrganizationTransaction.recordManagerChange(connection, companyId, actorUserId,
+                            report.employeeId(), employeeId, null, detachReason);
+                }
+                detachedCount++;
+            }
+        }
+        return detachedCount;
     }
 
     public void updateManager(Connection connection, int companyId, int employeeId, Integer managerId) throws SQLException {
