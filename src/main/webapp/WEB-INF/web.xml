@@ -461,6 +461,7 @@
         <url-pattern>/departments/export</url-pattern>
         <url-pattern>/positions/export</url-pattern>
         <url-pattern>/lifecycle/organization/export</url-pattern>
+        <url-pattern>/attendance/export</url-pattern>
     </servlet-mapping>
 
     <jsp-config>

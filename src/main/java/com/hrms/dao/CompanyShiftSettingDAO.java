@@ -101,7 +101,6 @@ public class CompanyShiftSettingDAO {
         }
 
         ensureTableExists();
-
         String sql = """
                 IF EXISTS (SELECT 1 FROM dbo.CompanyShiftSettings WHERE CompanyId = ?)
                 BEGIN
@@ -113,7 +112,7 @@ public class CompanyShiftSettingDAO {
                         TimesheetCutoffDay = ?,
                         MinHoursHalfDay = ?,
                         MinHoursFullDay = ?,
-                        UpdatedAt = SYSUTCDATETIME(),
+                        UpdatedAt = SYSDATETIME(),
                         UpdatedByUserId = ?
                     WHERE CompanyId = ?;
                 END
@@ -121,7 +120,7 @@ public class CompanyShiftSettingDAO {
                 BEGIN
                     INSERT INTO dbo.CompanyShiftSettings
                         (CompanyId, ShiftStartTime, ShiftEndTime, LunchBreakMinutes, GracePeriodMinutes, TimesheetCutoffDay, MinHoursHalfDay, MinHoursFullDay, UpdatedAt, UpdatedByUserId)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, SYSUTCDATETIME(), ?);
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, SYSDATETIME(), ?);
                 END
                 """;
 
@@ -173,7 +172,7 @@ public class CompanyShiftSettingDAO {
                         TimesheetCutoffDay INT NOT NULL DEFAULT 5,
                         MinHoursHalfDay    DECIMAL(4,2) NOT NULL DEFAULT 4.00,
                         MinHoursFullDay    DECIMAL(4,2) NOT NULL DEFAULT 6.00,
-                        UpdatedAt          DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+                        UpdatedAt          DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
                         UpdatedByUserId    INT NULL,
                         CONSTRAINT FK_CompanyShiftSettings_Companies FOREIGN KEY (CompanyId) REFERENCES dbo.Companies(CompanyId) ON DELETE CASCADE,
                         CONSTRAINT FK_CompanyShiftSettings_Users FOREIGN KEY (UpdatedByUserId) REFERENCES dbo.Users(UserId),

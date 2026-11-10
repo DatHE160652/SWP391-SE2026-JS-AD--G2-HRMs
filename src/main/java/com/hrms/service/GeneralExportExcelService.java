@@ -1,5 +1,6 @@
 package com.hrms.service;
 
+import com.hrms.dao.AttendanceDAO.AttendanceDTO;
 import com.hrms.model.Department;
 import com.hrms.model.Employee;
 import com.hrms.model.LeaveRequest;
@@ -422,6 +423,81 @@ public class GeneralExportExcelService {
             autoSizeColumns(sheet, headers.length);
             wb.write(os);
         }
+    }
+
+    // ==========================================
+    // 7. XUẤT DANH SÁCH ĐIỂM DANH CHẤM CÔNG (PHÙ HỢP FORM VỚI FILE IMPORT)
+    // ==========================================
+    public void exportAttendances(String companyName, List<AttendanceDTO> attendances, OutputStream os) throws IOException {
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet("Cham cong");
+            sheet.setDisplayGridlines(true);
+
+            CellStyle titleStyle = createTitleStyle(wb, IndexedColors.DARK_BLUE);
+            CellStyle subtitleStyle = createSubtitleStyle(wb);
+            CellStyle headerStyle = createHeaderStyle(wb, IndexedColors.ROYAL_BLUE);
+            CellStyle dataStyle = createDataStyle(wb);
+            CellStyle centerStyle = createCenterStyle(wb);
+
+            // Title
+            Row r0 = sheet.createRow(0);
+            Cell c0 = r0.createCell(0);
+            c0.setCellValue("DANH SÁCH ĐIỂM DANH CHẤM CÔNG");
+            c0.setCellStyle(titleStyle);
+
+            Row r1 = sheet.createRow(1);
+            Cell c1 = r1.createCell(0);
+            c1.setCellValue("Công ty: " + (companyName != null ? companyName : "HRMs Cloud") + " | Ngày xuất: " + LocalDate.now().format(DATE_FMT));
+            c1.setCellStyle(subtitleStyle);
+
+            String[] headers = {
+                    "STT", "Mã NV (*)", "Họ và tên", "Phòng ban",
+                    "Ngày chấm công (yyyy-MM-dd) (*)", "Giờ vào (HH:mm)", "Giờ ra (HH:mm)",
+                    "Tổng giờ", "Trạng thái", "Ghi chú"
+            };
+
+            Row headerRow = sheet.createRow(3);
+            headerRow.setHeightInPoints(26);
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            int rowIdx = 4;
+            int stt = 1;
+            for (AttendanceDTO a : attendances) {
+                Row row = sheet.createRow(rowIdx++);
+                row.setHeightInPoints(20);
+
+                createCell(row, 0, String.valueOf(stt++), centerStyle);
+                createCell(row, 1, a.getEmployeeCode() != null ? a.getEmployeeCode() : "-", centerStyle);
+                createCell(row, 2, a.getFullName() != null ? a.getFullName() : "-", dataStyle);
+                createCell(row, 3, a.getDepartmentName() != null ? a.getDepartmentName() : "-", dataStyle);
+                createCell(row, 4, a.getAttendanceDate() != null ? a.getAttendanceDate().toString() : "-", centerStyle);
+                createCell(row, 5, a.getCheckInTime() != null ? a.getCheckInTime().toString().substring(0, Math.min(5, a.getCheckInTime().toString().length())) : "-", centerStyle);
+                createCell(row, 6, a.getCheckOutTime() != null ? a.getCheckOutTime().toString().substring(0, Math.min(5, a.getCheckOutTime().toString().length())) : "-", centerStyle);
+                createCell(row, 7, a.getTotalHours() != null ? a.getTotalHours().toString() : "0.00", centerStyle);
+                createCell(row, 8, a.getStatus() != null ? formatAttendanceStatus(a.getStatus()) : "-", centerStyle);
+                createCell(row, 9, a.getNote() != null ? a.getNote() : "-", dataStyle);
+            }
+
+            autoSizeColumns(sheet, headers.length);
+            wb.write(os);
+        }
+    }
+
+    private String formatAttendanceStatus(String status) {
+        if (status == null) return "-";
+        return switch (status.toUpperCase()) {
+            case "ON_TIME", "PRESENT" -> "Đúng giờ";
+            case "LATE" -> "Đi muộn";
+            case "EARLY_LEAVE" -> "Về sớm";
+            case "LATE_AND_EARLY" -> "Muộn & Về sớm";
+            case "ABSENT" -> "Vắng mặt";
+            case "LEAVE" -> "Nghỉ phép";
+            default -> status;
+        };
     }
     // ==========================================
     // HELPER STYLES & METHODS

@@ -468,10 +468,15 @@
             if (!groups.has(employeeId)) groups.set(employeeId,[]);
             groups.get(employeeId).push(record);
         }
-        select('#lc-resource-table').innerHTML = groups.size ? table([HrmI18n.t('Mã nhân viên'),HrmI18n.t('Nhân viên'),HrmI18n.t('Số hợp đồng'),HrmI18n.t('Trạng thái các hợp đồng'),HrmI18n.t('Thao tác')],[...groups.values()].map(contracts => {
+        select('#lc-resource-table').innerHTML = groups.size ? table([HrmI18n.t('Mã nhân viên'),HrmI18n.t('Nhân viên'),HrmI18n.t('Mã hợp đồng'),HrmI18n.t('Loại hợp đồng'),HrmI18n.t('Số hợp đồng'),HrmI18n.t('Trạng thái các hợp đồng'),HrmI18n.t('Thao tác')],[...groups.values()].map(contracts => {
             const employee = contracts[0];
             const statuses = [...new Set(contracts.map(record => record.DisplayStatus))];
-            return [employee.EmployeeCode,employee.FullName,contracts.length,
+            const contractCodesHtml = contracts.map(c => `<button type="button" class="lc-badge info font-mono" style="font-weight:600;font-size:12px;margin:1px 2px;cursor:pointer;border:none;background:var(--accent-light,#e0e7ff);color:var(--accent,#3730a3);padding:2px 8px;border-radius:4px;" data-contract-employee="${escape(employee.EmployeeId)}" title="${HrmI18n.t('Nhấn để xem chi tiết')}">${escape(c.ContractCode)}</button>`).join(' ');
+            const contractTypesText = [...new Set(contracts.map(c => vietnamese(c.ContractType)))].join(', ');
+            return [employee.EmployeeCode,employee.FullName,
+                {html: contractCodesHtml},
+                contractTypesText,
+                contracts.length,
                 {html:statuses.map(status => badge(status)).join(' ') + (contracts.some(record => record.Expiring) ? HrmI18n.fragment(' <span class="lc-badge warning">Sắp hết hạn</span>') : '')},
                 {html:`<button type="button" class="small secondary" data-contract-employee="${escape(employee.EmployeeId)}${HrmI18n.fragment("\">Xem hợp đồng</button>")}`}];
         }),'contract-employees') : empty(HrmI18n.t('Không có nhân viên có hợp đồng phù hợp'));
@@ -556,6 +561,21 @@
                     if (q) params.set('keyword', q);
                     if (requestedEmployeeId) params.set('employeeId', requestedEmployeeId);
                     window.location.href = `${context}/lifecycle/contracts/export?${params.toString()}`;
+                });
+            }
+            if (select('#lc-page-import-contracts')) {
+                select('#lc-page-import-contracts').hidden = false;
+                select('#lc-page-import-contracts').addEventListener('click', () => {
+                    if (window.DataImporter) {
+                        DataImporter.open('CONTRACT', {
+                            onSuccess: (result) => {
+                                refreshResource();
+                                if (result && result.message) {
+                                    toast(result.message);
+                                }
+                            }
+                        });
+                    }
                 });
             }
             const signedButton = document.createElement('button');

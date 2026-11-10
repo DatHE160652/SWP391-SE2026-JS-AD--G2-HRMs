@@ -32,6 +32,22 @@
                     </svg>
                     <%= com.hrms.i18n.Language.text(request, "ui_774141fb419a", "Cài đặt ca & Chốt công") %>
                 </button>
+                <button class="button secondary" id="btnExportAttendance" type="button" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <%= "en".equals(com.hrms.i18n.Language.selected(request)) ? "Export Excel" : "Xuất Excel" %>
+                </button>
+                <button class="button secondary" id="btnImportAttendance" type="button" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="8" x2="12" y2="21"></line>
+                    </svg>
+                    <%= "en".equals(com.hrms.i18n.Language.selected(request)) ? "Import Excel" : "Nhập Excel" %>
+                </button>
                 <a class="button secondary" href="attendance-report" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="20" x2="18" y2="10"></line>
@@ -242,6 +258,38 @@
     </main>
 
 <script src="../js/attendance.js?v=<%= application.getResource("/js/attendance.js").openConnection().getLastModified() %>"></script>
+<%@ include file="/WEB-INF/views/common/import-modal.jspf" %>
+<script src="${pageContext.request.contextPath}/js/import-modal.js"></script>
+<script>
+    document.getElementById('btnExportAttendance')?.addEventListener('click', function() {
+        const departmentId = document.getElementById('deptFilter')?.value || '';
+        const status = document.getElementById('statusFilter')?.value || '';
+        const fromDate = document.getElementById('fromDate')?.value || '';
+        const toDate = document.getElementById('toDate')?.value || '';
+        const keyword = document.getElementById('keyword')?.value || '';
+
+        const params = new URLSearchParams();
+        if (departmentId) params.append('departmentId', departmentId);
+        if (status && status !== 'ALL') params.append('status', status);
+        if (fromDate) params.append('fromDate', fromDate);
+        if (toDate) params.append('toDate', toDate);
+        if (keyword) params.append('keyword', keyword);
+
+        window.location.href = '${pageContext.request.contextPath}/attendance/export?' + params.toString();
+    });
+
+    document.getElementById('btnImportAttendance')?.addEventListener('click', function() {
+        DataImporter.open('ATTENDANCE', {
+            onSuccess: function() {
+                if (typeof searchCompanyAttendance === 'function') {
+                    searchCompanyAttendance();
+                } else {
+                    location.reload();
+                }
+            }
+        });
+    });
+</script>
 <script src="${pageContext.request.contextPath}/js/organization-shell.js?v=<%= application.getResource("/js/organization-shell.js").openConnection().getLastModified() %>" defer></script>
 </body>
 </html>
