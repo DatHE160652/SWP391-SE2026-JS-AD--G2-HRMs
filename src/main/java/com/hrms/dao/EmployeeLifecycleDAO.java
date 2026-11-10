@@ -39,13 +39,34 @@ public class EmployeeLifecycleDAO {
 
     public List<Map<String,Object>> compensationHistory(Connection connection,int companyId,Integer employeeId) throws SQLException {
         return query(connection, """
-            SELECT CompensationHistoryId,BaseSalary,PositionAllowance,SourceContractId,
-                (SELECT c.ContractCode FROM EmploymentContracts c WHERE c.CompanyId=EmployeeCompensationHistories.CompanyId
-                    AND c.EmployeeId=EmployeeCompensationHistories.EmployeeId AND c.ContractId=SourceContractId) AS ContractCode,
-                TravelAllowance,EffectiveFrom,EffectiveTo,Reason,
-                CASE WHEN EffectiveTo=EffectiveFrom THEN 1 ELSE 0 END AS IsSuperseded,
-                CASE WHEN EffectiveFrom<=CONVERT(date,SYSDATETIME()) AND (EffectiveTo IS NULL OR EffectiveTo>CONVERT(date,SYSDATETIME())) THEN 1 ELSE 0 END AS IsCurrent
-            FROM EmployeeCompensationHistories WHERE CompanyId=? AND EmployeeId=? ORDER BY EffectiveFrom DESC
+            SELECT h.CompensationHistoryId,h.BaseSalary,h.PositionAllowance,h.SourceContractId,
+                c.ContractCode,
+                h.TravelAllowance,h.EffectiveFrom,
+                CASE
+                    WHEN c.Status='TERMINATED' AND c.TerminatedDate IS NOT NULL AND (h.EffectiveTo IS NULL OR h.EffectiveTo>c.TerminatedDate)
+                        THEN c.TerminatedDate
+                    WHEN c.EndDate IS NOT NULL AND (h.EffectiveTo IS NULL OR h.EffectiveTo>c.EndDate)
+                        THEN c.EndDate
+                    WHEN e.Status<>'Active' AND e.EndDate IS NOT NULL AND (h.EffectiveTo IS NULL OR h.EffectiveTo>e.EndDate)
+                        THEN e.EndDate
+                    ELSE h.EffectiveTo
+                END AS EffectiveTo,
+                h.Reason,
+                CASE WHEN h.EffectiveTo=h.EffectiveFrom THEN 1 ELSE 0 END AS IsSuperseded,
+                CASE
+                    WHEN e.Status='Active'
+                        AND h.EffectiveFrom<=CONVERT(date,SYSDATETIME())
+                        AND (h.EffectiveTo IS NULL OR h.EffectiveTo>CONVERT(date,SYSDATETIME()))
+                        AND c.Status='ACTIVE'
+                        AND c.StartDate<=CONVERT(date,SYSDATETIME())
+                        AND (c.EndDate IS NULL OR c.EndDate>=CONVERT(date,SYSDATETIME()))
+                    THEN 1 ELSE 0
+                END AS IsCurrent
+            FROM EmployeeCompensationHistories h
+            JOIN Employees e ON e.CompanyId=h.CompanyId AND e.EmployeeId=h.EmployeeId
+            LEFT JOIN EmploymentContracts c ON c.CompanyId=h.CompanyId AND c.EmployeeId=h.EmployeeId AND c.ContractId=h.SourceContractId
+            WHERE h.CompanyId=? AND h.EmployeeId=?
+            ORDER BY h.EffectiveFrom DESC,h.CompensationHistoryId DESC
             """, companyId, employeeId);
     }
 

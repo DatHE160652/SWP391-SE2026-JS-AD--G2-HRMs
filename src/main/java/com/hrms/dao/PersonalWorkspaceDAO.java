@@ -129,7 +129,9 @@ public class PersonalWorkspaceDAO {
     public List<Map<String,Object>> ownContracts(Connection connection,int companyId,int employeeId) throws SQLException {
         return dao.query(connection,"""
                 SELECT ContractId,ContractCode,ContractType,StartDate,EndDate,GrossSalary,TravelAllowance,
-                    CASE WHEN Status='ACTIVE' AND EndDate<CONVERT(date,SYSDATETIME()) THEN 'EXPIRED' ELSE Status END AS Status,
+                    CASE WHEN Status='ACTIVE' AND EndDate<CONVERT(date,SYSDATETIME()) THEN 'EXPIRED'
+                         WHEN Status='ACTIVE' AND StartDate>CONVERT(date,SYSDATETIME()) THEN 'SCHEDULED'
+                         ELSE Status END AS Status,
                     SignedDate,TerminatedDate,TerminationReason,Notes
                 FROM EmploymentContracts WHERE CompanyId=? AND EmployeeId=? AND Status IN ('ACTIVE','EXPIRED','TERMINATED')
                 ORDER BY StartDate DESC,ContractId DESC

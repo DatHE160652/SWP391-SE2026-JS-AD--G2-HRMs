@@ -20,7 +20,7 @@
         CREATE_EMPLOYEE:HrmI18n.t('Tạo hồ sơ nhân viên'), UPDATE_EMPLOYEE:HrmI18n.t('Cập nhật hồ sơ nhân viên'),
         ACTIVATE_EMPLOYEE:HrmI18n.t('Kích hoạt hồ sơ nhân viên'), DEACTIVATE_EMPLOYEE:HrmI18n.t('Ngừng hoạt động hồ sơ nhân viên'),
         SAVE_CONTRACT:HrmI18n.t('Lưu hợp đồng nháp'), RECORD_SIGNED_CONTRACT:HrmI18n.t('Ghi nhận hợp đồng đã ký'), ACTIVATE_CONTRACT:HrmI18n.t('Kích hoạt hợp đồng'), TERMINATE_CONTRACT:HrmI18n.t('Chấm dứt hợp đồng'),
-        CONTRACT_ACTIVATE:HrmI18n.t('Kích hoạt hợp đồng'), CONTRACT_COMPENSATION_SYNC:HrmI18n.t('Đồng bộ lương theo hợp đồng'),
+        CONTRACT_ACTIVATE:HrmI18n.t('Kích hoạt hợp đồng'), CONTRACT_CANCEL:HrmI18n.t('Hủy hợp đồng'), CONTRACT_TERMINATE:HrmI18n.t('Chấm dứt hợp đồng'), CONTRACT_COMPENSATION_SYNC:HrmI18n.t('Đồng bộ lương theo hợp đồng'), CONTRACT_COMPENSATION_REVERT:HrmI18n.t('Hoàn tác lương hợp đồng đã hủy'),
         PORTAL_CREATE:HrmI18n.t('Tạo tài khoản nhân viên'), PORTAL_ROLE:HrmI18n.t('Thay đổi vai trò tài khoản'), PORTAL_RESET:HrmI18n.t('Đặt lại mật khẩu'),
         PORTAL_LOCK:HrmI18n.t('Khóa tài khoản'), PORTAL_UNLOCK:HrmI18n.t('Mở khóa tài khoản'), PORTAL_REVOKE:HrmI18n.t('Thu hồi quyền truy cập'),
         UPLOAD_DOCUMENT:HrmI18n.t('Tải tài liệu lên'), ACTIVATE_DOCUMENT:HrmI18n.t('Kích hoạt tài liệu'), DEACTIVATE_DOCUMENT:HrmI18n.t('Lưu trữ tài liệu'),

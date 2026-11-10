@@ -86,6 +86,11 @@ public class TenantAuthorizationFilter implements Filter {
             return;
         }
 
+        if (path.equals("/notifications/api") || path.equals("/notifications/api/read")) {
+            new com.hrms.controller.WorkspaceNotificationController().service(httpRequest, httpResponse);
+            return;
+        }
+
         chain.doFilter(request, response);
     }
 
@@ -94,7 +99,8 @@ public class TenantAuthorizationFilter implements Filter {
     }
 
     private boolean isAllowed(HttpServletRequest request, TenantPrincipal principal) {
-        if (request.getServletPath().equals("/change-password") || request.getServletPath().startsWith("/leave/")) return true;
+        String reqPath = fullPath(request);
+        if (request.getServletPath().equals("/change-password") || request.getServletPath().startsWith("/leave/") || reqPath.startsWith("/notifications/")) return true;
         String role = role(principal);
         String payrollPath = fullPath(request);
         if (payrollPath.equals("/payroll") || payrollPath.startsWith("/payroll/")) {
@@ -234,8 +240,8 @@ public class TenantAuthorizationFilter implements Filter {
             "/comadmin-hr/reset-employee-password/reset");
 
     private boolean isTenantPath(String path) {
+        if (path.equals("/change-password") || path.startsWith("/leave/") || path.startsWith("/notifications/")) return true;
         if (RESET_ROUTES.contains(path)) return true;
-        if (path.equals("/change-password") || path.startsWith("/leave/")) return true;
         if (path.startsWith("/lifecycle/")) return true;
         if (path.startsWith("/responsibility-level/") || path.equals("/responsibility-levels") || path.startsWith("/responsibility-levels/")) return true;
         return path.equals("/payroll") || path.startsWith("/payroll/")
@@ -295,7 +301,7 @@ public class TenantAuthorizationFilter implements Filter {
 
     private boolean expectsJson(HttpServletRequest request) {
         if (RESET_ROUTES.contains(fullPath(request)) && !fullPath(request).equals("/comadmin-hr/reset-employee-password")) return true;
-        if (request.getServletPath().startsWith("/lifecycle/api/") || request.getServletPath().startsWith("/leave/api/")) return true;
+        if (request.getServletPath().startsWith("/lifecycle/api/") || request.getServletPath().startsWith("/leave/api/") || request.getServletPath().startsWith("/notifications/")) return true;
         if (request.getServletPath().equals("/responsibility-levels") || request.getServletPath().startsWith("/responsibility-levels/")) return true;
         String accept = request.getHeader("Accept");
         String path = fullPath(request);

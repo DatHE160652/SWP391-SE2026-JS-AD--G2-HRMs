@@ -568,6 +568,7 @@ public class GeneralExportExcelService {
         if (status == null) return "-";
         return switch (status.toUpperCase()) {
             case "DRAFT" -> "Bản nháp";
+            case "SCHEDULED" -> "Chờ hiệu lực";
             case "ACTIVE" -> "Có hiệu lực";
             case "EXPIRED" -> "Đã hết hạn";
             case "TERMINATED" -> "Đã chấm dứt";

@@ -805,6 +805,7 @@ CREATE TABLE EmployeeDocuments
     MimeType VARCHAR(100) NULL,
     FileSizeBytes BIGINT NULL,
     ContractId BIGINT NULL,
+    DocumentPeriodId BIGINT NULL,
 
     FOREIGN KEY(EmployeeId)
     REFERENCES Employees(EmployeeId)
@@ -1085,6 +1086,56 @@ PRIMARY KEY CLUSTERED
 (
     [PeriodId] ASC
 )
+);
+GO
+
+CREATE TABLE [dbo].[CompanyDocumentTypes](
+    [DocumentTypeId] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    [CompanyId] [int] NOT NULL,
+    [TypeName] [nvarchar](100) NOT NULL,
+    [IsActive] [bit] NOT NULL CONSTRAINT [DF_CompanyDocumentTypes_IsActive] DEFAULT ((1)),
+    [CreatedAt] [datetime2](7) NOT NULL CONSTRAINT [DF_CompanyDocumentTypes_CreatedAt] DEFAULT (sysutcdatetime()),
+    CONSTRAINT [FK_CompanyDocumentTypes_Companies] FOREIGN KEY ([CompanyId]) REFERENCES [dbo].[Companies]([CompanyId]),
+    CONSTRAINT [UQ_CompanyDocumentTypes_Company_Name] UNIQUE ([CompanyId], [TypeName])
+);
+GO
+
+CREATE TABLE [dbo].[DocumentUpdatePeriods](
+    [DocumentPeriodId] [bigint] IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    [CompanyId] [int] NOT NULL,
+    [Title] [nvarchar](150) NOT NULL,
+    [StartsAt] [datetime2](7) NOT NULL,
+    [EndsAt] [datetime2](7) NOT NULL,
+    [ScopeType] [varchar](20) NOT NULL CONSTRAINT [DF_DocumentUpdatePeriods_ScopeType] DEFAULT ('ALL'),
+    [ClosedAt] [datetime2](7) NULL,
+    [CreatedByUserId] [int] NOT NULL,
+    [CreatedAt] [datetime2](7) NOT NULL CONSTRAINT [DF_DocumentUpdatePeriods_CreatedAt] DEFAULT (sysutcdatetime()),
+    CONSTRAINT [FK_DocumentUpdatePeriods_Companies] FOREIGN KEY ([CompanyId]) REFERENCES [dbo].[Companies]([CompanyId]),
+    CONSTRAINT [FK_DocumentUpdatePeriods_Users] FOREIGN KEY ([CreatedByUserId]) REFERENCES [dbo].[Users]([UserId]),
+    CONSTRAINT [CK_DocumentUpdatePeriods_Dates] CHECK ([EndsAt] > [StartsAt]),
+    CONSTRAINT [CK_DocumentUpdatePeriods_Scope] CHECK ([ScopeType] IN ('ALL', 'SELECTED'))
+);
+GO
+
+CREATE TABLE [dbo].[DocumentUpdatePeriodTypes](
+    [DocumentPeriodId] [bigint] NOT NULL,
+    [DocumentTypeId] [int] NOT NULL,
+    CONSTRAINT [PK_DocumentUpdatePeriodTypes] PRIMARY KEY ([DocumentPeriodId], [DocumentTypeId]),
+    CONSTRAINT [FK_DocumentUpdatePeriodTypes_Period] FOREIGN KEY ([DocumentPeriodId])
+        REFERENCES [dbo].[DocumentUpdatePeriods]([DocumentPeriodId]) ON DELETE CASCADE,
+    CONSTRAINT [FK_DocumentUpdatePeriodTypes_Type] FOREIGN KEY ([DocumentTypeId])
+        REFERENCES [dbo].[CompanyDocumentTypes]([DocumentTypeId]) ON DELETE CASCADE
+);
+GO
+
+CREATE TABLE [dbo].[DocumentUpdatePeriodEmployees](
+    [DocumentPeriodId] [bigint] NOT NULL,
+    [EmployeeId] [int] NOT NULL,
+    CONSTRAINT [PK_DocumentUpdatePeriodEmployees] PRIMARY KEY ([DocumentPeriodId], [EmployeeId]),
+    CONSTRAINT [FK_DocumentUpdatePeriodEmployees_Period] FOREIGN KEY ([DocumentPeriodId])
+        REFERENCES [dbo].[DocumentUpdatePeriods]([DocumentPeriodId]) ON DELETE CASCADE,
+    CONSTRAINT [FK_DocumentUpdatePeriodEmployees_Employee] FOREIGN KEY ([EmployeeId])
+        REFERENCES [dbo].[Employees]([EmployeeId]) ON DELETE CASCADE
 );
 GO
 
@@ -1762,4 +1813,184 @@ BEGIN CATCH
     IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
     THROW;
 END CATCH;
+GO
+
+-- ========================================================================
+-- DocumentUpdatePeriods & ProfileUpdatePeriods Extensions
+-- ========================================================================
+IF COL_LENGTH('dbo.ProfileUpdatePeriods', 'ScopeType') IS NULL
+BEGIN
+    ALTER TABLE dbo.ProfileUpdatePeriods
+        ADD ScopeType VARCHAR(20) NOT NULL CONSTRAINT DF_ProfileUpdatePeriods_ScopeType DEFAULT ('ALL');
+END;
+GO
+
+IF OBJECT_ID('dbo.ProfileUpdatePeriodFields', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.ProfileUpdatePeriodFields (
+        PeriodId BIGINT NOT NULL,
+        FieldKey VARCHAR(50) NOT NULL,
+        CONSTRAINT PK_ProfileUpdatePeriodFields PRIMARY KEY (PeriodId, FieldKey),
+        CONSTRAINT FK_ProfileUpdatePeriodFields_Period FOREIGN KEY (PeriodId)
+            REFERENCES dbo.ProfileUpdatePeriods(PeriodId) ON DELETE CASCADE
+    );
+END;
+GO
+
+IF OBJECT_ID('dbo.ProfileUpdatePeriodEmployees', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.ProfileUpdatePeriodEmployees (
+        PeriodId BIGINT NOT NULL,
+        EmployeeId INT NOT NULL,
+        CONSTRAINT PK_ProfileUpdatePeriodEmployees PRIMARY KEY (PeriodId, EmployeeId),
+        CONSTRAINT FK_ProfileUpdatePeriodEmployees_Period FOREIGN KEY (PeriodId)
+            REFERENCES dbo.ProfileUpdatePeriods(PeriodId) ON DELETE CASCADE,
+        CONSTRAINT FK_ProfileUpdatePeriodEmployees_Employee FOREIGN KEY (EmployeeId)
+            REFERENCES dbo.Employees(EmployeeId) ON DELETE CASCADE
+    );
+END;
+GO
+
+IF OBJECT_ID('dbo.ProfileUpdatePeriodLogs', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.ProfileUpdatePeriodLogs (
+        LogId BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        PeriodId BIGINT NOT NULL,
+        CompanyId INT NOT NULL,
+        EmployeeId INT NOT NULL,
+        FieldKey VARCHAR(50) NOT NULL,
+        FieldLabel NVARCHAR(100) NOT NULL,
+        OldValue NVARCHAR(500) NULL,
+        NewValue NVARCHAR(500) NULL,
+        UpdatedAt DATETIME2(7) NOT NULL CONSTRAINT DF_ProfileUpdatePeriodLogs_UpdatedAt DEFAULT (SYSUTCDATETIME()),
+        CONSTRAINT FK_ProfileUpdatePeriodLogs_Period FOREIGN KEY (PeriodId)
+            REFERENCES dbo.ProfileUpdatePeriods(PeriodId) ON DELETE CASCADE,
+        CONSTRAINT FK_ProfileUpdatePeriodLogs_Employee FOREIGN KEY (EmployeeId)
+            REFERENCES dbo.Employees(EmployeeId) ON DELETE CASCADE
+    );
+    CREATE INDEX IX_ProfileUpdatePeriodLogs_Period
+        ON dbo.ProfileUpdatePeriodLogs(CompanyId, PeriodId, EmployeeId, UpdatedAt DESC);
+END;
+GO
+
+IF OBJECT_ID('dbo.CompanyDocumentTypes', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.CompanyDocumentTypes (
+        DocumentTypeId INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        CompanyId INT NOT NULL,
+        TypeName NVARCHAR(100) NOT NULL,
+        IsActive BIT NOT NULL CONSTRAINT DF_CompanyDocumentTypes_IsActive DEFAULT (1),
+        CreatedAt DATETIME2(7) NOT NULL CONSTRAINT DF_CompanyDocumentTypes_CreatedAt DEFAULT (SYSUTCDATETIME()),
+        CONSTRAINT FK_CompanyDocumentTypes_Companies FOREIGN KEY (CompanyId) REFERENCES dbo.Companies(CompanyId),
+        CONSTRAINT UQ_CompanyDocumentTypes_Company_Name UNIQUE (CompanyId, TypeName)
+    );
+END;
+GO
+
+IF OBJECT_ID('dbo.DocumentUpdatePeriods', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.DocumentUpdatePeriods (
+        DocumentPeriodId BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        CompanyId INT NOT NULL,
+        Title NVARCHAR(150) NOT NULL,
+        StartsAt DATETIME2(7) NOT NULL,
+        EndsAt DATETIME2(7) NOT NULL,
+        ScopeType VARCHAR(20) NOT NULL CONSTRAINT DF_DocumentUpdatePeriods_ScopeType DEFAULT ('ALL'),
+        ClosedAt DATETIME2(7) NULL,
+        CreatedByUserId INT NOT NULL,
+        CreatedAt DATETIME2(7) NOT NULL CONSTRAINT DF_DocumentUpdatePeriods_CreatedAt DEFAULT (SYSUTCDATETIME()),
+        CONSTRAINT FK_DocumentUpdatePeriods_Companies FOREIGN KEY (CompanyId) REFERENCES dbo.Companies(CompanyId),
+        CONSTRAINT FK_DocumentUpdatePeriods_Users FOREIGN KEY (CreatedByUserId) REFERENCES dbo.Users(UserId),
+        CONSTRAINT CK_DocumentUpdatePeriods_Dates CHECK (EndsAt > StartsAt),
+        CONSTRAINT CK_DocumentUpdatePeriods_Scope CHECK (ScopeType IN ('ALL', 'SELECTED'))
+    );
+    CREATE INDEX IX_DocumentUpdatePeriods_CompanyDates
+        ON dbo.DocumentUpdatePeriods(CompanyId, ClosedAt, StartsAt, EndsAt);
+END;
+GO
+
+IF OBJECT_ID('dbo.DocumentUpdatePeriodTypes', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.DocumentUpdatePeriodTypes (
+        DocumentPeriodId BIGINT NOT NULL,
+        DocumentTypeId INT NOT NULL,
+        CONSTRAINT PK_DocumentUpdatePeriodTypes PRIMARY KEY (DocumentPeriodId, DocumentTypeId),
+        CONSTRAINT FK_DocumentUpdatePeriodTypes_Period FOREIGN KEY (DocumentPeriodId)
+            REFERENCES dbo.DocumentUpdatePeriods(DocumentPeriodId) ON DELETE CASCADE,
+        CONSTRAINT FK_DocumentUpdatePeriodTypes_Type FOREIGN KEY (DocumentTypeId)
+            REFERENCES dbo.CompanyDocumentTypes(DocumentTypeId) ON DELETE CASCADE
+    );
+END;
+GO
+
+IF OBJECT_ID('dbo.DocumentUpdatePeriodEmployees', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.DocumentUpdatePeriodEmployees (
+        DocumentPeriodId BIGINT NOT NULL,
+        EmployeeId INT NOT NULL,
+        CONSTRAINT PK_DocumentUpdatePeriodEmployees PRIMARY KEY (DocumentPeriodId, EmployeeId),
+        CONSTRAINT FK_DocumentUpdatePeriodEmployees_Period FOREIGN KEY (DocumentPeriodId)
+            REFERENCES dbo.DocumentUpdatePeriods(DocumentPeriodId) ON DELETE CASCADE,
+        CONSTRAINT FK_DocumentUpdatePeriodEmployees_Employee FOREIGN KEY (EmployeeId)
+            REFERENCES dbo.Employees(EmployeeId) ON DELETE CASCADE
+    );
+END;
+GO
+
+IF COL_LENGTH('dbo.EmployeeDocuments', 'DocumentPeriodId') IS NULL
+BEGIN
+    ALTER TABLE dbo.EmployeeDocuments ADD DocumentPeriodId BIGINT NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.UserNotificationReads', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.UserNotificationReads (
+        CompanyId INT NOT NULL,
+        UserId INT NOT NULL,
+        NotificationKey VARCHAR(160) NOT NULL,
+        ReadAt DATETIME2(7) NOT NULL CONSTRAINT DF_UserNotificationReads_ReadAt DEFAULT (SYSUTCDATETIME()),
+        CONSTRAINT PK_UserNotificationReads PRIMARY KEY (CompanyId, UserId, NotificationKey)
+    );
+END;
+GO
+
+-- ========================================================================
+-- CẤU HÌNH CÔNG THỨC TÍNH LƯƠNG THEO CÔNG TY & CỘT CHI TIẾT PHIẾU LƯƠNG
+-- ========================================================================
+IF OBJECT_ID('dbo.CompanyPayrollSettings', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.CompanyPayrollSettings (
+        CompanyId INT NOT NULL PRIMARY KEY,
+        SalaryCalculationMode VARCHAR(25) NOT NULL CONSTRAINT DF_CompanyPayrollSettings_CalcMode DEFAULT ('WORKDAYS'),
+        StandardDaysMode VARCHAR(25) NOT NULL CONSTRAINT DF_CompanyPayrollSettings_StdMode DEFAULT ('MON_FRI'),
+        FixedStandardDays DECIMAL(5,2) NOT NULL CONSTRAINT DF_CompanyPayrollSettings_FixedDays DEFAULT (22.00),
+        WeekdayWeights VARCHAR(40) NOT NULL CONSTRAINT DF_CompanyPayrollSettings_WeekdayWeights DEFAULT ('1,1,1,1,1,0,0'),
+        IncludePaidLeave BIT NOT NULL CONSTRAINT DF_CompanyPayrollSettings_PaidLeave DEFAULT (1),
+        IncludeResponsibilityAllowance BIT NOT NULL CONSTRAINT DF_CompanyPayrollSettings_RespAllow DEFAULT (1),
+        IncludeTravelAllowance BIT NOT NULL CONSTRAINT DF_CompanyPayrollSettings_TravelAllow DEFAULT (1),
+        UpdatedAt DATETIME2(7) NOT NULL CONSTRAINT DF_CompanyPayrollSettings_UpdatedAt DEFAULT (SYSUTCDATETIME()),
+        UpdatedByUserId INT NULL,
+        CONSTRAINT FK_CompanyPayrollSettings_Companies FOREIGN KEY (CompanyId) REFERENCES dbo.Companies(CompanyId) ON DELETE CASCADE,
+        CONSTRAINT CK_CompanyPayrollSettings_CalcMode CHECK (SalaryCalculationMode IN ('WORKDAYS', 'FIXED_MONTHLY')),
+        CONSTRAINT CK_CompanyPayrollSettings_StdMode CHECK (StandardDaysMode IN ('MON_FRI', 'MON_SAT_HALF', 'MON_SAT', 'CUSTOM_WEEKDAYS', 'FIXED')),
+        CONSTRAINT CK_CompanyPayrollSettings_FixedDays CHECK (FixedStandardDays >= 1 AND FixedStandardDays <= 31)
+    );
+END;
+IF COL_LENGTH('dbo.CompanyPayrollSettings', 'WeekdayWeights') IS NULL
+BEGIN
+    ALTER TABLE dbo.CompanyPayrollSettings ADD WeekdayWeights VARCHAR(40) NOT NULL CONSTRAINT DF_CompanyPayrollSettings_WeekdayWeights DEFAULT ('1,1,1,1,1,0,0');
+END;
+GO
+
+IF COL_LENGTH('dbo.Payslips', 'ContractBaseSalary') IS NULL
+BEGIN
+    ALTER TABLE dbo.Payslips ADD
+        ContractBaseSalary DECIMAL(18, 2) NOT NULL CONSTRAINT DF_Payslips_ContractBase DEFAULT (0),
+        ActualWorkDays DECIMAL(5, 2) NOT NULL CONSTRAINT DF_Payslips_ActualDays DEFAULT (0),
+        StandardWorkDays DECIMAL(5, 2) NOT NULL CONSTRAINT DF_Payslips_StandardDays DEFAULT (22),
+        TravelAllowance DECIMAL(18, 2) NOT NULL CONSTRAINT DF_Payslips_TravelAllow DEFAULT (0);
+    ALTER TABLE dbo.Payslips DROP COLUMN NetSalary;
+    ALTER TABLE dbo.Payslips ADD NetSalary AS (BaseSalary + ResponsibilityAllowance + TravelAllowance + Bonus - Deduction);
+END;
 GO

@@ -11,7 +11,9 @@ import java.sql.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /** Every query is tenant-scoped. Writes are serialized per company and atomic. */
 public class PayrollDAO {
@@ -26,11 +28,151 @@ public class PayrollDAO {
 
     private static final String ELIGIBLE = PayrollSources.ELIGIBLE;
     private static final String SOURCES = PayrollSources.joins(PayrollSources.MONTH_END);
+    private static volatile boolean schemaEnsured = false;
+
+    private void ensureFormulaSchema(Connection c) throws SQLException {
+        if (schemaEnsured) return;
+        synchronized (PayrollDAO.class) {
+            if (schemaEnsured) return;
+            try (Statement s = c.createStatement()) {
+                s.execute("""
+                    IF OBJECT_ID('dbo.CompanyPayrollSettings', 'U') IS NULL
+                    BEGIN
+                        CREATE TABLE dbo.CompanyPayrollSettings (
+                            CompanyId INT NOT NULL PRIMARY KEY,
+                            SalaryCalculationMode VARCHAR(20) NOT NULL CONSTRAINT DF_CompanyPayrollSettings_Mode DEFAULT ('WORKDAYS'),
+                            StandardDaysMode VARCHAR(25) NOT NULL CONSTRAINT DF_CompanyPayrollSettings_StdMode DEFAULT ('MON_FRI'),
+                            FixedStandardDays DECIMAL(5,2) NOT NULL CONSTRAINT DF_CompanyPayrollSettings_FixedDays DEFAULT (22.00),
+                            WeekdayWeights VARCHAR(40) NOT NULL CONSTRAINT DF_CompanyPayrollSettings_WeekdayWeights DEFAULT ('1,1,1,1,1,0,0'),
+                            IncludePaidLeave BIT NOT NULL CONSTRAINT DF_CompanyPayrollSettings_PaidLeave DEFAULT (1),
+                            IncludeResponsibilityAllowance BIT NOT NULL CONSTRAINT DF_CompanyPayrollSettings_RespAllow DEFAULT (1),
+                            IncludeTravelAllowance BIT NOT NULL CONSTRAINT DF_CompanyPayrollSettings_TravelAllow DEFAULT (1),
+                            UpdatedAt DATETIME2 NOT NULL CONSTRAINT DF_CompanyPayrollSettings_UpdatedAt DEFAULT (SYSUTCDATETIME()),
+                            UpdatedByUserId INT NULL,
+                            CONSTRAINT FK_CompanyPayrollSettings_Companies FOREIGN KEY (CompanyId) REFERENCES dbo.Companies(CompanyId) ON DELETE CASCADE
+                        );
+                    END;
+                    IF COL_LENGTH('dbo.CompanyPayrollSettings', 'WeekdayWeights') IS NULL
+                        ALTER TABLE dbo.CompanyPayrollSettings ADD WeekdayWeights VARCHAR(40) NOT NULL CONSTRAINT DF_CompanyPayrollSettings_WeekdayWeights DEFAULT ('1,1,1,1,1,0,0');
+                    IF OBJECT_ID('dbo.CK_CompanyPayrollSettings_StdMode', 'C') IS NOT NULL
+                        ALTER TABLE dbo.CompanyPayrollSettings DROP CONSTRAINT CK_CompanyPayrollSettings_StdMode;
+                    IF COL_LENGTH('dbo.Payslips', 'ContractBaseSalary') IS NULL
+                        ALTER TABLE dbo.Payslips ADD ContractBaseSalary DECIMAL(18,2) NULL;
+                    IF COL_LENGTH('dbo.Payslips', 'ActualWorkDays') IS NULL
+                        ALTER TABLE dbo.Payslips ADD ActualWorkDays DECIMAL(5,2) NOT NULL CONSTRAINT DF_Payslips_ActualWorkDays DEFAULT (0.00);
+                    IF COL_LENGTH('dbo.Payslips', 'StandardWorkDays') IS NULL
+                        ALTER TABLE dbo.Payslips ADD StandardWorkDays DECIMAL(5,2) NOT NULL CONSTRAINT DF_Payslips_StandardWorkDays DEFAULT (22.00);
+                    IF COL_LENGTH('dbo.Payslips', 'TravelAllowance') IS NULL
+                        ALTER TABLE dbo.Payslips ADD TravelAllowance DECIMAL(18,2) NOT NULL CONSTRAINT DF_Payslips_TravelAllowance DEFAULT (0.00);
+                """);
+                s.execute("""
+                    CREATE OR ALTER VIEW dbo.vw_PayrollOperators
+                    AS
+                        SELECT u.UserId, u.CompanyId, r.RoleCode
+                        FROM dbo.Users u JOIN dbo.Roles r ON r.RoleId = u.RoleId
+                        WHERE u.CompanyId IS NOT NULL AND r.RoleCode IN ('MANAGER','COMPANY_ADMIN','HR')
+                            AND u.IsActive = 1 AND u.IsLocked = 0 AND u.MustChangePassword = 0
+                            AND (u.LockedUntil IS NULL OR u.LockedUntil <= SYSUTCDATETIME());
+                """);
+                try (ResultSet rs = s.executeQuery("SELECT definition FROM sys.computed_columns WHERE object_id = OBJECT_ID('dbo.Payslips') AND name = 'NetSalary'")) {
+                    if (rs.next()) {
+                        String def = rs.getString(1);
+                        if (def == null || !def.contains("TravelAllowance") || def.contains("Deduction")) {
+                            s.execute("ALTER TABLE dbo.Payslips DROP COLUMN NetSalary");
+                            s.execute("ALTER TABLE dbo.Payslips ADD NetSalary AS (BaseSalary + ResponsibilityAllowance + TravelAllowance + Bonus)");
+                        }
+                    }
+                }
+            }
+            schemaEnsured = true;
+        }
+    }
+
+    public PayrollFormulaSettings getFormulaSettings(int companyId) throws SQLException {
+        try (Connection c = connections.open()) {
+            ensureFormulaSchema(c);
+            try (PreparedStatement s = c.prepareStatement("""
+                SELECT SalaryCalculationMode, StandardDaysMode, FixedStandardDays, WeekdayWeights,
+                       IncludePaidLeave, IncludeResponsibilityAllowance, IncludeTravelAllowance
+                FROM dbo.CompanyPayrollSettings WHERE CompanyId=?
+                """)) {
+                s.setInt(1, companyId);
+                try (ResultSet r = s.executeQuery()) {
+                    if (!r.next()) return PayrollFormulaSettings.defaults(companyId);
+                    String stdMode = r.getString("StandardDaysMode");
+                    String weights = r.getString("WeekdayWeights");
+                    if (weights == null || weights.isBlank()) {
+                        weights = PayrollFormulaSettings.defaultWeightsForMode(stdMode);
+                    }
+                    return new PayrollFormulaSettings(
+                            companyId,
+                            r.getString("SalaryCalculationMode"),
+                            stdMode,
+                            r.getBigDecimal("FixedStandardDays"),
+                            weights,
+                            r.getBoolean("IncludePaidLeave"),
+                            r.getBoolean("IncludeResponsibilityAllowance"),
+                            r.getBoolean("IncludeTravelAllowance")
+                    );
+                }
+            }
+        }
+    }
+
+    public PayrollFormulaSettings saveFormulaSettings(int companyId, int userId, PayrollFormulaSettings settings) throws SQLException {
+        return write(companyId, userId, c -> {
+            ensureFormulaSchema(c);
+            try (PreparedStatement s = c.prepareStatement("""
+                MERGE dbo.CompanyPayrollSettings AS target
+                USING (SELECT ? AS CompanyId) AS source ON target.CompanyId = source.CompanyId
+                WHEN MATCHED THEN
+                    UPDATE SET SalaryCalculationMode=?, StandardDaysMode=?, FixedStandardDays=?, WeekdayWeights=?,
+                               IncludePaidLeave=?, IncludeResponsibilityAllowance=?, IncludeTravelAllowance=?,
+                               UpdatedAt=SYSUTCDATETIME(), UpdatedByUserId=?
+                WHEN NOT MATCHED THEN
+                    INSERT (CompanyId, SalaryCalculationMode, StandardDaysMode, FixedStandardDays, WeekdayWeights,
+                            IncludePaidLeave, IncludeResponsibilityAllowance, IncludeTravelAllowance, UpdatedByUserId)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """)) {
+                s.setInt(1, companyId);
+                s.setString(2, settings.salaryCalculationMode());
+                s.setString(3, settings.standardDaysMode());
+                s.setBigDecimal(4, settings.fixedStandardDays());
+                s.setString(5, settings.weekdayWeights());
+                s.setBoolean(6, settings.includePaidLeave());
+                s.setBoolean(7, settings.includeResponsibilityAllowance());
+                s.setBoolean(8, settings.includeTravelAllowance());
+                s.setInt(9, userId);
+                s.setInt(10, companyId);
+                s.setString(11, settings.salaryCalculationMode());
+                s.setString(12, settings.standardDaysMode());
+                s.setBigDecimal(13, settings.fixedStandardDays());
+                s.setString(14, settings.weekdayWeights());
+                s.setBoolean(15, settings.includePaidLeave());
+                s.setBoolean(16, settings.includeResponsibilityAllowance());
+                s.setBoolean(17, settings.includeTravelAllowance());
+                s.setInt(18, userId);
+                s.executeUpdate();
+            }
+            List<Integer> unapproved = new ArrayList<>();
+            try (PreparedStatement s = c.prepareStatement("""
+                SELECT PayrollPeriodId FROM PayrollPeriods
+                WHERE CompanyId=? AND Status IN ('Calculated','Reviewed') AND PublishedAt IS NULL
+                """)) {
+                s.setInt(1, companyId);
+                try (ResultSet r = s.executeQuery()) {
+                    while (r.next()) unapproved.add(r.getInt(1));
+                }
+            }
+            for (int pid : unapproved) invalidate(c, companyId, pid);
+            return settings;
+        });
+    }
 
     private static final String PERIOD_COLUMNS = """
         SELECT p.*, (SELECT COUNT(*) FROM Payslips s WHERE s.PayrollPeriodId=p.PayrollPeriodId) EmployeeCount,
             COALESCE((SELECT SUM(s.NetSalary) FROM Payslips s WHERE s.PayrollPeriodId=p.PayrollPeriodId),0) TotalNetSalary,
-            COALESCE((SELECT SUM(s.BaseSalary+s.ResponsibilityAllowance+s.Bonus) FROM Payslips s
+            COALESCE((SELECT SUM(s.BaseSalary+s.ResponsibilityAllowance+COALESCE(s.TravelAllowance,0)+s.Bonus) FROM Payslips s
                 WHERE s.PayrollPeriodId=p.PayrollPeriodId),0) TotalIncome,
             COALESCE((SELECT SUM(s.Deduction) FROM Payslips s WHERE s.PayrollPeriodId=p.PayrollPeriodId),0) TotalDeduction,
             (SELECT u.DisplayName FROM Users u WHERE u.UserId=p.ReviewedByUserId AND u.CompanyId=p.CompanyId) ReviewedByName,
@@ -42,24 +184,28 @@ public class PayrollDAO {
         """;
 
     public List<PayrollPeriod> periods(int companyId) throws SQLException {
-        try (Connection c = connections.open(); PreparedStatement s = c.prepareStatement(
-                PERIOD_SELECT + " ORDER BY p.Year DESC,p.Month DESC")) {
-            s.setInt(1, companyId);
-            try (ResultSet r = s.executeQuery()) {
-                List<PayrollPeriod> result = new ArrayList<>();
-                while (r.next()) result.add(period(r));
-                return result;
+        try (Connection c = connections.open()) {
+            ensureFormulaSchema(c);
+            try (PreparedStatement s = c.prepareStatement(PERIOD_SELECT + " ORDER BY p.Year DESC,p.Month DESC")) {
+                s.setInt(1, companyId);
+                try (ResultSet r = s.executeQuery()) {
+                    List<PayrollPeriod> result = new ArrayList<>();
+                    while (r.next()) result.add(period(r));
+                    return result;
+                }
             }
         }
     }
 
     public PayrollPeriod findPeriod(int companyId, int periodId) throws SQLException {
-        try (Connection c = connections.open(); PreparedStatement s = c.prepareStatement(
-                PERIOD_SELECT + " AND p.PayrollPeriodId=?")) {
-            s.setInt(1, companyId); s.setInt(2, periodId);
-            try (ResultSet r = s.executeQuery()) {
-                if (!r.next()) throw new PayrollException(404, "Không tìm thấy kỳ lương trong công ty của bạn.");
-                return period(r);
+        try (Connection c = connections.open()) {
+            ensureFormulaSchema(c);
+            try (PreparedStatement s = c.prepareStatement(PERIOD_SELECT + " AND p.PayrollPeriodId=?")) {
+                s.setInt(1, companyId); s.setInt(2, periodId);
+                try (ResultSet r = s.executeQuery()) {
+                    if (!r.next()) throw new PayrollException(404, "Không tìm thấy kỳ lương trong công ty của bạn.");
+                    return period(r);
+                }
             }
         }
     }
@@ -90,10 +236,19 @@ public class PayrollDAO {
     }
 
     public List<PayrollRow> salaries(int companyId) throws SQLException {
-        try (Connection c = connections.open(); PreparedStatement s = c.prepareStatement("""
-            SELECT e.EmployeeId,e.EmployeeCode,e.FullName,e.Status,compensation.BaseSalary,d.DepartmentName,
-            """ + PayrollSources.ALLOWANCE + " ResponsibilityAllowance," + PayrollSources.ISSUE + """
-                SalaryIssue,compensation.EffectiveFrom SalaryEffectiveFrom,compensation.EffectiveTo SalaryEffectiveTo,
+        try (Connection c = connections.open()) {
+            ensureFormulaSchema(c);
+            try (PreparedStatement s = c.prepareStatement("""
+            SELECT e.EmployeeId,e.EmployeeCode,e.FullName,e.Status,
+                CASE WHEN employment.PayrollDate IS NOT NULL THEN compensation.BaseSalary END BaseSalary,
+                CASE WHEN employment.PayrollDate IS NOT NULL THEN compensation.BaseSalary END ContractBaseSalary,
+                workMetrics.ActualWorkDays,workMetrics.StandardWorkDays,
+                CASE WHEN employment.PayrollDate IS NOT NULL THEN COALESCE(compensation.TravelAllowance, CAST(0 AS DECIMAL(18,2))) END TravelAllowance,
+                d.DepartmentName,
+                allowance.Amount ResponsibilityAllowance,""" + PayrollSources.ISSUE + """
+                SalaryIssue,
+                CASE WHEN employment.PayrollDate IS NOT NULL THEN compensation.EffectiveFrom END SalaryEffectiveFrom,
+                CASE WHEN employment.PayrollDate IS NOT NULL THEN compensation.EffectiveTo END SalaryEffectiveTo,
                 CAST(0 AS DECIMAL(18,2)) Bonus,CAST(0 AS DECIMAL(18,2)) Deduction,
                 CAST(NULL AS DECIMAL(20,2)) NetSalary,CAST(NULL AS NVARCHAR(300)) Note,
                 CAST(NULL AS BIGINT) PayslipId
@@ -102,8 +257,9 @@ public class PayrollDAO {
             """ + PayrollSources.joins("CONVERT(date,SYSDATETIME())",true,false) + """
             WHERE e.CompanyId=? ORDER BY e.EmployeeCode
             """)) {
-            s.setInt(1, companyId);
-            return rows(s);
+                s.setInt(1, companyId);
+                return rows(s);
+            }
         }
     }
 
@@ -120,8 +276,13 @@ public class PayrollDAO {
         findPeriod(companyId, periodId);
         try (Connection c = connections.open(); PreparedStatement s = c.prepareStatement("""
             SELECT e.EmployeeId,e.EmployeeCode,e.FullName,e.Status,d.DepartmentName,
-                COALESCE(s.BaseSalary,compensation.BaseSalary) BaseSalary,
+            """ + (adjustments ? "COALESCE(s.ContractBaseSalary,compensation.BaseSalary) BaseSalary,"
+                    : "COALESCE(s.BaseSalary," + PayrollSources.PRORATED_BASE + ") BaseSalary,") + """
+                COALESCE(s.ContractBaseSalary,compensation.BaseSalary) ContractBaseSalary,
+                COALESCE(s.ActualWorkDays,workMetrics.ActualWorkDays) ActualWorkDays,
+                COALESCE(s.StandardWorkDays,workMetrics.StandardWorkDays) StandardWorkDays,
             """ + "COALESCE(s.ResponsibilityAllowance," + PayrollSources.ALLOWANCE + ") ResponsibilityAllowance,"
+                + "COALESCE(s.TravelAllowance," + PayrollSources.TRAVEL_ALLOWANCE + ") TravelAllowance,"
                 + "CASE WHEN s.PayslipId IS NULL THEN " + PayrollSources.ISSUE + " END SalaryIssue," + """
                 compensation.EffectiveFrom SalaryEffectiveFrom,compensation.EffectiveTo SalaryEffectiveTo,
             """ + (adjustments?"COALESCE(a.Bonus,0) Bonus,COALESCE(a.Deduction,0) Deduction,":
@@ -207,9 +368,266 @@ public class PayrollDAO {
         });
     }
 
+    public int importPayroll(int companyId, int userId, int periodId,
+                             List<PayrollImportInput> input) throws SQLException {
+        return write(companyId, userId, c -> {
+            ensureFormulaSchema(c);
+            PayrollPeriod before = lockPeriod(c, companyId, periodId);
+            editable(before);
+
+            List<Integer> ids = new ArrayList<>();
+            List<String> errors = new ArrayList<>();
+            for (PayrollImportInput row : input) {
+                try (PreparedStatement s = c.prepareStatement("""
+                    SELECT e.EmployeeId FROM Employees e
+                    WHERE e.CompanyId=? AND e.EmployeeCode=?
+                    """)) {
+                    s.setInt(1, companyId); s.setString(2, row.employeeCode());
+                    try (ResultSet r = s.executeQuery()) {
+                        if (r.next()) ids.add(r.getInt(1));
+                        else {
+                            ids.add(null);
+                            errors.add("Dòng " + row.rowNumber() + ": mã " + row.employeeCode() + " không thuộc công ty của bạn.");
+                        }
+                    }
+                }
+            }
+            if (!errors.isEmpty()) throw new PayrollException(400, "Chưa nhập dữ liệu. Hãy sửa các dòng lỗi.", errors);
+
+            // Xóa kết quả tính cũ của kỳ lương này
+            invalidate(c, companyId, periodId);
+
+            // Chèn bảng lương mới vào Payslips
+            try (PreparedStatement s = c.prepareStatement("""
+                INSERT INTO Payslips(PayrollPeriodId,EmployeeId,BaseSalary,ContractBaseSalary,ActualWorkDays,StandardWorkDays,ResponsibilityAllowance,TravelAllowance,Bonus,Deduction)
+                VALUES(?,?,?,?,?,?,?,?,?,0.00)
+                """)) {
+                for (int i = 0; i < input.size(); i++) {
+                    PayrollImportInput row = input.get(i);
+                    s.setInt(1, periodId);
+                    s.setInt(2, ids.get(i));
+                    s.setBigDecimal(3, row.baseSalary() == null ? BigDecimal.ZERO : row.baseSalary());
+                    s.setBigDecimal(4, row.contractBaseSalary() == null ? BigDecimal.ZERO : row.contractBaseSalary());
+                    s.setBigDecimal(5, row.actualWorkDays() == null ? BigDecimal.ZERO : row.actualWorkDays());
+                    s.setBigDecimal(6, row.standardWorkDays() == null ? new BigDecimal("26.00") : row.standardWorkDays());
+                    s.setBigDecimal(7, row.responsibilityAllowance() == null ? BigDecimal.ZERO : row.responsibilityAllowance());
+                    s.setBigDecimal(8, row.travelAllowance() == null ? BigDecimal.ZERO : row.travelAllowance());
+                    s.setBigDecimal(9, row.bonus() == null ? BigDecimal.ZERO : row.bonus());
+                    s.addBatch();
+                }
+                s.executeBatch();
+            }
+
+            // Đồng bộ thưởng và ghi chú vào PayrollAdjustments
+            for (int i = 0; i < input.size(); i++) {
+                PayrollImportInput row = input.get(i);
+                upsertAdjustment(c, userId, periodId, ids.get(i),
+                        row.bonus() == null ? BigDecimal.ZERO : row.bonus(),
+                        BigDecimal.ZERO,
+                        row.note());
+            }
+
+            // Đưa trạng thái kỳ lương sang Calculated để HR rà soát và phê duyệt
+            execute(c, "UPDATE PayrollPeriods SET Status='Calculated', ReviewedAt=NULL, ReviewedByUserId=NULL, ApprovedAt=NULL, ApprovedByUserId=NULL WHERE CompanyId=? AND PayrollPeriodId=?", companyId, periodId);
+            auditPeriod(c, companyId, userId, periodId, "PAYROLL_IMPORTED_EXCEL", before);
+            return input.size();
+        });
+    }
+
+    public java.util.Map<String, Object> applyBonusCampaign(int companyId, int userId, int periodId,
+                                                            String campaignName, String calcType,
+                                                            BigDecimal monthsMultiplier, boolean prorateByTenure,
+                                                            BigDecimal fixedAmount, String applyMode) throws SQLException {
+        return write(companyId, userId, c -> {
+            PayrollPeriod period = lockPeriod(c, companyId, periodId);
+            editable(period);
+            int year = period.getYear();
+            int count = 0;
+            BigDecimal totalBonus = BigDecimal.ZERO;
+            boolean changed = false;
+
+            try (PreparedStatement s = c.prepareStatement("""
+                SELECT e.EmployeeId, e.EmployeeCode, e.FullName,
+                       COALESCE(contract.GrossSalary, compensation.BaseSalary) AS ContractBaseSalary,
+                       COALESCE(contract.StartDate, CAST(e.CreatedAt AS DATE)) AS EmployeeStartDate,
+                       COALESCE(adj.Bonus, 0) AS CurrentBonus,
+                       adj.Note AS CurrentNote
+                FROM dbo.Employees e
+                CROSS JOIN (SELECT p.PayrollPeriodId, p.Year, p.Month FROM dbo.PayrollPeriods p WHERE p.CompanyId = ? AND p.PayrollPeriodId = ?) p
+                OUTER APPLY (
+                    SELECT TOP 1 c.GrossSalary, c.StartDate
+                    FROM dbo.EmploymentContracts c
+                    WHERE c.CompanyId = e.CompanyId AND c.EmployeeId = e.EmployeeId
+                      AND c.Status IN ('ACTIVE', 'EXPIRED', 'TERMINATED')
+                      AND c.StartDate <= EOMONTH(DATEFROMPARTS(p.Year, p.Month, 1))
+                      AND (c.EndDate IS NULL OR c.EndDate >= DATEFROMPARTS(p.Year, p.Month, 1))
+                    ORDER BY c.StartDate DESC
+                ) contract
+                OUTER APPLY (
+                    SELECT TOP 1 h.BaseSalary
+                    FROM dbo.EmployeeCompensationHistories h
+                    WHERE h.CompanyId = e.CompanyId AND h.EmployeeId = e.EmployeeId
+                      AND h.EffectiveFrom <= EOMONTH(DATEFROMPARTS(p.Year, p.Month, 1))
+                      AND (h.EffectiveTo IS NULL OR h.EffectiveTo > DATEFROMPARTS(p.Year, p.Month, 1))
+                    ORDER BY h.EffectiveFrom DESC
+                ) compensation
+                LEFT JOIN dbo.PayrollAdjustments adj ON adj.PayrollPeriodId = p.PayrollPeriodId AND adj.EmployeeId = e.EmployeeId
+                WHERE e.CompanyId = ? AND e.Status IN ('Active', 'On Leave', 'Inactive')
+                ORDER BY e.EmployeeCode
+            """)) {
+                s.setInt(1, companyId);
+                s.setInt(2, periodId);
+                s.setInt(3, companyId);
+                try (ResultSet r = s.executeQuery()) {
+                    while (r.next()) {
+                        int empId = r.getInt("EmployeeId");
+                        BigDecimal base = r.getBigDecimal("ContractBaseSalary");
+                        BigDecimal bonusAmt = BigDecimal.ZERO;
+                        String noteText;
+
+                        if ("CONTRACT_SALARY".equalsIgnoreCase(calcType)) {
+                            if (base == null || base.compareTo(BigDecimal.ZERO) <= 0) {
+                                continue;
+                            }
+                            if (prorateByTenure) {
+                                Date startSql = r.getDate("EmployeeStartDate");
+                                LocalDate startDate = startSql != null ? startSql.toLocalDate() : LocalDate.of(year, 1, 1);
+                                int monthsWorked;
+                                if (startDate.getYear() < year) {
+                                    monthsWorked = 12;
+                                } else if (startDate.getYear() == year) {
+                                    int m = startDate.getMonthValue();
+                                    monthsWorked = 12 - m + (startDate.getDayOfMonth() <= 15 ? 1 : 0);
+                                    monthsWorked = Math.max(1, Math.min(12, monthsWorked));
+                                } else {
+                                    monthsWorked = 0;
+                                }
+                                bonusAmt = base.multiply(monthsMultiplier)
+                                        .multiply(BigDecimal.valueOf(monthsWorked))
+                                        .divide(BigDecimal.valueOf(12), 0, java.math.RoundingMode.HALF_UP);
+                                noteText = campaignName + " (" + monthsMultiplier.stripTrailingZeros().toPlainString() + " tháng lương - làm " + monthsWorked + "/12 tháng năm " + year + ")";
+                            } else {
+                                bonusAmt = base.multiply(monthsMultiplier).setScale(0, java.math.RoundingMode.HALF_UP);
+                                noteText = campaignName + " (" + monthsMultiplier.stripTrailingZeros().toPlainString() + " tháng lương)";
+                            }
+                        } else {
+                            bonusAmt = fixedAmount != null ? fixedAmount.setScale(0, java.math.RoundingMode.HALF_UP) : BigDecimal.ZERO;
+                            noteText = campaignName;
+                        }
+
+                        BigDecimal currentBonus = r.getBigDecimal("CurrentBonus") != null ? r.getBigDecimal("CurrentBonus") : BigDecimal.ZERO;
+                        String currentNote = r.getString("CurrentNote");
+                        BigDecimal finalBonus;
+                        String finalNote;
+
+                        if ("ADD".equalsIgnoreCase(applyMode)) {
+                            finalBonus = currentBonus.add(bonusAmt);
+                            finalNote = (currentNote == null || currentNote.isBlank()) ? noteText : (currentNote + "; " + noteText);
+                        } else {
+                            finalBonus = bonusAmt;
+                            finalNote = noteText;
+                        }
+                        if (finalNote.length() > 300) finalNote = finalNote.substring(0, 300);
+
+                        boolean empChanged = upsertAdjustment(c, userId, periodId, empId, finalBonus, BigDecimal.ZERO, finalNote);
+                        if (empChanged) changed = true;
+                        count++;
+                        totalBonus = totalBonus.add(finalBonus);
+                    }
+                }
+            }
+            if (changed) invalidate(c, companyId, periodId);
+            return java.util.Map.of("employeeCount", count, "totalBonus", totalBonus);
+        });
+    }
+
+    public List<Map<String, Object>> bonusCandidates(int companyId, int periodId) throws SQLException {
+        try (Connection c = connections.open();
+             PreparedStatement s = c.prepareStatement("""
+                SELECT e.EmployeeId, e.EmployeeCode, e.FullName, d.DepartmentName,
+                       COALESCE(contract.GrossSalary, compensation.BaseSalary) AS ContractBaseSalary,
+                       COALESCE(contract.StartDate, CAST(e.CreatedAt AS DATE)) AS EmployeeStartDate,
+                       COALESCE(adj.Bonus, 0) AS CurrentBonus,
+                       adj.Note AS CurrentNote
+                FROM dbo.Employees e
+                CROSS JOIN (SELECT p.PayrollPeriodId, p.Year, p.Month FROM dbo.PayrollPeriods p WHERE p.CompanyId = ? AND p.PayrollPeriodId = ?) p
+                LEFT JOIN dbo.Departments d ON d.DepartmentId = e.DepartmentId AND d.CompanyId = e.CompanyId
+                OUTER APPLY (
+                    SELECT TOP 1 c.GrossSalary, c.StartDate
+                    FROM dbo.EmploymentContracts c
+                    WHERE c.CompanyId = e.CompanyId AND c.EmployeeId = e.EmployeeId
+                      AND c.Status IN ('ACTIVE', 'EXPIRED', 'TERMINATED')
+                      AND c.StartDate <= EOMONTH(DATEFROMPARTS(p.Year, p.Month, 1))
+                      AND (c.EndDate IS NULL OR c.EndDate >= DATEFROMPARTS(p.Year, p.Month, 1))
+                    ORDER BY c.StartDate DESC
+                ) contract
+                OUTER APPLY (
+                    SELECT TOP 1 h.BaseSalary
+                    FROM dbo.EmployeeCompensationHistories h
+                    WHERE h.CompanyId = e.CompanyId AND h.EmployeeId = e.EmployeeId
+                      AND h.EffectiveFrom <= EOMONTH(DATEFROMPARTS(p.Year, p.Month, 1))
+                      AND (h.EffectiveTo IS NULL OR h.EffectiveTo > DATEFROMPARTS(p.Year, p.Month, 1))
+                    ORDER BY h.EffectiveFrom DESC
+                ) compensation
+                LEFT JOIN dbo.PayrollAdjustments adj ON adj.PayrollPeriodId = p.PayrollPeriodId AND adj.EmployeeId = e.EmployeeId
+                WHERE e.CompanyId = ? AND e.Status IN ('Active', 'On Leave', 'Inactive')
+                ORDER BY e.EmployeeCode
+             """)) {
+            s.setInt(1, companyId);
+            s.setInt(2, periodId);
+            s.setInt(3, companyId);
+            List<Map<String, Object>> list = new ArrayList<>();
+            try (ResultSet r = s.executeQuery()) {
+                while (r.next()) {
+                    Map<String, Object> map = new LinkedHashMap<>();
+                    map.put("employeeId", r.getInt("EmployeeId"));
+                    map.put("employeeCode", r.getString("EmployeeCode"));
+                    map.put("fullName", r.getString("FullName"));
+                    map.put("departmentName", r.getString("DepartmentName"));
+                    BigDecimal contractBase = r.getBigDecimal("ContractBaseSalary");
+                    map.put("contractBaseSalary", contractBase == null ? null : contractBase.toPlainString());
+                    Date startDate = r.getDate("EmployeeStartDate");
+                    map.put("startDate", startDate == null ? null : startDate.toString());
+                    BigDecimal curBonus = r.getBigDecimal("CurrentBonus");
+                    map.put("currentBonus", curBonus == null ? "0.00" : curBonus.toPlainString());
+                    map.put("currentNote", r.getString("CurrentNote"));
+                    list.add(map);
+                }
+            }
+            return list;
+        }
+    }
+
+    public Map<String, Object> saveBonusAdjustments(int companyId, int userId, int periodId,
+                                                    int[] employeeIds, BigDecimal[] bonuses, String[] notes) throws SQLException {
+        return write(companyId, userId, c -> {
+            PayrollPeriod period = lockPeriod(c, companyId, periodId);
+            editable(period);
+            int count = 0;
+            BigDecimal totalBonus = BigDecimal.ZERO;
+            boolean changed = false;
+            for (int i = 0; i < employeeIds.length; i++) {
+                int empId = employeeIds[i];
+                BigDecimal bonus = bonuses[i] == null ? BigDecimal.ZERO : bonuses[i].setScale(2, java.math.RoundingMode.HALF_UP);
+                String note = (notes != null && i < notes.length) ? notes[i] : null;
+                if (note != null && note.length() > 300) note = note.substring(0, 300);
+                boolean empChanged = upsertAdjustment(c, userId, periodId, empId, bonus, BigDecimal.ZERO, note);
+                if (empChanged) changed = true;
+                if (bonus.compareTo(BigDecimal.ZERO) > 0) count++;
+                totalBonus = totalBonus.add(bonus);
+            }
+            if (changed) invalidate(c, companyId, periodId);
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("employeeCount", count);
+            result.put("totalBonus", totalBonus.setScale(0, java.math.RoundingMode.HALF_UP));
+            return result;
+        });
+    }
+
     /** A consistent, read-only preview. No payslip, status or adjustment is written. */
     public PayrollCalculation preview(int companyId,int periodId) throws SQLException {
         try (Connection c=connections.open()) {
+            ensureFormulaSchema(c);
             c.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
             c.setAutoCommit(false);
             try {
@@ -238,12 +656,20 @@ public class PayrollDAO {
             invalidate(c, companyId, periodId);
             // NetSalary is deliberately omitted: SQL Server computes it (PAY-BR-16).
             try (PreparedStatement s = c.prepareStatement("""
-                INSERT INTO Payslips(PayrollPeriodId,EmployeeId,BaseSalary,ResponsibilityAllowance,Bonus,Deduction)
-                VALUES(?,?,?,?,?,?)
+                INSERT INTO Payslips(PayrollPeriodId,EmployeeId,BaseSalary,ContractBaseSalary,ActualWorkDays,StandardWorkDays,ResponsibilityAllowance,TravelAllowance,Bonus,Deduction)
+                VALUES(?,?,?,?,?,?,?,?,?,?)
                 """)) {
                 for (PayrollRow row:result.rows()) {
-                    s.setInt(1,periodId);s.setInt(2,row.employeeId());s.setBigDecimal(3,row.baseSalary());
-                    s.setBigDecimal(4,row.responsibilityAllowance());s.setBigDecimal(5,row.bonus());s.setBigDecimal(6,row.deduction());
+                    s.setInt(1,periodId);
+                    s.setInt(2,row.employeeId());
+                    s.setBigDecimal(3,row.baseSalary());
+                    s.setBigDecimal(4,row.contractBaseSalary()==null?row.baseSalary():row.contractBaseSalary());
+                    s.setBigDecimal(5,row.actualWorkDays()==null?BigDecimal.ZERO:row.actualWorkDays());
+                    s.setBigDecimal(6,row.standardWorkDays()==null?new BigDecimal("22.00"):row.standardWorkDays());
+                    s.setBigDecimal(7,row.responsibilityAllowance());
+                    s.setBigDecimal(8,row.travelAllowance()==null?BigDecimal.ZERO:row.travelAllowance());
+                    s.setBigDecimal(9,row.bonus());
+                    s.setBigDecimal(10,row.deduction());
                     s.addBatch();
                 }
                 s.executeBatch();
@@ -343,27 +769,33 @@ public class PayrollDAO {
     }
 
     public List<PayrollSlipView> ownPayslips(int companyId, int employeeId) throws SQLException {
-        try (Connection c = connections.open(); PreparedStatement s = c.prepareStatement(SLIP_SELECT + """
+        try (Connection c = connections.open()) {
+            ensureFormulaSchema(c);
+            try (PreparedStatement s = c.prepareStatement(SLIP_SELECT + """
             WHERE p.CompanyId=? AND e.EmployeeId=? AND p.PublishedAt IS NOT NULL AND p.Status='Approved'
             ORDER BY p.Year DESC,p.Month DESC
             """)) {
-            s.setInt(1, companyId); s.setInt(2, employeeId);
-            try (ResultSet r = s.executeQuery()) {
-                List<PayrollSlipView> result = new ArrayList<>();
-                while (r.next()) result.add(slip(r));
-                return result;
+                s.setInt(1, companyId); s.setInt(2, employeeId);
+                try (ResultSet r = s.executeQuery()) {
+                    List<PayrollSlipView> result = new ArrayList<>();
+                    while (r.next()) result.add(slip(r));
+                    return result;
+                }
             }
         }
     }
 
     public PayrollSlipView payslip(int companyId, Integer employeeId, long id) throws SQLException {
         String restriction = employeeId == null ? "" : " AND e.EmployeeId=? AND p.PublishedAt IS NOT NULL AND p.Status='Approved'";
-        try (Connection c = connections.open(); PreparedStatement s = c.prepareStatement(SLIP_SELECT
+        try (Connection c = connections.open()) {
+            ensureFormulaSchema(c);
+            try (PreparedStatement s = c.prepareStatement(SLIP_SELECT
                 + " WHERE p.CompanyId=? AND s.PayslipId=?" + restriction)) {
-            s.setInt(1, companyId); s.setLong(2, id); if (employeeId != null) s.setInt(3, employeeId);
-            try (ResultSet r = s.executeQuery()) {
-                if (!r.next()) throw new PayrollException(404, "Không tìm thấy phiếu lương.");
-                return slip(r);
+                s.setInt(1, companyId); s.setLong(2, id); if (employeeId != null) s.setInt(3, employeeId);
+                try (ResultSet r = s.executeQuery()) {
+                    if (!r.next()) throw new PayrollException(404, "Không tìm thấy phiếu lương.");
+                    return slip(r);
+                }
             }
         }
     }
@@ -403,6 +835,7 @@ public class PayrollDAO {
 
     private <T> T write(int companyId, int userId, Work<T> work) throws SQLException {
         try (Connection c = connections.open()) {
+            ensureFormulaSchema(c);
             try (Statement options = c.createStatement()) {
                 options.execute("SET ANSI_NULLS ON; SET QUOTED_IDENTIFIER ON; SET ANSI_PADDING ON; SET ANSI_WARNINGS ON; "
                         + "SET ARITHABORT ON; SET CONCAT_NULL_YIELDS_NULL ON; SET NUMERIC_ROUNDABORT OFF;");
@@ -448,30 +881,23 @@ public class PayrollDAO {
     }
 
     private void requireCurrentSnapshots(Connection c, int companyId, int periodId) throws SQLException {
-        PayrollCalculation expected=calculation(c,companyId,periodId);
-        java.util.Map<Integer,PayrollRow> remaining=new java.util.HashMap<>();
-        for (PayrollRow row:expected.rows()) remaining.put(row.employeeId(),row);
-        // Read every saved slip, including any invalid legacy/foreign employee reference.
-        // Serializable source and slip reads are held until the state and audit commit.
-        try (PreparedStatement s=c.prepareStatement("""
-            SELECT s.EmployeeId,s.BaseSalary,s.ResponsibilityAllowance,s.Bonus,s.Deduction,s.NetSalary
+        try (PreparedStatement s = c.prepareStatement("""
+            SELECT COUNT(*) SlipCount,
+                   COALESCE(MIN(s.BaseSalary), 0) MinBase,
+                   COALESCE(MIN(s.NetSalary), 0) MinNet
             FROM Payslips s JOIN PayrollPeriods p ON p.PayrollPeriodId=s.PayrollPeriodId
             WHERE p.CompanyId=? AND p.PayrollPeriodId=?
             """)) {
-            s.setInt(1,companyId);s.setInt(2,periodId);
-            try(ResultSet r=s.executeQuery()) {
-                while(r.next()) {
-                    PayrollRow row=remaining.remove(r.getInt("EmployeeId"));
-                    if (row==null || !sameMoney(row.baseSalary(),r.getBigDecimal("BaseSalary"))
-                            || !sameMoney(row.responsibilityAllowance(),r.getBigDecimal("ResponsibilityAllowance"))
-                            || !sameMoney(row.bonus(),r.getBigDecimal("Bonus"))
-                            || !sameMoney(row.deduction(),r.getBigDecimal("Deduction"))
-                            || !sameMoney(row.netSalary(),r.getBigDecimal("NetSalary")))
-                        throw staleSnapshots();
+            s.setInt(1, companyId); s.setInt(2, periodId);
+            try (ResultSet r = s.executeQuery()) {
+                if (!r.next() || r.getInt("SlipCount") == 0) {
+                    throw new PayrollException(409, "Kỳ lương chưa có dữ liệu bảng lương đã tính. Hãy tính lương hoặc nhập Excel trước khi rà soát và duyệt.");
+                }
+                if (r.getBigDecimal("MinBase").compareTo(BigDecimal.ZERO) < 0 || r.getBigDecimal("MinNet").compareTo(BigDecimal.ZERO) < 0) {
+                    throw new PayrollException(409, "Kết quả tính lương chứa mức lương không hợp lệ. Hãy kiểm tra lại bảng lương.");
                 }
             }
         }
-        if (!remaining.isEmpty()) throw staleSnapshots();
     }
 
     private boolean sameMoney(BigDecimal expected,BigDecimal actual) {
@@ -496,8 +922,13 @@ public class PayrollDAO {
     private PayrollCalculation calculation(Connection c,int companyId,int periodId) throws SQLException {
         try (PreparedStatement s=c.prepareStatement("""
             SELECT e.EmployeeId,e.EmployeeCode,e.FullName,e.Status,d.DepartmentName,
-                compensation.BaseSalary,compensation.EffectiveFrom SalaryEffectiveFrom,compensation.EffectiveTo SalaryEffectiveTo,
-                allowance.Amount ResponsibilityAllowance,COALESCE(a.Bonus,0) Bonus,COALESCE(a.Deduction,0) Deduction,
+            """ + PayrollSources.PRORATED_BASE + """
+                BaseSalary,compensation.BaseSalary ContractBaseSalary,
+                workMetrics.ActualWorkDays,workMetrics.StandardWorkDays,
+                compensation.EffectiveFrom SalaryEffectiveFrom,compensation.EffectiveTo SalaryEffectiveTo,
+            """ + PayrollSources.ALLOWANCE + " ResponsibilityAllowance,"
+                + PayrollSources.TRAVEL_ALLOWANCE + " TravelAllowance," + """
+                COALESCE(a.Bonus,0) Bonus,COALESCE(a.Deduction,0) Deduction,
                 CAST(NULL AS DECIMAL(21,2)) NetSalary,CAST(NULL AS BIGINT) PayslipId,a.Note,
             """ + PayrollSources.ISSUE + """
                 SalaryIssue FROM PayrollPeriods p JOIN Employees e ON e.CompanyId=p.CompanyId
@@ -577,7 +1008,8 @@ public class PayrollDAO {
             while(r.next()) result.add(new PayrollRow(r.getInt("EmployeeId"),r.getString("EmployeeCode"),r.getString("FullName"),
                     r.getString("DepartmentName"),r.getString("Status"),r.getBigDecimal("BaseSalary"),r.getBigDecimal("Bonus"),
                     r.getBigDecimal("Deduction"),r.getBigDecimal("NetSalary"),r.getString("Note"),(Long)r.getObject("PayslipId"),
-                    r.getBigDecimal("ResponsibilityAllowance"),r.getString("SalaryIssue"),date(r,"SalaryEffectiveFrom"),date(r,"SalaryEffectiveTo")));
+                    r.getBigDecimal("ResponsibilityAllowance"),r.getString("SalaryIssue"),date(r,"SalaryEffectiveFrom"),date(r,"SalaryEffectiveTo"),
+                    r.getBigDecimal("ContractBaseSalary"),r.getBigDecimal("ActualWorkDays"),r.getBigDecimal("StandardWorkDays"),r.getBigDecimal("TravelAllowance")));
             return result;
         }
     }
@@ -596,11 +1028,16 @@ public class PayrollDAO {
     }
 
     private PayrollSlipView slip(ResultSet r) throws SQLException {
+        BigDecimal baseSalary = r.getBigDecimal("BaseSalary");
+        BigDecimal contractBase = r.getBigDecimal("ContractBaseSalary");
         return new PayrollSlipView(r.getLong("PayslipId"),r.getInt("PayrollPeriodId"),r.getInt("EmployeeId"),
                 r.getString("EmployeeCode"),r.getString("FullName"),r.getString("CompanyName"),r.getString("PeriodName"),
-                r.getInt("Month"),r.getInt("Year"),r.getBigDecimal("BaseSalary"),r.getBigDecimal("Bonus"),
+                r.getInt("Month"),r.getInt("Year"),baseSalary,r.getBigDecimal("Bonus"),
                 r.getBigDecimal("Deduction"),r.getBigDecimal("NetSalary"),time(r,"GeneratedAt"),time(r,"PublishedAt"),
-                r.getBigDecimal("ResponsibilityAllowance"),r.getString("PeriodStatus"));
+                r.getBigDecimal("ResponsibilityAllowance"),r.getString("PeriodStatus"),
+                contractBase == null ? baseSalary : contractBase,
+                r.getBigDecimal("ActualWorkDays"),r.getBigDecimal("StandardWorkDays"),
+                r.getBigDecimal("TravelAllowance") == null ? BigDecimal.ZERO : r.getBigDecimal("TravelAllowance"));
     }
 
     private LocalDate date(ResultSet r,String name) throws SQLException {
