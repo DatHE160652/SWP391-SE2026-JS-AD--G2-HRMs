@@ -18,6 +18,8 @@
             <button type="button" class="lc-group-toggle" aria-controls="lc-manager-leave-links" aria-expanded="true"><%= com.hrms.i18n.Language.text(request, "ui_9d21ce1caf72", "NGHỈ PHÉP") %></button>
             <div class="lc-nav-links" id="lc-manager-leave-links">
                 <a class="${managerNavPage == 'leave-pending' ? 'active' : ''}" href="${pageContext.request.contextPath}/leave/pending-approvals"><span class="lc-nav-icon" aria-hidden="true">▢</span><span><%= com.hrms.i18n.Language.text(request, "ui_7b0a878a5449", "Duyệt đơn nghỉ phép") %></span></a>
+                <a href="${pageContext.request.contextPath}/leave/submit"><span class="lc-nav-icon" aria-hidden="true">＋</span><span><%= com.hrms.i18n.Language.text(request, "ui_970a42dcb266", "Tạo đơn xin nghỉ") %></span></a>
+                <a href="${pageContext.request.contextPath}/leave/my-requests"><span class="lc-nav-icon" aria-hidden="true">▢</span><span><%= com.hrms.i18n.Language.text(request, "ui_697728531b43", "Đơn nghỉ của tôi") %></span></a>
             </div>
         </section>
         <section class="lc-nav-group" data-nav-group="personal">
@@ -25,10 +27,6 @@
             <div class="lc-nav-links" id="lc-manager-personal-links">
 <a href="${pageContext.request.contextPath}/employee/organization"><span class="lc-nav-icon" aria-hidden="true">⌘</span><span><%= com.hrms.i18n.Language.text(request, "ui_964624eb861b", "Sơ đồ tổ chức") %></span></a>
 <a href="${pageContext.request.contextPath}/employee/my-contracts"><span class="lc-nav-icon" aria-hidden="true">▤</span><span><%= com.hrms.i18n.Language.text(request, "ui_4939da54ffa3", "Hợp đồng của tôi") %></span></a>
-<a href="${pageContext.request.contextPath}/leave/my-balances"><span class="lc-nav-icon" aria-hidden="true">◫</span><span><%= com.hrms.i18n.Language.text(request, "ui_35400d7d055b", "Số dư phép") %></span></a>
-<a href="${pageContext.request.contextPath}/leave/submit"><span class="lc-nav-icon" aria-hidden="true">＋</span><span><%= com.hrms.i18n.Language.text(request, "ui_970a42dcb266", "Tạo đơn xin nghỉ") %></span></a>
-<a href="${pageContext.request.contextPath}/leave/my-requests"><span class="lc-nav-icon" aria-hidden="true">▢</span><span><%= com.hrms.i18n.Language.text(request, "ui_697728531b43", "Lịch sử đơn nghỉ") %></span></a>
-<a href="${pageContext.request.contextPath}/leave/calendar"><span class="lc-nav-icon" aria-hidden="true">▦</span><span><%= com.hrms.i18n.Language.text(request, "ui_bcfc74d75019", "Lịch nghỉ cá nhân") %></span></a>
 
                 <a class="${managerNavPage == 'profile' ? 'active' : ''}" href="${pageContext.request.contextPath}/employee/my-profile?nav=manager"><span class="lc-nav-icon" aria-hidden="true">♙</span><span><%= com.hrms.i18n.Language.text(request, "ui_b70d1e2772e9", "Hồ sơ cá nhân") %></span></a>
                 <a class="${managerNavPage == 'payslips' ? 'active' : ''}" href="${pageContext.request.contextPath}/payslips"><span class="lc-nav-icon" aria-hidden="true">▱</span><span><%= com.hrms.i18n.Language.text(request, "ui_2e59daf63e47", "Phiếu lương của tôi") %></span></a>
