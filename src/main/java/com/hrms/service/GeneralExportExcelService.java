@@ -3,7 +3,6 @@ package com.hrms.service;
 import com.hrms.dao.AttendanceDAO.AttendanceDTO;
 import com.hrms.model.Department;
 import com.hrms.model.Employee;
-import com.hrms.model.LeaveRequest;
 import com.hrms.model.Position;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
@@ -18,12 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Service xuat file Excel (.xlsx) cho:
- * 1. Danh sach nhan su
- * 2. Danh sach don nghi phep
- * 3. Danh sach hop dong lao dong
- */
+/** Service xuất file Excel cho nhân sự, hợp đồng, tổ chức và chấm công. */
 public class GeneralExportExcelService {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -43,7 +37,6 @@ public class GeneralExportExcelService {
             CellStyle dataStyle = createDataStyle(wb);
             CellStyle centerStyle = createCenterStyle(wb);
 
-            // Title
             Row r0 = sheet.createRow(0);
             Cell c0 = r0.createCell(0);
             c0.setCellValue("DANH SÁCH NHÂN SỰ");
@@ -99,75 +92,7 @@ public class GeneralExportExcelService {
     }
 
     // ==========================================
-    // 2. XUẤT DANH SÁCH ĐƠN NGHỈ PHÉP
-    // ==========================================
-    public void exportLeaveRequests(String companyName, List<LeaveRequest> requests, OutputStream os) throws IOException {
-        try (Workbook wb = new XSSFWorkbook()) {
-            Sheet sheet = wb.createSheet("Danh sach don nghi phep");
-            sheet.setDisplayGridlines(true);
-
-            CellStyle titleStyle = createTitleStyle(wb, IndexedColors.DARK_GREEN);
-            CellStyle subtitleStyle = createSubtitleStyle(wb);
-            CellStyle headerStyle = createHeaderStyle(wb, IndexedColors.SEA_GREEN);
-            CellStyle dataStyle = createDataStyle(wb);
-            CellStyle centerStyle = createCenterStyle(wb);
-
-            // Title
-            Row r0 = sheet.createRow(0);
-            Cell c0 = r0.createCell(0);
-            c0.setCellValue("DANH SÁCH ĐƠN NGHỈ PHÉP");
-            c0.setCellStyle(titleStyle);
-
-            Row r1 = sheet.createRow(1);
-            Cell c1 = r1.createCell(0);
-            c1.setCellValue("Công ty: " + (companyName != null ? companyName : "HRMs Cloud") + " | Ngày xuất: " + LocalDate.now().format(DATE_FMT));
-            c1.setCellStyle(subtitleStyle);
-
-            String[] headers = {
-                    "STT", "Mã NV", "Họ và tên", "Phòng ban", "Loại nghỉ phép",
-                    "Hưởng lương", "Từ ngày", "Đến ngày", "Số ngày",
-                    "Lý do nghỉ", "Trạng thái", "Người duyệt", "Thời gian duyệt",
-                    "Ý kiến duyệt", "Ngày nộp đơn"
-            };
-
-            Row headerRow = sheet.createRow(3);
-            headerRow.setHeightInPoints(26);
-            for (int i = 0; i < headers.length; i++) {
-                Cell cell = headerRow.createCell(i);
-                cell.setCellValue(headers[i]);
-                cell.setCellStyle(headerStyle);
-            }
-
-            int rowIdx = 4;
-            int stt = 1;
-            for (LeaveRequest req : requests) {
-                Row row = sheet.createRow(rowIdx++);
-                row.setHeightInPoints(20);
-
-                createCell(row, 0, String.valueOf(stt++), centerStyle);
-                createCell(row, 1, req.getEmployeeCode() != null ? req.getEmployeeCode() : "-", centerStyle);
-                createCell(row, 2, req.getEmployeeFullName() != null ? req.getEmployeeFullName() : "-", dataStyle);
-                createCell(row, 3, req.getDepartmentName() != null ? req.getDepartmentName() : "-", dataStyle);
-                createCell(row, 4, req.getLeaveTypeName() != null ? req.getLeaveTypeName() : "-", dataStyle);
-                createCell(row, 5, Boolean.TRUE.equals(req.getIsPaid()) ? "Có lương" : "Không lương", centerStyle);
-                createCell(row, 6, req.getStartDate() != null ? req.getStartDate().format(DATE_FMT) : "-", centerStyle);
-                createCell(row, 7, req.getEndDate() != null ? req.getEndDate().format(DATE_FMT) : "-", centerStyle);
-                createCell(row, 8, req.getTotalDays() != null ? req.getTotalDays().stripTrailingZeros().toPlainString() : "0", centerStyle);
-                createCell(row, 9, req.getReason() != null ? req.getReason() : "-", dataStyle);
-                createCell(row, 10, formatLeaveStatus(req.getStatus()), centerStyle);
-                createCell(row, 11, req.getApproverDisplayName() != null ? req.getApproverDisplayName() : "-", dataStyle);
-                createCell(row, 12, req.getReviewedAt() != null ? req.getReviewedAt().format(DATETIME_FMT) : "-", centerStyle);
-                createCell(row, 13, req.getApproverComment() != null ? req.getApproverComment() : "-", dataStyle);
-                createCell(row, 14, req.getCreatedAt() != null ? req.getCreatedAt().format(DATETIME_FMT) : "-", centerStyle);
-            }
-
-            autoSizeColumns(sheet, headers.length);
-            wb.write(os);
-        }
-    }
-
-    // ==========================================
-    // 3. XUẤT DANH SÁCH HỢP ĐỒNG LAO ĐỘNG
+    // 2. XUẤT DANH SÁCH HỢP ĐỒNG LAO ĐỘNG
     // ==========================================
     public void exportContracts(String companyName, List<Map<String, Object>> contracts, OutputStream os) throws IOException {
         try (Workbook wb = new XSSFWorkbook()) {

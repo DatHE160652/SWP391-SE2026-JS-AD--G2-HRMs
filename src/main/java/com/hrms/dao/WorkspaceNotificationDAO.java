@@ -643,18 +643,18 @@ public class WorkspaceNotificationDAO {
             Set<String> readKeys,
             List<Map<String, Object>> items
     ) throws SQLException {
-        if ((isAdminOrHr || isManager) && hasTable(connection, "dbo.LeaveRequests")) {
-            String leavePendingSql = isAdminOrHr
-                    ? "SELECT COUNT(*) AS PendingCount, MAX(CreatedAt) AS LatestAt FROM dbo.LeaveRequests WHERE CompanyId = ? AND Status = 'Pending'"
-                    : """
+        if (("COMPANY_ADMIN".equals(roleCode) || isManager) && hasTable(connection, "dbo.LeaveRequests")) {
+            String leavePendingSql = """
                       SELECT COUNT(*) AS PendingCount, MAX(lr.CreatedAt) AS LatestAt
                       FROM dbo.LeaveRequests lr
-                      JOIN dbo.Employees e ON e.EmployeeId = lr.EmployeeId AND e.CompanyId = lr.CompanyId
-                      WHERE lr.CompanyId = ? AND lr.Status = 'Pending' AND e.ManagerId = ?
-                      """;
+                      JOIN dbo.Employees e ON e.EmployeeId=lr.EmployeeId AND e.CompanyId=lr.CompanyId
+                      JOIN dbo.Users u ON u.UserId=e.UserId AND u.CompanyId=e.CompanyId
+                      JOIN dbo.Roles r ON r.RoleId=u.RoleId
+                      WHERE lr.CompanyId=? AND lr.Status='Pending'
+                      """ + (isManager ? " AND r.RoleCode='EMPLOYEE' AND e.ManagerId=?" : " AND r.RoleCode='MANAGER'");
             try (PreparedStatement ps = connection.prepareStatement(leavePendingSql)) {
                 ps.setInt(1, companyId);
-                if (!isAdminOrHr) {
+                if (isManager) {
                     ps.setInt(2, employeeId != null ? employeeId : -1);
                 }
                 try (ResultSet rs = ps.executeQuery()) {
@@ -680,9 +680,8 @@ public class WorkspaceNotificationDAO {
         if (employeeId != null && employeeId > 0) {
             if (hasTable(connection, "dbo.LeaveRequests")) {
                 String myLeaveSql = """
-                        SELECT TOP 5 lr.LeaveRequestId, lr.StartDate, lr.EndDate, lr.Status, lr.ReviewedAt, lr.CreatedAt, lt.TypeName
+                        SELECT TOP 5 lr.LeaveRequestId, lr.StartDate, lr.EndDate, lr.Status, lr.ReviewedAt, lr.CreatedAt
                         FROM dbo.LeaveRequests lr
-                        JOIN dbo.LeaveTypes lt ON lt.LeaveTypeId = lr.LeaveTypeId
                         WHERE lr.CompanyId = ? AND lr.EmployeeId = ? AND lr.Status IN ('Approved', 'Rejected')
                         ORDER BY COALESCE(lr.ReviewedAt, lr.CreatedAt) DESC
                         """;
@@ -693,7 +692,7 @@ public class WorkspaceNotificationDAO {
                         while (rs.next()) {
                             int reqId = rs.getInt("LeaveRequestId");
                             String status = rs.getString("Status");
-                            String typeName = rs.getString("TypeName");
+                            String typeName = "Đơn nghỉ phép #" + reqId;
                             Date start = rs.getDate("StartDate");
                             Date end = rs.getDate("EndDate");
                             Timestamp ts = rs.getTimestamp("ReviewedAt") != null ? rs.getTimestamp("ReviewedAt") : rs.getTimestamp("CreatedAt");

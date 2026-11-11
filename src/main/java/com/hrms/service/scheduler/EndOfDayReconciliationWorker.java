@@ -84,7 +84,6 @@ public class EndOfDayReconciliationWorker {
         int companyId;
         int employeeId;
         boolean hasApprovedLeave;
-        String leaveTypeName;
     }
 
     /**
@@ -99,18 +98,15 @@ public class EndOfDayReconciliationWorker {
         }
 
         String selectSql = """
-            SELECT e.CompanyId, e.EmployeeId, lr.LeaveRequestId, lt.TypeName
+            SELECT e.CompanyId, e.EmployeeId,
+                CASE WHEN EXISTS(SELECT 1 FROM LeaveRequests lr
+                    WHERE lr.CompanyId=e.CompanyId AND lr.EmployeeId=e.EmployeeId AND lr.Status='Approved'
+                    AND (EXISTS(SELECT 1 FROM LeaveRequestDates rd WHERE rd.LeaveRequestId=lr.LeaveRequestId AND rd.LeaveDate=?)
+                        OR (lr.IsLegacy=1 AND ? BETWEEN lr.StartDate AND lr.EndDate))) THEN 1 ELSE 0 END HasApprovedLeave
             FROM Employees e
-            LEFT JOIN Attendances a 
-                ON e.EmployeeId = a.EmployeeId AND a.AttendanceDate = ?
-            LEFT JOIN LeaveRequests lr 
-                ON e.EmployeeId = lr.EmployeeId 
-                AND lr.Status = 'Approved' 
-                AND ? BETWEEN lr.StartDate AND lr.EndDate
-            LEFT JOIN LeaveTypes lt 
-                ON lr.LeaveTypeId = lt.LeaveTypeId
-            WHERE e.Status = 'Active' 
-                AND a.AttendanceId IS NULL
+            LEFT JOIN Attendances a
+                ON e.CompanyId=a.CompanyId AND e.EmployeeId=a.EmployeeId AND a.AttendanceDate=?
+            WHERE e.Status='Active' AND a.AttendanceId IS NULL
         """;
 
         List<MissingEmployeeRecord> missing = new ArrayList<>();
@@ -128,14 +124,13 @@ public class EndOfDayReconciliationWorker {
             try (PreparedStatement stmt = conn.prepareStatement(selectSql)) {
                 stmt.setDate(1, Date.valueOf(targetDate));
                 stmt.setDate(2, Date.valueOf(targetDate));
+                stmt.setDate(3, Date.valueOf(targetDate));
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
                         MissingEmployeeRecord rec = new MissingEmployeeRecord();
                         rec.companyId = rs.getInt("CompanyId");
                         rec.employeeId = rs.getInt("EmployeeId");
-                        int leaveReqId = rs.getInt("LeaveRequestId");
-                        rec.hasApprovedLeave = !rs.wasNull() && leaveReqId > 0;
-                        rec.leaveTypeName = rs.getString("TypeName");
+                        rec.hasApprovedLeave = rs.getBoolean("HasApprovedLeave");
                         missing.add(rec);
                     }
                 }
@@ -164,7 +159,7 @@ public class EndOfDayReconciliationWorker {
                     if (rec.hasApprovedLeave) {
                         insertStmt.setString(4, "On Leave");
                         insertStmt.setBigDecimal(5, BigDecimal.valueOf(8.00));
-                        insertStmt.setString(6, "Nghỉ phép đã duyệt" + (rec.leaveTypeName != null ? ": " + rec.leaveTypeName : ""));
+                        insertStmt.setString(6, "Nghỉ phép đã duyệt");
                         onLeaveCount++;
                     } else {
                         insertStmt.setString(4, "Absent");

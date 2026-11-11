@@ -123,10 +123,12 @@ final class PayrollSources {
                             WHEN att.Status = 'On Leave' AND COALESCE(payCfg.IncludePaidLeave, 1) = 1 THEN 1.0
                             WHEN COALESCE(payCfg.IncludePaidLeave, 1) = 1 AND EXISTS (
                                 SELECT 1 FROM dbo.LeaveRequests lr
-                                JOIN dbo.LeaveTypes lt ON lt.LeaveTypeId = lr.LeaveTypeId
                                 WHERE lr.CompanyId = e.CompanyId AND lr.EmployeeId = e.EmployeeId
-                                  AND lr.Status = 'Approved' AND lt.IsPaid = 1
-                                  AND cal.DayDate BETWEEN lr.StartDate AND lr.EndDate
+                                  AND lr.Status = 'Approved'
+                                  AND ((lr.IsLegacy=0 AND EXISTS(SELECT 1 FROM dbo.LeaveRequestDates rd
+                                        WHERE rd.LeaveRequestId=lr.LeaveRequestId AND rd.LeaveDate=cal.DayDate))
+                                    OR (lr.IsLegacy=1 AND lr.LegacyIsPaid=1
+                                        AND cal.DayDate BETWEEN lr.StartDate AND lr.EndDate))
                             ) THEN 1.0
                             ELSE 0.0
                         END AS DECIMAL(5,2)) AS DayCredit
