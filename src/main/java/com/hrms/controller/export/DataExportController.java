@@ -3,7 +3,6 @@ package com.hrms.controller.export;
 import com.hrms.dao.AttendanceDAO.AttendanceDTO;
 import com.hrms.model.Department;
 import com.hrms.model.Employee;
-import com.hrms.model.LeaveRequest;
 import com.hrms.model.Position;
 import com.hrms.service.AttendanceService;
 import com.hrms.service.DepartmentService;
@@ -30,16 +29,14 @@ import java.util.Map;
 /**
  * Controller chuyên trách xuất file Excel (.xlsx) cho:
  * 1. /employees/export : Danh sách nhân sự
- * 2. /leave/export-requests : Danh sách đơn nghỉ phép
- * 3. /lifecycle/contracts/export : Danh sách hợp đồng lao động
- * 4. /departments/export : Danh sách phòng ban
- * 5. /positions/export : Danh sách chức danh
- * 6. /lifecycle/organization/export : Sơ đồ / Cơ cấu tổ chức
- * 7. /attendance/export : Danh sách điểm danh chấm công
+ * 2. /lifecycle/contracts/export : Danh sách hợp đồng lao động
+ * 3. /departments/export : Danh sách phòng ban
+ * 4. /positions/export : Danh sách chức danh
+ * 5. /lifecycle/organization/export : Sơ đồ / Cơ cấu tổ chức
+ * 6. /attendance/export : Danh sách điểm danh chấm công
  */
 @WebServlet(name = "DataExportController", urlPatterns = {
         "/employees/export",
-        "/leave/export-requests",
         "/lifecycle/contracts/export",
         "/departments/export",
         "/positions/export",
@@ -94,7 +91,6 @@ public class DataExportController extends HttpServlet {
         try {
             switch (path) {
                 case "/employees/export" -> handleExportEmployees(request, response);
-                case "/leave/export-requests" -> handleExportLeaveRequests(request, response);
                 case "/lifecycle/contracts/export" -> handleExportContracts(request, response);
                 case "/departments/export" -> handleExportDepartments(request, response);
                 case "/positions/export" -> handleExportPositions(request, response);
@@ -149,42 +145,7 @@ public class DataExportController extends HttpServlet {
         exportExcelService.exportEmployees(companyName, list, response.getOutputStream());
     }
 
-    /**
-     * 2. Xuất danh sách đơn nghỉ phép
-     */
-    private void handleExportLeaveRequests(HttpServletRequest request, HttpServletResponse response)
-            throws SQLException, IOException {
-        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
-        if (principal == null || principal.getCompanyId() == null) {
-            throw new SecurityException("Vui lòng đăng nhập.");
-        }
-        boolean isAdminOrHr = principal.isCompanyAdministrator() || "HR".equalsIgnoreCase(principal.getRoleCode());
-        boolean isManager = "MANAGER".equalsIgnoreCase(principal.getRoleCode());
-        if (!isAdminOrHr && !isManager) {
-            throw new SecurityException("Không có quyền xuất danh sách đơn nghỉ phép.");
-        }
-
-        String companyName = principal.getCompanyName() != null ? principal.getCompanyName() : "HRMs Cloud";
-        String status = trimToNull(request.getParameter("status"));
-        if ("ALL".equalsIgnoreCase(status)) status = null;
-
-        Integer departmentId = parseNullableInt(request.getParameter("departmentId"));
-        Integer leaveTypeId = parseNullableInt(request.getParameter("leaveTypeId"));
-        LocalDate fromDate = parseOptionalDate(request.getParameter("fromDate"));
-        LocalDate toDate = parseOptionalDate(request.getParameter("toDate"));
-        String keyword = trimToNull(request.getParameter("keyword"));
-
-        List<LeaveRequest> list = leaveService.getLeaveRequestDAO().getAllRequestsByCompany(
-                principal.getCompanyId(), status, departmentId, leaveTypeId, fromDate, toDate, keyword, 0, 100000);
-
-        String filename = "Danh_Sach_Don_Nghi_Phep_" + LocalDate.now().format(DateTimeFormatter.ofPattern("dd_MM_yyyy")) + ".xlsx";
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
-
-        exportExcelService.exportLeaveRequests(companyName, list, response.getOutputStream());
-    }
-
-    /**
+/**
      * 3. Xuất danh sách hợp đồng lao động
      */
     private void handleExportContracts(HttpServletRequest request, HttpServletResponse response)

@@ -329,15 +329,13 @@
     <servlet-mapping>
         <servlet-name>LeaveController</servlet-name>
         <url-pattern>/leave/types</url-pattern>
-        <url-pattern>/leave/my-balances</url-pattern>
+        <url-pattern>/leave/policy</url-pattern>
         <url-pattern>/leave/my-requests</url-pattern>
         <url-pattern>/leave/submit</url-pattern>
         <url-pattern>/leave/pending-approvals</url-pattern>
         <url-pattern>/leave/all-requests</url-pattern>
-        <url-pattern>/leave/calendar</url-pattern>
-        <url-pattern>/leave/report</url-pattern>
         <url-pattern>/leave/api/types</url-pattern>
-        <url-pattern>/leave/api/my-balances</url-pattern>
+        <url-pattern>/leave/api/policy</url-pattern>
         <url-pattern>/leave/api/my-requests</url-pattern>
         <url-pattern>/leave/api/submit</url-pattern>
         <url-pattern>/leave/api/cancel</url-pattern>
@@ -345,11 +343,7 @@
         <url-pattern>/leave/api/approve</url-pattern>
         <url-pattern>/leave/api/reject</url-pattern>
         <url-pattern>/leave/api/all-requests</url-pattern>
-        <url-pattern>/leave/api/calendar-events</url-pattern>
-        <url-pattern>/leave/api/report</url-pattern>
-        <url-pattern>/leave/export-excel</url-pattern>
-        <url-pattern>/leave/api/calculate-days</url-pattern>
-        <url-pattern>/leave/api/reconcile-attendance</url-pattern>
+        <url-pattern>/leave/api/detail</url-pattern>
     </servlet-mapping>
 
     <servlet>
@@ -456,7 +450,6 @@
     <servlet-mapping>
         <servlet-name>DataExportController</servlet-name>
         <url-pattern>/employees/export</url-pattern>
-        <url-pattern>/leave/export-requests</url-pattern>
         <url-pattern>/lifecycle/contracts/export</url-pattern>
         <url-pattern>/departments/export</url-pattern>
         <url-pattern>/positions/export</url-pattern>

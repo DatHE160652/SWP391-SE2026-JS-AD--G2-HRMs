@@ -198,7 +198,7 @@ SET NOCOUNT ON;
 -- Bao gồm:
 -- 1. Tài khoản User (Đăng nhập mật khẩu: 123)
 -- 2. Hồ sơ Nhân viên (Employees) gắn đúng Phòng ban & Chức danh
--- 3. Hạn mức Ngày nghỉ phép 2026 (LeaveBalances)
+-- 3. Quota nghỉ phép theo chính sách công ty năm 2026 (CompanyLeavePolicies)
 -- 4. Đơn xin nghỉ phép mẫu đã duyệt (LeaveRequests)
 -- 5. Kỳ lương Tháng 10/2026 & Phiếu lương (PayrollPeriods, Payslips)
 -- 6. Dữ liệu Chấm công đa dạng (Attendances) từ ngày 20/10/2026 đến 24/10/2026

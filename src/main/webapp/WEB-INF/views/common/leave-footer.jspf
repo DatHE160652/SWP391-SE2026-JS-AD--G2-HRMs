@@ -1,0 +1,37 @@
+</main></div>
+<dialog id="leaveDetailDialog" class="leave-dialog" aria-labelledby="leaveDetailTitle">
+    <h2 id="leaveDetailTitle" class="leave-dialog-title">Chi tiết đơn nghỉ phép</h2>
+    <div id="detailModalBody" class="leave-dialog-body"></div>
+    <div id="detailActions" class="leave-dialog-actions"></div>
+    <p id="detailMessage" role="alert" class="leave-dialog-message"></p>
+    <div class="leave-dialog-footer">
+        <button type="button" class="button secondary" onclick="document.getElementById('leaveDetailDialog').close()">Đóng</button>
+    </div>
+</dialog>
+<style>
+    dialog.leave-dialog { position:fixed; inset:0; margin:auto; width:min(720px,calc(100vw - 32px)); max-height:min(85vh,900px); padding:0; border:1px solid #d0d5dd; border-radius:12px; background:#fff; box-shadow:0 24px 64px rgba(16,24,40,.24); overflow:hidden; }
+    dialog.leave-dialog[open] { display:flex; flex-direction:column; }
+    dialog.leave-dialog::backdrop { background:rgba(16,24,40,.55); }
+    .leave-dialog-title { margin:0; padding:18px 24px; font-size:17px; font-weight:800; color:var(--navy,#062579); border-bottom:1px solid #e5e9f5; }
+    .leave-dialog-body { padding:20px 24px; overflow-y:auto; }
+    .leave-dialog-body dl { display:grid; grid-template-columns:160px 1fr; gap:10px 16px; margin:0; font-size:13px; }
+    .leave-dialog-body dt { color:#667085; }
+    .leave-dialog-body dd { margin:0; word-break:break-word; }
+    .leave-dialog-body label { display:block; margin:16px 0 6px; font-size:13px; font-weight:600; }
+    .leave-dialog-actions { display:flex; gap:10px; padding:0 24px; }
+    .leave-dialog-message { margin:8px 24px 0; color:#b42318; font-size:13px; }
+    .leave-dialog-footer { display:flex; justify-content:flex-end; gap:10px; padding:16px 24px; background:#f8f9fc; border-top:1px solid #e5e9f5; margin-top:16px; }
+    .leave-status { display:inline-flex; align-items:center; justify-content:center; min-width:86px; padding:4px 10px; border-radius:999px; font-size:12px; line-height:1.3; font-weight:600; white-space:nowrap; }
+    .leave-status.status-pending { background:#fff4e5; color:#b54708; }
+    .leave-status.status-approved { background:#e7f6ec; color:#067647; }
+    .leave-status.status-rejected { background:#fdecec; color:#b42318; }
+    .leave-status.status-cancelled { background:#eef0f4; color:#475467; }
+    .selected-dates { list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:8px; }
+    .selected-dates li { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid #d0d5dd; border-radius:8px; background:#f8f9fc; font-size:13px; }
+    .selected-dates li button { padding:2px 8px; font-size:12px; }
+    .form-hint { color:#667085; font-size:13px; margin:6px 0 0; }
+    .required { color:#b42318; }
+    .form-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:24px; }
+</style>
+<script src="../js/leave.js?v=<%= application.getResource("/js/leave.js").openConnection().getLastModified() %>"></script>
+</body></html>
