@@ -455,66 +455,46 @@ GO
 -- Workflow 4: Leave Management
 -- ========================================================================
 
--- ------------------------------------------------------------------------
--- BẢNG 14: LeaveTypes (Danh mục chính sách các loại ngày nghỉ)
--- ------------------------------------------------------------------------
-CREATE TABLE LeaveTypes (
-    LeaveTypeId INT IDENTITY(1,1) PRIMARY KEY,
-    CompanyId INT NOT NULL,
-    TypeCode VARCHAR(50) NOT NULL,                   -- ANNUAL, SICK, UNPAID, MATERNITY
-    TypeName NVARCHAR(100) NOT NULL,
-    DefaultDaysPerYear INT NOT NULL DEFAULT 12,
-    IsPaid BIT NOT NULL DEFAULT 1,                   -- Nghỉ có hưởng lương hay không
-    IsActive BIT NOT NULL CONSTRAINT DF_LeaveTypes_IsActive DEFAULT 1,
-    CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
-    CONSTRAINT FK_LeaveTypes_Companies FOREIGN KEY (CompanyId) REFERENCES Companies(CompanyId) ON DELETE CASCADE,
-    CONSTRAINT UQ_Company_LeaveTypeCode UNIQUE (CompanyId, TypeCode)
+-- Một chính sách công ty, số dư độc lập cho từng nhân viên.
+CREATE TABLE CompanyLeavePolicies (
+    CompanyId INT PRIMARY KEY REFERENCES Companies(CompanyId),
+    QuotaMode VARCHAR(10) NOT NULL CHECK (QuotaMode IN ('MONTHLY','ANNUAL')),
+    QuotaDays INT NOT NULL CHECK (QuotaDays BETWEEN 0 AND 366),
+    MaxDaysPerRequest INT NOT NULL CHECK (MaxDaysPerRequest BETWEEN 1 AND 366),
+    UpdatedByUserId INT NULL REFERENCES Users(UserId),
+    UpdatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
 );
-
--- ------------------------------------------------------------------------
--- BẢNG 11: LeaveBalances (Hạn mức và số dư ngày phép theo năm)
--- ------------------------------------------------------------------------
-CREATE TABLE LeaveBalances (
-    BalanceId INT IDENTITY(1,1) PRIMARY KEY,
-    EmployeeId INT NOT NULL,
-    LeaveTypeId INT NOT NULL,
-    Year INT NOT NULL,
-    EntitledDays DECIMAL(5,2) NOT NULL DEFAULT 0.00, -- Số ngày được cấp
-    UsedDays DECIMAL(5,2) NOT NULL DEFAULT 0.00,     -- Số ngày đã nghỉ
-    -- Cột tính toán tự động: Ngày còn lại = Cấp - Đã dùng
-    RemainingDays AS (EntitledDays - UsedDays),
-    CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
-    UpdatedAt DATETIME2 NULL,
-    CONSTRAINT FK_LeaveBalances_Employees FOREIGN KEY (EmployeeId) REFERENCES Employees(EmployeeId) ON DELETE CASCADE,
-    CONSTRAINT FK_LeaveBalances_LeaveTypes FOREIGN KEY (LeaveTypeId) REFERENCES LeaveTypes(LeaveTypeId),
-    CONSTRAINT UQ_Employee_LeaveBalance_Year UNIQUE (EmployeeId, LeaveTypeId, Year)
-);
-
--- ------------------------------------------------------------------------
--- BẢNG 12: LeaveRequests (Đơn xin nghỉ phép và quy trình duyệt)
--- ------------------------------------------------------------------------
+-- Usage/số dư theo tháng được tính từ ngày nghỉ đã duyệt, không cộng dồn tháng.
 CREATE TABLE LeaveRequests (
     LeaveRequestId INT IDENTITY(1,1) PRIMARY KEY,
     CompanyId INT NOT NULL,
     EmployeeId INT NOT NULL,
-    LeaveTypeId INT NOT NULL,
     StartDate DATE NOT NULL,
     EndDate DATE NOT NULL,
     TotalDays DECIMAL(4,1) NOT NULL CHECK (TotalDays > 0),
     Reason NVARCHAR(500) NOT NULL,
     Status NVARCHAR(30) NOT NULL DEFAULT 'Pending'
         CHECK (Status IN ('Pending', 'Approved', 'Rejected', 'Cancelled')),
-    ApproverId INT NULL,                             -- Manager hoặc HR thực hiện duyệt
+    ApproverId INT NULL,
     ApproverComment NVARCHAR(300) NULL,
     ReviewedAt DATETIME2 NULL,
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     UpdatedAt DATETIME2 NULL,
+    IsLegacy BIT NOT NULL DEFAULT 0,
+    LegacyCategoryName NVARCHAR(100) NULL,
+    LegacyIsPaid BIT NULL,
     CONSTRAINT FK_LeaveRequests_Companies FOREIGN KEY (CompanyId) REFERENCES Companies(CompanyId),
     CONSTRAINT FK_LeaveRequests_Employees FOREIGN KEY (EmployeeId) REFERENCES Employees(EmployeeId),
-    CONSTRAINT FK_LeaveRequests_LeaveTypes FOREIGN KEY (LeaveTypeId) REFERENCES LeaveTypes(LeaveTypeId),
     CONSTRAINT FK_LeaveRequests_Approvers FOREIGN KEY (ApproverId) REFERENCES Users(UserId),
     CONSTRAINT CK_LeaveRequests_DateRange CHECK (EndDate >= StartDate)
 );
+CREATE TABLE LeaveRequestDates (
+    LeaveRequestId INT NOT NULL REFERENCES LeaveRequests(LeaveRequestId) ON DELETE CASCADE,
+    LeaveDate DATE NOT NULL,
+    CONSTRAINT PK_LeaveRequestDates PRIMARY KEY (LeaveRequestId,LeaveDate)
+);
+CREATE INDEX IX_LeaveRequestDates_Date ON LeaveRequestDates(LeaveDate,LeaveRequestId);
+
 
 -- ========================================================================
 -- PHẦN 6: QUẢN LÝ TÍNH LƯƠNG VÀ PHIẾU LƯƠNG
