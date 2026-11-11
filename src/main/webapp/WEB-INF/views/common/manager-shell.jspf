@@ -15,11 +15,9 @@
             </div>
         </section>
         <section class="lc-nav-group" data-nav-group="leave">
-            <button type="button" class="lc-group-toggle" aria-controls="lc-manager-leave-links" aria-expanded="true"><%= com.hrms.i18n.Language.text(request, "ui_ecfb48ac49a9", "NGHỈ PHÉP & LƯƠNG") %></button>
+            <button type="button" class="lc-group-toggle" aria-controls="lc-manager-leave-links" aria-expanded="true"><%= com.hrms.i18n.Language.text(request, "ui_9d21ce1caf72", "NGHỈ PHÉP") %></button>
             <div class="lc-nav-links" id="lc-manager-leave-links">
                 <a class="${managerNavPage == 'leave-pending' ? 'active' : ''}" href="${pageContext.request.contextPath}/leave/pending-approvals"><span class="lc-nav-icon" aria-hidden="true">▢</span><span><%= com.hrms.i18n.Language.text(request, "ui_7b0a878a5449", "Duyệt đơn nghỉ phép") %></span></a>
-                <a class="${managerNavPage == 'payroll' ? 'active' : ''}" href="${pageContext.request.contextPath}/payroll"><span class="lc-nav-icon" aria-hidden="true">◈</span><span><%= com.hrms.i18n.Language.text(request, "ui_8b3b6553d5b5", "Quản lý lương") %></span></a>
-<a href="${pageContext.request.contextPath}/payroll/salaries"><span class="lc-nav-icon" aria-hidden="true">▤</span><span><%= com.hrms.i18n.Language.text(request, "ui_f6195db41766", "Lương cơ bản") %></span></a>
             </div>
         </section>
         <section class="lc-nav-group" data-nav-group="personal">

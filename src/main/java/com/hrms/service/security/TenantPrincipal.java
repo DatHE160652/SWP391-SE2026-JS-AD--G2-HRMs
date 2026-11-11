@@ -44,9 +44,9 @@ public final class TenantPrincipal {
     public boolean isCompanyAdministrator() {
         return "COMPANY_ADMIN".equalsIgnoreCase(roleCode) || "HR".equalsIgnoreCase(roleCode);
     }
-    /** Payroll access does not grant employee/account or organization administration. */
+    /** Payroll management is restricted strictly to Company Administrator and HR. */
     public boolean canManagePayroll() {
-        return isCompanyAdministrator() || "MANAGER".equalsIgnoreCase(roleCode);
+        return isCompanyAdministrator();
     }
     public Integer getEmployeeId() { return employeeId; }
     public boolean isMustChangePassword() { return mustChangePassword; }

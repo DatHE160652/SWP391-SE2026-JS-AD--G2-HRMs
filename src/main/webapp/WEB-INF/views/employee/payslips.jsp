@@ -7,7 +7,7 @@
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="csrf-token" content="<c:out value='${payrollCsrf}'/>">
     <title><c:set var="i18nConditionalLabel" value="${adminView ? 'Quản lý phiếu lương' : 'Phiếu lương của tôi'}"/><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("i18nConditionalLabel")) %>'/> · HRMs Cloud</title>
-    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/payroll.css?v=20261026-payslips-1">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/payroll.css?v=<%= application.getResource("/css/payroll.css").openConnection().getLastModified() %>">
 <%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
 <body class="lc workspace-payroll" data-page="payslips" data-management="${adminView}" data-context="${pageContext.request.contextPath}">

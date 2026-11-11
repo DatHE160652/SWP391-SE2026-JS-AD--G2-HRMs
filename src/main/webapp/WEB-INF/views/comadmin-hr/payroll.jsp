@@ -7,7 +7,7 @@
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="csrf-token" content="<c:out value='${payrollCsrf}'/>">
     <title><%= com.hrms.i18n.Language.text(request, "ui_78f95e303c84", "Quản lý lương · HRMs Cloud") %></title>
-    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/payroll.css?v=20261026-payslips-1">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/payroll.css?v=<%= application.getResource("/css/payroll.css").openConnection().getLastModified() %>">
 <%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
 <body class="lc workspace-payroll" data-page="${salaryPage ? 'salaries' : 'payroll'}" data-context="${pageContext.request.contextPath}">
