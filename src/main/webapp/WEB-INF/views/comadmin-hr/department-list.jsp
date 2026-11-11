@@ -25,10 +25,6 @@
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     <%= com.hrms.i18n.Language.text(request, "ui_1721265dcbc2", "Xuất Excel") %>
                 </a>
-                <button type="button" id="btnImportDepartments" class="button secondary" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="8" x2="12" y2="21"/></svg>
-                    <%= "en".equals(com.hrms.i18n.Language.selected(request)) ? "Import Excel" : "Nhập Excel" %>
-                </button>
                 <a class="button" href="department-form"><%= com.hrms.i18n.Language.text(request, "ui_122fc9e2b66c", "+ Thêm phòng ban") %></a>
             </div>
         </div>
@@ -68,21 +64,6 @@
 
 <script src="../js/department.js?v=<%= application.getResource("/js/department.js").openConnection().getLastModified() %>"></script>
 <%@ include file="/WEB-INF/views/common/initial-assignment.jspf" %>
-<%@ include file="/WEB-INF/views/common/import-modal.jspf" %>
-<script src="${pageContext.request.contextPath}/js/import-modal.js"></script>
-<script>
-    document.getElementById('btnImportDepartments')?.addEventListener('click', function() {
-        DataImporter.open('DEPARTMENT', {
-            onSuccess: function() {
-                if (typeof loadDepartments === 'function') {
-                    loadDepartments();
-                } else {
-                    location.reload();
-                }
-            }
-        });
-    });
-</script>
 <script src="${pageContext.request.contextPath}/js/organization-shell.js?v=<%= application.getResource("/js/organization-shell.js").openConnection().getLastModified() %>" defer></script>
 </body>
 </html>

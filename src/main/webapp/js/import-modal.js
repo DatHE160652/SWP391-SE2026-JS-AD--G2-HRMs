@@ -17,8 +17,6 @@
     let isProcessing = false;
 
     const typeNamesVi = {
-        'DEPARTMENT': 'Phòng ban',
-        'POSITION': 'Chức danh',
         'EMPLOYEE': 'Hồ sơ nhân sự',
         'ATTENDANCE': 'Điểm danh chấm công',
         'CONTRACT': 'Hợp đồng lao động'

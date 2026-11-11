@@ -141,6 +141,9 @@ public class DataImportExcelService {
     // =========================================================================
 
     public ImportPreviewResult previewImport(String rawType, int companyId, InputStream is) throws IOException {
+        if (rawType != null && !rawType.isBlank()) {
+            normalizeType(rawType);
+        }
         ImportPreviewResult result = new ImportPreviewResult();
 
         try (Workbook wb = WorkbookFactory.create(is)) {
@@ -264,6 +267,8 @@ public class DataImportExcelService {
             if (total == 0) {
                 result.getGlobalErrors().add("Tệp Excel chưa có dòng dữ liệu nào để nhập.");
             }
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             result.getGlobalErrors().add("Lỗi khi đọc file Excel: " + e.getMessage());
         }
@@ -306,14 +311,14 @@ public class DataImportExcelService {
 
             // Execute according to type
             switch (type) {
-                case TYPE_DEPARTMENT -> executeImportDepartments(companyId, preview.getPreviewRows(), result);
-                case TYPE_POSITION -> executeImportPositions(companyId, preview.getPreviewRows(), result);
                 case TYPE_EMPLOYEE -> executeImportEmployees(companyId, preview.getPreviewRows(), result);
                 case TYPE_ATTENDANCE -> executeImportAttendances(companyId, userId, preview.getPreviewRows(), result);
                 case TYPE_CONTRACT -> executeImportContracts(companyId, userId, preview.getPreviewRows(), result);
-                default -> throw new IllegalArgumentException("Loại dữ liệu không hỗ trợ: " + type);
+                default -> throw new IllegalArgumentException("Hệ thống không hỗ trợ nhập dữ liệu tự động cho loại: " + type + ". Quản trị viên vui lòng tự thiết lập thủ công.");
             }
 
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             result.setSuccess(false);
             result.setMessage("Lỗi xử lý cơ sở dữ liệu: " + e.getMessage());
@@ -325,133 +330,6 @@ public class DataImportExcelService {
     // =========================================================================
     // SPECIFIC IMPORT EXECUTION IMPLEMENTATIONS
     // =========================================================================
-
-    private void executeImportDepartments(int companyId, List<ImportRowResult> rows, ImportExecuteResult result) throws SQLException {
-        try (Connection conn = DBConnection.getConnection()) {
-            conn.setAutoCommit(false);
-            try {
-                String checkSql = "SELECT DepartmentId FROM Departments WHERE CompanyId = ? AND UPPER(DepartmentCode) = UPPER(?)";
-                String insertSql = "INSERT INTO Departments (CompanyId, DepartmentCode, DepartmentName) VALUES (?, ?, ?)";
-                String updateSql = "UPDATE Departments SET DepartmentName = ? WHERE DepartmentId = ? AND CompanyId = ?";
-
-                try (PreparedStatement psCheck = conn.prepareStatement(checkSql);
-                     PreparedStatement psInsert = conn.prepareStatement(insertSql);
-                     PreparedStatement psUpdate = conn.prepareStatement(updateSql)) {
-
-                    int inserted = 0;
-                    int updated = 0;
-
-                    for (ImportRowResult r : rows) {
-                        String code = r.getData().get("Mã phòng ban (*)");
-                        String name = r.getData().get("Tên phòng ban (*)");
-
-                        psCheck.setInt(1, companyId);
-                        psCheck.setString(2, code.trim());
-                        Integer existingId = null;
-                        try (ResultSet rs = psCheck.executeQuery()) {
-                            if (rs.next()) existingId = rs.getInt("DepartmentId");
-                        }
-
-                        if (existingId != null) {
-                            psUpdate.setString(1, name.trim());
-                            psUpdate.setInt(2, existingId);
-                            psUpdate.setInt(3, companyId);
-                            psUpdate.executeUpdate();
-                            updated++;
-                        } else {
-                            psInsert.setInt(1, companyId);
-                            psInsert.setString(2, code.trim());
-                            psInsert.setString(3, name.trim());
-                            psInsert.executeUpdate();
-                            inserted++;
-                        }
-                    }
-
-                    conn.commit();
-                    result.setSuccess(true);
-                    result.setTotalProcessed(rows.size());
-                    result.setInsertedCount(inserted);
-                    result.setUpdatedCount(updated);
-                    result.setMessage("Nhập phòng ban thành công: Thêm mới " + inserted + ", Cập nhật " + updated + " phòng ban.");
-                } catch (SQLException e) {
-                    conn.rollback();
-                    throw e;
-                }
-            } finally {
-                conn.setAutoCommit(true);
-            }
-        }
-    }
-
-    private void executeImportPositions(int companyId, List<ImportRowResult> rows, ImportExecuteResult result) throws SQLException {
-        try (Connection conn = DBConnection.getConnection()) {
-            conn.setAutoCommit(false);
-            try {
-                Map<String, Integer> deptMap = loadDepartmentMap(conn, companyId);
-
-                String checkSql = "SELECT PositionId FROM Positions WHERE CompanyId = ? AND UPPER(PositionTitle) = UPPER(?)";
-                String insertSql = """
-                        INSERT INTO Positions (CompanyId, DepartmentId, ResponsibilityLevelId, PositionTitle, Description, IsActive, CanManageEmployees, PositionAllowance, CreatedAt)
-                        VALUES (?, ?, ?, ?, ?, 1, 0, 0, SYSDATETIME())
-                        """;
-                String updateSql = "UPDATE Positions SET DepartmentId = ?, Description = ? WHERE PositionId = ? AND CompanyId = ?";
-
-                try (PreparedStatement psCheck = conn.prepareStatement(checkSql);
-                     PreparedStatement psInsert = conn.prepareStatement(insertSql);
-                     PreparedStatement psUpdate = conn.prepareStatement(updateSql)) {
-
-                    int inserted = 0;
-                    int updated = 0;
-
-                    for (ImportRowResult r : rows) {
-                        String title = r.getData().get("Tên chức danh (*)");
-                        String deptName = r.getData().get("Tên phòng ban (*)");
-                        String desc = r.getData().get("Mô tả");
-                        String levelStr = r.getData().get("Cấp trách nhiệm (1-5)");
-
-                        int deptId = deptMap.getOrDefault(deptName.trim().toUpperCase(), 0);
-                        int levelId = parseLevelId(levelStr);
-
-                        psCheck.setInt(1, companyId);
-                        psCheck.setString(2, title.trim());
-                        Integer existingId = null;
-                        try (ResultSet rs = psCheck.executeQuery()) {
-                            if (rs.next()) existingId = rs.getInt("PositionId");
-                        }
-
-                        if (existingId != null) {
-                            psUpdate.setInt(1, deptId > 0 ? deptId : 1);
-                            psUpdate.setString(2, desc != null ? desc.trim() : "");
-                            psUpdate.setInt(3, existingId);
-                            psUpdate.setInt(4, companyId);
-                            psUpdate.executeUpdate();
-                            updated++;
-                        } else {
-                            psInsert.setInt(1, companyId);
-                            psInsert.setInt(2, deptId > 0 ? deptId : 1);
-                            psInsert.setInt(3, levelId);
-                            psInsert.setString(4, title.trim());
-                            psInsert.setString(5, desc != null ? desc.trim() : "");
-                            psInsert.executeUpdate();
-                            inserted++;
-                        }
-                    }
-
-                    conn.commit();
-                    result.setSuccess(true);
-                    result.setTotalProcessed(rows.size());
-                    result.setInsertedCount(inserted);
-                    result.setUpdatedCount(updated);
-                    result.setMessage("Nhập chức danh thành công: Thêm mới " + inserted + ", Cập nhật " + updated + " chức danh.");
-                } catch (SQLException e) {
-                    conn.rollback();
-                    throw e;
-                }
-            } finally {
-                conn.setAutoCommit(true);
-            }
-        }
-    }
 
     private void executeImportEmployees(int companyId, List<ImportRowResult> rows, ImportExecuteResult result) throws SQLException {
         try (Connection conn = DBConnection.getConnection()) {
@@ -734,24 +612,6 @@ public class DataImportExcelService {
 
     private String validateRowData(String type, int companyId, Map<String, String> data, Set<String> seenCodes, int lineNum) {
         switch (type) {
-            case TYPE_DEPARTMENT -> {
-                String code = data.get("Mã phòng ban (*)");
-                String name = data.get("Tên phòng ban (*)");
-                if (isBlank(code)) return "Mã phòng ban không được để trống.";
-                if (isBlank(name)) return "Tên phòng ban không được để trống.";
-                if (!seenCodes.add("DEPT:" + code.trim().toUpperCase())) {
-                    return "Mã phòng ban '" + code.trim() + "' bị trùng lặp trong tệp Excel.";
-                }
-            }
-            case TYPE_POSITION -> {
-                String title = data.get("Tên chức danh (*)");
-                String deptName = data.get("Tên phòng ban (*)");
-                if (isBlank(title)) return "Tên chức danh không được để trống.";
-                if (isBlank(deptName)) return "Tên phòng ban không được để trống.";
-                if (!seenCodes.add("POS:" + title.trim().toUpperCase())) {
-                    return "Tên chức danh '" + title.trim() + "' bị trùng lặp trong tệp Excel.";
-                }
-            }
             case TYPE_EMPLOYEE -> {
                 String code = data.get("Mã NV (*)");
                 String name = data.get("Họ tên (*)");
@@ -884,8 +744,12 @@ public class DataImportExcelService {
         if (type == null) return TYPE_EMPLOYEE;
         String t = type.trim().toUpperCase();
         return switch (t) {
-            case "DEPT", "DEPARTMENT", "PHONG_BAN" -> TYPE_DEPARTMENT;
-            case "POS", "POSITION", "CHUC_DANH" -> TYPE_POSITION;
+            case "DEPT", "DEPARTMENT", "PHONG_BAN" ->
+                    throw new IllegalArgumentException("Hệ thống không hỗ trợ nhập file cho Phòng ban. Quản trị viên vui lòng tự thiết lập thủ công.");
+            case "POS", "POSITION", "CHUC_DANH" ->
+                    throw new IllegalArgumentException("Hệ thống không hỗ trợ nhập file cho Chức danh. Quản trị viên vui lòng tự thiết lập thủ công.");
+            case "RESPONSIBILITY", "LEVEL", "CAP_TRACH_NHIEM" ->
+                    throw new IllegalArgumentException("Hệ thống không hỗ trợ nhập file cho Cấp trách nhiệm. Quản trị viên vui lòng tự thiết lập thủ công.");
             case "ATTENDANCE", "CHAM_CONG", "TIMESHEET" -> TYPE_ATTENDANCE;
             case "CONTRACT", "CONTRACTS", "HOP_DONG", "HDLD" -> TYPE_CONTRACT;
             default -> TYPE_EMPLOYEE;
@@ -894,8 +758,6 @@ public class DataImportExcelService {
 
     public static String getTypeNameVi(String type) {
         return switch (type) {
-            case TYPE_DEPARTMENT -> "Phòng ban";
-            case TYPE_POSITION -> "Chức danh";
             case TYPE_ATTENDANCE -> "Chấm công";
             case TYPE_CONTRACT -> "Hợp đồng lao động";
             default -> "Nhân sự";
@@ -904,12 +766,6 @@ public class DataImportExcelService {
 
     private String[] getHeadersForType(String type) {
         return switch (type) {
-            case TYPE_DEPARTMENT -> new String[]{
-                    "Mã phòng ban (*)", "Tên phòng ban (*)", "Mô tả"
-            };
-            case TYPE_POSITION -> new String[]{
-                    "Mã chức danh (*)", "Tên chức danh (*)", "Tên phòng ban (*)", "Mô tả", "Cấp trách nhiệm (1-5)"
-            };
             case TYPE_ATTENDANCE -> new String[]{
                     "STT", "Mã NV (*)", "Họ và tên", "Phòng ban",
                     "Ngày chấm công (yyyy-MM-dd) (*)", "Giờ vào (HH:mm)", "Giờ ra (HH:mm)",
@@ -930,12 +786,6 @@ public class DataImportExcelService {
 
     private String[] getSampleDataForType(String type) {
         return switch (type) {
-            case TYPE_DEPARTMENT -> new String[]{
-                    "IT", "Phòng Công nghệ thông tin", "Phụ trách phát triển và vận hành hệ thống phần mềm"
-            };
-            case TYPE_POSITION -> new String[]{
-                    "DEV", "Kỹ sư phần mềm", "Phòng Công nghệ thông tin", "Lập trình hệ thống", "2"
-            };
             case TYPE_ATTENDANCE -> new String[]{
                     "1", "NV001", "Nguyễn Văn A", "Phòng Kỹ thuật", LocalDate.now().toString(), "08:25", "17:35", "8.00", "Đúng giờ", "Điểm danh đúng giờ"
             };
@@ -965,18 +815,17 @@ public class DataImportExcelService {
             }
             String rowText = sb.toString();
 
+            if (rowText.contains("mã phòng ban") || rowText.contains("tên phòng ban")
+                    || rowText.contains("mã chức danh") || rowText.contains("tên chức danh")
+                    || rowText.contains("cấp trách nhiệm")) {
+                throw new IllegalArgumentException("Hệ thống không hỗ trợ nhập file cho Phòng ban / Chức danh / Cấp trách nhiệm. Quản trị viên vui lòng tự thiết lập thủ công.");
+            }
             if (rowText.contains("mã hđ") || rowText.contains("hợp đồng lao động") || rowText.contains("loại hợp đồng")
                     || (rowText.contains("lương trước khấu trừ") && !rowText.contains("bảng lương"))) {
                 return TYPE_CONTRACT;
             }
             if (rowText.contains("ngày chấm công") || (rowText.contains("giờ vào") && rowText.contains("giờ ra"))) {
                 return TYPE_ATTENDANCE;
-            }
-            if (rowText.contains("mã phòng ban") || rowText.contains("tên phòng ban")) {
-                return TYPE_DEPARTMENT;
-            }
-            if (rowText.contains("mã chức danh") || rowText.contains("tên chức danh")) {
-                return TYPE_POSITION;
             }
             if (rowText.contains("số cccd") || rowText.contains("ngày cấp cccd") || rowText.contains("quê quán") || rowText.contains("ngành học")) {
                 return TYPE_EMPLOYEE;
@@ -990,8 +839,6 @@ public class DataImportExcelService {
         String[] keywords = switch (type) {
             case TYPE_CONTRACT -> new String[]{"mã hđ", "loại hợp đồng"};
             case TYPE_ATTENDANCE -> new String[]{"ngày chấm công", "giờ vào"};
-            case TYPE_DEPARTMENT -> new String[]{"mã phòng ban", "tên phòng ban"};
-            case TYPE_POSITION -> new String[]{"mã chức danh", "tên chức danh"};
             default -> new String[]{"mã nv", "họ tên", "số cccd"};
         };
 
@@ -1117,50 +964,6 @@ public class DataImportExcelService {
     private void setNullableDate(PreparedStatement ps, int idx, Date val) throws SQLException {
         if (val != null) ps.setDate(idx, val);
         else ps.setNull(idx, Types.DATE);
-    }
-
-    private int parseLevelId(String levelStr) {
-        if (isBlank(levelStr)) return 1;
-        try {
-            int num = Integer.parseInt(levelStr.trim());
-            return Math.max(1, Math.min(5, num));
-        } catch (Exception e) {
-            return 1;
-        }
-    }
-
-    private Map<String, Integer> loadDepartmentMap(Connection conn, int companyId) throws SQLException {
-        Map<String, Integer> map = new HashMap<>();
-        String sql = "SELECT DepartmentId, DepartmentCode, DepartmentName FROM Departments WHERE CompanyId = ?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, companyId);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    int id = rs.getInt("DepartmentId");
-                    String code = rs.getString("DepartmentCode");
-                    String name = rs.getString("DepartmentName");
-                    if (code != null) map.put(code.trim().toUpperCase(), id);
-                    if (name != null) map.put(name.trim().toUpperCase(), id);
-                }
-            }
-        }
-        return map;
-    }
-
-    private Map<String, Integer> loadPositionMap(Connection conn, int companyId) throws SQLException {
-        Map<String, Integer> map = new HashMap<>();
-        String sql = "SELECT PositionId, PositionTitle FROM Positions WHERE CompanyId = ?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, companyId);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    int id = rs.getInt("PositionId");
-                    String title = rs.getString("PositionTitle");
-                    if (title != null) map.put(title.trim().toUpperCase(), id);
-                }
-            }
-        }
-        return map;
     }
 
     private Integer findEmployeeIdByCode(int companyId, String employeeCode) {

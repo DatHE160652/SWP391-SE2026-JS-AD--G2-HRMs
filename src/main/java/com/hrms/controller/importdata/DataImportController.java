@@ -54,7 +54,11 @@ public class DataImportController extends HttpServlet {
             throws ServletException, IOException {
         String path = request.getServletPath();
         if ("/data/import/template".equals(path)) {
-            handleDownloadTemplate(request, response);
+            try {
+                handleDownloadTemplate(request, response);
+            } catch (IllegalArgumentException e) {
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+            }
         } else {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
         }
