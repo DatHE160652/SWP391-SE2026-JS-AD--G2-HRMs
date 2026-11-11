@@ -34,6 +34,7 @@
     async function post(action, values) {
         const body = new URLSearchParams(values);
         body.set('csrfToken', document.querySelector('meta[name="csrf-token"]').content);
+        body.set('resetContextToken', document.querySelector('meta[name="reset-context-token"]').content);
         const response = await fetch(`${endpoint}/${action}`, {
             method: 'POST', headers: {Accept: 'application/json'}, body, cache: 'no-store'
         });

@@ -9,6 +9,10 @@ import java.util.*;
 
 /** UC22 transaction keeps actor, employee, role and contract state stable until commit. */
 public class EmployeePasswordResetDAO {
+    @FunctionalInterface interface ConnectionProvider { Connection open() throws SQLException; }
+    private final ConnectionProvider connections;
+    public EmployeePasswordResetDAO() { this(DBConnection::getConnection); }
+    EmployeePasswordResetDAO(ConnectionProvider connections) { this.connections=connections; }
     public static class ConflictException extends RuntimeException {
         public ConflictException() { super("Dữ liệu đã thay đổi hoặc tài khoản không thể đặt lại. Vui lòng tìm lại nhân viên."); }
     }
@@ -41,7 +45,7 @@ public class EmployeePasswordResetDAO {
         String sql=SELECT+" AND (e.UserId IS NULL OR r.RoleCode IN ('MANAGER','EMPLOYEE'))"
                 +(email==null?"":" AND LOWER(LTRIM(RTRIM("+EMAIL_EXPR+")))=?")
                 +(identityNumber==null?"":" AND e.IdentityNumber=?")+" ORDER BY e.EmployeeId";
-        try (Connection connection=DBConnection.getConnection()) {
+        try (Connection connection=connections.open()) {
             connection.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
             connection.setAutoCommit(false);
             try {
@@ -60,7 +64,7 @@ public class EmployeePasswordResetDAO {
 
     public <T> T reset(TenantPrincipal actor, int employeeId, byte[] version, String hash,
                        String operationId, Preparation<T> preparation) throws SQLException {
-        try(Connection connection=DBConnection.getConnection()) {
+        try(Connection connection=connections.open()) {
             connection.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
             connection.setAutoCommit(false);
             try {
@@ -119,7 +123,7 @@ public class EmployeePasswordResetDAO {
     }
 
     public void recordDelivery(TenantPrincipal actor,int employeeId,String operationId,String status) throws SQLException {
-        try(Connection connection=DBConnection.getConnection()) {
+        try(Connection connection=connections.open()) {
             audit(connection,actor,employeeId,operationId,"PORTAL_RESET_EMAIL",status);
         }
     }
