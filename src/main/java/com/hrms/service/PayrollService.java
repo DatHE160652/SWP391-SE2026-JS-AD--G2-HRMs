@@ -33,7 +33,7 @@ public class PayrollService {
     public static void requirePayrollAccess(TenantPrincipal p) {
         requireTenant(p);
         if (!p.canManagePayroll())
-            throw new PayrollException(403,"Chỉ Manager hoặc Company Admin/HR được quản lý bảng lương của công ty.");
+            throw new PayrollException(403,"Chỉ Company Admin hoặc HR mới được quản lý bảng lương của công ty.");
     }
 
     public static int ownEmployee(TenantPrincipal p) {

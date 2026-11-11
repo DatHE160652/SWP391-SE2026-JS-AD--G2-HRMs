@@ -11,3 +11,28 @@
 .pay-main,.pay-sidebar{min-width:0}@media(max-width:850px){.pay-shell{grid-template-columns:minmax(0,1fr)}}
 
 .adjustments-card{margin:20px 0}.adjustment-help{margin:0;padding:0 22px 18px}.adjustment-note{max-width:280px;white-space:pre-wrap;overflow-wrap:anywhere}.adjustment-field-error{color:var(--red);display:block;font-size:12px;font-style:italic;line-height:1.5;margin-top:5px}#adjustmentForm [aria-invalid=true]{border-color:var(--red)}#adjustmentSaveState.dirty{color:#946200}#adjustmentSaveState.saving{color:var(--blue)}
+
+/* Ensure perfect alignment between headers and data cells in numeric and action columns */
+.lc th.number,
+.lc td.number,
+.workspace-payroll th.number,
+.workspace-payroll td.number,
+.table-scroll th.number,
+.table-scroll td.number {
+    text-align: right !important;
+}
+
+.workspace-payroll th:first-child,
+.workspace-payroll td:first-child {
+    text-align: left !important;
+}
+
+.workspace-payroll th:last-child,
+.workspace-payroll td:last-child {
+    text-align: right !important;
+}
+
+.workspace-payroll table {
+    width: 100%;
+}
+

@@ -14,7 +14,7 @@
                             <c:out value="${slip.periodName()}" />
                     </title>
                     <link rel="stylesheet"
-                        href="${pageContext.request.contextPath}/css/payroll.css?v=20261026-payslips-1">
+                        href="${pageContext.request.contextPath}/css/payroll.css?v=<%= application.getResource("/css/payroll.css").openConnection().getLastModified() %>">
                     <%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
             </head>
 
