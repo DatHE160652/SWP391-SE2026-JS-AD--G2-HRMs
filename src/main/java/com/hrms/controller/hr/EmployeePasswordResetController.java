@@ -14,15 +14,35 @@ public class EmployeePasswordResetController extends HttpServlet {
     public static final String PAGE="/comadmin-hr/reset-employee-password";
     public static final String SEARCH="/comadmin-hr/reset-employee-password/search";
     public static final String RESET="/comadmin-hr/reset-employee-password/reset";
+    private static final String PAGE_CONTEXT_ATTRIBUTE = "employeePasswordResetContext";
+    private record PageContext(Integer userId, Integer companyId, String workspaceCode,
+                               String credentialVersion, String token) {
+        boolean matches(com.hrms.service.security.TenantPrincipal principal) {
+            return java.util.Objects.equals(userId, principal.getUserId())
+                    && java.util.Objects.equals(companyId, principal.getCompanyId())
+                    && java.util.Objects.equals(workspaceCode, principal.getWorkspaceCode())
+                    && java.util.Objects.equals(credentialVersion, principal.getCredentialVersion());
+        }
+    }
     private final EmployeePasswordResetService service;
     public EmployeePasswordResetController() { this(new EmployeePasswordResetService()); }
     public EmployeePasswordResetController(EmployeePasswordResetService service) { this.service=service; }
     @Override protected void doGet(HttpServletRequest request,HttpServletResponse response) throws ServletException,IOException {
         SecuritySupport.applyNoStore(response::setHeader);
         try {
-            service.requireEditor(SecuritySupport.getTenantPrincipal(request));
+            var principal=SecuritySupport.getTenantPrincipal(request);
+            service.requireEditor(principal);
             if(!PAGE.equals(request.getServletPath())) { error(response,400,"Thao tác này yêu cầu POST."); return; }
-            request.setAttribute("organizationCsrfToken",SecuritySupport.ensurePublicCsrfToken(request.getSession()));
+            HttpSession session=request.getSession();
+            synchronized(session) {
+                Object existing=session.getAttribute(PAGE_CONTEXT_ATTRIBUTE);
+                PageContext context=existing instanceof PageContext saved && saved.matches(principal) ? saved
+                        : new PageContext(principal.getUserId(),principal.getCompanyId(),principal.getWorkspaceCode(),
+                                principal.getCredentialVersion(),java.util.UUID.randomUUID().toString());
+                session.setAttribute(PAGE_CONTEXT_ATTRIBUTE,context);
+                request.setAttribute("resetContextToken",context.token());
+            }
+            request.setAttribute("organizationCsrfToken",SecuritySupport.ensurePublicCsrfToken(session));
             request.getRequestDispatcher("/WEB-INF/views/comadmin-hr/reset-employee-password.jsp").forward(request,response);
         } catch(SecurityException exception) { error(response,403,"Bạn không có quyền truy cập trang này."); }
     }
@@ -32,6 +52,15 @@ public class EmployeePasswordResetController extends HttpServlet {
             var principal=SecuritySupport.getTenantPrincipal(request);
             service.requireEditor(principal);
             if(!SecuritySupport.hasValidPublicCsrfToken(request)) throw new SecurityException();
+            HttpSession session=request.getSession(false);
+            Object saved=session==null?null:session.getAttribute(PAGE_CONTEXT_ATTRIBUTE);
+            String token=request.getParameter("resetContextToken");
+            if(!(saved instanceof PageContext context) || !context.matches(principal) || token==null
+                    || !java.security.MessageDigest.isEqual(context.token().getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                            token.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+                error(response,409,"Tài khoản hoặc workspace đã thay đổi. Vui lòng tải lại trang Đặt lại mật khẩu trước khi tiếp tục.");
+                return;
+            }
             Object data;
             if(SEARCH.equals(request.getServletPath())) {
                 data=service.search(principal,request.getParameter("email"),request.getParameter("identityNumber"));

@@ -7,6 +7,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="<c:out value='${organizationCsrfToken}'/>">
+    <meta name="reset-context-token" content="<c:out value='${resetContextToken}'/>">
     <%@ include file="/WEB-INF/views/common/language.jspf" %>
     <%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
     <title>${resetEnglish ? 'Password reset' : 'Đặt lại mật khẩu'} · HRMs Cloud</title>
