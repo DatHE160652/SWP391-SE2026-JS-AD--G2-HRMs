@@ -162,6 +162,7 @@ public class TenantAuthorizationFilter implements Filter {
                         || path.equals("/attendance/report")
                         || path.equals("/attendance/export-report")
                         || path.equals("/attendance/export-timesheet")
+                        || path.equals("/attendance/export")
                         || path.equals("/attendance/meta")
                         || path.equals("/attendance/shift-setting")
                         || path.equals("/attendance/explanation/pending")
@@ -262,7 +263,8 @@ public class TenantAuthorizationFilter implements Filter {
                 || path.equals("/positions")
                 || path.startsWith("/positions/")
                 || path.equals("/documents")
-                || path.startsWith("/documents/");
+                || path.startsWith("/documents/")
+                || path.startsWith("/data/import");
     }
 
     private void rejectUnauthenticated(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -317,6 +319,7 @@ public class TenantAuthorizationFilter implements Filter {
                 || path.startsWith("/positions/")
                 || path.equals("/documents")
                 || path.startsWith("/documents/")
+                || path.startsWith("/data/import")
                 || path.startsWith("/attendance/") && !isAttendancePagePath(path) && !path.endsWith(".html");
     }
 

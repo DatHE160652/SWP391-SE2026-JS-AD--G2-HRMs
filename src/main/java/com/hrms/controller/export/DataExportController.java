@@ -1,9 +1,11 @@
 package com.hrms.controller.export;
 
+import com.hrms.dao.AttendanceDAO.AttendanceDTO;
 import com.hrms.model.Department;
 import com.hrms.model.Employee;
 import com.hrms.model.LeaveRequest;
 import com.hrms.model.Position;
+import com.hrms.service.AttendanceService;
 import com.hrms.service.DepartmentService;
 import com.hrms.service.EmployeeLifecycleService;
 import com.hrms.service.EmployeeService;
@@ -33,6 +35,7 @@ import java.util.Map;
  * 4. /departments/export : Danh sách phòng ban
  * 5. /positions/export : Danh sách chức danh
  * 6. /lifecycle/organization/export : Sơ đồ / Cơ cấu tổ chức
+ * 7. /attendance/export : Danh sách điểm danh chấm công
  */
 @WebServlet(name = "DataExportController", urlPatterns = {
         "/employees/export",
@@ -40,7 +43,8 @@ import java.util.Map;
         "/lifecycle/contracts/export",
         "/departments/export",
         "/positions/export",
-        "/lifecycle/organization/export"
+        "/lifecycle/organization/export",
+        "/attendance/export"
 })
 public class DataExportController extends HttpServlet {
 
@@ -49,26 +53,35 @@ public class DataExportController extends HttpServlet {
     private final EmployeeLifecycleService lifecycleService;
     private final DepartmentService departmentService;
     private final PositionService positionService;
+    private final AttendanceService attendanceService;
     private final GeneralExportExcelService exportExcelService;
 
     public DataExportController() {
         this(new EmployeeService(), new LeaveService(), new EmployeeLifecycleService(),
-                new DepartmentService(), new PositionService(), new GeneralExportExcelService());
+                new DepartmentService(), new PositionService(), new AttendanceService(), new GeneralExportExcelService());
     }
 
     public DataExportController(EmployeeService employeeService, LeaveService leaveService,
                                 EmployeeLifecycleService lifecycleService, GeneralExportExcelService exportExcelService) {
-        this(employeeService, leaveService, lifecycleService, new DepartmentService(), new PositionService(), exportExcelService);
+        this(employeeService, leaveService, lifecycleService, new DepartmentService(), new PositionService(), new AttendanceService(), exportExcelService);
     }
 
     public DataExportController(EmployeeService employeeService, LeaveService leaveService,
                                 EmployeeLifecycleService lifecycleService, DepartmentService departmentService,
                                 PositionService positionService, GeneralExportExcelService exportExcelService) {
+        this(employeeService, leaveService, lifecycleService, departmentService, positionService, new AttendanceService(), exportExcelService);
+    }
+
+    public DataExportController(EmployeeService employeeService, LeaveService leaveService,
+                                EmployeeLifecycleService lifecycleService, DepartmentService departmentService,
+                                PositionService positionService, AttendanceService attendanceService,
+                                GeneralExportExcelService exportExcelService) {
         this.employeeService = employeeService;
         this.leaveService = leaveService;
         this.lifecycleService = lifecycleService;
         this.departmentService = departmentService;
         this.positionService = positionService;
+        this.attendanceService = attendanceService;
         this.exportExcelService = exportExcelService;
     }
 
@@ -86,6 +99,7 @@ public class DataExportController extends HttpServlet {
                 case "/departments/export" -> handleExportDepartments(request, response);
                 case "/positions/export" -> handleExportPositions(request, response);
                 case "/lifecycle/organization/export" -> handleExportOrganization(request, response);
+                case "/attendance/export" -> handleExportAttendance(request, response);
                 default -> response.sendError(HttpServletResponse.SC_NOT_FOUND);
             }
         } catch (SecurityException e) {
@@ -337,6 +351,33 @@ public class DataExportController extends HttpServlet {
         response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
 
         exportExcelService.exportOrganization(companyName, combined, response.getOutputStream());
+    }
+
+    /**
+     * 7. Xuất danh sách điểm danh chấm công (phù hợp form với file import)
+     */
+    private void handleExportAttendance(HttpServletRequest request, HttpServletResponse response)
+            throws SQLException, IOException {
+        int companyId = SecuritySupport.requireCompanyId(request);
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        String companyName = principal != null && principal.getCompanyName() != null ? principal.getCompanyName() : "HRMs Cloud";
+
+        Integer departmentId = parseNullableInt(request.getParameter("departmentId"));
+        String status = trimToNull(request.getParameter("status"));
+        if ("ALL".equalsIgnoreCase(status)) status = null;
+
+        LocalDate fromDate = parseOptionalDate(request.getParameter("fromDate"));
+        LocalDate toDate = parseOptionalDate(request.getParameter("toDate"));
+        String keyword = trimToNull(request.getParameter("keyword"));
+
+        List<AttendanceDTO> attendances = attendanceService.searchCompanyAttendance(
+                companyId, departmentId, status, fromDate, toDate, keyword);
+
+        String filename = "Bang_Diem_Danh_Cham_Cong_" + LocalDate.now().format(DateTimeFormatter.ofPattern("dd_MM_yyyy")) + ".xlsx";
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+
+        exportExcelService.exportAttendances(companyName, attendances, response.getOutputStream());
     }
 
     private Integer parseNullableInt(String value) {

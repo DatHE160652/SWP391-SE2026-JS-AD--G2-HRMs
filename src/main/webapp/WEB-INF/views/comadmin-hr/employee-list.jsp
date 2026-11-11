@@ -12,7 +12,7 @@
 <main class="lc-main">
 <div class="lc-breadcrumb"><%= com.hrms.i18n.Language.text(request, "ui_60d4755edd25", "Quản trị nhân sự &nbsp; / &nbsp; Hồ sơ nhân viên") %></div>
 <div class="lc-heading"><div><h1><%= com.hrms.i18n.Language.text(request, "ui_56a31d8a7ea2", "Hồ sơ nhân viên") %></h1><p><%= com.hrms.i18n.Language.text(request, "ui_e61381ea1835", "Quản lý thông tin và quá trình công tác của nhân viên") %></p></div>
-<div class="lc-actions"><button id="lc-add"><%= com.hrms.i18n.Language.text(request, "ui_8a5334416960", "＋ Thêm nhân viên") %></button><button id="lc-export-employees" type="button" class="secondary" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;"><%= com.hrms.i18n.Language.text(request, "ui_1721265dcbc2", "Xuất Excel") %></button></div></div>
+<div class="lc-actions"><button id="lc-add"><%= com.hrms.i18n.Language.text(request, "ui_8a5334416960", "＋ Thêm nhân viên") %></button><button id="lc-export-employees" type="button" class="secondary" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;"><%= com.hrms.i18n.Language.text(request, "ui_1721265dcbc2", "Xuất Excel") %></button><button id="lc-import-employees" type="button" class="secondary" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="8" x2="12" y2="21"/></svg> <%= "en".equals(com.hrms.i18n.Language.selected(request)) ? "Import Excel" : "Nhập Excel" %></button></div></div>
 <div id="lc-error" class="lc-alert" role="alert"></div>
 <div class="lc-master-detail">
 <section class="lc-card"><div class="lc-list-head"><h3><%= com.hrms.i18n.Language.text(request, "ui_0cfe7659f82e", "Danh sách nhân viên") %> <span id="lc-count" class="lc-count">—</span></h3>
@@ -50,5 +50,18 @@
 <script src="${pageContext.request.contextPath}/js/lifecycle-http.js?v=<%= application.getResource("/js/lifecycle-http.js").openConnection().getLastModified() %>" defer></script>
 
 
+<%@ include file="/WEB-INF/views/common/import-modal.jspf" %>
+<script src="${pageContext.request.contextPath}/js/import-modal.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('lc-import-employees')?.addEventListener('click', function() {
+            DataImporter.open('EMPLOYEE', {
+                onSuccess: function() {
+                    location.reload();
+                }
+            });
+        });
+    });
+</script>
 <script src="${pageContext.request.contextPath}/js/employee.js?v=<%= application.getResource("/js/employee.js").openConnection().getLastModified() %>" defer></script>
 <script src="${pageContext.request.contextPath}/js/lifecycle.js?v=<%= application.getResource("/js/lifecycle.js").openConnection().getLastModified() %>" defer></script></body></html>
