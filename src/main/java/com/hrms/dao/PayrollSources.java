@@ -52,6 +52,8 @@ final class PayrollSources {
             + history("EmployeeCompensationHistories", "compensation", "history.BaseSalary", "BaseSalary", false)
             + history("EmployeePositionAssignments", "assignment", "history.PositionId", "PositionId", true)
             + """
+            LEFT JOIN Positions curPos ON curPos.CompanyId=e.CompanyId AND curPos.PositionId=e.PositionId
+                AND e.DepartmentId IS NOT NULL AND curPos.DepartmentId=e.DepartmentId
             OUTER APPLY (
                 SELECT COUNT(CASE WHEN policy.AtEnd=1 THEN 1 END) SourceCount,
                     COUNT(CASE WHEN policy.AtStart=1 THEN 1 END) StartSourceCount,
@@ -63,12 +65,23 @@ final class PayrollSources {
                         CASE WHEN policy.EffectiveTo IS NULL OR policy.EffectiveTo>=payrollWindow.PayrollDate THEN 1 ELSE 0 END AtEnd,
                         CASE WHEN policy.EffectiveFrom<=payrollWindow.StartDate THEN 1 ELSE 0 END AtStart
                     FROM ResponsibilityAllowancePolicies policy
-                    WHERE policy.CompanyId=e.CompanyId AND policy.ResponsibilityLevelId=assignment.ResponsibilityLevelId
+                    WHERE policy.CompanyId=e.CompanyId
+                    AND policy.ResponsibilityLevelId=COALESCE(assignment.ResponsibilityLevelId,curPos.ResponsibilityLevelId)
                     AND policy.EffectiveFrom<=payrollWindow.PayrollDate
                     AND (policy.EffectiveTo IS NULL OR policy.EffectiveTo>=payrollWindow.StartDate)
                     AND (policy.EffectiveTo IS NULL OR policy.EffectiveTo>=policy.EffectiveFrom)
                 ) policy
             ) allowance
+            OUTER APPLY (
+                SELECT TOP 1 policy.Amount
+                FROM ResponsibilityAllowancePolicies policy
+                WHERE policy.CompanyId=e.CompanyId
+                  AND policy.ResponsibilityLevelId=COALESCE(assignment.ResponsibilityLevelId,curPos.ResponsibilityLevelId)
+                  AND policy.EffectiveFrom<=CONVERT(date,SYSDATETIME())
+                  AND (policy.EffectiveTo IS NULL OR policy.EffectiveTo>CONVERT(date,SYSDATETIME()))
+                  AND (policy.EffectiveTo IS NULL OR policy.EffectiveTo>=policy.EffectiveFrom)
+                ORDER BY policy.EffectiveFrom DESC,policy.AllowancePolicyId DESC
+            ) currentAllowance
             OUTER APPLY (
                 SELECT
                     CAST(CASE
@@ -189,8 +202,8 @@ final class PayrollSources {
 
     static final String ALLOWANCE = """
         CASE
-            WHEN allowance.Amount IS NULL THEN CAST(0 AS DECIMAL(18,2))
-            WHEN COALESCE(payCfg.IncludeResponsibilityAllowance, 1) = 1 THEN allowance.Amount
+            WHEN COALESCE(allowance.Amount,currentAllowance.Amount) IS NULL THEN CAST(0 AS DECIMAL(18,2))
+            WHEN COALESCE(payCfg.IncludeResponsibilityAllowance, 1) = 1 THEN COALESCE(allowance.Amount,currentAllowance.Amount)
             ELSE CAST(0 AS DECIMAL(18,2))
         END
         """;

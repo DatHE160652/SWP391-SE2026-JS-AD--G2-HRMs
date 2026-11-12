@@ -268,21 +268,72 @@
         renderRows();
     });
 
-    // Submit form: Apply bonus campaign
-    form?.addEventListener('submit', async e => {
+    const confirmDialog = $('#bonusConfirmDialog');
+    const confirmForm = $('#bonusConfirmForm');
+
+    function setConfirmError(message) {
+        const box = confirmDialog?.querySelector('.dialog-error');
+        if (!box) return;
+        box.textContent = message || '';
+        box.hidden = !message;
+    }
+
+    function openConfirmDialog() {
+        if (!confirmDialog) return;
+        const total = state.candidates.reduce((sum, c) => sum + (Number(c.finalBonus) || 0), 0);
+        const count = state.candidates.filter(c => Number(c.finalBonus) > 0).length;
+        const config = getConfig();
+
+        $('#bonusConfirmText').textContent = `Xác nhận áp dụng đợt thưởng cho ${count} nhân viên? Bảng lương kỳ sẽ được cập nhật và đưa về trạng thái chờ tính toán.`;
+        $('#bonusConfirmSummary').innerHTML =
+            `Đợt thưởng: <strong>${safe(config.campaignName)}</strong><br>` +
+            `Số nhân viên nhận thưởng: <strong>${count} nhân viên</strong><br>` +
+            `Tổng ngân sách thưởng: <strong>${money(total)}</strong>`;
+        setConfirmError('');
+        if (typeof confirmDialog.showModal === 'function') {
+            confirmDialog.showModal();
+        }
+    }
+
+    confirmDialog?.querySelectorAll('[data-dismiss]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!state.busy) confirmDialog.close();
+        });
+    });
+
+    confirmDialog?.addEventListener('cancel', e => {
+        if (state.busy) e.preventDefault();
+    });
+
+    confirmDialog?.addEventListener('click', e => {
+        if (e.target === confirmDialog && !state.busy) {
+            confirmDialog.close();
+        }
+    });
+
+    // Submit form: Open confirmation popup
+    form?.addEventListener('submit', e => {
+        e.preventDefault();
+        if (state.busy) return;
+        openConfirmDialog();
+    });
+
+    // Confirm popup submit: Apply bonus campaign
+    confirmForm?.addEventListener('submit', async e => {
         e.preventDefault();
         if (state.busy) return;
 
-        const total = state.candidates.reduce((sum, c) => sum + (Number(c.finalBonus) || 0), 0);
-        const count = state.candidates.filter(c => Number(c.finalBonus) > 0).length;
-
-        const confirmMsg = `Xác nhận áp dụng đợt thưởng cho ${count} nhân viên?\nTổng ngân sách thưởng: ${money(total)}\n\nBảng lương kỳ sẽ được cập nhật và đưa về trạng thái chờ tính toán.`;
-        if (!confirm(confirmMsg)) return;
-
         state.busy = true;
+        setConfirmError('');
         const submitBtn = $('#applyBonusBtn');
+        const confirmSubmitBtn = $('#bonusConfirmSubmit');
         const saveHint = $('#saveHint');
+        const originalConfirmLabel = confirmSubmitBtn?.textContent || 'Xác nhận áp dụng';
         if (submitBtn) submitBtn.disabled = true;
+        if (confirmSubmitBtn) {
+            confirmSubmitBtn.disabled = true;
+            confirmSubmitBtn.textContent = 'Đang áp dụng…';
+        }
         if (saveHint) saveHint.textContent = 'Đang lưu đợt thưởng vào hệ thống…';
 
         try {
@@ -310,15 +361,21 @@
                 throw new Error(payload.message || 'Không thể lưu đợt thưởng. Vui lòng thử lại.');
             }
 
+            confirmDialog?.close();
             feedback('Đã áp dụng đợt thưởng thành công! Đang chuyển hướng về kỳ lương…');
             setTimeout(() => {
                 location.href = context + '/payroll?periodId=' + encodeURIComponent(state.periodId);
             }, 1000);
 
         } catch (error) {
+            setConfirmError(error.message);
             feedback(error.message, true);
             state.busy = false;
             if (submitBtn) submitBtn.disabled = false;
+            if (confirmSubmitBtn) {
+                confirmSubmitBtn.disabled = false;
+                confirmSubmitBtn.textContent = originalConfirmLabel;
+            }
             if (saveHint) saveHint.textContent = 'Lưu thất bại. Hãy kiểm tra lại.';
         }
     });

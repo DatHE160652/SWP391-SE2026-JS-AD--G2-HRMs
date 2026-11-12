@@ -81,7 +81,7 @@ public class PayrollController extends HttpServlet {
                     PayrollPeriod period = dao.findPeriod(p.getCompanyId(), id);
                     response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
                     response.setHeader("Content-Disposition", "attachment; filename=bang-luong-thang-" + period.getMonth() + "-" + period.getYear() + ".xlsx");
-                    excel.template(period, dao.adjustmentRows(p.getCompanyId(), id), response.getOutputStream());
+                    excel.template(period, dao.templateRows(p.getCompanyId(), id), response.getOutputStream());
                 }
                 case "/payroll/payslip" -> {
                     request.setAttribute("slip",service.payslip(p,longId(request,"id"),true));
