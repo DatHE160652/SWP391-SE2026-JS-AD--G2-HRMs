@@ -37,6 +37,7 @@ public class PayrollExcelService {
             Sheet sheet = workbook.getSheetAt(0);
             if (sheet.getLastRowNum() > 5000) throw new PayrollException(400, "File tối đa 5.000 dòng dữ liệu.");
 
+            FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
             Row header = sheet.getRow(0);
             if (header == null) throw new PayrollException(400, "File trống, không có dòng tiêu đề.");
 
@@ -44,7 +45,7 @@ public class PayrollExcelService {
             int colStdWork = 4, colEarnedBase = 5, colResp = 6, colTravel = 7, colBonus = 8, colNote = 9;
 
             for (int c = 0; c < header.getLastCellNum(); c++) {
-                String h = normalizeHeader(text(header.getCell(c)));
+                String h = normalizeHeader(text(header.getCell(c), evaluator));
                 if (h.contains("employeecode") || h.contains("manhanvien") || h.contains("manv")) colEmpCode = c;
                 else if (h.contains("fullname") || h.contains("hoten") || h.contains("tennhanvien")) colFullName = c;
                 else if (h.contains("contractbase") || h.contains("luongcoban") || h.contains("grosssalary")) colContractBase = c;
@@ -59,29 +60,29 @@ public class PayrollExcelService {
 
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
-                if (row == null || blank(row)) continue;
+                if (row == null || blank(row, evaluator)) continue;
                 try {
-                    String code = text(row.getCell(colEmpCode)).trim();
+                    String code = text(row.getCell(colEmpCode), evaluator).trim();
                     if (code.isBlank() || code.length() > 50)
                         throw new PayrollException(400, "Mã nhân viên bị trống hoặc quá dài.");
                     if (!codes.add(code.toUpperCase(Locale.ROOT)))
                         throw new PayrollException(400, "Mã nhân viên " + code + " bị trùng trong file.");
 
-                    String fullName = text(row.getCell(colFullName)).trim();
-                    BigDecimal contractBase = amount(row.getCell(colContractBase), "Lương cơ bản");
-                    BigDecimal actualWork = decimalAmount(row.getCell(colActualWork), "Công thực tế", new BigDecimal("26.00"));
-                    BigDecimal stdWork = decimalAmount(row.getCell(colStdWork), "Công chuẩn", new BigDecimal("26.00"));
+                    String fullName = text(row.getCell(colFullName), evaluator).trim();
+                    BigDecimal contractBase = amount(row.getCell(colContractBase), "Lương cơ bản", evaluator);
+                    BigDecimal actualWork = decimalAmount(row.getCell(colActualWork), "Công thực tế", new BigDecimal("26.00"), evaluator);
+                    BigDecimal stdWork = decimalAmount(row.getCell(colStdWork), "Công chuẩn", new BigDecimal("26.00"), evaluator);
                     if (stdWork.compareTo(BigDecimal.ZERO) <= 0) stdWork = new BigDecimal("26.00");
 
-                    BigDecimal earnedBase = amount(row.getCell(colEarnedBase), "Lương theo công");
-                    if (earnedBase.compareTo(BigDecimal.ZERO) <= 0) {
-                        earnedBase = contractBase.multiply(actualWork).divide(stdWork, 2, RoundingMode.HALF_UP);
-                    }
+                    BigDecimal cellEarnedBase = amount(row.getCell(colEarnedBase), "Lương theo công", evaluator);
+                    BigDecimal earnedBase = (contractBase.compareTo(BigDecimal.ZERO) == 0 && cellEarnedBase.compareTo(BigDecimal.ZERO) > 0)
+                            ? cellEarnedBase
+                            : contractBase.multiply(actualWork).divide(stdWork, 2, RoundingMode.HALF_UP);
 
-                    BigDecimal resp = amount(row.getCell(colResp), "Phụ cấp trách nhiệm");
-                    BigDecimal travel = amount(row.getCell(colTravel), "Phụ cấp đi lại");
-                    BigDecimal bonus = amount(row.getCell(colBonus), "Thưởng");
-                    String note = PayrollService.note(text(row.getCell(colNote)));
+                    BigDecimal resp = amount(row.getCell(colResp), "Phụ cấp trách nhiệm", evaluator);
+                    BigDecimal travel = amount(row.getCell(colTravel), "Phụ cấp đi lại", evaluator);
+                    BigDecimal bonus = amount(row.getCell(colBonus), "Thưởng", evaluator);
+                    String note = PayrollService.note(text(row.getCell(colNote), evaluator));
 
                     BigDecimal netSalary = earnedBase.add(resp).add(travel).add(bonus);
 
@@ -153,9 +154,9 @@ public class PayrollExcelService {
                 cStdDays.setCellValue(stdDays.doubleValue());
                 cStdDays.setCellStyle(workDaysStyle);
 
-                BigDecimal earnedBase = stdDays.compareTo(BigDecimal.ZERO) > 0 ? contractBase.multiply(actualDays).divide(stdDays, 2, RoundingMode.HALF_UP) : contractBase;
+                int excelRow = i + 2;
                 Cell cEarned = row.createCell(5);
-                cEarned.setCellValue(earnedBase.doubleValue());
+                cEarned.setCellFormula("IF(E" + excelRow + ">0,ROUND(C" + excelRow + "*D" + excelRow + "/E" + excelRow + ",2),0)");
                 cEarned.setCellStyle(moneyStyle);
 
                 BigDecimal resp = emp.responsibilityAllowance() != null ? emp.responsibilityAllowance() : BigDecimal.ZERO;
@@ -175,6 +176,9 @@ public class PayrollExcelService {
 
                 row.createCell(9).setCellValue(emp.note() != null ? emp.note() : "");
             }
+
+            workbook.getCreationHelper().createFormulaEvaluator().evaluateAll();
+            workbook.setForceFormulaRecalculation(true);
 
             sheet.createFreezePane(0, 1);
             sheet.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(0, Math.max(0, employees.size()), 0, HEADERS.size() - 1));
@@ -217,18 +221,19 @@ public class PayrollExcelService {
                 .replace("ý", "y").replace("ỳ", "y").replace("ỷ", "y").replace("ỹ", "y").replace("ỵ", "y");
     }
 
-    private boolean blank(Row row) {
+    private boolean blank(Row row, FormulaEvaluator evaluator) {
+        DataFormatter formatter = new DataFormatter(Locale.ROOT);
         for (Cell c : row) {
-            if (c.getCellType() != CellType.BLANK && !new DataFormatter(Locale.ROOT).formatCellValue(c).isBlank()) return false;
+            if (c.getCellType() != CellType.BLANK && !formatter.formatCellValue(c, evaluator).isBlank()) return false;
         }
         return true;
     }
 
-    private String text(Cell c) {
+    private String text(Cell c, FormulaEvaluator evaluator) {
         if (c == null || c.getCellType() == CellType.BLANK) return "";
         if (c.getCellType() == CellType.FORMULA) {
             try {
-                return new DataFormatter(Locale.ROOT).formatCellValue(c).trim();
+                return new DataFormatter(Locale.ROOT).formatCellValue(c, evaluator).trim();
             } catch (Exception ignored) {
                 return "";
             }
@@ -239,26 +244,55 @@ public class PayrollExcelService {
         return new DataFormatter(Locale.ROOT).formatCellValue(c).trim();
     }
 
-    private BigDecimal amount(Cell cell, String label) {
+    private BigDecimal amount(Cell cell, String label, FormulaEvaluator evaluator) {
         if (cell == null || cell.getCellType() == CellType.BLANK) return new BigDecimal("0.00");
+        if (cell.getCellType() == CellType.FORMULA) {
+            BigDecimal evaluated = evaluatedNumeric(cell, label, evaluator);
+            if (evaluated != null) return PayrollService.money(evaluated.toPlainString(), label);
+            String raw = text(cell, evaluator);
+            return PayrollService.money(raw.isBlank() ? "0" : raw, label);
+        }
         if (cell.getCellType() == CellType.NUMERIC) {
             if (DateUtil.isCellDateFormatted(cell)) throw new PayrollException(400, label + " không được là ngày tháng.");
             return PayrollService.money(BigDecimal.valueOf(cell.getNumericCellValue()).toPlainString(), label);
         }
-        String raw = text(cell);
+        String raw = text(cell, evaluator);
         return PayrollService.money(raw.isBlank() ? "0" : raw, label);
     }
 
-    private BigDecimal decimalAmount(Cell cell, String label, BigDecimal defaultVal) {
+    private BigDecimal decimalAmount(Cell cell, String label, BigDecimal defaultVal, FormulaEvaluator evaluator) {
         if (cell == null || cell.getCellType() == CellType.BLANK) return defaultVal;
+        if (cell.getCellType() == CellType.FORMULA) {
+            BigDecimal evaluated = evaluatedNumeric(cell, label, evaluator);
+            if (evaluated != null) {
+                if (evaluated.compareTo(BigDecimal.ZERO) < 0) throw new PayrollException(400, label + " không được âm.");
+                return evaluated;
+            }
+            String raw = text(cell, evaluator);
+            return raw.isBlank() ? defaultVal : parseNonNegativeDecimal(raw, label);
+        }
         if (cell.getCellType() == CellType.NUMERIC) {
             if (DateUtil.isCellDateFormatted(cell)) throw new PayrollException(400, label + " không được là ngày tháng.");
             double d = cell.getNumericCellValue();
             if (d < 0) throw new PayrollException(400, label + " không được âm.");
             return BigDecimal.valueOf(d).setScale(2, RoundingMode.HALF_UP);
         }
-        String raw = text(cell);
-        if (raw.isBlank()) return defaultVal;
+        String raw = text(cell, evaluator);
+        return raw.isBlank() ? defaultVal : parseNonNegativeDecimal(raw, label);
+    }
+
+    private BigDecimal evaluatedNumeric(Cell cell, String label, FormulaEvaluator evaluator) {
+        CellValue cv = evaluator.evaluate(cell);
+        if (cv == null || cv.getCellType() == CellType.BLANK) return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        if (cv.getCellType() == CellType.ERROR) throw new PayrollException(400, label + " có lỗi công thức Excel.");
+        if (cv.getCellType() == CellType.NUMERIC) {
+            return BigDecimal.valueOf(cv.getNumberValue()).setScale(2, RoundingMode.HALF_UP);
+        }
+        if (cv.getCellType() == CellType.STRING) return null;
+        throw new PayrollException(400, label + " có công thức không hợp lệ.");
+    }
+
+    private BigDecimal parseNonNegativeDecimal(String raw, String label) {
         try {
             BigDecimal val = new BigDecimal(raw.trim());
             if (val.compareTo(BigDecimal.ZERO) < 0) throw new NumberFormatException();

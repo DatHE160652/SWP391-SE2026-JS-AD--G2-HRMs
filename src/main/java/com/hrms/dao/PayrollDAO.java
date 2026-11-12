@@ -64,6 +64,22 @@ public class PayrollDAO {
                         ALTER TABLE dbo.Payslips ADD StandardWorkDays DECIMAL(5,2) NOT NULL CONSTRAINT DF_Payslips_StandardWorkDays DEFAULT (22.00);
                     IF COL_LENGTH('dbo.Payslips', 'TravelAllowance') IS NULL
                         ALTER TABLE dbo.Payslips ADD TravelAllowance DECIMAL(18,2) NOT NULL CONSTRAINT DF_Payslips_TravelAllowance DEFAULT (0.00);
+                    IF COL_LENGTH('dbo.Payslips', 'CompanyId') IS NULL
+                    BEGIN
+                        ALTER TABLE dbo.Payslips ADD CompanyId INT NULL;
+                        EXEC(N'UPDATE s SET CompanyId = p.CompanyId FROM dbo.Payslips s JOIN dbo.PayrollPeriods p ON p.PayrollPeriodId = s.PayrollPeriodId WHERE s.CompanyId IS NULL');
+                        EXEC(N'ALTER TABLE dbo.Payslips ALTER COLUMN CompanyId INT NOT NULL');
+                        IF OBJECT_ID('dbo.FK_Payslips_Companies', 'F') IS NULL
+                            EXEC(N'ALTER TABLE dbo.Payslips ADD CONSTRAINT FK_Payslips_Companies FOREIGN KEY (CompanyId) REFERENCES dbo.Companies(CompanyId)');
+                    END;
+                    IF COL_LENGTH('dbo.PayrollAdjustments', 'CompanyId') IS NULL
+                    BEGIN
+                        ALTER TABLE dbo.PayrollAdjustments ADD CompanyId INT NULL;
+                        EXEC(N'UPDATE a SET CompanyId = p.CompanyId FROM dbo.PayrollAdjustments a JOIN dbo.PayrollPeriods p ON p.PayrollPeriodId = a.PayrollPeriodId WHERE a.CompanyId IS NULL');
+                        EXEC(N'ALTER TABLE dbo.PayrollAdjustments ALTER COLUMN CompanyId INT NOT NULL');
+                        IF OBJECT_ID('dbo.FK_Adjustments_Companies', 'F') IS NULL
+                            EXEC(N'ALTER TABLE dbo.PayrollAdjustments ADD CONSTRAINT FK_Adjustments_Companies FOREIGN KEY (CompanyId) REFERENCES dbo.Companies(CompanyId)');
+                    END;
                 """);
                 s.execute("""
                     CREATE OR ALTER VIEW dbo.vw_PayrollOperators
@@ -269,10 +285,19 @@ public class PayrollDAO {
 
     /** Adjustment entry includes every employee in the period's company, even before a contract exists. */
     public List<PayrollRow> adjustmentRows(int companyId, int periodId) throws SQLException {
-        return periodRows(companyId,periodId,true);
+        return periodRows(companyId,periodId,true,false);
+    }
+
+    /** Template export always reflects each employee's assigned department/position responsibility allowance. */
+    public List<PayrollRow> templateRows(int companyId, int periodId) throws SQLException {
+        return periodRows(companyId,periodId,true,true);
     }
 
     private List<PayrollRow> periodRows(int companyId, int periodId, boolean adjustments) throws SQLException {
+        return periodRows(companyId,periodId,adjustments,false);
+    }
+
+    private List<PayrollRow> periodRows(int companyId, int periodId, boolean adjustments, boolean liveAllowance) throws SQLException {
         findPeriod(companyId, periodId);
         try (Connection c = connections.open(); PreparedStatement s = c.prepareStatement("""
             SELECT e.EmployeeId,e.EmployeeCode,e.FullName,e.Status,d.DepartmentName,
@@ -281,7 +306,8 @@ public class PayrollDAO {
                 COALESCE(s.ContractBaseSalary,compensation.BaseSalary) ContractBaseSalary,
                 COALESCE(s.ActualWorkDays,workMetrics.ActualWorkDays) ActualWorkDays,
                 COALESCE(s.StandardWorkDays,workMetrics.StandardWorkDays) StandardWorkDays,
-            """ + "COALESCE(s.ResponsibilityAllowance," + PayrollSources.ALLOWANCE + ") ResponsibilityAllowance,"
+            """ + (liveAllowance ? PayrollSources.ALLOWANCE + " ResponsibilityAllowance,"
+                    : "COALESCE(s.ResponsibilityAllowance," + PayrollSources.ALLOWANCE + ") ResponsibilityAllowance,")
                 + "COALESCE(s.TravelAllowance," + PayrollSources.TRAVEL_ALLOWANCE + ") TravelAllowance,"
                 + "CASE WHEN s.PayslipId IS NULL THEN " + PayrollSources.ISSUE + " END SalaryIssue," + """
                 compensation.EffectiveFrom SalaryEffectiveFrom,compensation.EffectiveTo SalaryEffectiveTo,
@@ -332,7 +358,7 @@ public class PayrollDAO {
         return write(companyId, userId, c -> {
             editable(lockPeriod(c, companyId, periodId));
             requireCompanyEmployee(c, companyId, employeeId);
-            boolean changed=upsertAdjustment(c, userId, periodId, employeeId, bonus, deduction, note);
+            boolean changed=upsertAdjustment(c, companyId, userId, periodId, employeeId, bonus, deduction, note);
             if (changed) invalidate(c, companyId, periodId);
             return changed;
         });
@@ -361,7 +387,7 @@ public class PayrollDAO {
             boolean changed=false;
             for (int i=0; i<input.size(); i++) {
                 PayrollAdjustmentInput row = input.get(i);
-                changed=upsertAdjustment(c, userId, periodId, ids.get(i), row.bonus(), row.deduction(), row.note()) || changed;
+                changed=upsertAdjustment(c, companyId, userId, periodId, ids.get(i), row.bonus(), row.deduction(), row.note()) || changed;
             }
             if (changed) invalidate(c, companyId, periodId);
             return input.size();
@@ -399,20 +425,21 @@ public class PayrollDAO {
 
             // Chèn bảng lương mới vào Payslips
             try (PreparedStatement s = c.prepareStatement("""
-                INSERT INTO Payslips(PayrollPeriodId,EmployeeId,BaseSalary,ContractBaseSalary,ActualWorkDays,StandardWorkDays,ResponsibilityAllowance,TravelAllowance,Bonus,Deduction)
-                VALUES(?,?,?,?,?,?,?,?,?,0.00)
+                INSERT INTO Payslips(CompanyId,PayrollPeriodId,EmployeeId,BaseSalary,ContractBaseSalary,ActualWorkDays,StandardWorkDays,ResponsibilityAllowance,TravelAllowance,Bonus,Deduction)
+                VALUES(?,?,?,?,?,?,?,?,?,?,0.00)
                 """)) {
                 for (int i = 0; i < input.size(); i++) {
                     PayrollImportInput row = input.get(i);
-                    s.setInt(1, periodId);
-                    s.setInt(2, ids.get(i));
-                    s.setBigDecimal(3, row.baseSalary() == null ? BigDecimal.ZERO : row.baseSalary());
-                    s.setBigDecimal(4, row.contractBaseSalary() == null ? BigDecimal.ZERO : row.contractBaseSalary());
-                    s.setBigDecimal(5, row.actualWorkDays() == null ? BigDecimal.ZERO : row.actualWorkDays());
-                    s.setBigDecimal(6, row.standardWorkDays() == null ? new BigDecimal("26.00") : row.standardWorkDays());
-                    s.setBigDecimal(7, row.responsibilityAllowance() == null ? BigDecimal.ZERO : row.responsibilityAllowance());
-                    s.setBigDecimal(8, row.travelAllowance() == null ? BigDecimal.ZERO : row.travelAllowance());
-                    s.setBigDecimal(9, row.bonus() == null ? BigDecimal.ZERO : row.bonus());
+                    s.setInt(1, companyId);
+                    s.setInt(2, periodId);
+                    s.setInt(3, ids.get(i));
+                    s.setBigDecimal(4, row.baseSalary() == null ? BigDecimal.ZERO : row.baseSalary());
+                    s.setBigDecimal(5, row.contractBaseSalary() == null ? BigDecimal.ZERO : row.contractBaseSalary());
+                    s.setBigDecimal(6, row.actualWorkDays() == null ? BigDecimal.ZERO : row.actualWorkDays());
+                    s.setBigDecimal(7, row.standardWorkDays() == null ? new BigDecimal("26.00") : row.standardWorkDays());
+                    s.setBigDecimal(8, row.responsibilityAllowance() == null ? BigDecimal.ZERO : row.responsibilityAllowance());
+                    s.setBigDecimal(9, row.travelAllowance() == null ? BigDecimal.ZERO : row.travelAllowance());
+                    s.setBigDecimal(10, row.bonus() == null ? BigDecimal.ZERO : row.bonus());
                     s.addBatch();
                 }
                 s.executeBatch();
@@ -421,7 +448,7 @@ public class PayrollDAO {
             // Đồng bộ thưởng và ghi chú vào PayrollAdjustments
             for (int i = 0; i < input.size(); i++) {
                 PayrollImportInput row = input.get(i);
-                upsertAdjustment(c, userId, periodId, ids.get(i),
+                upsertAdjustment(c, companyId, userId, periodId, ids.get(i),
                         row.bonus() == null ? BigDecimal.ZERO : row.bonus(),
                         BigDecimal.ZERO,
                         row.note());
@@ -529,7 +556,7 @@ public class PayrollDAO {
                         }
                         if (finalNote.length() > 300) finalNote = finalNote.substring(0, 300);
 
-                        boolean empChanged = upsertAdjustment(c, userId, periodId, empId, finalBonus, BigDecimal.ZERO, finalNote);
+                        boolean empChanged = upsertAdjustment(c, companyId, userId, periodId, empId, finalBonus, BigDecimal.ZERO, finalNote);
                         if (empChanged) changed = true;
                         count++;
                         totalBonus = totalBonus.add(finalBonus);
@@ -611,7 +638,7 @@ public class PayrollDAO {
                 BigDecimal bonus = bonuses[i] == null ? BigDecimal.ZERO : bonuses[i].setScale(2, java.math.RoundingMode.HALF_UP);
                 String note = (notes != null && i < notes.length) ? notes[i] : null;
                 if (note != null && note.length() > 300) note = note.substring(0, 300);
-                boolean empChanged = upsertAdjustment(c, userId, periodId, empId, bonus, BigDecimal.ZERO, note);
+                boolean empChanged = upsertAdjustment(c, companyId, userId, periodId, empId, bonus, BigDecimal.ZERO, note);
                 if (empChanged) changed = true;
                 if (bonus.compareTo(BigDecimal.ZERO) > 0) count++;
                 totalBonus = totalBonus.add(bonus);
@@ -656,20 +683,21 @@ public class PayrollDAO {
             invalidate(c, companyId, periodId);
             // NetSalary is deliberately omitted: SQL Server computes it (PAY-BR-16).
             try (PreparedStatement s = c.prepareStatement("""
-                INSERT INTO Payslips(PayrollPeriodId,EmployeeId,BaseSalary,ContractBaseSalary,ActualWorkDays,StandardWorkDays,ResponsibilityAllowance,TravelAllowance,Bonus,Deduction)
-                VALUES(?,?,?,?,?,?,?,?,?,?)
+                INSERT INTO Payslips(CompanyId,PayrollPeriodId,EmployeeId,BaseSalary,ContractBaseSalary,ActualWorkDays,StandardWorkDays,ResponsibilityAllowance,TravelAllowance,Bonus,Deduction)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)
                 """)) {
                 for (PayrollRow row:result.rows()) {
-                    s.setInt(1,periodId);
-                    s.setInt(2,row.employeeId());
-                    s.setBigDecimal(3,row.baseSalary());
-                    s.setBigDecimal(4,row.contractBaseSalary()==null?row.baseSalary():row.contractBaseSalary());
-                    s.setBigDecimal(5,row.actualWorkDays()==null?BigDecimal.ZERO:row.actualWorkDays());
-                    s.setBigDecimal(6,row.standardWorkDays()==null?new BigDecimal("22.00"):row.standardWorkDays());
-                    s.setBigDecimal(7,row.responsibilityAllowance());
-                    s.setBigDecimal(8,row.travelAllowance()==null?BigDecimal.ZERO:row.travelAllowance());
-                    s.setBigDecimal(9,row.bonus());
-                    s.setBigDecimal(10,row.deduction());
+                    s.setInt(1,companyId);
+                    s.setInt(2,periodId);
+                    s.setInt(3,row.employeeId());
+                    s.setBigDecimal(4,row.baseSalary());
+                    s.setBigDecimal(5,row.contractBaseSalary()==null?row.baseSalary():row.contractBaseSalary());
+                    s.setBigDecimal(6,row.actualWorkDays()==null?BigDecimal.ZERO:row.actualWorkDays());
+                    s.setBigDecimal(7,row.standardWorkDays()==null?new BigDecimal("22.00"):row.standardWorkDays());
+                    s.setBigDecimal(8,row.responsibilityAllowance());
+                    s.setBigDecimal(9,row.travelAllowance()==null?BigDecimal.ZERO:row.travelAllowance());
+                    s.setBigDecimal(10,row.bonus());
+                    s.setBigDecimal(11,row.deduction());
                     s.addBatch();
                 }
                 s.executeBatch();
@@ -942,7 +970,7 @@ public class PayrollDAO {
         }
     }
 
-    private boolean upsertAdjustment(Connection c,int userId,int periodId,int employeeId,
+    private boolean upsertAdjustment(Connection c,int companyId,int userId,int periodId,int employeeId,
                                   BigDecimal bonus,BigDecimal deduction,String note) throws SQLException {
         try (PreparedStatement s=c.prepareStatement("""
             SELECT Bonus,Deduction,Note FROM PayrollAdjustments WITH (UPDLOCK,HOLDLOCK)
@@ -964,11 +992,11 @@ public class PayrollDAO {
             if (s.executeUpdate()>0) return true;
         }
         try (PreparedStatement s=c.prepareStatement("""
-            INSERT INTO PayrollAdjustments(PayrollPeriodId,EmployeeId,Bonus,Deduction,Note,CreatedByUserId)
-            VALUES(?,?,?,?,?,?)
+            INSERT INTO PayrollAdjustments(CompanyId,PayrollPeriodId,EmployeeId,Bonus,Deduction,Note,CreatedByUserId)
+            VALUES(?,?,?,?,?,?,?)
             """)) {
-            s.setInt(1,periodId); s.setInt(2,employeeId); s.setBigDecimal(3,bonus); s.setBigDecimal(4,deduction);
-            s.setString(5,note); s.setInt(6,userId); s.executeUpdate();
+            s.setInt(1,companyId); s.setInt(2,periodId); s.setInt(3,employeeId); s.setBigDecimal(4,bonus); s.setBigDecimal(5,deduction);
+            s.setString(6,note); s.setInt(7,userId); s.executeUpdate();
         }
         return true;
     }

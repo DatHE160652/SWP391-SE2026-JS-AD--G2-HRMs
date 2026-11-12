@@ -258,8 +258,27 @@
     ${empty candidatesJson ? '[]' : candidatesJson}
 </script>
 
+<dialog id="bonusConfirmDialog" class="pay-dialog" aria-labelledby="bonusConfirmTitle" aria-describedby="bonusConfirmText">
+    <form id="bonusConfirmForm">
+        <div class="dialog-heading">
+            <div>
+                <div class="eyebrow">XÁC NHẬN ĐỢT THƯỞNG</div>
+                <h2 id="bonusConfirmTitle">Áp dụng đợt thưởng vào kỳ lương?</h2>
+            </div>
+            <button type="button" class="icon-button" data-dismiss aria-label="Đóng">×</button>
+        </div>
+        <p id="bonusConfirmText">Bảng lương kỳ sẽ được cập nhật và đưa về trạng thái chờ tính toán.</p>
+        <div id="bonusConfirmSummary" class="info-note"></div>
+        <div class="dialog-error" role="alert" hidden></div>
+        <div class="dialog-actions">
+            <button class="btn secondary" type="button" data-dismiss>Hủy</button>
+            <button class="btn primary" type="submit" id="bonusConfirmSubmit">Xác nhận áp dụng</button>
+        </div>
+    </form>
+</dialog>
+
 <script src="${pageContext.request.contextPath}/js/i18n-catalog.js"></script>
-<script src="${pageContext.request.contextPath}/js/bonus-campaign.js?v=20261110-1"></script>
+<script src="${pageContext.request.contextPath}/js/bonus-campaign.js?v=<%= application.getResource("/js/bonus-campaign.js").openConnection().getLastModified() %>"></script>
 </body>
 </html>
 
