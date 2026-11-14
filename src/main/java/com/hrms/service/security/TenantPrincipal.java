@@ -42,9 +42,9 @@ public final class TenantPrincipal {
     public String getEmail() { return email; }
     public String getRoleCode() { return roleCode; }
     public boolean isCompanyAdministrator() {
-        return "COMPANY_ADMIN".equalsIgnoreCase(roleCode) || "HR".equalsIgnoreCase(roleCode);
+        return "COMPANY_ADMIN".equalsIgnoreCase(roleCode);
     }
-    /** Payroll management is restricted strictly to Company Administrator and HR. */
+    /** Payroll management is restricted strictly to the Company Administrator. */
     public boolean canManagePayroll() {
         return isCompanyAdministrator();
     }

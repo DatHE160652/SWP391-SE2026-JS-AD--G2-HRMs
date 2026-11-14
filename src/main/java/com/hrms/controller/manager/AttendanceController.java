@@ -449,9 +449,46 @@ public class AttendanceController extends HttpServlet {
         int companyId = SecuritySupport.requireCompanyId(request);
         Integer departmentId = parseNullableInt(request.getParameter("departmentId"));
         String status = trimToNull(request.getParameter("status"));
+        Integer monthParam = parseNullableInt(request.getParameter("month"));
+        Integer yearParam = parseNullableInt(request.getParameter("year"));
+        Integer employeeIdParam = parseNullableInt(request.getParameter("employeeId"));
         LocalDate fromDate = parseOptionalDate(request.getParameter("fromDate"));
         LocalDate toDate = parseOptionalDate(request.getParameter("toDate"));
         String keyword = trimToNull(request.getParameter("keyword"));
+
+        LocalDate now = LocalDate.now();
+        int month = (monthParam != null && monthParam >= 1 && monthParam <= 12) ? monthParam : now.getMonthValue();
+        int year = (yearParam != null && yearParam >= 2000 && yearParam <= 2100) ? yearParam : now.getYear();
+
+        if (employeeIdParam != null && employeeIdParam > 0) {
+            List<AttendanceDTO> list = attendanceService.getCompanyEmployeeMonthlyAttendance(
+                    companyId, employeeIdParam, status, month, year);
+            writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":" + toJsonArray(list) + "}");
+            return;
+        }
+
+        if ((monthParam != null && yearParam != null) || (fromDate == null && toDate == null)) {
+            List<Map<String, Object>> employees = attendanceService.getCompanyAttendanceEmployees(
+                    companyId, departmentId, status, month, year, keyword);
+            StringBuilder json = new StringBuilder("{\"success\":true,\"mode\":\"employees\",\"month\":")
+                    .append(month).append(",\"year\":").append(year).append(",\"data\":[");
+            for (int i = 0; i < employees.size(); i++) {
+                if (i > 0) json.append(",");
+                Map<String, Object> emp = employees.get(i);
+                json.append("{\"employeeId\":").append(emp.get("employeeId"))
+                        .append(",\"employeeCode\":").append(quote((String) emp.get("employeeCode")))
+                        .append(",\"fullName\":").append(quote((String) emp.get("fullName")))
+                        .append(",\"departmentName\":").append(quote((String) emp.get("departmentName")))
+                        .append(",\"positionTitle\":").append(quote((String) emp.get("positionTitle")))
+                        .append(",\"recordCount\":").append(emp.get("recordCount"))
+                        .append(",\"actualWorkDays\":").append(emp.get("actualWorkDays"))
+                        .append(",\"totalHours\":").append(emp.get("totalHours"))
+                        .append("}");
+            }
+            json.append("]}");
+            writeJson(response, HttpServletResponse.SC_OK, json.toString());
+            return;
+        }
 
         List<AttendanceDTO> list = attendanceService.searchCompanyAttendance(companyId, departmentId, status, fromDate, toDate, keyword);
         writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":" + toJsonArray(list) + "}");
@@ -897,8 +934,8 @@ public class AttendanceController extends HttpServlet {
     // lưu time và ngày chốt công được setup với từng công ty (Chỉ Admin / HR)
     private void handleSaveShiftSetting(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
-        if (principal == null || (!principal.isCompanyAdministrator() && !"HR".equalsIgnoreCase(principal.getRoleCode()))) {
-            throw new SecurityException("Chỉ Quản trị viên công ty (Company Admin / HR) mới có quyền cài đặt giờ làm việc và ngày chốt công.");
+        if (principal == null || !principal.isCompanyAdministrator()) {
+            throw new SecurityException("Chỉ Quản trị viên công ty (Company Admin) mới có quyền cài đặt giờ làm việc và ngày chốt công.");
         }
 
         int companyId = SecuritySupport.requireCompanyId(request);
@@ -1080,7 +1117,7 @@ public class AttendanceController extends HttpServlet {
         }
         int companyId = SecuritySupport.requireCompanyId(request);
         Integer managerEmployeeId = null;
-        if (!principal.isCompanyAdministrator() && !"HR".equals(principal.getRoleCode())) {
+        if (!principal.isCompanyAdministrator()) {
             managerEmployeeId = principal.getEmployeeId();
         }
 
@@ -1162,8 +1199,8 @@ public class AttendanceController extends HttpServlet {
             writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Vui lòng đăng nhập."));
             return;
         }
-        if (!principal.isCompanyAdministrator() && !"HR".equalsIgnoreCase(principal.getRoleCode())) {
-            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Chỉ Quản trị viên công ty (Company Admin / HR) mới có quyền khóa hoặc mở khóa bảng chấm công."));
+        if (!principal.isCompanyAdministrator()) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Chỉ Quản trị viên công ty (Company Admin) mới có quyền khóa hoặc mở khóa bảng chấm công."));
             return;
         }
         int companyId = SecuritySupport.requireCompanyId(request);

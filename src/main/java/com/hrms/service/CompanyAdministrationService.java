@@ -27,6 +27,10 @@ public class CompanyAdministrationService {
         return new CompanyAdministrationFilter(status, region, sort);
     }
 
+    public CompanyAdministrationFilter createFilter(String q, String status, String region, String sort) {
+        return new CompanyAdministrationFilter(q, status, region, sort);
+    }
+
     public List<CompanyAdministrationView> getCompanies(CompanyAdministrationFilter filter) throws SQLException {
         return companyDAO.findAll(filter);
     }

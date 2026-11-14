@@ -1010,7 +1010,7 @@ public class DocumentUpdatePeriodDAO {
         try (PreparedStatement statement = connection.prepareStatement("""
                 SELECT u.UserId FROM dbo.Users u JOIN dbo.Roles r ON r.RoleId = u.RoleId
                 WHERE u.UserId = ? AND u.CompanyId = ? AND u.IsActive = 1 AND u.IsLocked = 0
-                  AND r.RoleCode IN ('COMPANY_ADMIN', 'HR')
+                  AND r.RoleCode IN ('COMPANY_ADMIN')
                 """)) {
             statement.setInt(1, userId);
             statement.setInt(2, companyId);

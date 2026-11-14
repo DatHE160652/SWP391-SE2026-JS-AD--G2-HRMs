@@ -118,11 +118,11 @@ public class DocumentService {
                 SELECT r.RoleCode FROM Users u JOIN Roles r ON r.RoleId=u.RoleId
                 JOIN Employees e ON e.CompanyId=u.CompanyId AND e.EmployeeId=?
                 WHERE u.UserId=? AND u.CompanyId=? AND u.IsActive=1 AND u.IsLocked=0
-                    AND (r.RoleCode IN ('HR','COMPANY_ADMIN') OR (r.RoleCode IN ('EMPLOYEE','MANAGER')
+                    AND (r.RoleCode = 'COMPANY_ADMIN' OR (r.RoleCode IN ('EMPLOYEE','MANAGER')
                         AND u.UserId=e.UserId AND e.Status='Active' AND u.MustChangePassword=0 AND
                 """ + com.hrms.dao.ContractAccessPolicy.ALLOWED + "))",employeeId,actorId,companyId);
         if (actors.isEmpty()) throw new SecurityException("Bạn không có quyền thay đổi tài liệu của nhân viên này.");
-        if (java.util.Set.of("HR","COMPANY_ADMIN").contains(actors.get(0).get("RoleCode"))) {
+        if ("COMPANY_ADMIN".equals(actors.get(0).get("RoleCode"))) {
             new com.hrms.dao.DocumentUpdatePeriodDAO().ensureSchemaAndCompanyDefaults(connection, companyId);
             return null;
         }

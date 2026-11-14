@@ -19,7 +19,7 @@ public class TimesheetLockDAO {
                 """;
 
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, companyId);
             ps.setInt(2, month);
             ps.setInt(3, year);
@@ -40,7 +40,7 @@ public class TimesheetLockDAO {
                 """;
 
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, companyId);
             ps.setInt(2, month);
             ps.setInt(3, year);
@@ -54,7 +54,33 @@ public class TimesheetLockDAO {
         return false;
     }
 
-    public boolean setLock(int companyId, int month, int year, boolean isLocked, int userId, String notes) throws SQLException {
+    /**
+     * Checks whether a month is explicitly locked for admin Excel import:
+     * either TimesheetLocks.IsLocked = 1 or the corresponding PayrollPeriod is
+     * Approved / Closed / Published.
+     */
+    public boolean isMonthLockedOrPayrollFinalized(int companyId, int month, int year) throws SQLException {
+        if (isMonthLocked(companyId, month, year)) {
+            return true;
+        }
+        String payrollSql = """
+                SELECT 1 FROM dbo.PayrollPeriods
+                WHERE CompanyId = ? AND [Month] = ? AND [Year] = ?
+                  AND (Status = 'Approved' OR IsClosed = 1 OR PublishedAt IS NOT NULL)
+                """;
+        try (Connection conn = DBConnection.getConnection();
+                PreparedStatement ps = conn.prepareStatement(payrollSql)) {
+            ps.setInt(1, companyId);
+            ps.setInt(2, month);
+            ps.setInt(3, year);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    public boolean setLock(int companyId, int month, int year, boolean isLocked, int userId, String notes)
+            throws SQLException {
         String sql = """
                 MERGE dbo.TimesheetLocks AS target
                 USING (SELECT ? AS CompanyId, ? AS [Month], ? AS [Year]) AS source
@@ -67,7 +93,7 @@ public class TimesheetLockDAO {
                 """;
 
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, companyId);
             ps.setInt(2, month);
             ps.setInt(3, year);
@@ -97,11 +123,11 @@ public class TimesheetLockDAO {
         lock.setLockedByUserId(rs.getInt("LockedByUserId"));
 
         Timestamp lat = rs.getTimestamp("LockedAt");
-        if (lat != null) lock.setLockedAt(lat.toLocalDateTime());
+        if (lat != null)
+            lock.setLockedAt(lat.toLocalDateTime());
 
         lock.setNotes(rs.getString("Notes"));
         lock.setLockedByUserName(rs.getString("LockedByUserName"));
         return lock;
     }
 }
-

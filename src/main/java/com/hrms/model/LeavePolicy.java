@@ -11,6 +11,6 @@ public record LeavePolicy(int companyId, String quotaMode, int quotaDays, int ma
 
     public int daysForMonth(int month) {
         if (month < 1 || month > 12) throw new IllegalArgumentException("Tháng không hợp lệ.");
-        return "MONTHLY".equals(quotaMode) ? quotaDays : quotaDays / 12 + (month == 1 ? quotaDays % 12 : 0);
+        return "MONTHLY".equals(quotaMode) ? quotaDays : quotaDays / 12 + (month <= quotaDays % 12 ? 1 : 0);
     }
 }

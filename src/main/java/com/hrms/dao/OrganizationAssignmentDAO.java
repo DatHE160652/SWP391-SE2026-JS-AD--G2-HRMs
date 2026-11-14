@@ -120,6 +120,7 @@ public class OrganizationAssignmentDAO {
             recordInitialAssignment(connection, companyId, employeeId, (Integer) employee.get("DepartmentId"), departmentId, positionId, actorId, reason);
             OrganizationTransaction.recordManagerChange(connection, companyId, actorId, employeeId, null, managerId, reason);
             new OrganizationRoleDAO().synchronize(connection,companyId,employeeId,positionId,actorId);
+            syncDepartmentReporting(connection, companyId, employeeId, departmentId, positionId, managerId, managerId == null, actorId, reason);
             return true;
     }
 
@@ -266,7 +267,80 @@ public class OrganizationAssignmentDAO {
             }
             OrganizationTransaction.recordManagerChange(connection,companyId,actorUserId,employeeId,oldManager,managerId,reason);
             new OrganizationRoleDAO().synchronize(connection, companyId, employeeId, positionId, actorUserId);
+            if (departmentId != null && positionId != null) {
+                syncDepartmentReporting(connection, companyId, employeeId, departmentId, positionId, managerId, changed && managerId == null, actorUserId, reason);
+            }
             return true;
+    }
+
+    /** Automatically links unassigned subordinates when assigning a MANAGER, or links a unique department manager when assigning an employee without a manager. */
+    public void syncDepartmentReporting(Connection connection, int companyId, int employeeId,
+            int departmentId, int positionId, Integer managerId, boolean allowUniqueManagerFallback,
+            Integer actorUserId, String reason) throws SQLException {
+        EmployeeAssignmentDAO reporting = new EmployeeAssignmentDAO();
+        String assignedRole = new OrganizationRoleDAO().roleForPosition(connection, companyId, positionId);
+        if ("MANAGER".equals(assignedRole)) {
+            assignUnassignedDepartmentEmployeesToManager(connection, reporting, companyId, employeeId, departmentId, actorUserId, reason);
+        } else if (allowUniqueManagerFallback && managerId == null) {
+            assignUniqueDepartmentManagerIfAvailable(connection, reporting, companyId, employeeId, departmentId, positionId, actorUserId, reason);
+        }
+    }
+
+    private void assignUniqueDepartmentManagerIfAvailable(Connection connection, EmployeeAssignmentDAO reporting,
+            int companyId, int employeeId, int departmentId, int positionId, Integer actorUserId, String reason) throws SQLException {
+        var employees = reporting.members(connection, companyId);
+        Integer matchedManagerId = null;
+        for (var candidate : employees.values()) {
+            if (candidate.employeeId() == employeeId
+                    || !candidate.canManageTeam()
+                    || !Objects.equals(departmentId, candidate.departmentId())) {
+                continue;
+            }
+            try {
+                reporting.validateManagerAssignment(connection, companyId, employeeId, candidate.employeeId(), departmentId, positionId);
+                if (matchedManagerId != null) {
+                    return; // Có nhiều hơn 1 quản lý phù hợp trong phòng ban, không tự chọn mơ hồ
+                }
+                matchedManagerId = candidate.employeeId();
+            } catch (FieldValidationException ignored) {
+                // Không phù hợp nhánh báo cáo của quản lý này
+            }
+        }
+        if (matchedManagerId != null) {
+            reporting.requireManagerSnapshot(connection, companyId, employeeId, null);
+            reporting.updateManager(connection, companyId, employeeId, matchedManagerId);
+            String autoReason = (reason != null && !reason.isBlank())
+                    ? reason.trim()
+                    : "Tự động gán quản lý trực tiếp của phòng ban";
+            OrganizationTransaction.recordManagerChange(connection, companyId, actorUserId, employeeId, null, matchedManagerId, autoReason);
+        }
+    }
+
+    private void assignUnassignedDepartmentEmployeesToManager(Connection connection, EmployeeAssignmentDAO reporting,
+            int companyId, int managerId, int departmentId, Integer actorUserId, String reason) throws SQLException {
+        var employees = reporting.members(connection, companyId);
+        var manager = employees.get(managerId);
+        if (manager == null || !manager.canManageTeam() || !Objects.equals(departmentId, manager.departmentId())) {
+            return;
+        }
+        String autoReason = (reason != null && !reason.isBlank())
+                ? reason.trim()
+                : "Tự động phân công khi bổ nhiệm quản lý trực tiếp";
+        for (var member : employees.values()) {
+            if (member.employeeId() == managerId
+                    || !Objects.equals(departmentId, member.departmentId())
+                    || member.managerId() != null
+                    || "MANAGER".equals(member.roleCode())) {
+                continue;
+            }
+            try {
+                reporting.validateManagerAssignment(connection, companyId, member.employeeId(), managerId, departmentId, member.positionId());
+                reporting.updateManager(connection, companyId, member.employeeId(), managerId);
+                OrganizationTransaction.recordManagerChange(connection, companyId, actorUserId, member.employeeId(), null, managerId, autoReason);
+            } catch (FieldValidationException ignored) {
+                // Bỏ qua nhân viên không cùng nhánh báo cáo/chức danh phù hợp với quản lý này
+            }
+        }
     }
 
     private void requireOpenPayroll(Connection connection, int companyId) throws SQLException {
@@ -281,7 +355,7 @@ public class OrganizationAssignmentDAO {
         try (PreparedStatement statement = connection.prepareStatement("""
                 SELECT 1 FROM Users u JOIN Roles r ON r.RoleId=u.RoleId
                 WHERE u.CompanyId=? AND u.UserId=? AND u.IsActive=1 AND u.IsLocked=0
-                    AND r.RoleCode IN ('COMPANY_ADMIN','HR')
+                    AND r.RoleCode IN ('COMPANY_ADMIN')
                 """)) {
             statement.setInt(1, companyId); statement.setObject(2, actorUserId, Types.INTEGER);
             try (ResultSet rows = statement.executeQuery()) {

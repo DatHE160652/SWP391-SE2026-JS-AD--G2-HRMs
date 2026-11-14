@@ -15,6 +15,7 @@
     let currentOptions = {};
     let selectedFile = null;
     let isProcessing = false;
+    let lastPreviewCanProceed = false;
 
     const typeNamesVi = {
         'EMPLOYEE': 'Hồ sơ nhân sự',
@@ -72,6 +73,7 @@
 
     function resetUI() {
         selectedFile = null;
+        lastPreviewCanProceed = false;
         const fileInput = document.getElementById('inputImportFile');
         if (fileInput) fileInput.value = '';
 
@@ -98,11 +100,30 @@
         if (btnConfirm) btnConfirm.disabled = true;
     }
 
-    function showAlert(message, type) {
+    function showAlert(message, type, details) {
         const alertEl = document.getElementById('importGlobalAlert');
         if (!alertEl) return;
         alertEl.className = `import-alert ${type || 'error'}`;
-        alertEl.textContent = message;
+        alertEl.innerHTML = '';
+
+        const msgDiv = document.createElement('div');
+        msgDiv.style.fontWeight = '600';
+        msgDiv.textContent = message;
+        alertEl.appendChild(msgDiv);
+
+        if (Array.isArray(details) && details.length > 0) {
+            const list = document.createElement('ul');
+            list.style.margin = '6px 0 0 18px';
+            list.style.padding = '0';
+            list.style.fontSize = '13px';
+            details.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = item;
+                list.appendChild(li);
+            });
+            alertEl.appendChild(list);
+        }
+
         alertEl.style.display = 'block';
     }
 
@@ -173,6 +194,7 @@
 
     async function runPreview() {
         if (!selectedFile) return;
+        lastPreviewCanProceed = false;
 
         const spinner = document.getElementById('importLoadingSpinner');
         const previewSection = document.getElementById('importPreviewSection');
@@ -216,13 +238,22 @@
 
             renderPreviewTable(data);
 
+            lastPreviewCanProceed = Boolean(data.canProceed) && Number(data.errorRows) === 0 && Number(data.totalRows) > 0;
             if (previewSection) previewSection.style.display = 'block';
             if (btnConfirm) {
-                btnConfirm.disabled = !data.canProceed;
+                btnConfirm.disabled = !lastPreviewCanProceed;
             }
 
             if (data.errorRows > 0) {
-                showAlert(`Tệp có ${data.errorRows} dòng dữ liệu lỗi. Vui lòng xem chi tiết cột lỗi bên dưới hoặc sửa lại tệp trước khi xác nhận.`, 'error');
+                const errorDetails = (data.previewRows || [])
+                    .filter(r => !r.valid)
+                    .map(r => {
+                        const id = r.data && (r.data['Mã NV (*)'] || r.data['Mã HĐ (*)'] || r.data['Mã NV'] || '');
+                        const name = r.data && (r.data['Họ tên (*)'] || r.data['Họ và tên'] || '');
+                        const idLabel = id ? ` [ID/Mã: ${id}${name ? ' - ' + name : ''}]` : '';
+                        return `Dòng ${r.rowNumber}${idLabel}: ${r.errorMessage || 'Dữ liệu không hợp lệ'}`;
+                    });
+                showAlert(`Tệp có ${data.errorRows} dòng dữ liệu lỗi. Chi tiết nhân viên và cột bị lỗi:`, 'error', errorDetails);
             } else if (data.validRows > 0) {
                 showAlert(`Tất cả ${data.validRows} dòng dữ liệu đều hợp lệ! Bạn có thể nhấn 'Xác nhận Nhập dữ liệu' ngay.`, 'success');
             }
@@ -245,12 +276,12 @@
         const tbody = document.getElementById('importTableBody');
         if (!thead || !tbody) return;
 
-        // Render Head
-        let headHtml = '<tr><th style="width:40px; text-align:center;">STT</th><th style="width:90px; text-align:center;">Trạng thái</th>';
+        // Render Head: place "Chi tiết lỗi" prominently right after "Trạng thái" so it is immediately visible
+        let headHtml = '<tr><th style="width:40px; text-align:center;">STT</th><th style="width:90px; text-align:center;">Trạng thái</th><th style="min-width:240px; color:#b42318;">Chi tiết lỗi</th>';
         (data.columnHeaders || []).forEach(h => {
             headHtml += `<th>${escapeHtml(h)}</th>`;
         });
-        headHtml += '<th>Ghi chú kiểm tra</th></tr>';
+        headHtml += '</tr>';
         thead.innerHTML = headHtml;
 
         // Render Body
@@ -265,13 +296,27 @@
             bodyHtml += `<td style="text-align:center;">${row.rowNumber}</td>`;
             bodyHtml += `<td style="text-align:center;">${statusBadge}</td>`;
 
+            const errNote = row.errorMessage
+                ? `<span style="color:#b42318; font-weight:600; font-size:12px;">${escapeHtml(row.errorMessage)}</span>`
+                : '<span style="color:#027a48; font-size:12px;">✓ Sẵn sàng nhập</span>';
+            bodyHtml += `<td>${errNote}</td>`;
+
             (data.columnHeaders || []).forEach(h => {
                 const cellVal = (row.data && row.data[h]) ? row.data[h] : '';
-                bodyHtml += `<td>${escapeHtml(cellVal)}</td>`;
+                const cleanHeader = h.replace('(*)', '').trim();
+                const isColError = !row.valid && row.errorMessage && (
+                    row.errorMessage.includes(`'${h}'`) ||
+                    row.errorMessage.includes(`[${h}]`) ||
+                    row.errorMessage.includes(`'${cleanHeader}'`) ||
+                    row.errorMessage.includes(`[${cleanHeader}]`) ||
+                    row.errorMessage.includes(cleanHeader)
+                );
+                const cellStyle = isColError
+                    ? ' style="background-color:#fee4e2; color:#b42318; font-weight:700; border:1px solid #fecdca;" title="Cột này có lỗi kiểm tra dữ liệu"'
+                    : '';
+                bodyHtml += `<td${cellStyle}>${escapeHtml(cellVal)}</td>`;
             });
 
-            const errNote = row.errorMessage ? `<span style="color:#b42318;">${escapeHtml(row.errorMessage)}</span>` : '<span style="color:#027a48;">Sẵn sàng nhập</span>';
-            bodyHtml += `<td>${errNote}</td>`;
             bodyHtml += '</tr>';
         });
 
@@ -279,7 +324,7 @@
     }
 
     async function executeImport() {
-        if (!selectedFile || isProcessing) return;
+        if (!selectedFile || isProcessing || !lastPreviewCanProceed) return;
 
         const btnConfirm = document.getElementById('btnConfirmImport');
         if (btnConfirm) {
@@ -302,7 +347,18 @@
             const data = await response.json();
             isProcessing = false;
 
+            const hasDetails = Array.isArray(data.errorMessages) && data.errorMessages.length > 0;
+
             if (response.ok && data.success) {
+                if (hasDetails) {
+                    showAlert(data.message || 'Một số nhân viên đã tồn tại, không thể cập nhật.', 'error', data.errorMessages);
+                    if (btnConfirm) {
+                        btnConfirm.disabled = false;
+                        btnConfirm.innerHTML = '<span>Xác nhận Nhập dữ liệu</span>';
+                    }
+                    return;
+                }
+
                 showAlert(data.message || 'Nhập dữ liệu thành công!', 'success');
                 if (btnConfirm) {
                     btnConfirm.innerHTML = '<span>✓ Đã nhập xong</span>';
@@ -321,7 +377,7 @@
                     btnConfirm.innerHTML = '<span>Xác nhận Nhập dữ liệu</span>';
                 }
                 const msg = data.message || 'Lỗi khi nhập dữ liệu vào cơ sở dữ liệu.';
-                showAlert(msg, 'error');
+                showAlert(msg, 'error', data.errorMessages);
             }
         } catch (err) {
             isProcessing = false;

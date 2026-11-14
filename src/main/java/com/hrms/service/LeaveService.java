@@ -64,7 +64,7 @@ public class LeaveService {
         return transaction(actor.getCompanyId(), conn -> {
             requireEmployee(conn, actor);
             LeavePolicy policy = requirePolicy(conn, actor.getCompanyId());
-            List<LocalDate> selected = validateDates(dates, policy.maxDaysPerRequest());
+            List<LocalDate> selected = validateDates(dates, 366);
             // Pending requests do not reserve or consume quota. Quota is checked atomically at approval.
             for (LocalDate date : selected) {
                 if (requests.hasOverlap(conn, actor.getCompanyId(), actor.getEmployeeId(), date, 0))
@@ -111,7 +111,7 @@ public class LeaveService {
                 if (request.isLegacy()) throw new IllegalArgumentException("Đơn lịch sử chỉ để tra cứu. Hãy tạo đơn mới theo quota chung.");
                 LeavePolicy policy = requirePolicy(conn, actor.getCompanyId());
                 List<LocalDate> dates = request.getDates();
-                if (dates.isEmpty() || dates.size() > policy.maxDaysPerRequest()) throw new IllegalArgumentException("Đơn vượt giới hạn hiện tại hoặc thiếu ngày nghỉ.");
+                if (dates.isEmpty()) throw new IllegalArgumentException("Đơn thiếu ngày nghỉ.");
                 checkQuota(conn, policy, request.getEmployeeId(), dates);
                 for (LocalDate date : dates) {
                     requests.ensureTimesheetOpen(conn, actor.getCompanyId(), date);

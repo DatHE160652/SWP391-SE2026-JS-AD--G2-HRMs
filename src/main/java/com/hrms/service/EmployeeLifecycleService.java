@@ -66,7 +66,7 @@ public class EmployeeLifecycleService {
     private void requireOwnEmployee(Connection connection,TenantPrincipal principal) throws SQLException {
         if (principal == null || principal.getCompanyId() == null || principal.getEmployeeId() == null
                 || principal.isMustChangePassword()
-                || !Set.of("EMPLOYEE","MANAGER","HR","COMPANY_ADMIN").contains(principal.getRoleCode()))
+                || !Set.of("EMPLOYEE","MANAGER","COMPANY_ADMIN").contains(principal.getRoleCode()))
             throw new SecurityException("Vui lòng đăng nhập bằng tài khoản được liên kết với hồ sơ nhân viên.");
         requireCurrentActor(connection,principal);
         if (dao.query(connection,"SELECT 1 FROM Employees WHERE CompanyId=? AND EmployeeId=? AND UserId=?",
@@ -143,7 +143,7 @@ public class EmployeeLifecycleService {
                             WHERE employee.CompanyId=u.CompanyId AND employee.UserId=u.UserId
                             ORDER BY employee.EmployeeId) e
                         WHERE u.CompanyId=? AND u.IsActive=1 AND u.IsLocked=0
-                            AND r.RoleCode IN ('COMPANY_ADMIN','HR')
+                            AND r.RoleCode = 'COMPANY_ADMIN'
                         ORDER BY u.DisplayName,u.UserId
                         """, companyId);
                 case "organization" -> dao.query(connection, """
@@ -382,16 +382,37 @@ public class EmployeeLifecycleService {
     }
 
 
-    public void terminate(TenantPrincipal principal, int employeeId, String reason) throws SQLException {
+    public String terminate(TenantPrincipal principal, int employeeId, String reason) throws SQLException {
         requireEditor(principal);
         requireReason(reason);
-        OrganizationTransaction.execute(principal.getCompanyId(), connection -> {
+        return OrganizationTransaction.execute(principal.getCompanyId(), connection -> {
             requireCurrentActor(connection, principal);
             var employee = dao.employee(connection, principal.getCompanyId(), employeeId);
             if (!"Active".equals(employee.get("Status"))) throw new IllegalArgumentException("Chỉ thực hiện ngừng làm việc cho nhân viên đang hoạt động.");
             if (java.util.Objects.equals(employee.get("UserId"), principal.getUserId())) throw new IllegalArgumentException("Bạn không được tự thực hiện ngừng làm việc cho chính mình.");
-            if (!dao.query(connection, "SELECT 1 FROM Employees WHERE CompanyId=? AND ManagerId=?", principal.getCompanyId(), employeeId).isEmpty())
-                throw new IllegalArgumentException("Vui lòng phân công lại cấp dưới trước khi ghi nhận ngừng làm việc.");
+            Integer upperManagerId = employee.get("ManagerId") instanceof Number n ? n.intValue() : null;
+            if (upperManagerId != null) {
+                if (upperManagerId == employeeId || dao.query(connection,
+                        "SELECT 1 FROM Employees WHERE CompanyId=? AND EmployeeId=? AND Status='Active'",
+                        principal.getCompanyId(), upperManagerId).isEmpty()) {
+                    upperManagerId = null;
+                }
+            }
+            var subordinateRows = dao.query(connection,
+                    "SELECT EmployeeId, Status FROM Employees WHERE CompanyId=? AND ManagerId=?",
+                    principal.getCompanyId(), employeeId);
+            int activeSubordinates = 0;
+            var reporting = new com.hrms.dao.EmployeeAssignmentDAO();
+            for (var subRow : subordinateRows) {
+                int subId = ((Number) subRow.get("EmployeeId")).intValue();
+                reporting.updateManager(connection, principal.getCompanyId(), subId, upperManagerId);
+                if ("Active".equals(subRow.get("Status"))) activeSubordinates++;
+            }
+            if (activeSubordinates > 0) {
+                OrganizationTransaction.audit(connection, principal.getCompanyId(), principal.getUserId(), employeeId,
+                        "REASSIGN_SUBORDINATES_ON_TERMINATE", String.valueOf(activeSubordinates),
+                        upperManagerId == null ? "NULL" : String.valueOf(upperManagerId));
+            }
             if (!dao.query(connection, "SELECT 1 FROM EmployeePositionChanges WHERE CompanyId=? AND EmployeeId=? AND Status IN ('PENDING','APPROVED')", principal.getCompanyId(), employeeId).isEmpty())
                 throw new IllegalArgumentException("Vui lòng xử lý đề xuất chức danh đang chờ trước khi ghi nhận ngừng làm việc.");
             if (!dao.query(connection,"SELECT 1 FROM EmployeePositionAssignments WHERE CompanyId=? AND EmployeeId=? AND EffectiveTo IS NULL AND EffectiveFrom>CONVERT(date,SYSDATETIME())",principal.getCompanyId(),employeeId).isEmpty())
@@ -417,7 +438,12 @@ public class EmployeeLifecycleService {
             dao.execute(connection, "UPDATE Users SET IsActive=0,IsLocked=1,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND UserId=?", principal.getCompanyId(), employee.get("UserId"));
             dao.execute(connection, "UPDATE Employees SET Status='Inactive',EndDate=CONVERT(date,SYSDATETIME()),TerminationReason=?,DepartmentId=NULL,PositionId=NULL,ManagerId=NULL,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND EmployeeId=?", reason, principal.getCompanyId(), employeeId);
             OrganizationTransaction.audit(connection, principal.getCompanyId(), principal.getUserId(), employeeId, "TERMINATE_EMPLOYEE", "Active", reason);
-            return null;
+            if (activeSubordinates > 0) {
+                return upperManagerId != null
+                        ? "Đã ghi nhận ngừng làm việc và chuyển quản lý trực tiếp cho " + activeSubordinates + " nhân viên cấp dưới sang quản lý cấp trên (chức danh giữ nguyên)."
+                        : "Đã ghi nhận ngừng làm việc và tạm gỡ quản lý trực tiếp cho " + activeSubordinates + " nhân viên cấp dưới (chức danh giữ nguyên).";
+            }
+            return "Đã ghi nhận ngừng làm việc. Lịch sử nhân viên được giữ nguyên.";
         });
     }
 
@@ -559,6 +585,12 @@ public class EmployeeLifecycleService {
                 if("MANAGER_CHANGE".equals(change.get("ChangeType")))
                     OrganizationTransaction.recordManagerChange(connection,principal.getCompanyId(),principal.getUserId(),employeeId,
                             (Integer)change.get("OldManagerId"),(Integer)change.get("NewManagerId"),(String)change.get("Reason"));
+                Integer newPositionId = ((Number)change.get("NewPositionId")).intValue();
+                Integer newManagerId = (Integer)change.get("NewManagerId");
+                new com.hrms.dao.OrganizationAssignmentDAO().syncDepartmentReporting(
+                        connection, principal.getCompanyId(), employeeId, departmentId,
+                        newPositionId, newManagerId, newManagerId == null,
+                        principal.getUserId(), (String)change.get("Reason"));
             } else throw new IllegalArgumentException("Vui lòng chọn duyệt, từ chối hoặc áp dụng.");
             if("MANAGER_CHANGE".equals(change.get("ChangeType")))
                 OrganizationTransaction.audit(connection,principal.getCompanyId(),principal.getUserId(),employeeId,"MANAGER_CHANGE_"+action,

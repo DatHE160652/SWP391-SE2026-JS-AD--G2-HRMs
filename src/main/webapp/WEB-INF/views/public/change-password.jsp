@@ -25,6 +25,11 @@
         <form method="post" action="${pageContext.request.contextPath}/change-password" class="tenant-login-form">
             <input type="hidden" name="csrfToken" value="<c:out value='${sessionScope.tenantPasswordCsrfToken}'/>">
             <div class="form-field">
+                <label for="currentPassword"><%= com.hrms.i18n.Language.text(request, "ui_current_password", "Mật khẩu cũ") %> <span>*</span></label>
+                <input id="currentPassword" name="currentPassword" type="password" required autocomplete="current-password">
+                <c:if test="${changePasswordField == 'currentPassword'}"><small class="field-error"><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("changePasswordError")) %>'/></small></c:if>
+            </div>
+            <div class="form-field">
                 <label for="newPassword"><%= com.hrms.i18n.Language.text(request, "ui_4267a600ceea", "Mật khẩu mới") %> <span>*</span></label>
                 <input id="newPassword" name="newPassword" type="password" required autocomplete="new-password">
                 <c:if test="${changePasswordField == 'newPassword'}"><small class="field-error"><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("changePasswordError")) %>'/></small></c:if>

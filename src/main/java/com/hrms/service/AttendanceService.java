@@ -18,6 +18,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 
 public class AttendanceService {
     private final AttendanceDAO attendanceDAO;
@@ -343,6 +344,25 @@ public class AttendanceService {
         return list;
     }
 
+    public List<Map<String, Object>> getCompanyAttendanceEmployees(Integer companyId, Integer departmentId, String status,
+                                                                   int month, int year, String keyword) throws SQLException {
+        requireCompany(companyId);
+        return attendanceDAO.getCompanyAttendanceEmployees(companyId, departmentId, status, month, year, keyword);
+    }
+
+    public List<AttendanceDTO> getCompanyEmployeeMonthlyAttendance(Integer companyId, int employeeId, String status,
+                                                                   int month, int year) throws SQLException {
+        requireCompany(companyId);
+        List<AttendanceDTO> list = attendanceDAO.getCompanyEmployeeMonthlyAttendance(companyId, employeeId, status, month, year);
+        CompanyShiftSetting setting = shiftSettingDAO != null ? shiftSettingDAO.getShiftSetting(companyId) : null;
+        if (setting != null && list != null) {
+            for (AttendanceDTO dto : list) {
+                dto.setWorkCredit(setting.calculateWorkCredit(dto.getTotalHours()));
+            }
+        }
+        return list;
+    }
+
     /**
      * UC36: Generate attendance reports by department / company
      */
@@ -521,6 +541,13 @@ public class AttendanceService {
         // Tháng trước liền kề (T-1, ví dụ tháng 10 khi hiện tại là tháng 11):
         // Tự động khóa ngầm từ ngày chốt công trở đi (currentDay >= cutoffDay)
         return currentDay >= cutoffDay;
+    }
+
+    /**
+     * Checks explicit lock status for admin Excel import without applying automatic T-2 / cutoffDay locks.
+     */
+    public boolean isMonthLockedForImport(int companyId, int month, int year) throws SQLException {
+        return timesheetLockDAO != null && timesheetLockDAO.isMonthLockedOrPayrollFinalized(companyId, month, year);
     }
 
     public TimesheetLock getTimesheetLock(int companyId, int month, int year) throws SQLException {

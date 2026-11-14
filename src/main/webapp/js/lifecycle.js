@@ -157,7 +157,8 @@
                 const form = container.querySelector('#organizationForm');
                 form.dataset.embedded = 'true';
                 FormValidation.init(form);
-                FormValidation.init(container.querySelector('#manageTeamForm'));
+                const manageTeamForm = container.querySelector('#manageTeamForm');
+                if (manageTeamForm) FormValidation.init(manageTeamForm);
                 await setupOrganizationForm(employee);
                 if (revision !== detailRevision || activeTab !== 'organization' || !form.isConnected) return;
             } else if (activeTab === 'salary') {

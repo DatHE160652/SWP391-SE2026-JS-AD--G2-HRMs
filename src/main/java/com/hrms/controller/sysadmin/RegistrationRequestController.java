@@ -164,7 +164,10 @@ public class RegistrationRequestController extends HttpServlet {
         }
 
         try {
-            RegistrationRequest registrationRequest = registrationRequestService.getVisibleRequest(requestId);
+            SystemAdminPrincipal principal = SecuritySupport.getPrincipal(request);
+            Integer actorId = principal != null ? principal.getUserId() : null;
+            RegistrationRequest registrationRequest = registrationRequestService.openRequestDetails(
+                    requestId, actorId, request.getRemoteAddr());
             if (registrationRequest == null) {
                 showErrorWithStatus(request, response, HttpServletResponse.SC_NOT_FOUND,
                         "Không tìm thấy Registration Request.");

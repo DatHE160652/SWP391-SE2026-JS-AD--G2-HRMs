@@ -40,7 +40,7 @@
     </section>
     <c:choose>
         <c:when test="${item.status == 'NEW' or item.status == 'UNDER_REVIEW'}">
-            <p class="read-only-note"><svg class="icon" aria-hidden="true"><use href="${icons}#info"/></svg><%= com.hrms.i18n.Language.text(request, "ui_f06c663b0d2c", "Yêu cầu đang chờ xử lý. Chưa có công ty, workspace hoặc tài khoản quản trị được tạo. Xem chi tiết không làm thay đổi trạng thái.") %></p>
+            <p class="read-only-note"><svg class="icon" aria-hidden="true"><use href="${icons}#info"/></svg><%= com.hrms.i18n.Language.text(request, "ui_f06c663b0d2c", "Yêu cầu đang được xem xét. Chưa có công ty, workspace hoặc tài khoản quản trị được tạo.") %></p>
         </c:when>
         <c:when test="${item.status == 'CONVERTING'}">
             <p class="read-only-note"><svg class="icon" aria-hidden="true"><use href="${icons}#clock"/></svg><%= com.hrms.i18n.Language.text(request, "ui_30a3acc35b91", "Hệ thống đang khởi tạo công ty. Vui lòng tải lại trang để xem kết quả; không gửi lại yêu cầu phê duyệt.") %></p>

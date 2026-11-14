@@ -97,6 +97,45 @@ public class RegistrationRequestDAO {
     }
 
     /**
+     * Transitions a request from NEW to UNDER_REVIEW when a System Admin opens its details.
+     */
+    public boolean markUnderReviewIfNew(int requestId, Integer actorId, String ipAddress) throws SQLException {
+        if (requestId <= 0) {
+            return false;
+        }
+        String sql = "UPDATE RegistrationRequests SET Status = 'UNDER_REVIEW', UpdatedAt = SYSUTCDATETIME() "
+                + "WHERE RegistrationRequestId = ? AND Status = 'NEW'";
+        try (Connection connection = connections.open()) {
+            applyWriteOptions(connection);
+            boolean originalAutoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+            boolean completed = false;
+            try {
+                int updated;
+                try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                    statement.setInt(1, requestId);
+                    updated = statement.executeUpdate();
+                }
+                if (updated == 1 && actorId != null && actorId > 0) {
+                    insertAudit(connection, actorId, "MARK_UNDER_REVIEW", requestId, "NEW", "UNDER_REVIEW", ipAddress);
+                }
+                connection.commit();
+                completed = true;
+                return updated == 1;
+            } catch (SQLException | RuntimeException exception) {
+                try { connection.rollback(); } catch (SQLException ignored) { }
+                completed = true;
+                throw exception;
+            } finally {
+                if (!completed) {
+                    try { connection.rollback(); } catch (SQLException ignored) { }
+                }
+                try { connection.setAutoCommit(originalAutoCommit); } catch (SQLException ignored) { }
+            }
+        }
+    }
+
+    /**
      * Inserts a request and its receipt-attempt metadata atomically. A null result means a duplicate.
      * The mail provider is deliberately not called while this transaction is open.
      */
@@ -189,8 +228,16 @@ public class RegistrationRequestDAO {
                 + "COUNT_BIG(CASE WHEN Status = 'CONVERTED' THEN 1 END) AS ConvertedCount, "
                 + (includePlatformCounts
                     ? "(SELECT COUNT_BIG(*) FROM Companies) AS CompanyCount, "
-                      + "(SELECT COUNT_BIG(*) FROM Users WHERE CompanyId IS NOT NULL) AS TenantUserCount "
-                    : "CAST(0 AS BIGINT) AS CompanyCount, CAST(0 AS BIGINT) AS TenantUserCount ")
+                      + "(SELECT COUNT_BIG(*) FROM Users WHERE CompanyId IS NOT NULL) AS TenantUserCount, "
+                      + "(SELECT COUNT_BIG(*) FROM Subscriptions s "
+                      + "INNER JOIN Plans p ON p.PlanId = s.PlanId "
+                      + "WHERE s.Status = N'ACTIVE' "
+                      + "AND COALESCE(s.EndDate, "
+                      + "CASE WHEN UPPER(LTRIM(RTRIM(p.BillingCycle))) = 'YEARLY' "
+                      + "THEN DATEADD(YEAR, 1, s.StartDate) "
+                      + "ELSE DATEADD(MONTH, 1, s.StartDate) END) "
+                      + ">= CAST(SYSUTCDATETIME() AT TIME ZONE 'UTC' AT TIME ZONE 'SE Asia Standard Time' AS DATE)) AS ActiveSubscriptionCount "
+                    : "CAST(0 AS BIGINT) AS CompanyCount, CAST(0 AS BIGINT) AS TenantUserCount, CAST(0 AS BIGINT) AS ActiveSubscriptionCount ")
                 + "FROM RegistrationRequests WHERE Status <> 'DELETED'";
         try (Connection connection = connections.open();
              PreparedStatement statement = connection.prepareStatement(sql);
@@ -198,7 +245,8 @@ public class RegistrationRequestDAO {
             result.next();
             return new RegistrationRequestStats(result.getLong("NewCount"), result.getLong("ReviewCount"),
                     result.getLong("ConvertingCount"), result.getLong("ConvertedCount"),
-                    result.getLong("CompanyCount"), result.getLong("TenantUserCount"));
+                    result.getLong("CompanyCount"), result.getLong("TenantUserCount"),
+                    result.getLong("ActiveSubscriptionCount"));
         }
     }
 
@@ -576,8 +624,17 @@ public class RegistrationRequestDAO {
     }
 
     private void insertSubscription(Connection connection, int companyId, int planId) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(
-                "INSERT INTO Subscriptions (CompanyId,PlanId,StartDate,Status) VALUES (?, ?, CAST(SYSUTCDATETIME() AT TIME ZONE 'UTC' AT TIME ZONE 'SE Asia Standard Time' AS DATE), N'ACTIVE')")) {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                INSERT INTO Subscriptions (CompanyId,PlanId,StartDate,EndDate,Status)
+                SELECT ?, p.PlanId, d.StartDate,
+                       CASE WHEN UPPER(LTRIM(RTRIM(p.BillingCycle))) = 'YEARLY'
+                            THEN DATEADD(YEAR, 1, d.StartDate)
+                            ELSE DATEADD(MONTH, 1, d.StartDate) END,
+                       N'ACTIVE'
+                FROM Plans p
+                CROSS JOIN (SELECT CAST(SYSUTCDATETIME() AT TIME ZONE 'UTC' AT TIME ZONE 'SE Asia Standard Time' AS DATE) AS StartDate) d
+                WHERE p.PlanId = ?
+                """)) {
             statement.setInt(1, companyId); statement.setInt(2, planId); statement.executeUpdate();
         }
     }

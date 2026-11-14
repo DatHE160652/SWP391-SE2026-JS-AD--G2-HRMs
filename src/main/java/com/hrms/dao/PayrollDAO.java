@@ -86,7 +86,7 @@ public class PayrollDAO {
                     AS
                         SELECT u.UserId, u.CompanyId, r.RoleCode
                         FROM dbo.Users u JOIN dbo.Roles r ON r.RoleId = u.RoleId
-                        WHERE u.CompanyId IS NOT NULL AND r.RoleCode IN ('MANAGER','COMPANY_ADMIN','HR')
+                        WHERE u.CompanyId IS NOT NULL AND r.RoleCode IN ('MANAGER','COMPANY_ADMIN')
                             AND u.IsActive = 1 AND u.IsLocked = 0 AND u.MustChangePassword = 0
                             AND (u.LockedUntil IS NULL OR u.LockedUntil <= SYSUTCDATETIME());
                 """);
@@ -101,6 +101,36 @@ public class PayrollDAO {
                 }
             }
             schemaEnsured = true;
+        }
+    }
+
+    private void syncMissingContractCompensation(Connection c, int companyId) throws SQLException {
+        try (PreparedStatement s = c.prepareStatement("""
+            INSERT INTO dbo.EmployeeCompensationHistories
+                (CompanyId, EmployeeId, BaseSalary, PositionAllowance, TravelAllowance, EffectiveFrom, EffectiveTo, Reason, SourceContractId)
+            SELECT ec.CompanyId, ec.EmployeeId, ec.GrossSalary, 0.00, COALESCE(ec.TravelAllowance, 0.00),
+                   ec.StartDate,
+                   COALESCE((SELECT DATEADD(day, -1, MIN(h2.EffectiveFrom))
+                             FROM dbo.EmployeeCompensationHistories h2
+                             WHERE h2.CompanyId = ec.CompanyId AND h2.EmployeeId = ec.EmployeeId AND h2.EffectiveFrom > ec.StartDate),
+                            ec.EndDate),
+                   CONCAT(N'Đồng bộ lương theo hợp đồng ', ec.ContractCode),
+                   ec.ContractId
+            FROM dbo.EmploymentContracts ec
+            JOIN dbo.Employees e ON e.CompanyId = ec.CompanyId AND e.EmployeeId = ec.EmployeeId
+            WHERE ec.CompanyId = ?
+              AND ec.Status = 'ACTIVE'
+              AND ec.TerminatedDate IS NULL
+              AND ec.GrossSalary IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM dbo.EmployeeCompensationHistories h
+                  WHERE h.CompanyId = ec.CompanyId AND h.EmployeeId = ec.EmployeeId
+                    AND h.EffectiveFrom <= ec.StartDate
+                    AND (h.EffectiveTo IS NULL OR h.EffectiveTo >= ec.StartDate)
+              )
+            """)) {
+            s.setInt(1, companyId);
+            s.executeUpdate();
         }
     }
 
@@ -202,6 +232,7 @@ public class PayrollDAO {
     public List<PayrollPeriod> periods(int companyId) throws SQLException {
         try (Connection c = connections.open()) {
             ensureFormulaSchema(c);
+            syncMissingContractCompensation(c, companyId);
             try (PreparedStatement s = c.prepareStatement(PERIOD_SELECT + " ORDER BY p.Year DESC,p.Month DESC")) {
                 s.setInt(1, companyId);
                 try (ResultSet r = s.executeQuery()) {
@@ -283,7 +314,7 @@ public class PayrollDAO {
         return periodRows(companyId,periodId,false);
     }
 
-    /** Adjustment entry includes every employee in the period's company, even before a contract exists. */
+    /** Adjustment entry includes only employees with a valid contract in the payroll period. */
     public List<PayrollRow> adjustmentRows(int companyId, int periodId) throws SQLException {
         return periodRows(companyId,periodId,true,false);
     }
@@ -315,16 +346,27 @@ public class PayrollDAO {
                 "COALESCE(s.Bonus,a.Bonus,0) Bonus,COALESCE(s.Deduction,a.Deduction,0) Deduction,") + """
                 s.NetSalary,a.Note,s.PayslipId
             FROM PayrollPeriods p JOIN Employees e ON e.CompanyId=p.CompanyId
-            """ + (adjustments?PayrollSources.joins(PayrollSources.MONTH_END,true):SOURCES) + """
+            """ + SOURCES + """
             LEFT JOIN Departments d ON d.DepartmentId=e.DepartmentId AND d.CompanyId=e.CompanyId
             LEFT JOIN PayrollAdjustments a ON a.PayrollPeriodId=p.PayrollPeriodId AND a.EmployeeId=e.EmployeeId
             LEFT JOIN Payslips s ON s.PayrollPeriodId=p.PayrollPeriodId AND s.EmployeeId=e.EmployeeId
             WHERE p.CompanyId=? AND p.PayrollPeriodId=?
-            """ + (adjustments?"":" AND " + """
-            ((p.Status='Draft' AND (
+            AND ((p.Status='Draft' AND (
             """ + ELIGIBLE + """
             )) OR (p.Status<>'Draft' AND s.PayslipId IS NOT NULL))
-            """) + " ORDER BY e.EmployeeCode")) {
+            """ + (adjustments && !liveAllowance ? """
+            AND COALESCE(s.ContractBaseSalary,compensation.BaseSalary) IS NOT NULL
+            AND EXISTS (
+                SELECT 1 FROM dbo.EmploymentContracts ec
+                WHERE ec.CompanyId = e.CompanyId AND ec.EmployeeId = e.EmployeeId
+                  AND ec.Status = 'ACTIVE'
+                  AND ec.StartDate <= EOMONTH(DATEFROMPARTS(p.Year, p.Month, 1))
+                  AND (ec.EndDate IS NULL OR ec.EndDate >= DATEFROMPARTS(p.Year, p.Month, 1))
+                  AND (ec.EndDate IS NULL OR ec.EndDate >= CAST(SYSDATETIME() AS DATE))
+                  AND ec.TerminatedDate IS NULL
+            )
+            """ : "") + """
+            ORDER BY e.EmployeeCode""")) {
             s.setInt(1, companyId); s.setInt(2, periodId);
             return rows(s);
         }
@@ -358,10 +400,39 @@ public class PayrollDAO {
         return write(companyId, userId, c -> {
             editable(lockPeriod(c, companyId, periodId));
             requireCompanyEmployee(c, companyId, employeeId);
+            requireEligibleEmployeeInPeriod(c, companyId, periodId, employeeId);
             boolean changed=upsertAdjustment(c, companyId, userId, periodId, employeeId, bonus, deduction, note);
             if (changed) invalidate(c, companyId, periodId);
             return changed;
         });
+    }
+
+    private void requireEligibleEmployeeInPeriod(Connection c, int companyId, int periodId, int employeeId) throws SQLException {
+        try (PreparedStatement s = c.prepareStatement("""
+                SELECT 1
+                FROM PayrollPeriods p
+                JOIN Employees e ON e.CompanyId = p.CompanyId
+                """ + SOURCES + """
+                WHERE p.CompanyId = ? AND p.PayrollPeriodId = ? AND e.EmployeeId = ?
+                  AND EXISTS (
+                      SELECT 1 FROM dbo.EmploymentContracts ec
+                      WHERE ec.CompanyId = e.CompanyId AND ec.EmployeeId = e.EmployeeId
+                        AND ec.Status = 'ACTIVE'
+                        AND ec.StartDate <= EOMONTH(DATEFROMPARTS(p.Year, p.Month, 1))
+                        AND (ec.EndDate IS NULL OR ec.EndDate >= DATEFROMPARTS(p.Year, p.Month, 1))
+                        AND (ec.EndDate IS NULL OR ec.EndDate >= CAST(SYSDATETIME() AS DATE))
+                        AND ec.TerminatedDate IS NULL
+                  ) AND
+                """ + ELIGIBLE)) {
+            s.setInt(1, companyId);
+            s.setInt(2, periodId);
+            s.setInt(3, employeeId);
+            try (ResultSet r = s.executeQuery()) {
+                if (!r.next()) {
+                    throw new PayrollException(400, "Nhân viên chưa có hợp đồng hoặc hợp đồng đã hết hạn trong kỳ lương này, không thể điều chỉnh thưởng.");
+                }
+            }
+        }
     }
 
     public int importAdjustments(int companyId, int userId, int periodId,
@@ -392,6 +463,24 @@ public class PayrollDAO {
             if (changed) invalidate(c, companyId, periodId);
             return input.size();
         });
+    }
+
+    /** Returns all uppercase employee codes belonging to the company. */
+    public java.util.Set<String> companyEmployeeCodes(int companyId) throws SQLException {
+        java.util.Set<String> codes = new java.util.HashSet<>();
+        try (Connection c = connections.open();
+             PreparedStatement s = c.prepareStatement("SELECT EmployeeCode FROM Employees WHERE CompanyId=?")) {
+            s.setInt(1, companyId);
+            try (ResultSet r = s.executeQuery()) {
+                while (r.next()) {
+                    String code = r.getString(1);
+                    if (code != null && !code.isBlank()) {
+                        codes.add(code.trim().toUpperCase(java.util.Locale.ROOT));
+                    }
+                }
+            }
+        }
+        return codes;
     }
 
     public int importPayroll(int companyId, int userId, int periodId,
@@ -485,9 +574,11 @@ public class PayrollDAO {
                     SELECT TOP 1 c.GrossSalary, c.StartDate
                     FROM dbo.EmploymentContracts c
                     WHERE c.CompanyId = e.CompanyId AND c.EmployeeId = e.EmployeeId
-                      AND c.Status IN ('ACTIVE', 'EXPIRED', 'TERMINATED')
+                      AND c.Status = 'ACTIVE'
                       AND c.StartDate <= EOMONTH(DATEFROMPARTS(p.Year, p.Month, 1))
                       AND (c.EndDate IS NULL OR c.EndDate >= DATEFROMPARTS(p.Year, p.Month, 1))
+                      AND (c.EndDate IS NULL OR c.EndDate >= CAST(SYSDATETIME() AS DATE))
+                      AND c.TerminatedDate IS NULL
                     ORDER BY c.StartDate DESC
                 ) contract
                 OUTER APPLY (
@@ -500,6 +591,7 @@ public class PayrollDAO {
                 ) compensation
                 LEFT JOIN dbo.PayrollAdjustments adj ON adj.PayrollPeriodId = p.PayrollPeriodId AND adj.EmployeeId = e.EmployeeId
                 WHERE e.CompanyId = ? AND e.Status IN ('Active', 'On Leave', 'Inactive')
+                  AND contract.GrossSalary IS NOT NULL
                 ORDER BY e.EmployeeCode
             """)) {
                 s.setInt(1, companyId);
@@ -583,9 +675,11 @@ public class PayrollDAO {
                     SELECT TOP 1 c.GrossSalary, c.StartDate
                     FROM dbo.EmploymentContracts c
                     WHERE c.CompanyId = e.CompanyId AND c.EmployeeId = e.EmployeeId
-                      AND c.Status IN ('ACTIVE', 'EXPIRED', 'TERMINATED')
+                      AND c.Status = 'ACTIVE'
                       AND c.StartDate <= EOMONTH(DATEFROMPARTS(p.Year, p.Month, 1))
                       AND (c.EndDate IS NULL OR c.EndDate >= DATEFROMPARTS(p.Year, p.Month, 1))
+                      AND (c.EndDate IS NULL OR c.EndDate >= CAST(SYSDATETIME() AS DATE))
+                      AND c.TerminatedDate IS NULL
                     ORDER BY c.StartDate DESC
                 ) contract
                 OUTER APPLY (
@@ -598,6 +692,7 @@ public class PayrollDAO {
                 ) compensation
                 LEFT JOIN dbo.PayrollAdjustments adj ON adj.PayrollPeriodId = p.PayrollPeriodId AND adj.EmployeeId = e.EmployeeId
                 WHERE e.CompanyId = ? AND e.Status IN ('Active', 'On Leave', 'Inactive')
+                  AND contract.GrossSalary IS NOT NULL
                 ORDER BY e.EmployeeCode
              """)) {
             s.setInt(1, companyId);
@@ -635,6 +730,8 @@ public class PayrollDAO {
             boolean changed = false;
             for (int i = 0; i < employeeIds.length; i++) {
                 int empId = employeeIds[i];
+                requireCompanyEmployee(c, companyId, empId);
+                requireEligibleEmployeeInPeriod(c, companyId, periodId, empId);
                 BigDecimal bonus = bonuses[i] == null ? BigDecimal.ZERO : bonuses[i].setScale(2, java.math.RoundingMode.HALF_UP);
                 String note = (notes != null && i < notes.length) ? notes[i] : null;
                 if (note != null && note.length() > 300) note = note.substring(0, 300);

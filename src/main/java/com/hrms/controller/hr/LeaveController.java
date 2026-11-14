@@ -46,7 +46,7 @@ public class LeaveController extends HttpServlet {
             }
             if (post) {
                 switch (path) {
-                    case "/leave/api/policy", "/leave/api/types" -> service.savePolicy(actor, req.getParameter("quotaMode"), number(req,"quotaDays",-1), number(req,"maxDaysPerRequest",-1));
+                    case "/leave/api/policy", "/leave/api/types" -> service.savePolicy(actor, req.getParameter("quotaMode"), number(req,"quotaDays",-1), number(req,"maxDaysPerRequest",366));
                     case "/leave/api/submit" -> {
                         String[] dates = req.getParameterValues("dates");
                         List<LocalDate> parsed = dates == null ? List.of() : Arrays.stream(dates).map(LocalDate::parse).toList();

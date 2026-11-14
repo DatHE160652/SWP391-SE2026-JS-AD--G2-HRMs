@@ -11,11 +11,18 @@ public final class CompanyAdministrationFilter {
     public static final String ACCOUNT_DESC = "ACCOUNT_DESC";
     public static final String NAME_ASC = "NAME_ASC";
 
+    private final String q;
     private final String status;
     private final String region;
     private final String sort;
 
     public CompanyAdministrationFilter(String status, String region, String sort) {
+        this("", status, region, sort);
+    }
+
+    public CompanyAdministrationFilter(String q, String status, String region, String sort) {
+        String trimmedQ = q == null ? "" : q.trim();
+        this.q = trimmedQ.length() > 150 ? trimmedQ.substring(0, 150) : trimmedQ;
         this.status = clean(status);
         this.region = clean(region);
         this.sort = clean(sort).isEmpty() ? NEWEST : clean(sort);
@@ -35,7 +42,7 @@ public final class CompanyAdministrationFilter {
     }
 
     /** The shared System Admin shell reads this property for its search box. */
-    public String getQ() { return ""; }
+    public String getQ() { return q; }
     public String getStatus() { return status; }
     public String getRegion() { return region; }
     public String getSort() { return sort; }

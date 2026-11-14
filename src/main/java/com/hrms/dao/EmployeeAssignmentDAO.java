@@ -337,7 +337,7 @@ public class EmployeeAssignmentDAO {
         }
     }
 
-    private Map<Integer,DepartmentMemberOption> members(Connection connection, int companyId) throws SQLException {
+    Map<Integer,DepartmentMemberOption> members(Connection connection, int companyId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(MEMBERS)) {
             statement.setInt(1, companyId);
             try (ResultSet rows = statement.executeQuery()) {

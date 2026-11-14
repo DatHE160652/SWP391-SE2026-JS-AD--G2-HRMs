@@ -73,7 +73,7 @@ public class EmployeeLifecycleDAO {
     public void requireActor(Connection connection, int companyId, Integer actorId) throws SQLException {
         if (actorId == null || query(connection,"""
                 SELECT 1 FROM Users u JOIN Roles r ON r.RoleId=u.RoleId WHERE u.CompanyId=? AND u.UserId=?
-                    AND u.IsActive=1 AND u.IsLocked=0 AND r.RoleCode IN ('HR','COMPANY_ADMIN')
+                    AND u.IsActive=1 AND u.IsLocked=0 AND r.RoleCode IN ('COMPANY_ADMIN')
                 """,companyId,actorId).isEmpty()) throw new SecurityException("Cần tài khoản nhân sự hoặc quản trị viên công ty đang hoạt động.");
     }
     public List<Map<String, Object>> query(Connection connection, String sql, Object... parameters) throws SQLException {

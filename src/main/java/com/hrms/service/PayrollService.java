@@ -39,7 +39,7 @@ public class PayrollService {
     public static int ownEmployee(TenantPrincipal p) {
         requireTenant(p);
         if (p.getEmployeeId()==null || p.getEmployeeId()<1 || p.getRoleCode()==null
-                || !Set.of("EMPLOYEE","MANAGER","HR","COMPANY_ADMIN").contains(p.getRoleCode().toUpperCase(Locale.ROOT)))
+                || !Set.of("EMPLOYEE","MANAGER","COMPANY_ADMIN").contains(p.getRoleCode().toUpperCase(Locale.ROOT)))
             throw new PayrollException(403,"Tài khoản chưa có quyền xem phiếu lương cá nhân.");
         return p.getEmployeeId();
     }
@@ -105,9 +105,7 @@ public class PayrollService {
 
     public int create(TenantPrincipal p,String name,int month,int year) throws SQLException {
         requirePayrollAccess(p); validatePeriod(month,year);
-        String title=name==null?"":name.trim();
-        if(title.isBlank()) title=String.format("Bảng lương tháng %02d/%d",month,year);
-        if(title.length()>100) throw new PayrollException(400,"Tên kỳ lương tối đa 100 ký tự.");
+        String title=String.format("Bảng lương tháng %02d/%d",month,year);
         return dao.createPeriod(p.getCompanyId(),p.getUserId(),title,month,year);
     }
 

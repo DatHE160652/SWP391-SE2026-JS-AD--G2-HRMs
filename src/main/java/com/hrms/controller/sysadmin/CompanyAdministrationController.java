@@ -106,7 +106,8 @@ public class CompanyAdministrationController extends HttpServlet {
             throws ServletException, IOException {
         try {
             CompanyAdministrationFilter filter = companyService.createFilter(
-                    request.getParameter("status"), request.getParameter("region"), request.getParameter("sort"));
+                    request.getParameter("q"), request.getParameter("status"),
+                    request.getParameter("region"), request.getParameter("sort"));
             setNavigation(request);
             request.setAttribute("allCompanies", companyService.getCompanies());
             request.setAttribute("companies", companyService.getCompanies(filter));

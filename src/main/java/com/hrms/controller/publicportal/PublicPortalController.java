@@ -142,21 +142,26 @@ public class PublicPortalController extends HttpServlet {
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Phiên đổi mật khẩu không hợp lệ. Vui lòng tải lại trang.");
             return;
         }
+        String currentPassword = request.getParameter("currentPassword");
         String newPassword = request.getParameter("newPassword");
         String confirmPassword = request.getParameter("confirmPassword");
+        if (currentPassword == null || currentPassword.isBlank()) {
+            renderChangePasswordError(request, response, "currentPassword", "Mật khẩu cũ không được để trống.");
+            return;
+        }
         if (newPassword == null || newPassword.isBlank()) {
-            renderChangePasswordError(request, response, "Mật khẩu mới không được để trống.");
+            renderChangePasswordError(request, response, "newPassword", "Mật khẩu mới không được để trống.");
             return;
         }
         if (!newPassword.equals(confirmPassword)) {
-            renderChangePasswordError(request, response, "Mật khẩu xác nhận không khớp.");
+            renderChangePasswordError(request, response, "confirmPassword", "Mật khẩu xác nhận không khớp.");
             return;
         }
 
         try {
-            boolean updated = tenantAuthService.changePassword(principal, newPassword);
+            boolean updated = tenantAuthService.changePassword(principal, currentPassword, newPassword);
             if (!updated) {
-                renderChangePasswordError(request, response, "Chưa thể đổi mật khẩu. Vui lòng đăng nhập lại.");
+                renderChangePasswordError(request, response, null, "Chưa thể đổi mật khẩu. Vui lòng đăng nhập lại.");
                 return;
             }
             if (principal.getEmployeeId() != null) {
@@ -175,17 +180,23 @@ public class PublicPortalController extends HttpServlet {
             request.getSession(true).setAttribute(SecuritySupport.TENANT_PRINCIPAL_ATTRIBUTE, updatedPrincipal);
             response.sendRedirect(request.getContextPath() + tenantLandingPath(principal));
         } catch (IllegalArgumentException exception) {
-            renderChangePasswordError(request, response, exception.getMessage());
+            String field = exception.getMessage() != null && exception.getMessage().contains("Mật khẩu cũ")
+                    ? "currentPassword"
+                    : (exception.getMessage() != null && exception.getMessage().contains("Mật khẩu mới") ? "newPassword" : null);
+            renderChangePasswordError(request, response, field, exception.getMessage());
         } catch (SQLException exception) {
             getServletContext().log("Tenant password change failed; SQLState=" + exception.getSQLState()
                     + "; errorCode=" + exception.getErrorCode());
-            renderChangePasswordError(request, response, "Chưa thể đổi mật khẩu. Vui lòng thử lại sau.");
+            renderChangePasswordError(request, response, null, "Chưa thể đổi mật khẩu. Vui lòng thử lại sau.");
         }
     }
 
-    private void renderChangePasswordError(HttpServletRequest request, HttpServletResponse response, String message)
+    private void renderChangePasswordError(HttpServletRequest request, HttpServletResponse response, String field, String message)
             throws ServletException, IOException {
         response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        if (field != null && !field.isBlank()) {
+            request.setAttribute("changePasswordField", field);
+        }
         request.setAttribute("changePasswordError", message);
         render(request, response, "change-password.jsp");
     }
@@ -193,7 +204,7 @@ public class PublicPortalController extends HttpServlet {
     private String tenantLandingPath(TenantPrincipal principal) {
         String role = principal.getRoleCode() == null ? "" : principal.getRoleCode().toUpperCase();
         return switch (role) {
-            case "COMPANY_ADMIN", "HR" -> "/lifecycle/dashboard";
+            case "COMPANY_ADMIN" -> "/lifecycle/dashboard";
             case "MANAGER" -> "/attendance/manager-attendance";
             case "EMPLOYEE" -> "/employee/my-profile";
             default -> "/login";

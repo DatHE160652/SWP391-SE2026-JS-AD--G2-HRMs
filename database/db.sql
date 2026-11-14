@@ -747,14 +747,12 @@ GO
 
 -- ========================================================================
 -- PHẦN 9: KHỞI TẠO DỮ LIỆU CỐ ĐỊNH (SEED DATA)
--- Giữ 5 role legacy; WF1/WF2 chỉ cấp SYSTEM_ADMIN / COMPANY_ADMIN / MANAGER / EMPLOYEE.
--- HR được giữ cho các bảng/luồng HR cũ, không phải role bổ sung cho phạm vi v1.3.4.
+-- 4 role chuẩn: SYSTEM_ADMIN / COMPANY_ADMIN / MANAGER / EMPLOYEE.
 -- ========================================================================
 
 INSERT INTO Roles (RoleCode, RoleName, Description) VALUES
 ('SYSTEM_ADMIN', N'Quản trị viên nền tảng', N'Xử lý request, provision tenant, quản lý Subscription và xem Account Tree; không xem HR chi tiết'),
 ('COMPANY_ADMIN', N'Quản trị viên công ty', N'Nhận tài khoản sau confirm, đổi mật khẩu tạm và truy cập workspace theo quyền'),
-('HR', N'Quản trị nhân sự', N'Quản lý hồ sơ nhân viên, điều chỉnh chấm công, duyệt phép và tính lương'),
 ('MANAGER', N'Quản lý trực tiếp', N'Theo dõi chấm công và duyệt đơn nghỉ phép của thành viên trong nhóm'),
 ('EMPLOYEE', N'Nhân viên', N'Tự chấm công, gửi đơn xin nghỉ phép và tra cứu phiếu lương cá nhân');
 
@@ -1761,7 +1759,7 @@ CREATE OR ALTER VIEW dbo.vw_PayrollOperators
 AS
     SELECT u.UserId,u.CompanyId,r.RoleCode
     FROM dbo.Users u JOIN dbo.Roles r ON r.RoleId=u.RoleId
-    WHERE u.CompanyId IS NOT NULL AND r.RoleCode IN ('MANAGER','COMPANY_ADMIN','HR')
+    WHERE u.CompanyId IS NOT NULL AND r.RoleCode IN ('MANAGER','COMPANY_ADMIN')
         AND u.IsActive=1 AND u.IsLocked=0 AND u.MustChangePassword=0
         AND (u.LockedUntil IS NULL OR u.LockedUntil<=SYSUTCDATETIME());
 GO

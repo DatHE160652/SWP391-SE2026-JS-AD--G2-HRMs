@@ -52,7 +52,6 @@ const LeaveApp = (() => {
                 input.reportValidity(); return;
             }
             if (selected.has(date)) { message('submitMessage','Ngày nghỉ đã được chọn.'); return; }
-            if (selected.size >= policy.maxDaysPerRequest) { message('submitMessage','Đã đạt giới hạn số ngày mỗi đơn.'); return; }
             selected.add(date); input.value = ''; message('submitMessage',''); render();
         });
         input.addEventListener('input', () => input.setCustomValidity(''));
@@ -69,7 +68,7 @@ const LeaveApp = (() => {
             const result = await api('policy'); earliest = result.earliestDate; policy = result.policy;
             input.min = earliest;
             if (!policy) { message('submitMessage','Công ty chưa cấu hình quota nghỉ phép.'); return; }
-            message('policyNotice',`Tối đa ${policy.maxDaysPerRequest} ngày làm việc mỗi đơn. Quota ${policy.quotaDays} ngày/${policy.quotaMode === 'ANNUAL' ? 'năm' : 'tháng'}.`);
+            message('policyNotice',`Quota ${policy.quotaDays} ngày/${policy.quotaMode === 'ANNUAL' ? 'năm' : 'tháng'}.`);
             $('addLeaveDate').disabled = false;
         } catch (error) { message('submitMessage',error.message); }
     }
@@ -267,8 +266,23 @@ const LeaveApp = (() => {
     async function initPolicy() {
         const form = $('leavePolicyForm');
         function preview() {
-            const days = Number($('quotaDays').value), mode = $('quotaMode').value;
-            message('allocationPreview',mode === 'ANNUAL' ? `Tháng 1: ${Math.floor(days/12)+days%12} ngày; tháng 2–12: ${Math.floor(days/12)} ngày/tháng.` : `Mỗi tháng: ${days} ngày.`);
+            const rawDays = Number($('quotaDays').value);
+            const days = Number.isFinite(rawDays) && rawDays >= 0 ? Math.floor(rawDays) : 0;
+            const mode = $('quotaMode').value;
+            if (mode !== 'ANNUAL') {
+                message('allocationPreview', `Mỗi tháng: ${days} ngày.`);
+                return;
+            }
+            const base = Math.floor(days / 12), rem = days % 12;
+            if (rem === 0) {
+                message('allocationPreview', `Tháng 1–12: ${base} ngày/tháng.`);
+            } else if (rem === 1) {
+                message('allocationPreview', `Tháng 1: ${base + 1} ngày; tháng 2–12: ${base} ngày/tháng.`);
+            } else if (rem === 11) {
+                message('allocationPreview', `Tháng 1–11: ${base + 1} ngày/tháng; tháng 12: ${base} ngày.`);
+            } else {
+                message('allocationPreview', `Tháng 1–${rem}: ${base + 1} ngày/tháng; tháng ${rem + 1}–12: ${base} ngày/tháng.`);
+            }
         }
         form.addEventListener('input',preview);
         form.addEventListener('submit',async event => {
@@ -279,7 +293,7 @@ const LeaveApp = (() => {
         });
         try {
             const {policy} = await api('policy');
-            if (policy) { ['quotaMode','quotaDays','maxDaysPerRequest'].forEach(key => $(key).value=policy[key]); preview(); }
+            if (policy) { ['quotaMode','quotaDays'].forEach(key => $(key).value=policy[key]); preview(); }
             else message('policyMessage','Chưa có cấu hình. Vui lòng nhập quota chung.');
         } catch(error) { message('policyMessage',error.message); }
     }

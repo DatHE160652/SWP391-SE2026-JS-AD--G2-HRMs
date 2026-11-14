@@ -138,4 +138,9 @@ public class RegistrationRequestService {
     public RegistrationRequest getVisibleRequest(int requestId) throws SQLException {
         return registrationRequestDAO.findVisibleById(requestId);
     }
+
+    public RegistrationRequest openRequestDetails(int requestId, Integer actorId, String ipAddress) throws SQLException {
+        registrationRequestDAO.markUnderReviewIfNew(requestId, actorId, ipAddress);
+        return registrationRequestDAO.findVisibleById(requestId);
+    }
 }

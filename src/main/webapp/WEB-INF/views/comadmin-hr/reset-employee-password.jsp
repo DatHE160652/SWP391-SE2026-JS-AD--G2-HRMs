@@ -26,7 +26,7 @@
         <p class="lc-muted" id="reset-search-help">${resetEnglish ? 'Enter the exact login email or identity number. If both are entered, both must match.' : 'Nhập chính xác email đăng nhập hoặc CCCD/CMND.'}</p>
         <form id="reset-search-form" autocomplete="off" aria-describedby="reset-search-help">
             <fieldset id="reset-search-fields" class="reset-filters">
-                <label for="reset-email">${resetEnglish ? 'Login email' : 'Email đăng nhập'}
+                <label for="reset-email">${resetEnglish ? 'Login email' : 'Email liên hệ'}
                     <input id="reset-email" name="email" type="email" maxlength="150" placeholder="name@company.com">
                 </label>
                 <label for="reset-identity">${resetEnglish ? 'Identity number' : 'CCCD/CMND'}

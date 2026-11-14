@@ -91,8 +91,7 @@ public class EmployeeLifecycleController extends HttpServlet {
             } else if (path.equals("/lifecycle/api/compensation/save")) {
                 throw new IllegalArgumentException("Lương cơ bản không được cập nhật thủ công. Chỉ được cập nhật tự động theo hợp đồng lao động đã kích hoạt.");
             } else if (path.equals("/lifecycle/api/terminate")) {
-                service.terminate(principal, requiredInt(request.getParameter("employeeId")), request.getParameter("reason"));
-                data = "Đã ghi nhận ngừng làm việc. Lịch sử nhân viên được giữ nguyên.";
+                data = service.terminate(principal, requiredInt(request.getParameter("employeeId")), request.getParameter("reason"));
             } else {
                 response.sendError(404);
                 return;

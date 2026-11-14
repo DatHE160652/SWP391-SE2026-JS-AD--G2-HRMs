@@ -78,12 +78,12 @@
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label for="fromDate"><%= com.hrms.i18n.Language.text(request, "ui_5688d659d36a", "Từ ngày:") %></label>
-                    <input type="date" id="fromDate">
+                    <label for="monthFilter">Từ tháng:</label>
+                    <select id="monthFilter"></select>
                 </div>
                 <div class="filter-group">
-                    <label for="toDate"><%= com.hrms.i18n.Language.text(request, "ui_cb6416e9abf5", "Đến ngày:") %></label>
-                    <input type="date" id="toDate">
+                    <label for="yearFilter">Từ năm:</label>
+                    <select id="yearFilter"></select>
                 </div>
                 <div class="filter-group" style="min-width: 200px; flex: 1;">
                     <label for="keyword"><%= com.hrms.i18n.Language.text(request, "ui_7474b8725cd2", "Từ khóa tìm kiếm:") %></label>
@@ -99,7 +99,7 @@
         <!-- Summary Grid -->
         <section class="summary-grid" style="grid-template-columns: repeat(1, minmax(200px, 260px));">
             <div class="summary-card">
-                <div class="summary-label"><%= com.hrms.i18n.Language.text(request, "ui_9ea7fe166275", "Tổng bản ghi tìm thấy") %></div>
+                <div class="summary-label">Tổng nhân viên trong công ty</div>
                 <div id="totalRecords" class="summary-number text-success">0</div>
             </div>
         </section>
@@ -114,19 +114,47 @@
                     <th><%= com.hrms.i18n.Language.text(request, "ui_c6f0f81cc2b0", "Mã NV") %></th>
                     <th><%= com.hrms.i18n.Language.text(request, "ui_18d1abe31872", "Họ và Tên") %></th>
                     <th><%= com.hrms.i18n.Language.text(request, "ui_6f358f848e2e", "Phòng ban") %></th>
-                    <th><%= com.hrms.i18n.Language.text(request, "ui_368c4575744a", "Ngày") %></th>
-                    <th><%= com.hrms.i18n.Language.text(request, "ui_3d8042db8e05", "Vào ca") %></th>
-                    <th>Tan ca</th>
+                    <th>Chức danh</th>
+                    <th>Số công thực</th>
                     <th><%= com.hrms.i18n.Language.text(request, "ui_bf5e3203822b", "Tổng giờ") %></th>
-                    <th><%= com.hrms.i18n.Language.text(request, "ui_e03c1401e314", "Trạng thái") %></th>
-                    <th><%= com.hrms.i18n.Language.text(request, "ui_02f03f68e75d", "Ghi chú") %></th>
+                    <th style="text-align:right;">Thao tác</th>
                 </tr>
                 </thead>
                 <tbody id="companyAttendanceRows">
-                    <tr><td colspan="9" style="text-align:center;color:#667085;padding:24px;"><%= com.hrms.i18n.Language.text(request, "ui_a48c70968859", "Đang tải dữ liệu chấm công...") %></td></tr>
+                    <tr><td colspan="7" style="text-align:center;color:#667085;padding:24px;"><%= com.hrms.i18n.Language.text(request, "ui_a48c70968859", "Đang tải dữ liệu chấm công...") %></td></tr>
                 </tbody>
             </table>
         </section>
+        <!-- Modal Chi tiết Chấm công Nhân viên theo Tháng -->
+        <div id="modalEmployeeAttendance" class="shift-modal-overlay">
+            <div class="shift-modal-box" style="max-width: 960px; width: 94%;">
+                <div class="shift-modal-header">
+                    <h3 class="shift-modal-title" id="empAttModalTitle">Chi tiết chấm công nhân viên</h3>
+                    <button class="shift-modal-close" id="btnCloseEmpAttModal" type="button" aria-label="Đóng">&times;</button>
+                </div>
+                <div class="shift-modal-body" style="max-height: 70vh; overflow-y: auto;">
+                    <p id="empAttModalMeta" style="font-size: 13px; color: #475467; margin-top: 0; margin-bottom: 12px;"></p>
+                    <table style="width:100%;">
+                        <thead>
+                        <tr>
+                            <th><%= com.hrms.i18n.Language.text(request, "ui_368c4575744a", "Ngày") %></th>
+                            <th><%= com.hrms.i18n.Language.text(request, "ui_3d8042db8e05", "Vào ca") %></th>
+                            <th>Tan ca</th>
+                            <th><%= com.hrms.i18n.Language.text(request, "ui_bf5e3203822b", "Tổng giờ") %></th>
+                            <th><%= com.hrms.i18n.Language.text(request, "ui_e03c1401e314", "Trạng thái") %></th>
+                            <th><%= com.hrms.i18n.Language.text(request, "ui_02f03f68e75d", "Ghi chú") %></th>
+                        </tr>
+                        </thead>
+                        <tbody id="empAttModalRows">
+                            <tr><td colspan="6" style="text-align:center;color:#667085;padding:20px;">Đang tải...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="shift-modal-footer">
+                    <button type="button" class="btn-outline" id="btnCloseEmpAttModalFooter">Đóng</button>
+                </div>
+            </div>
+        </div>
         <!-- Modal Cài đặt Giờ giấc làm việc & Ngày chốt công cho Công ty (CompanyShiftSettings) -->
         <div id="modalShiftSetting" class="shift-modal-overlay">
             <div class="shift-modal-box">
@@ -264,15 +292,19 @@
     document.getElementById('btnExportAttendance')?.addEventListener('click', function() {
         const departmentId = document.getElementById('deptFilter')?.value || '';
         const status = document.getElementById('statusFilter')?.value || '';
-        const fromDate = document.getElementById('fromDate')?.value || '';
-        const toDate = document.getElementById('toDate')?.value || '';
+        const month = parseInt(document.getElementById('monthFilter')?.value || '', 10);
+        const year = parseInt(document.getElementById('yearFilter')?.value || '', 10);
         const keyword = document.getElementById('keyword')?.value || '';
 
         const params = new URLSearchParams();
         if (departmentId) params.append('departmentId', departmentId);
         if (status && status !== 'ALL') params.append('status', status);
-        if (fromDate) params.append('fromDate', fromDate);
-        if (toDate) params.append('toDate', toDate);
+        if (month && year) {
+            const pad = (n) => String(n).padStart(2, '0');
+            const lastDay = new Date(year, month, 0).getDate();
+            params.append('fromDate', year + '-' + pad(month) + '-01');
+            params.append('toDate', year + '-' + pad(month) + '-' + pad(lastDay));
+        }
         if (keyword) params.append('keyword', keyword);
 
         window.location.href = '${pageContext.request.contextPath}/attendance/export?' + params.toString();

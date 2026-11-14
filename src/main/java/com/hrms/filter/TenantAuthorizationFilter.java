@@ -30,7 +30,7 @@ public class TenantAuthorizationFilter implements Filter {
     public interface SessionValidator {
         boolean valid(TenantPrincipal principal) throws java.sql.SQLException;
     }
-    private static final Set<String> TENANT_ROLES = Set.of("COMPANY_ADMIN", "HR", "MANAGER", "EMPLOYEE");
+    private static final Set<String> TENANT_ROLES = Set.of("COMPANY_ADMIN", "MANAGER", "EMPLOYEE");
 
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {

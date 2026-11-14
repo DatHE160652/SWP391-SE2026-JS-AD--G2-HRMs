@@ -150,12 +150,12 @@ public class EmployeeController extends HttpServlet {
                 int employeeId = parseRequiredInt(request.getParameter("employeeId"));
                 boolean active = "/employees/activate".equals(request.getServletPath());
                 if (!active) {
-                    new com.hrms.service.EmployeeLifecycleService().terminate(SecuritySupport.getTenantPrincipal(request), employeeId, request.getParameter("reason"));
+                    message = new com.hrms.service.EmployeeLifecycleService().terminate(SecuritySupport.getTenantPrincipal(request), employeeId, request.getParameter("reason"));
                     success = true;
                 } else {
                     success = employeeService.activateEmployee(companyId, employeeId, SecuritySupport.getTenantPrincipal(request).getUserId(), request.getParameter("reason"));
+                    message = "Đã kích hoạt hồ sơ nhân viên.";
                 }
-                message = active ? "Đã kích hoạt hồ sơ nhân viên." : "Đã ngừng hoạt động hồ sơ nhân viên.";
             } else if ("/employees/me/update-profile".equals(request.getServletPath())) {
                 TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
                 if (principal == null || principal.getEmployeeId() == null) {

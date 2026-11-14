@@ -52,12 +52,26 @@ public class TenantAuthService {
     }
 
     public boolean changePassword(TenantPrincipal principal, String newPassword) throws SQLException {
+        return changePassword(principal, null, newPassword, false);
+    }
+
+    public boolean changePassword(TenantPrincipal principal, String currentPassword, String newPassword) throws SQLException {
+        return changePassword(principal, currentPassword, newPassword, true);
+    }
+
+    private boolean changePassword(TenantPrincipal principal, String currentPassword, String newPassword, boolean verifyCurrent) throws SQLException {
         if (principal == null || principal.getUserId() == null || newPassword == null
                 || principal.getCompanyId() == null || newPassword.isBlank()) return false;
+        if (verifyCurrent && (currentPassword == null || currentPassword.isBlank())) {
+            throw new IllegalArgumentException("Mật khẩu cũ không được để trống.");
+        }
         TenantAccount account = userDAO.findTenantAccount(principal.getWorkspaceCode(), principal.getEmail());
         if (account == null || !principal.getUserId().equals(account.getUser().getUserId())
                 || !principal.getCompanyId().equals(account.getCompanyId())
                 || !userDAO.isCurrentTenantSessionAuthorized(principal)) return false;
+        if (verifyCurrent && !com.hrms.util.TenantPasswordSupport.verify(currentPassword, account.getUser().getPassword())) {
+            throw new IllegalArgumentException("Mật khẩu cũ không chính xác.");
+        }
         if (com.hrms.util.TenantPasswordSupport.verify(newPassword, account.getUser().getPassword())) {
             throw new IllegalArgumentException("Mật khẩu mới phải khác mật khẩu hiện tại.");
         }

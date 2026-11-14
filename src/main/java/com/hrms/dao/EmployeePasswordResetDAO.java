@@ -105,7 +105,7 @@ public class EmployeePasswordResetDAO {
                 JOIN Companies c WITH (HOLDLOCK) ON c.CompanyId=u.CompanyId
                 JOIN Subscriptions s WITH (HOLDLOCK) ON s.CompanyId=c.CompanyId
                 WHERE u.UserId=? AND u.CompanyId=? AND r.RoleCode=? AND c.WorkspaceCode=?
-                AND r.RoleCode IN ('COMPANY_ADMIN','HR') AND u.IsActive=1 AND u.IsLocked=0
+                AND r.RoleCode IN ('COMPANY_ADMIN') AND u.IsActive=1 AND u.IsLocked=0
                 AND u.MustChangePassword=0 AND (u.LockedUntil IS NULL OR u.LockedUntil<=SYSUTCDATETIME())
                 AND c.IsActive=1 AND s.Status=N'ACTIVE'
                 AND NOT EXISTS (SELECT 1 FROM Employees ae WHERE ae.CompanyId=u.CompanyId AND ae.UserId=u.UserId AND ae.Status<>'Active')

@@ -15,7 +15,7 @@
 </head>
 <body class="lc" data-page="attendance-report">
 <c:choose>
-    <c:when test="${sessionScope.tenantPrincipal.companyAdministrator || sessionScope.tenantPrincipal.roleCode == 'HR'}">
+    <c:when test="${sessionScope.tenantPrincipal.companyAdministrator}">
         <%@ include file="/WEB-INF/views/common/lifecycle-shell.jspf" %>
     </c:when>
     <c:otherwise>
@@ -27,7 +27,7 @@
 
     <main class="lc-main content">
         <c:choose>
-            <c:when test="${sessionScope.tenantPrincipal.companyAdministrator || sessionScope.tenantPrincipal.roleCode == 'HR'}">
+            <c:when test="${sessionScope.tenantPrincipal.companyAdministrator}">
                 <div class="lc-breadcrumb"><%= com.hrms.i18n.Language.text(request, "ui_4d7c2975d544", "Quản trị nhân sự &nbsp; / &nbsp; Nghiệp vụ khác &nbsp; / &nbsp; Báo cáo Chấm công") %></div>
             </c:when>
             <c:otherwise>

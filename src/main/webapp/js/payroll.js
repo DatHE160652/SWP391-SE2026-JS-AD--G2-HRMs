@@ -309,14 +309,15 @@
     }
     function renderAdjustmentRows() {
         const q = $('#adjustmentSearch').value.trim().toLocaleLowerCase('vi');
-        const rows = state.adjustments.filter(row => (row.fullName + ' ' + row.employeeCode).toLocaleLowerCase('vi').includes(q));
+        const rows = state.adjustments.filter(row => {
+            const inPeriod = row.baseSalary != null || (!row.salaryIssue && row.contractBaseSalary != null);
+            return inPeriod && (row.fullName + ' ' + row.employeeCode).toLocaleLowerCase('vi').includes(q);
+        });
         $('#adjustmentCount').textContent = `${rows.length}${HrmI18n.fragment(" nhân viên")}`;
         $('#adjustmentRows').innerHTML = rows.slice((state.adjustmentPage - 1) * 25, state.adjustmentPage * 25).map(row => {
-            const inPeriod = row.baseSalary != null || (!row.salaryIssue && row.contractBaseSalary != null);
-            const badge = !inPeriod ? `<span class="badge" style="background:#f1f5f9;color:#64748b;font-size:11px;font-weight:normal;margin-left:6px;">Chưa/hết HĐ trong kỳ</span>` : '';
             return `<tr>
                 <td><strong>${safe(row.employeeCode)}</strong></td>
-                <td>${safe(row.fullName)}${badge}</td>
+                <td>${safe(row.fullName)}</td>
                 <td class="number">${row.baseSalary != null ? money(row.baseSalary) : `<span class="subtle" title="${safe(row.salaryIssue || '')}">—</span>`}</td>
                 <td class="number">${money(row.bonus)}</td>
                 <td class="adjustment-note">${safe(row.note || '—')}</td>
@@ -832,6 +833,15 @@
                 monthSelect.value = enabledOptions[enabledOptions.length - 1].value;
             }
         }
+        syncCreatePeriodName(form);
+    }
+    function syncCreatePeriodName(form) {
+        if (!form || !form.elements.periodName) return;
+        const m = parseInt(form.elements.month?.value, 10);
+        const y = parseInt(form.elements.year?.value, 10);
+        form.elements.periodName.value = (m >= 1 && m <= 12 && y >= 2000 && y <= 9999)
+            ? `Bảng lương tháng ${String(m).padStart(2, '0')}/${y}`
+            : '';
     }
     $('#newPeriod').addEventListener('click', () => {
         const form = $('#createForm');
@@ -840,11 +850,17 @@
         form.elements.year.value = prev.year;
         updateCreateMonthOptions(form);
         form.elements.month.value = prev.month;
-        form.elements.periodName.value = `Bảng lương tháng ${String(prev.month).padStart(2, '0')}/${prev.year}`;
+        syncCreatePeriodName(form);
         openDialog('#createDialog');
     });
     $('#createForm')?.elements.year?.addEventListener('input', () => {
         updateCreateMonthOptions($('#createForm'));
+    });
+    $('#createForm')?.elements.year?.addEventListener('change', () => {
+        updateCreateMonthOptions($('#createForm'));
+    });
+    $('#createForm')?.elements.month?.addEventListener('change', () => {
+        syncCreatePeriodName($('#createForm'));
     });
     $('#yearFilter').addEventListener('change', () => changePeriodFilters().catch(error => feedback(error.message, true)));
     $('#statusFilter').addEventListener('change', () => changePeriodFilters().catch(error => feedback(error.message, true)));

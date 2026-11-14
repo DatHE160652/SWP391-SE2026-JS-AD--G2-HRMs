@@ -825,9 +825,12 @@ async function setupOrganizationForm(employee) {
 }
 
 function bindOrganizationTeam(form) {
-    document.querySelector('#manageTeamButton').addEventListener('click', () => openManageTeam(form).catch(error => showMessage(error.message, 'error')));
-    document.querySelector('#closeTeamDialog').addEventListener('click', () => document.querySelector('#manageTeamDialog').close());
-    document.querySelector('#manageTeamForm').addEventListener('submit', event => {
+    const manageButton = document.querySelector('#manageTeamButton');
+    const closeButton = document.querySelector('#closeTeamDialog');
+    const teamForm = document.querySelector('#manageTeamForm');
+    if (manageButton) manageButton.addEventListener('click', () => openManageTeam(form).catch(error => showMessage(error.message, 'error')));
+    if (closeButton) closeButton.addEventListener('click', () => document.querySelector('#manageTeamDialog')?.close());
+    if (teamForm) teamForm.addEventListener('submit', event => {
         event.preventDefault();
         saveTeamMembers(form).catch(error => { document.querySelector('#teamMessage').textContent = error.message; });
     });
@@ -899,8 +902,10 @@ async function updateOrganizationMode(form) {
     document.querySelector('#directReportsWarning').textContent = !canManage && employees.length
         ? HrmI18n.t('Chức danh hiện tại không được nhận thêm cấp dưới. Cần phân công lại hoặc gỡ các quan hệ cũ trước khi đổi tổ chức.') : '';
     const teamButton = document.querySelector('#manageTeamButton');
-    teamButton.hidden = !canManage && !employees.length;
-    teamButton.textContent = canManage ? HrmI18n.t('Quản lý thành viên nhóm') : HrmI18n.t('Xử lý quan hệ cấp dưới');
+    if (teamButton) {
+        teamButton.hidden = !canManage && !employees.length;
+        teamButton.textContent = canManage ? HrmI18n.t('Quản lý thành viên nhóm') : HrmI18n.t('Xử lý quan hệ cấp dưới');
+    }
     renderLeaderEmployeeRows(employees);
 }
 

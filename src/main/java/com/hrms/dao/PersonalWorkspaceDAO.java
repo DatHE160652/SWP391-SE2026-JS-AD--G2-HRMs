@@ -78,7 +78,7 @@ public class PersonalWorkspaceDAO {
                 SELECT u.DisplayName,r.RoleCode,c.CompanyName,employee.EmployeeId
                 FROM Users u JOIN Roles r ON r.RoleId=u.RoleId JOIN Companies c ON c.CompanyId=u.CompanyId
                 OUTER APPLY (SELECT TOP(1) e.EmployeeId FROM Employees e WHERE e.CompanyId=u.CompanyId AND e.UserId=u.UserId ORDER BY e.EmployeeId) employee
-                WHERE u.CompanyId=? AND u.IsActive=1 AND u.IsLocked=0 AND r.RoleCode IN ('COMPANY_ADMIN','HR')
+                WHERE u.CompanyId=? AND u.IsActive=1 AND u.IsLocked=0 AND r.RoleCode IN ('COMPANY_ADMIN')
                 ORDER BY r.RoleCode,u.DisplayName
                 """,companyId);
         return Map.of("members",members,"administrators",administrators);
@@ -93,7 +93,7 @@ public class PersonalWorkspaceDAO {
                     OR (?=1 AND target.ManagerId=?)
                     OR EXISTS (SELECT 1 FROM Users u JOIN Roles r ON r.RoleId=u.RoleId
                         WHERE u.CompanyId=e.CompanyId AND u.UserId=e.UserId AND u.IsActive=1 AND u.IsLocked=0
-                            AND r.RoleCode IN ('COMPANY_ADMIN','HR')))
+                            AND r.RoleCode IN ('COMPANY_ADMIN')))
                 """,companyId,companyId,employeeId,viewerId,viewerId,manager?1:0,viewerId).isEmpty())
             throw new SecurityException("Bạn chỉ được xem hồ sơ trong phạm vi quản lý và quản trị công ty của mình.");
         var scope=dao.query(connection,CURRENT_ASSIGNMENTS+"""

@@ -187,8 +187,7 @@ public class PayrollController extends HttpServlet {
                         PayrollPeriod period=dao.findPeriod(p.getCompanyId(),periodId);
                         if(period.isClosed() || "Approved".equals(period.getStatus()) || period.getPublishedAt()!=null)
                             throw new PayrollException(409,"Kỳ đã đóng hoặc phê duyệt. Hãy mở lại kỳ chưa công bố để chỉnh sửa.");
-                        java.util.Set<String> codes=dao.adjustmentRows(p.getCompanyId(),periodId).stream()
-                                .map(row->row.employeeCode().toUpperCase(Locale.ROOT)).collect(java.util.stream.Collectors.toSet());
+                        java.util.Set<String> codes=dao.companyEmployeeCodes(p.getCompanyId());
                         java.util.List<String> errors=rows.stream().filter(row->!codes.contains(row.employeeCode().toUpperCase(Locale.ROOT)))
                                 .map(row->"Dòng "+row.rowNumber()+": mã "+row.employeeCode()+" không thuộc công ty của bạn.").toList();
                         if(!errors.isEmpty()) throw new PayrollException(400,"Chưa nhập dữ liệu. Hãy sửa các dòng lỗi.",errors);

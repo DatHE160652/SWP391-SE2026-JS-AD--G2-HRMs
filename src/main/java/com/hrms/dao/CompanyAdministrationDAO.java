@@ -60,19 +60,25 @@ public class CompanyAdministrationDAO {
 
     public List<CompanyAdministrationView> findAll(CompanyAdministrationFilter filter) throws SQLException {
         String sql = "SELECT " + SELECT_COLUMNS + filterPredicate(filter) + orderBy(filter);
-        try (Connection connection = connections.open();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            bindFilter(statement, filter);
-            try (ResultSet results = statement.executeQuery()) {
-                List<CompanyAdministrationView> companies = new ArrayList<>();
-                while (results.next()) companies.add(map(results));
-                return companies;
+        try (Connection connection = connections.open()) {
+            expireOverdueSubscriptions(connection);
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                bindFilter(statement, filter);
+                try (ResultSet results = statement.executeQuery()) {
+                    List<CompanyAdministrationView> companies = new ArrayList<>();
+                    while (results.next()) companies.add(map(results));
+                    return companies;
+                }
             }
         }
     }
 
     static String filterPredicate(CompanyAdministrationFilter filter) {
         StringBuilder sql = new StringBuilder(" WHERE 1=1");
+        if (!filter.getQ().isEmpty()) {
+            sql.append(" AND (c.CompanyName LIKE ? ESCAPE '\\' OR c.WorkspaceCode LIKE ? ESCAPE '\\'")
+               .append(" OR admin.Email LIKE ? ESCAPE '\\' OR admin.DisplayName LIKE ? ESCAPE '\\')");
+        }
         if (!filter.isAllStatuses()) sql.append(" AND s.Status = ?");
         if (!filter.getRegion().isEmpty()) sql.append(" AND c.Region = ?");
         return sql.toString();
@@ -89,21 +95,51 @@ public class CompanyAdministrationDAO {
 
     private void bindFilter(PreparedStatement statement, CompanyAdministrationFilter filter) throws SQLException {
         int index = 1;
+        if (!filter.getQ().isEmpty()) {
+            String pattern = "%" + filter.getQ()
+                    .replace("\\", "\\\\")
+                    .replace("%", "\\%")
+                    .replace("_", "\\_") + "%";
+            for (int i = 0; i < 4; i++) statement.setNString(index++, pattern);
+        }
         if (!filter.isAllStatuses()) statement.setString(index++, filter.getStatus());
         if (!filter.getRegion().isEmpty()) statement.setString(index, filter.getRegion());
     }
 
     public CompanyAdministrationView findById(int companyId) throws SQLException {
         String sql = "SELECT " + SELECT_COLUMNS + " WHERE c.CompanyId = ?";
-        try (Connection connection = connections.open();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, companyId);
-            try (ResultSet results = statement.executeQuery()) {
-                if (!results.next()) return null;
-                CompanyAdministrationView company = map(results);
-                company.setCoreMembers(findCoreMembers(connection, companyId));
-                return company;
+        try (Connection connection = connections.open()) {
+            expireOverdueSubscriptions(connection);
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setInt(1, companyId);
+                try (ResultSet results = statement.executeQuery()) {
+                    if (!results.next()) return null;
+                    CompanyAdministrationView company = map(results);
+                    company.setCoreMembers(findCoreMembers(connection, companyId));
+                    return company;
+                }
             }
+        }
+    }
+
+    private void expireOverdueSubscriptions(Connection connection) throws SQLException {
+        String sql = """
+                UPDATE s
+                SET s.Status = N'SUSPENDED',
+                    s.SuspendedAt = COALESCE(s.SuspendedAt, SYSUTCDATETIME()),
+                    s.SuspensionReason = COALESCE(NULLIF(LTRIM(RTRIM(s.SuspensionReason)), N''), N'Gói dịch vụ đã hết hạn'),
+                    s.UpdatedAt = SYSUTCDATETIME()
+                FROM Subscriptions s
+                INNER JOIN Plans p ON p.PlanId = s.PlanId
+                WHERE s.Status = N'ACTIVE'
+                  AND COALESCE(s.EndDate,
+                        CASE WHEN UPPER(LTRIM(RTRIM(p.BillingCycle))) = 'YEARLY'
+                             THEN DATEADD(YEAR, 1, s.StartDate)
+                             ELSE DATEADD(MONTH, 1, s.StartDate) END)
+                      < CAST(SYSUTCDATETIME() AT TIME ZONE 'UTC' AT TIME ZONE 'SE Asia Standard Time' AS DATE)
+                """;
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.executeUpdate();
         }
     }
 
@@ -173,9 +209,18 @@ public class CompanyAdministrationDAO {
                         ? "UPDATE Subscriptions SET Status=N'SUSPENDED', SuspendedAt=SYSUTCDATETIME(), "
                         + "SuspendedByUserId=?, SuspensionReason=?, UpdatedAt=SYSUTCDATETIME() "
                         + "WHERE CompanyId=? AND Status=N'ACTIVE'"
-                        : "UPDATE Subscriptions SET Status=N'ACTIVE', SuspendedAt=NULL, SuspendedByUserId=NULL, "
-                        + "SuspensionReason=NULL, LastActivatedAt=SYSUTCDATETIME(), LastActivatedByUserId=?, "
-                        + "UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND Status=N'SUSPENDED'";
+                        : "UPDATE s SET s.Status=N'ACTIVE', s.SuspendedAt=NULL, s.SuspendedByUserId=NULL, "
+                        + "s.SuspensionReason=NULL, "
+                        + "s.StartDate = CASE WHEN s.EndDate IS NULL OR s.EndDate < CAST(SYSUTCDATETIME() AT TIME ZONE 'UTC' AT TIME ZONE 'SE Asia Standard Time' AS DATE) "
+                        + "THEN CAST(SYSUTCDATETIME() AT TIME ZONE 'UTC' AT TIME ZONE 'SE Asia Standard Time' AS DATE) ELSE s.StartDate END, "
+                        + "s.EndDate = CASE WHEN s.EndDate IS NULL OR s.EndDate < CAST(SYSUTCDATETIME() AT TIME ZONE 'UTC' AT TIME ZONE 'SE Asia Standard Time' AS DATE) "
+                        + "THEN CASE WHEN UPPER(LTRIM(RTRIM(p.BillingCycle)))='YEARLY' "
+                        + "THEN DATEADD(YEAR, 1, CAST(SYSUTCDATETIME() AT TIME ZONE 'UTC' AT TIME ZONE 'SE Asia Standard Time' AS DATE)) "
+                        + "ELSE DATEADD(MONTH, 1, CAST(SYSUTCDATETIME() AT TIME ZONE 'UTC' AT TIME ZONE 'SE Asia Standard Time' AS DATE)) END "
+                        + "ELSE s.EndDate END, "
+                        + "s.LastActivatedAt=SYSUTCDATETIME(), s.LastActivatedByUserId=?, s.UpdatedAt=SYSUTCDATETIME() "
+                        + "FROM Subscriptions s INNER JOIN Plans p ON p.PlanId = s.PlanId "
+                        + "WHERE s.CompanyId=? AND s.Status=N'SUSPENDED'";
                 try (PreparedStatement statement = connection.prepareStatement(sql)) {
                     statement.setInt(1, actorId);
                     if (suspend) {

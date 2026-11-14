@@ -106,7 +106,15 @@ public class CompanyAdministrationView {
     public String getCompanyAdminActivatedAtDisplay() { return TimeSupport.formatUtc(companyAdminActivatedAt); }
     public String getSuspendedAtDisplay() { return TimeSupport.formatUtc(suspendedAt); }
     public String getSubscriptionStartDateDisplay() { return formatDate(subscriptionStartDate); }
-    public String getSubscriptionEndDateDisplay() { return formatDate(subscriptionEndDate); }
+    public String getSubscriptionEndDateDisplay() {
+        LocalDate effectiveEndDate = subscriptionEndDate;
+        if (effectiveEndDate == null && subscriptionStartDate != null) {
+            effectiveEndDate = "YEARLY".equalsIgnoreCase(billingCycle)
+                    ? subscriptionStartDate.plusYears(1)
+                    : subscriptionStartDate.plusMonths(1);
+        }
+        return formatDate(effectiveEndDate);
+    }
 
     private String formatDate(LocalDate date) {
         return date == null ? "Chưa xác định" : date.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));

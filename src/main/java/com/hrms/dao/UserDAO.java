@@ -73,8 +73,9 @@ public class UserDAO {
                 INNER JOIN Companies c ON c.CompanyId = u.CompanyId
                 INNER JOIN Subscriptions s ON s.CompanyId = c.CompanyId
                 WHERE u.UserId = ? AND u.CompanyId = ? AND u.RowVersion = ?
-                  AND r.RoleCode IN ('COMPANY_ADMIN', 'HR', 'MANAGER', 'EMPLOYEE')
+                  AND r.RoleCode IN ('COMPANY_ADMIN', 'MANAGER', 'EMPLOYEE')
                   AND c.IsActive = 1 AND s.Status = N'ACTIVE'
+                  AND COALESCE(s.EndDate, DATEADD(MONTH, 1, s.StartDate)) >= CAST(SYSUTCDATETIME() AT TIME ZONE 'UTC' AT TIME ZONE 'SE Asia Standard Time' AS DATE)
                   AND u.IsActive = 1 AND u.IsLocked = 0
                   AND (u.LockedUntil IS NULL OR u.LockedUntil <= SYSUTCDATETIME())
                 """;
@@ -150,6 +151,7 @@ public class UserDAO {
                 WHERE c.WorkspaceCode = ?
                   AND u.Email = LOWER(LTRIM(RTRIM(?)))
                   AND c.IsActive = 1 AND s.Status = N'ACTIVE'
+                  AND COALESCE(s.EndDate, DATEADD(MONTH, 1, s.StartDate)) >= CAST(SYSUTCDATETIME() AT TIME ZONE 'UTC' AT TIME ZONE 'SE Asia Standard Time' AS DATE)
                   AND u.IsActive = 1 AND u.IsLocked = 0
                   AND (e.EmployeeId IS NULL OR e.Status = 'Active')
                   AND (u.LockedUntil IS NULL OR u.LockedUntil <= SYSUTCDATETIME())
@@ -179,8 +181,9 @@ public class UserDAO {
                 INNER JOIN Subscriptions s ON s.CompanyId = c.CompanyId
                 WHERE u.UserId = ? AND u.CompanyId IS NOT NULL
                   AND NOT EXISTS (SELECT 1 FROM Employees e WHERE e.CompanyId=u.CompanyId AND e.UserId=u.UserId AND e.Status<>'Active')
-                  AND r.RoleCode IN ('COMPANY_ADMIN', 'HR', 'MANAGER', 'EMPLOYEE')
+                  AND r.RoleCode IN ('COMPANY_ADMIN', 'MANAGER', 'EMPLOYEE')
                   AND c.IsActive = 1 AND s.Status = N'ACTIVE'
+                  AND COALESCE(s.EndDate, DATEADD(MONTH, 1, s.StartDate)) >= CAST(SYSUTCDATETIME() AT TIME ZONE 'UTC' AT TIME ZONE 'SE Asia Standard Time' AS DATE)
                   AND u.IsActive = 1 AND u.IsLocked = 0
                   AND (u.LockedUntil IS NULL OR u.LockedUntil <= SYSUTCDATETIME())
                 """ + " AND " + ContractAccessPolicy.ALLOWED;
@@ -235,6 +238,7 @@ public class UserDAO {
                 FROM Users u INNER JOIN Companies c ON c.CompanyId = u.CompanyId
                 INNER JOIN Subscriptions s ON s.CompanyId = c.CompanyId
                 WHERE u.UserId = ? AND u.RowVersion = ? AND c.IsActive = 1 AND s.Status = N'ACTIVE'
+                  AND COALESCE(s.EndDate, DATEADD(MONTH, 1, s.StartDate)) >= CAST(SYSUTCDATETIME() AT TIME ZONE 'UTC' AT TIME ZONE 'SE Asia Standard Time' AS DATE)
                   AND u.IsActive = 1 AND u.IsLocked = 0
                   AND (u.LockedUntil IS NULL OR u.LockedUntil <= @Now)
                 """ + " AND " + ContractAccessPolicy.ALLOWED;

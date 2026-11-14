@@ -13,7 +13,9 @@ import java.sql.Time;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class AttendanceDAO {
 
@@ -387,6 +389,144 @@ public class AttendanceDAO {
         }
 
         sql.append(" ORDER BY a.AttendanceDate DESC, e.FullName ASC");
+
+        List<AttendanceDTO> list = new ArrayList<>();
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                Object param = params.get(i);
+                if (param instanceof Integer v) ps.setInt(i + 1, v);
+                else if (param instanceof Date v) ps.setDate(i + 1, v);
+                else if (param instanceof String v) ps.setString(i + 1, v);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapAttendanceDTO(rs));
+                }
+            }
+        }
+        return list;
+    }
+
+    public List<Map<String, Object>> getCompanyAttendanceEmployees(int companyId, Integer departmentId, String status,
+                                                                   int month, int year, String keyword) throws SQLException {
+        LocalDate monthStart = LocalDate.of(year, month, 1);
+        LocalDate monthEnd = monthStart.withDayOfMonth(monthStart.lengthOfMonth());
+        Date startSql = Date.valueOf(monthStart);
+        Date endSql = Date.valueOf(monthEnd);
+
+        StringBuilder sql = new StringBuilder("""
+                SELECT e.EmployeeId, e.EmployeeCode, e.FullName,
+                       d.DepartmentName, p.PositionTitle,
+                       COUNT(a.AttendanceId) AS RecordCount,
+                       ISNULL(SUM(CASE
+                           WHEN (a.Status IN ('Present', 'Late', 'Early Leave') OR a.Status LIKE '%Present%' OR a.Status LIKE '%Late%' OR a.Status LIKE '%Early%')
+                                AND a.TotalHours >= ISNULL(s.MinHoursFullDay, 6.00) THEN 1.0
+                           WHEN (a.Status IN ('Present', 'Late', 'Early Leave') OR a.Status LIKE '%Present%' OR a.Status LIKE '%Late%' OR a.Status LIKE '%Early%')
+                                AND a.TotalHours >= ISNULL(s.MinHoursHalfDay, 4.00) THEN 0.5
+                           ELSE 0.0
+                       END), 0.0) AS ActualWorkDays,
+                       ISNULL(SUM(a.TotalHours), 0) AS TotalHours
+                FROM Employees e
+                JOIN Attendances a ON a.CompanyId = e.CompanyId AND a.EmployeeId = e.EmployeeId
+                LEFT JOIN dbo.CompanyShiftSettings s ON e.CompanyId = s.CompanyId
+                LEFT JOIN Departments d ON e.CompanyId = d.CompanyId AND e.DepartmentId = d.DepartmentId
+                LEFT JOIN Positions p ON e.CompanyId = p.CompanyId AND e.PositionId = p.PositionId
+                WHERE e.CompanyId = ?
+                  AND a.AttendanceDate >= ? AND a.AttendanceDate <= ?
+                  AND EXISTS (
+                      SELECT 1 FROM EmploymentContracts c
+                      WHERE c.CompanyId = e.CompanyId AND c.EmployeeId = e.EmployeeId
+                        AND c.Status IN ('ACTIVE', 'EXPIRED', 'TERMINATED')
+                        AND c.StartDate <= ?
+                        AND (c.EndDate IS NULL OR c.EndDate >= ?)
+                        AND (c.TerminatedDate IS NULL OR c.TerminatedDate >= ?)
+                  )
+                """);
+
+        List<Object> params = new ArrayList<>();
+        params.add(companyId);
+        params.add(startSql);
+        params.add(endSql);
+        params.add(endSql);
+        params.add(startSql);
+        params.add(startSql);
+
+        if (departmentId != null && departmentId > 0) {
+            sql.append(" AND e.DepartmentId = ?");
+            params.add(departmentId);
+        }
+        if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) {
+            sql.append(" AND a.Status = ?");
+            params.add(status);
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            sql.append(" AND (e.EmployeeCode LIKE ? OR e.FullName LIKE ?)");
+            String kw = "%" + keyword.trim() + "%";
+            params.add(kw);
+            params.add(kw);
+        }
+
+        sql.append("""
+                 GROUP BY e.EmployeeId, e.EmployeeCode, e.FullName, d.DepartmentName, p.PositionTitle
+                 ORDER BY e.EmployeeCode ASC, e.FullName ASC
+                """);
+
+        List<Map<String, Object>> list = new ArrayList<>();
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                Object param = params.get(i);
+                if (param instanceof Integer v) ps.setInt(i + 1, v);
+                else if (param instanceof Date v) ps.setDate(i + 1, v);
+                else if (param instanceof String v) ps.setString(i + 1, v);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("employeeId", rs.getInt("EmployeeId"));
+                    row.put("employeeCode", rs.getString("EmployeeCode"));
+                    row.put("fullName", rs.getString("FullName"));
+                    row.put("departmentName", rs.getString("DepartmentName"));
+                    row.put("positionTitle", rs.getString("PositionTitle"));
+                    row.put("recordCount", rs.getInt("RecordCount"));
+                    row.put("actualWorkDays", rs.getBigDecimal("ActualWorkDays"));
+                    row.put("totalHours", rs.getBigDecimal("TotalHours"));
+                    list.add(row);
+                }
+            }
+        }
+        return list;
+    }
+
+    public List<AttendanceDTO> getCompanyEmployeeMonthlyAttendance(int companyId, int employeeId, String status,
+                                                                   int month, int year) throws SQLException {
+        LocalDate monthStart = LocalDate.of(year, month, 1);
+        LocalDate monthEnd = monthStart.withDayOfMonth(monthStart.lengthOfMonth());
+        StringBuilder sql = new StringBuilder("""
+                SELECT a.AttendanceId, a.CompanyId, a.EmployeeId, a.AttendanceDate,
+                       a.CheckInTime, a.CheckOutTime, a.TotalHours, a.Status, a.Note,
+                       a.IsManualAdjusted, a.AdjustedByUserId,
+                       e.EmployeeCode, e.FullName, e.DepartmentId, d.DepartmentName,
+                       p.PositionTitle, e.ManagerId, m.FullName AS ManagerName
+                FROM Attendances a
+                JOIN Employees e ON a.CompanyId = e.CompanyId AND a.EmployeeId = e.EmployeeId
+                LEFT JOIN Departments d ON e.CompanyId = d.CompanyId AND e.DepartmentId = d.DepartmentId
+                LEFT JOIN Positions p ON e.CompanyId = p.CompanyId AND e.PositionId = p.PositionId
+                LEFT JOIN Employees m ON e.CompanyId = m.CompanyId AND e.ManagerId = m.EmployeeId
+                WHERE a.CompanyId = ? AND a.EmployeeId = ?
+                  AND a.AttendanceDate >= ? AND a.AttendanceDate <= ?
+                """);
+        List<Object> params = new ArrayList<>();
+        params.add(companyId);
+        params.add(employeeId);
+        params.add(Date.valueOf(monthStart));
+        params.add(Date.valueOf(monthEnd));
+        if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) {
+            sql.append(" AND a.Status = ?");
+            params.add(status);
+        }
+        sql.append(" ORDER BY a.AttendanceDate DESC");
 
         List<AttendanceDTO> list = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();

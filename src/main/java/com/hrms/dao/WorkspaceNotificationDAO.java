@@ -52,7 +52,7 @@ public class WorkspaceNotificationDAO {
         int userId = principal.getUserId();
         Integer employeeId = principal.getEmployeeId();
         String roleCode = principal.getRoleCode() == null ? "" : principal.getRoleCode().toUpperCase();
-        boolean isAdminOrHr = "COMPANY_ADMIN".equals(roleCode) || "HR".equals(roleCode);
+        boolean isAdminOrHr = "COMPANY_ADMIN".equals(roleCode);
         boolean isManager = "MANAGER".equals(roleCode);
 
         try (Connection connection = DBConnection.getConnection()) {

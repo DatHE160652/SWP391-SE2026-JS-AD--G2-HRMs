@@ -1532,23 +1532,63 @@ document.addEventListener('click', (e) => {
 /* =========================================================================
    UC33: Company Attendance Monitoring & Search (HR / Admin)
    ========================================================================= */
+function populateCompanyMonthYearFilters() {
+    const now = new Date();
+    const curMonth = now.getMonth() + 1;
+    const curYear = now.getFullYear();
+
+    const monthSel = document.getElementById('monthFilter');
+    if (monthSel && monthSel.options.length === 0) {
+        for (let m = 1; m <= 12; m++) {
+            const opt = document.createElement('option');
+            opt.value = String(m);
+            opt.textContent = `Tháng ${m}`;
+            monthSel.appendChild(opt);
+        }
+    }
+    if (monthSel) monthSel.value = String(curMonth);
+
+    const yearSel = document.getElementById('yearFilter');
+    if (yearSel && yearSel.options.length === 0) {
+        for (let y = curYear - 3; y <= curYear + 1; y++) {
+            const opt = document.createElement('option');
+            opt.value = String(y);
+            opt.textContent = String(y);
+            yearSel.appendChild(opt);
+        }
+    }
+    if (yearSel) yearSel.value = String(curYear);
+}
+
 async function initCompanyAttendance() {
     const meta = await loadMeta();
     populateDepartmentSelect('deptFilter', meta.departments);
+    populateCompanyMonthYearFilters();
 
     document.getElementById('btnSearch')?.addEventListener('click', searchCompanyAttendance);
+    document.getElementById('monthFilter')?.addEventListener('change', searchCompanyAttendance);
+    document.getElementById('yearFilter')?.addEventListener('change', searchCompanyAttendance);
     document.getElementById('btnReset')?.addEventListener('click', () => {
         const d = document.getElementById('deptFilter');
         if (d) d.value = '';
         const s = document.getElementById('statusFilter');
         if (s) s.value = 'ALL';
-        const f = document.getElementById('fromDate');
-        if (f) f.value = '';
-        const t = document.getElementById('toDate');
-        if (t) t.value = '';
+        const now = new Date();
+        const m = document.getElementById('monthFilter');
+        if (m) m.value = String(now.getMonth() + 1);
+        const y = document.getElementById('yearFilter');
+        if (y) y.value = String(now.getFullYear());
         const k = document.getElementById('keyword');
         if (k) k.value = '';
         searchCompanyAttendance();
+    });
+
+    document.getElementById('btnCloseEmpAttModal')?.addEventListener('click', closeEmployeeAttendanceModal);
+    document.getElementById('btnCloseEmpAttModalFooter')?.addEventListener('click', closeEmployeeAttendanceModal);
+    document.getElementById('modalEmployeeAttendance')?.addEventListener('click', (e) => {
+        if (e.target && e.target.id === 'modalEmployeeAttendance') {
+            closeEmployeeAttendanceModal();
+        }
     });
 
     // Cài đặt ca làm việc & Ngày chốt công công ty
@@ -1563,63 +1603,142 @@ async function initCompanyAttendance() {
     document.getElementById('inputCutoffDay')?.addEventListener('input', updateShiftLivePreview);
     document.getElementById('inputMinHoursHalfDay')?.addEventListener('input', updateShiftLivePreview);
     document.getElementById('inputMinHoursFullDay')?.addEventListener('input', updateShiftLivePreview);
-    document.getElementById('inputCutoffDay')?.addEventListener('input', updateShiftLivePreview);
 
     await loadShiftSetting();
     await searchCompanyAttendance();
 }
 
 async function searchCompanyAttendance() {
-    const departmentId = document.getElementById('deptFilter').value;
-    const status = document.getElementById('statusFilter').value;
-    const fromDate = document.getElementById('fromDate').value;
-    const toDate = document.getElementById('toDate').value;
-    const keyword = document.getElementById('keyword').value;
+    const departmentId = document.getElementById('deptFilter')?.value || '';
+    const status = document.getElementById('statusFilter')?.value || 'ALL';
+    const month = document.getElementById('monthFilter')?.value || String(new Date().getMonth() + 1);
+    const year = document.getElementById('yearFilter')?.value || String(new Date().getFullYear());
+    const keyword = document.getElementById('keyword')?.value || '';
 
     const params = new URLSearchParams();
     if (departmentId) params.append('departmentId', departmentId);
     if (status && status !== 'ALL') params.append('status', status);
-    if (fromDate) params.append('fromDate', fromDate);
-    if (toDate) params.append('toDate', toDate);
+    params.append('month', month);
+    params.append('year', year);
     if (keyword) params.append('keyword', keyword);
 
     try {
         const payload = await AttendanceApi.get(`/attendance/company?${params.toString()}`);
-        renderCompanyRows(payload.data);
+        const employees = payload.data || [];
+        renderCompanyRows(employees, month, year);
         const elTotalRecords = document.getElementById('totalRecords');
-        if (elTotalRecords) elTotalRecords.textContent = payload.data ? payload.data.length : 0;
-        showMessage(`${HrmI18n.fragment("Tìm thấy ")}${payload.data ? payload.data.length : 0}${HrmI18n.fragment(" bản ghi chấm công.")}`, 'success');
+        if (elTotalRecords) elTotalRecords.textContent = employees.length;
+        showMessage(`${HrmI18n.fragment("Tìm thấy ")}${employees.length}${HrmI18n.fragment(" nhân viên.")}`, 'success');
     } catch (err) {
         showMessage(err.message, 'error');
     }
 }
 
-function renderCompanyRows(records) {
+function renderCompanyRows(employees, month, year) {
     const tbody = document.getElementById('companyAttendanceRows');
-    if (!records || records.length === 0) {
-        tbody.innerHTML = HrmI18n.fragment('<tr><td colspan="9" style="text-align:center;color:#667085;padding:32px;">Không tìm thấy bản ghi chấm công nào phù hợp với bộ lọc.</td></tr>');
+    if (!employees || employees.length === 0) {
+        tbody.innerHTML = HrmI18n.fragment('<tr><td colspan="7" style="text-align:center;color:#667085;padding:32px;">Không tìm thấy nhân viên nào có bản ghi chấm công và hợp đồng hợp lệ trong tháng này.</td></tr>');
         return;
     }
 
-    tbody.innerHTML = records.map(r => {
-        const statusClass = (r.status || '').replace(/\s+/g, '');
-        const manualBadge = (r.manualAdjusted || r.isManualAdjusted)
-            ? HrmI18n.fragment('<span class="badge" style="background:#e0e7ff;color:#4338ca;border:1px solid #c7d2fe;font-size:11px;margin-left:4px;">Bổ sung</span>')
-            : '';
+    tbody.innerHTML = employees.map(emp => {
+        const totalHours = emp.totalHours != null ? Number(emp.totalHours).toFixed(2) : '0.00';
+        const actualWorkDays = emp.actualWorkDays != null ? Number(emp.actualWorkDays) : Number(emp.recordCount || 0);
         return `
-            <tr>
-                <td><strong>${safe(r.employeeCode)}</strong></td>
-                <td><strong>${safe(r.fullName)}</strong></td>
-                <td>${safe(r.departmentName)}</td>
-                <td>${safe(r.attendanceDate)}</td>
-                <td>${r.checkInTime ? `<strong>${r.checkInTime}</strong>` : '<span class="text-muted">--:--:--</span>'}</td>
-                <td>${r.checkOutTime ? `<strong>${r.checkOutTime}</strong>` : '<span class="text-muted">--:--:--</span>'}</td>
-                <td><strong>${r.totalHours || '0.00'}</strong> hrs</td>
-                <td><span class="badge ${statusClass}">${safe(HrmI18n.label(r.status))}</span>${manualBadge}</td>
-                <td><span class="text-muted">${safe(r.note)}</span></td>
+            <tr class="company-emp-row" style="cursor:pointer;"
+                data-emp-id="${emp.employeeId}"
+                data-emp-code="${safe(emp.employeeCode)}"
+                data-emp-name="${safe(emp.fullName)}"
+                data-emp-dept="${safe(emp.departmentName || '')}"
+                data-month="${safe(String(month))}"
+                data-year="${safe(String(year))}">
+                <td><strong>${safe(emp.employeeCode)}</strong></td>
+                <td><strong>${safe(emp.fullName)}</strong></td>
+                <td>${safe(emp.departmentName || '—')}</td>
+                <td>${safe(emp.positionTitle || '—')}</td>
+                <td><strong>${actualWorkDays}</strong> công</td>
+                <td><strong>${totalHours}</strong> hrs</td>
+                <td style="text-align:right;">
+                    <button type="button" class="btn-outline" style="padding:4px 10px;font-size:12px;">Xem chi tiết</button>
+                </td>
             </tr>
         `;
     }).join('');
+
+    tbody.querySelectorAll('.company-emp-row').forEach(row => {
+        row.addEventListener('click', () => {
+            openEmployeeAttendanceModal(
+                row.dataset.empId,
+                row.dataset.empCode,
+                row.dataset.empName,
+                row.dataset.empDept,
+                row.dataset.month,
+                row.dataset.year
+            );
+        });
+    });
+}
+
+function closeEmployeeAttendanceModal() {
+    const modal = document.getElementById('modalEmployeeAttendance');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+    }
+}
+
+async function openEmployeeAttendanceModal(employeeId, empCode, fullName, deptName, month, year) {
+    const modal = document.getElementById('modalEmployeeAttendance');
+    const titleEl = document.getElementById('empAttModalTitle');
+    const metaEl = document.getElementById('empAttModalMeta');
+    const rowsEl = document.getElementById('empAttModalRows');
+    if (!modal || !rowsEl) return;
+
+    if (titleEl) {
+        titleEl.textContent = `Chi tiết chấm công: ${empCode ? empCode + ' - ' : ''}${fullName || ''}`;
+    }
+    if (metaEl) {
+        const padMonth = String(month).padStart(2, '0');
+        metaEl.textContent = `${deptName ? 'Phòng ban: ' + deptName + ' | ' : ''}Kỳ: Tháng ${padMonth}/${year}`;
+    }
+    rowsEl.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#667085;padding:20px;">Đang tải dữ liệu...</td></tr>';
+
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+
+    const status = document.getElementById('statusFilter')?.value || 'ALL';
+    const params = new URLSearchParams();
+    params.append('employeeId', employeeId);
+    params.append('month', month);
+    params.append('year', year);
+    if (status && status !== 'ALL') params.append('status', status);
+
+    try {
+        const payload = await AttendanceApi.get(`/attendance/company?${params.toString()}`);
+        const records = payload.data || [];
+        if (records.length === 0) {
+            rowsEl.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#667085;padding:24px;">Không có bản ghi chấm công nào trong tháng này.</td></tr>';
+            return;
+        }
+        rowsEl.innerHTML = records.map(r => {
+            const statusClass = (r.status || '').replace(/\s+/g, '');
+            const manualBadge = (r.manualAdjusted || r.isManualAdjusted)
+                ? HrmI18n.fragment('<span class="badge" style="background:#e0e7ff;color:#4338ca;border:1px solid #c7d2fe;font-size:11px;margin-left:4px;">Bổ sung</span>')
+                : '';
+            return `
+                <tr>
+                    <td>${safe(r.attendanceDate)}</td>
+                    <td>${r.checkInTime ? `<strong>${r.checkInTime}</strong>` : '<span class="text-muted">--:--:--</span>'}</td>
+                    <td>${r.checkOutTime ? `<strong>${r.checkOutTime}</strong>` : '<span class="text-muted">--:--:--</span>'}</td>
+                    <td><strong>${r.totalHours || '0.00'}</strong> hrs</td>
+                    <td><span class="badge ${statusClass}">${safe(HrmI18n.label(r.status))}</span>${manualBadge}</td>
+                    <td><span class="text-muted">${safe(r.note)}</span></td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        rowsEl.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#dc2626;padding:20px;">${safe(err.message)}</td></tr>`;
+    }
 }
 
 /* =========================================================================

@@ -335,7 +335,7 @@ public class DataImportExcelService {
         try (Connection conn = DBConnection.getConnection()) {
             conn.setAutoCommit(false);
             try {
-                String checkSql = "SELECT EmployeeId FROM Employees WHERE CompanyId = ? AND UPPER(EmployeeCode) = UPPER(?)";
+                String checkSql = "SELECT EmployeeId, FullName FROM Employees WHERE CompanyId = ? AND UPPER(EmployeeCode) = UPPER(?)";
                 String insertSql = """
                         INSERT INTO Employees (
                             CompanyId, EmployeeCode, FullName, Email, Phone, Status,
@@ -343,26 +343,39 @@ public class DataImportExcelService {
                             IdentityIssuedPlace, PermanentAddress, Hometown, Major, CreatedAt
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, SYSDATETIME())
                         """;
-                String updateSql = """
-                        UPDATE Employees SET
-                            FullName = ?, Email = ?, Phone = ?, Status = ?,
-                            DateOfBirth = ?, Gender = ?, IdentityNumber = ?, IdentityIssuedDate = ?,
-                            IdentityIssuedPlace = ?, PermanentAddress = ?, Hometown = ?, Major = ?,
-                            UpdatedAt = SYSDATETIME()
-                        WHERE EmployeeId = ? AND CompanyId = ?
-                        """;
 
                 try (PreparedStatement psCheck = conn.prepareStatement(checkSql);
-                     PreparedStatement psInsert = conn.prepareStatement(insertSql);
-                     PreparedStatement psUpdate = conn.prepareStatement(updateSql)) {
+                     PreparedStatement psInsert = conn.prepareStatement(insertSql)) {
 
                     int inserted = 0;
-                    int updated = 0;
+                    int skipped = 0;
+                    List<String> skippedMessages = new ArrayList<>();
 
                     for (ImportRowResult r : rows) {
                         Map<String, String> d = r.getData();
                         String code = d.get("Mã NV (*)");
                         String name = d.get("Họ tên (*)");
+
+                        psCheck.setInt(1, companyId);
+                        psCheck.setString(2, code.trim());
+                        Integer existingId = null;
+                        String existingName = null;
+                        try (ResultSet rs = psCheck.executeQuery()) {
+                            if (rs.next()) {
+                                existingId = rs.getInt("EmployeeId");
+                                existingName = rs.getString("FullName");
+                            }
+                        }
+
+                        if (existingId != null) {
+                            skipped++;
+                            String displayName = (existingName != null && !existingName.isBlank())
+                                    ? existingName.trim()
+                                    : (name != null ? name.trim() : "");
+                            skippedMessages.add("ID: " + code.trim() + ", Tên nhân viên: " + displayName + " đã tồn tại, không thể cập nhật.");
+                            continue;
+                        }
+
                         String email = d.get("Email (*)");
                         String phone = d.get("Điện thoại (*)");
                         String status = "Chưa hoạt động".equalsIgnoreCase(d.get("Trạng thái (*)")) ? "Inactive" : "Active";
@@ -375,56 +388,42 @@ public class DataImportExcelService {
                         String hometown = d.get("Quê quán");
                         String major = d.get("Ngành học");
 
-                        psCheck.setInt(1, companyId);
-                        psCheck.setString(2, code.trim());
-                        Integer existingId = null;
-                        try (ResultSet rs = psCheck.executeQuery()) {
-                            if (rs.next()) existingId = rs.getInt("EmployeeId");
-                        }
-
-                        if (existingId != null) {
-                            psUpdate.setString(1, name.trim());
-                            psUpdate.setString(2, email != null ? email.trim() : null);
-                            psUpdate.setString(3, phone != null ? phone.trim() : null);
-                            psUpdate.setString(4, status);
-                            setNullableDate(psUpdate, 5, dob);
-                            psUpdate.setString(6, gender);
-                            psUpdate.setString(7, idNum != null ? idNum.trim() : null);
-                            setNullableDate(psUpdate, 8, idDate);
-                            psUpdate.setString(9, idPlace != null ? idPlace.trim() : null);
-                            psUpdate.setString(10, address != null ? address.trim() : null);
-                            psUpdate.setString(11, hometown != null ? hometown.trim() : null);
-                            psUpdate.setString(12, major != null ? major.trim() : null);
-                            psUpdate.setInt(13, existingId);
-                            psUpdate.setInt(14, companyId);
-                            psUpdate.executeUpdate();
-                            updated++;
-                        } else {
-                            psInsert.setInt(1, companyId);
-                            psInsert.setString(2, code.trim());
-                            psInsert.setString(3, name.trim());
-                            psInsert.setString(4, email != null ? email.trim() : null);
-                            psInsert.setString(5, phone != null ? phone.trim() : null);
-                            psInsert.setString(6, status);
-                            setNullableDate(psInsert, 7, dob);
-                            psInsert.setString(8, gender);
-                            psInsert.setString(9, idNum != null ? idNum.trim() : null);
-                            setNullableDate(psInsert, 10, idDate);
-                            psInsert.setString(11, idPlace != null ? idPlace.trim() : null);
-                            psInsert.setString(12, address != null ? address.trim() : null);
-                            psInsert.setString(13, hometown != null ? hometown.trim() : null);
-                            psInsert.setString(14, major != null ? major.trim() : null);
-                            psInsert.executeUpdate();
-                            inserted++;
-                        }
+                        psInsert.setInt(1, companyId);
+                        psInsert.setString(2, code.trim());
+                        psInsert.setString(3, name.trim());
+                        psInsert.setString(4, email != null ? email.trim() : null);
+                        psInsert.setString(5, phone != null ? phone.trim() : null);
+                        psInsert.setString(6, status);
+                        setNullableDate(psInsert, 7, dob);
+                        psInsert.setString(8, gender);
+                        psInsert.setString(9, idNum != null ? idNum.trim() : null);
+                        setNullableDate(psInsert, 10, idDate);
+                        psInsert.setString(11, idPlace != null ? idPlace.trim() : null);
+                        psInsert.setString(12, address != null ? address.trim() : null);
+                        psInsert.setString(13, hometown != null ? hometown.trim() : null);
+                        psInsert.setString(14, major != null ? major.trim() : null);
+                        psInsert.executeUpdate();
+                        inserted++;
                     }
 
                     conn.commit();
-                    result.setSuccess(true);
                     result.setTotalProcessed(rows.size());
                     result.setInsertedCount(inserted);
-                    result.setUpdatedCount(updated);
-                    result.setMessage("Nhập hồ sơ nhân sự thành công: Thêm mới " + inserted + ", Cập nhật " + updated + " nhân viên.");
+                    result.setUpdatedCount(0);
+                    result.setFailedCount(skipped);
+                    if (skipped > 0) {
+                        result.setErrorMessages(skippedMessages);
+                        if (inserted == 0) {
+                            result.setSuccess(false);
+                            result.setMessage("Không thể cập nhật: " + skipped + " nhân viên đã tồn tại trên hệ thống.");
+                        } else {
+                            result.setSuccess(true);
+                            result.setMessage("Đã thêm mới " + inserted + " nhân viên. Có " + skipped + " nhân viên đã tồn tại, không thể cập nhật:");
+                        }
+                    } else {
+                        result.setSuccess(true);
+                        result.setMessage("Nhập hồ sơ nhân sự thành công: Thêm mới " + inserted + " nhân viên.");
+                    }
                 } catch (SQLException e) {
                     conn.rollback();
                     throw e;
@@ -441,72 +440,115 @@ public class DataImportExcelService {
 
         int processed = 0;
         int failed = 0;
+        int skipped = 0;
+        List<String> skippedMessages = new ArrayList<>();
 
-        for (ImportRowResult r : rows) {
-            Map<String, String> d = r.getData();
-            String code = d.get("Mã NV (*)");
-            String dateStr = d.get("Ngày chấm công (yyyy-MM-dd) (*)");
-            String inStr = d.get("Giờ vào (HH:mm)");
-            String outStr = d.get("Giờ ra (HH:mm)");
-            String note = d.get("Ghi chú");
+        String checkSql = """
+                SELECT a.AttendanceId, e.FullName
+                FROM Attendances a
+                JOIN Employees e ON e.EmployeeId = a.EmployeeId AND e.CompanyId = a.CompanyId
+                WHERE a.CompanyId = ? AND a.EmployeeId = ? AND a.AttendanceDate = ?
+                """;
 
-            LocalDate date = parseDateFlexible(dateStr);
-            LocalTime inTime = parseTimeFlexible(inStr);
-            LocalTime outTime = parseTimeFlexible(outStr);
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement psCheck = conn.prepareStatement(checkSql)) {
+            for (ImportRowResult r : rows) {
+                Map<String, String> d = r.getData();
+                String code = d.get("Mã NV (*)");
+                String dateStr = d.get("Ngày chấm công (yyyy-MM-dd) (*)");
+                String inStr = d.get("Giờ vào (HH:mm)");
+                String outStr = d.get("Giờ ra (HH:mm)");
+                String note = d.get("Ghi chú");
 
-            Integer empId = findEmployeeIdByCode(companyId, code);
-            if (empId == null || date == null) {
-                failed++;
-                continue;
-            }
+                LocalDate date = parseDateFlexible(dateStr);
+                LocalTime inTime = parseTimeFlexible(inStr);
+                LocalTime outTime = parseTimeFlexible(outStr);
 
-            BigDecimal totalHours = BigDecimal.ZERO;
-            if (inTime != null && outTime != null && outTime.isAfter(inTime)) {
-                long minutes = Duration.between(inTime, outTime).toMinutes();
-                if (minutes >= 300) {
-                    minutes = Math.max(0, minutes - lunchBreak);
+                Integer empId = findEmployeeIdByCode(conn, companyId, code);
+                if (empId == null || date == null) {
+                    failed++;
+                    continue;
                 }
-                totalHours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
-            }
 
-            String status = determineAttendanceStatus(inTime, outTime, setting);
-            attendanceDAO.upsertManualAdjustment(companyId, empId, date, inTime, outTime, totalHours, status,
-                    note != null ? note.trim() : "Import từ Excel", userId);
-            processed++;
+                psCheck.setInt(1, companyId);
+                psCheck.setInt(2, empId);
+                psCheck.setDate(3, Date.valueOf(date));
+                boolean exists = false;
+                String empName = "";
+                try (ResultSet rs = psCheck.executeQuery()) {
+                    if (rs.next()) {
+                        exists = true;
+                        empName = rs.getString("FullName");
+                    }
+                }
+
+                if (exists) {
+                    skipped++;
+                    String displayName = (empName != null && !empName.isBlank()) ? empName.trim() : "";
+                    skippedMessages.add("ID: " + code.trim()
+                            + (displayName.isEmpty() ? "" : ", Tên nhân viên: " + displayName)
+                            + " (Ngày: " + date + ") đã tồn tại dữ liệu chấm công, không thể cập nhật.");
+                    continue;
+                }
+
+                BigDecimal totalHours = BigDecimal.ZERO;
+                if (inTime != null && outTime != null && outTime.isAfter(inTime)) {
+                    long minutes = Duration.between(inTime, outTime).toMinutes();
+                    if (minutes >= 300) {
+                        minutes = Math.max(0, minutes - lunchBreak);
+                    }
+                    totalHours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+                }
+
+                String status = determineAttendanceStatus(inTime, outTime, setting);
+                attendanceDAO.upsertManualAdjustment(companyId, empId, date, inTime, outTime, totalHours, status,
+                        note != null ? note.trim() : "Import từ Excel", userId);
+                processed++;
+            }
         }
 
-        result.setSuccess(true);
-        result.setTotalProcessed(processed);
+        result.setTotalProcessed(rows.size());
         result.setInsertedCount(processed);
-        result.setFailedCount(failed);
-        result.setMessage("Nhập dữ liệu chấm công thành công cho " + processed + " lượt điểm danh.");
+        result.setUpdatedCount(0);
+        result.setFailedCount(failed + skipped);
+        if (skipped > 0) {
+            result.setErrorMessages(skippedMessages);
+            if (processed == 0) {
+                result.setSuccess(false);
+                result.setMessage("Không thể cập nhật: " + skipped + " lượt chấm công đã tồn tại trên hệ thống.");
+            } else {
+                result.setSuccess(true);
+                result.setMessage("Đã thêm mới " + processed + " lượt chấm công. Có " + skipped + " lượt đã tồn tại, không thể cập nhật:");
+            }
+        } else {
+            result.setSuccess(true);
+            result.setMessage("Nhập dữ liệu chấm công thành công cho " + processed + " lượt điểm danh.");
+        }
     }
 
     private void executeImportContracts(int companyId, Integer userId, List<ImportRowResult> rows, ImportExecuteResult result) throws SQLException {
         try (Connection conn = DBConnection.getConnection()) {
             conn.setAutoCommit(false);
             try {
-                String checkSql = "SELECT ContractId FROM EmploymentContracts WHERE CompanyId = ? AND UPPER(ContractCode) = UPPER(?)";
+                String checkSql = """
+                        SELECT c.ContractId, e.FullName
+                        FROM EmploymentContracts c
+                        LEFT JOIN Employees e ON e.EmployeeId = c.EmployeeId AND e.CompanyId = c.CompanyId
+                        WHERE c.CompanyId = ? AND UPPER(c.ContractCode) = UPPER(?)
+                        """;
                 String insertSql = """
                         INSERT INTO EmploymentContracts (
                             CompanyId, EmployeeId, ContractCode, ContractType, StartDate, EndDate,
                             GrossSalary, TravelAllowance, Status, SignedDate, Notes, CreatedByUserId, CreatedAt
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, SYSDATETIME())
                         """;
-                String updateSql = """
-                        UPDATE EmploymentContracts SET
-                            EmployeeId = ?, ContractType = ?, StartDate = ?, EndDate = ?,
-                            GrossSalary = ?, TravelAllowance = ?, Status = ?, SignedDate = ?,
-                            Notes = ?, UpdatedAt = SYSDATETIME()
-                        WHERE CompanyId = ? AND ContractId = ?
-                        """;
 
                 try (PreparedStatement psCheck = conn.prepareStatement(checkSql);
-                     PreparedStatement psInsert = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS);
-                     PreparedStatement psUpdate = conn.prepareStatement(updateSql)) {
+                     PreparedStatement psInsert = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
 
                     int inserted = 0;
-                    int updated = 0;
+                    int skipped = 0;
+                    List<String> skippedMessages = new ArrayList<>();
 
                     for (ImportRowResult r : rows) {
                         Map<String, String> d = r.getData();
@@ -524,6 +566,26 @@ public class DataImportExcelService {
                         Integer empId = findEmployeeIdByCode(conn, companyId, empCode);
                         if (empId == null) continue;
 
+                        psCheck.setInt(1, companyId);
+                        psCheck.setString(2, contractCode.trim());
+                        Long existingId = null;
+                        String existingEmpName = null;
+                        try (ResultSet rs = psCheck.executeQuery()) {
+                            if (rs.next()) {
+                                existingId = rs.getLong("ContractId");
+                                existingEmpName = rs.getString("FullName");
+                            }
+                        }
+
+                        if (existingId != null) {
+                            skipped++;
+                            String namePart = (existingEmpName != null && !existingEmpName.isBlank())
+                                    ? ", Tên nhân viên: " + existingEmpName.trim()
+                                    : "";
+                            skippedMessages.add("Mã HĐ: " + contractCode.trim() + " (ID: " + empCode.trim() + namePart + ") đã tồn tại, không thể cập nhật.");
+                            continue;
+                        }
+
                         String contractType = normalizeContractType(rawType);
                         Date startDate = parseSqlDate(startStr);
                         Date endDate = parseSqlDate(endStr);
@@ -535,48 +597,24 @@ public class DataImportExcelService {
                             signedDate = startDate;
                         }
 
-                        psCheck.setInt(1, companyId);
-                        psCheck.setString(2, contractCode.trim());
-                        Long existingId = null;
-                        try (ResultSet rs = psCheck.executeQuery()) {
-                            if (rs.next()) existingId = rs.getLong("ContractId");
-                        }
-
                         long finalContractId = 0L;
-                        if (existingId != null) {
-                            psUpdate.setInt(1, empId);
-                            psUpdate.setString(2, contractType);
-                            setNullableDate(psUpdate, 3, startDate);
-                            setNullableDate(psUpdate, 4, endDate);
-                            psUpdate.setBigDecimal(5, grossSalary);
-                            psUpdate.setBigDecimal(6, travelAllowance);
-                            psUpdate.setString(7, status);
-                            setNullableDate(psUpdate, 8, signedDate);
-                            psUpdate.setString(9, notes != null ? notes.trim() : null);
-                            psUpdate.setInt(10, companyId);
-                            psUpdate.setLong(11, existingId);
-                            psUpdate.executeUpdate();
-                            finalContractId = existingId;
-                            updated++;
-                        } else {
-                            psInsert.setInt(1, companyId);
-                            psInsert.setInt(2, empId);
-                            psInsert.setString(3, contractCode.trim());
-                            psInsert.setString(4, contractType);
-                            setNullableDate(psInsert, 5, startDate);
-                            setNullableDate(psInsert, 6, endDate);
-                            psInsert.setBigDecimal(7, grossSalary);
-                            psInsert.setBigDecimal(8, travelAllowance);
-                            psInsert.setString(9, status);
-                            setNullableDate(psInsert, 10, signedDate);
-                            psInsert.setString(11, notes != null ? notes.trim() : null);
-                            setNullableInt(psInsert, 12, userId);
-                            psInsert.executeUpdate();
-                            try (ResultSet gk = psInsert.getGeneratedKeys()) {
-                                if (gk.next()) finalContractId = gk.getLong(1);
-                            }
-                            inserted++;
+                        psInsert.setInt(1, companyId);
+                        psInsert.setInt(2, empId);
+                        psInsert.setString(3, contractCode.trim());
+                        psInsert.setString(4, contractType);
+                        setNullableDate(psInsert, 5, startDate);
+                        setNullableDate(psInsert, 6, endDate);
+                        psInsert.setBigDecimal(7, grossSalary);
+                        psInsert.setBigDecimal(8, travelAllowance);
+                        psInsert.setString(9, status);
+                        setNullableDate(psInsert, 10, signedDate);
+                        psInsert.setString(11, notes != null ? notes.trim() : null);
+                        setNullableInt(psInsert, 12, userId);
+                        psInsert.executeUpdate();
+                        try (ResultSet gk = psInsert.getGeneratedKeys()) {
+                            if (gk.next()) finalContractId = gk.getLong(1);
                         }
+                        inserted++;
 
                         if ("ACTIVE".equals(status) && grossSalary != null && grossSalary.signum() >= 0
                                 && startDate != null && finalContractId > 0) {
@@ -591,11 +629,23 @@ public class DataImportExcelService {
                     }
 
                     conn.commit();
-                    result.setSuccess(true);
                     result.setTotalProcessed(rows.size());
                     result.setInsertedCount(inserted);
-                    result.setUpdatedCount(updated);
-                    result.setMessage("Nhập hợp đồng lao động thành công: Thêm mới " + inserted + ", Cập nhật " + updated + " hợp đồng.");
+                    result.setUpdatedCount(0);
+                    result.setFailedCount(skipped);
+                    if (skipped > 0) {
+                        result.setErrorMessages(skippedMessages);
+                        if (inserted == 0) {
+                            result.setSuccess(false);
+                            result.setMessage("Không thể cập nhật: " + skipped + " hợp đồng lao động đã tồn tại trên hệ thống.");
+                        } else {
+                            result.setSuccess(true);
+                            result.setMessage("Đã thêm mới " + inserted + " hợp đồng. Có " + skipped + " hợp đồng đã tồn tại, không thể cập nhật:");
+                        }
+                    } else {
+                        result.setSuccess(true);
+                        result.setMessage("Nhập hợp đồng lao động thành công: Thêm mới " + inserted + " hợp đồng.");
+                    }
                 } catch (SQLException e) {
                     conn.rollback();
                     throw e;
@@ -611,30 +661,116 @@ public class DataImportExcelService {
     // =========================================================================
 
     private String validateRowData(String type, int companyId, Map<String, String> data, Set<String> seenCodes, int lineNum) {
+        List<String> errors = new ArrayList<>();
         switch (type) {
             case TYPE_EMPLOYEE -> {
                 String code = data.get("Mã NV (*)");
                 String name = data.get("Họ tên (*)");
                 String email = data.get("Email (*)");
                 String phone = data.get("Điện thoại (*)");
-                String idNum = data.get("Số CCCD/CMND (*)");
+                String statusStr = data.get("Trạng thái (*)");
                 String dob = data.get("Ngày sinh (*)");
+                String genderStr = data.get("Giới tính (*)");
+                String idNum = data.get("Số CCCD/CMND (*)");
+                String idDateStr = data.get("Ngày cấp CCCD");
+                String idPlace = data.get("Nơi cấp");
+                String address = data.get("Địa chỉ thường trú");
+                String hometown = data.get("Quê quán");
+                String major = data.get("Ngành học");
 
-                if (isBlank(code)) return "Mã nhân viên không được để trống.";
-                if (isBlank(name)) return "Họ tên không được để trống.";
-                if (isBlank(email) || !email.contains("@")) return "Email không hợp lệ.";
-                if (isBlank(phone) || phone.trim().length() < 9) return "Số điện thoại không hợp lệ (tối thiểu 9 số).";
-                if (isBlank(idNum)) return "Số CCCD/CMND không được để trống.";
-
-                if (isBlank(dob) || parseSqlDate(dob) == null) {
-                    return "Ngày sinh không được để trống và phải đúng định dạng (dd/MM/yyyy).";
+                String trimmedCode = code != null ? code.trim() : "";
+                if (isBlank(code)) {
+                    errors.add("Cột 'Mã NV (*)': không được để trống.");
+                } else if (trimmedCode.length() > 50 || !trimmedCode.matches("^[A-Za-z0-9_-]+$")) {
+                    errors.add("Cột 'Mã NV (*)': chỉ được chứa chữ, số, dấu '-' hoặc '_' (tối đa 50 ký tự).");
                 }
 
-                if (!seenCodes.add("EMP_CODE:" + code.trim().toUpperCase())) {
-                    return "Mã nhân viên '" + code.trim() + "' bị trùng lặp trong tệp Excel.";
+                String trimmedName = name != null ? name.trim() : "";
+                if (isBlank(name)) {
+                    errors.add("Cột 'Họ tên (*)': không được để trống.");
+                } else if (trimmedName.length() > 150 || !trimmedName.matches("^[\\p{L}\\s]+$")) {
+                    errors.add("Cột 'Họ tên (*)': không hợp lệ (chỉ được chứa chữ cái và khoảng trắng).");
                 }
-                if (!seenCodes.add("EMP_EMAIL:" + email.trim().toLowerCase())) {
-                    return "Email '" + email.trim() + "' bị trùng lặp trong tệp Excel.";
+
+                String trimmedEmail = email != null ? email.trim() : "";
+                if (isBlank(email)) {
+                    errors.add("Cột 'Email (*)': không được để trống.");
+                } else if (trimmedEmail.length() > 150 || !trimmedEmail.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
+                    errors.add("Cột 'Email (*)': không đúng định dạng email.");
+                }
+
+                String trimmedPhone = phone != null ? phone.trim() : "";
+                if (isBlank(phone)) {
+                    errors.add("Cột 'Điện thoại (*)': không được để trống.");
+                } else if (!trimmedPhone.matches("^0[0-9]{9}$")) {
+                    errors.add("Cột 'Điện thoại (*)': phải gồm đúng 10 chữ số và bắt đầu bằng số 0 (hiện tại: '" + trimmedPhone + "').");
+                }
+
+                String trimmedStatus = statusStr != null ? statusStr.trim() : "";
+                if (isBlank(statusStr)) {
+                    errors.add("Cột 'Trạng thái (*)': không được để trống.");
+                } else if (!Set.of("đang làm việc", "active", "chưa hoạt động", "ngừng hoạt động", "inactive")
+                        .contains(trimmedStatus.toLowerCase(Locale.ROOT))) {
+                    errors.add("Cột 'Trạng thái (*)': không hợp lệ (chỉ hỗ trợ: Đang làm việc, Chưa hoạt động).");
+                }
+
+                Date dobDate = null;
+                LocalDate dobLocal = null;
+                if (isBlank(dob)) {
+                    errors.add("Cột 'Ngày sinh (*)': không được để trống.");
+                } else {
+                    dobDate = parseSqlDate(dob);
+                    if (dobDate == null) {
+                        errors.add("Cột 'Ngày sinh (*)': phải đúng định dạng (dd/MM/yyyy hoặc yyyy-MM-dd).");
+                    } else {
+                        dobLocal = dobDate.toLocalDate();
+                        if (dobLocal.isAfter(LocalDate.now())) {
+                            errors.add("Cột 'Ngày sinh (*)': không được ở tương lai.");
+                        } else if (dobLocal.isAfter(LocalDate.now().minusYears(15))) {
+                            errors.add("Cột 'Ngày sinh (*)': nhân viên phải từ đủ 15 tuổi trở lên.");
+                        }
+                    }
+                }
+
+                String trimmedGender = genderStr != null ? genderStr.trim().toLowerCase(Locale.ROOT) : "";
+                if (isBlank(genderStr)) {
+                    errors.add("Cột 'Giới tính (*)': không được để trống.");
+                } else if (!Set.of("nam", "nữ", "nu", "khác", "khac", "male", "female", "other").contains(trimmedGender)) {
+                    errors.add("Cột 'Giới tính (*)': không hợp lệ (chỉ hỗ trợ: Nam, Nữ, Khác).");
+                }
+
+                String trimmedIdNum = idNum != null ? idNum.trim() : "";
+                if (isBlank(idNum)) {
+                    errors.add("Cột 'Số CCCD/CMND (*)': không được để trống.");
+                } else if (!trimmedIdNum.matches("^[0-9]{12}$")) {
+                    errors.add("Cột 'Số CCCD/CMND (*)': phải gồm đúng 12 chữ số (hiện tại: '" + trimmedIdNum + "').");
+                }
+
+                if (!isBlank(idDateStr)) {
+                    Date idDate = parseSqlDate(idDateStr);
+                    if (idDate == null) {
+                        errors.add("Cột 'Ngày cấp CCCD': không đúng định dạng (dd/MM/yyyy hoặc yyyy-MM-dd).");
+                    } else if (dobLocal != null) {
+                        LocalDate idLocal = idDate.toLocalDate();
+                        if (idLocal.isAfter(LocalDate.now()) || !idLocal.isAfter(dobLocal)) {
+                            errors.add("Cột 'Ngày cấp CCCD': phải sau ngày sinh và không được ở tương lai.");
+                        }
+                    }
+                }
+
+                if (idPlace != null && idPlace.trim().length() > 200) errors.add("Cột 'Nơi cấp': tối đa 200 ký tự.");
+                if (address != null && address.trim().length() > 500) errors.add("Cột 'Địa chỉ thường trú': tối đa 500 ký tự.");
+                if (hometown != null && hometown.trim().length() > 200) errors.add("Cột 'Quê quán': tối đa 200 ký tự.");
+                if (major != null && major.trim().length() > 200) errors.add("Cột 'Ngành học': tối đa 200 ký tự.");
+
+                if (!trimmedCode.isEmpty() && !seenCodes.add("EMP_CODE:" + trimmedCode.toUpperCase(Locale.ROOT))) {
+                    errors.add("Cột 'Mã NV (*)': mã '" + trimmedCode + "' bị trùng lặp trong tệp Excel.");
+                }
+                if (!trimmedEmail.isEmpty() && !seenCodes.add("EMP_EMAIL:" + trimmedEmail.toLowerCase(Locale.ROOT))) {
+                    errors.add("Cột 'Email (*)': email '" + trimmedEmail + "' bị trùng lặp trong tệp Excel.");
+                }
+                if (!trimmedIdNum.isEmpty() && !seenCodes.add("EMP_CCCD:" + trimmedIdNum)) {
+                    errors.add("Cột 'Số CCCD/CMND (*)': số CCCD '" + trimmedIdNum + "' bị trùng lặp trong tệp Excel.");
                 }
             }
             case TYPE_ATTENDANCE -> {
@@ -642,24 +778,54 @@ public class DataImportExcelService {
                 String dateStr = data.get("Ngày chấm công (yyyy-MM-dd) (*)");
                 String inStr = data.get("Giờ vào (HH:mm)");
                 String outStr = data.get("Giờ ra (HH:mm)");
+                String note = data.get("Ghi chú");
 
-                if (isBlank(code)) return "Mã nhân viên không được để trống.";
-                if (isBlank(dateStr)) return "Ngày chấm công không được để trống.";
-
-                LocalDate date = parseDateFlexible(dateStr);
-                if (date == null) return "Ngày chấm công không đúng định dạng (yyyy-MM-dd hoặc dd/MM/yyyy).";
-
-                try {
-                    if (attendanceService.isMonthLocked(companyId, date.getMonthValue(), date.getYear())) {
-                        return "Bảng chấm công tháng " + date.getMonthValue() + "/" + date.getYear() + " đã bị khóa chốt lương.";
-                    }
-                } catch (SQLException ignored) {}
-
-                if (!isBlank(inStr) && parseTimeFlexible(inStr) == null) {
-                    return "Giờ vào không đúng định dạng (HH:mm).";
+                String trimmedCode = code != null ? code.trim() : "";
+                if (isBlank(code)) {
+                    errors.add("Cột 'Mã NV (*)': không được để trống.");
+                } else if (findEmployeeIdByCode(companyId, trimmedCode) == null) {
+                    errors.add("Cột 'Mã NV (*)': không tìm thấy nhân viên có mã '" + trimmedCode + "' trong công ty.");
                 }
-                if (!isBlank(outStr) && parseTimeFlexible(outStr) == null) {
-                    return "Giờ ra không đúng định dạng (HH:mm).";
+
+                if (isBlank(dateStr)) {
+                    errors.add("Cột 'Ngày chấm công (yyyy-MM-dd) (*)': không được để trống.");
+                } else {
+                    LocalDate date = parseDateFlexible(dateStr);
+                    if (date == null) {
+                        errors.add("Cột 'Ngày chấm công (yyyy-MM-dd) (*)': không đúng định dạng (yyyy-MM-dd hoặc dd/MM/yyyy).");
+                    } else {
+                        if (date.isAfter(LocalDate.now())) {
+                            errors.add("Cột 'Ngày chấm công (yyyy-MM-dd) (*)': không được ở tương lai.");
+                        }
+                        if (!trimmedCode.isEmpty() && !seenCodes.add("ATT:" + trimmedCode.toUpperCase(Locale.ROOT) + ":" + date)) {
+                            errors.add("Cột 'Ngày chấm công (yyyy-MM-dd) (*)': nhân viên '" + trimmedCode + "' bị trùng ngày chấm công " + date + " trong tệp Excel.");
+                        }
+                        try {
+                            if (attendanceService.isMonthLockedForImport(companyId, date.getMonthValue(), date.getYear())) {
+                                errors.add("Cột 'Ngày chấm công (yyyy-MM-dd) (*)': bảng chấm công tháng " + date.getMonthValue() + "/" + date.getYear() + " đã bị khóa chốt lương.");
+                            }
+                        } catch (SQLException ignored) {}
+                    }
+                }
+
+                LocalTime inTime = null;
+                if (!isBlank(inStr)) {
+                    inTime = parseTimeFlexible(inStr);
+                    if (inTime == null) errors.add("Cột 'Giờ vào (HH:mm)': không đúng định dạng (HH:mm).");
+                }
+                LocalTime outTime = null;
+                if (!isBlank(outStr)) {
+                    outTime = parseTimeFlexible(outStr);
+                    if (outTime == null) errors.add("Cột 'Giờ ra (HH:mm)': không đúng định dạng (HH:mm).");
+                }
+                if (outTime != null && inTime == null) {
+                    errors.add("Cột 'Giờ vào (HH:mm)': phải nhập Giờ vào khi đã nhập Giờ ra.");
+                }
+                if (inTime != null && outTime != null && !outTime.isAfter(inTime)) {
+                    errors.add("Cột 'Giờ ra (HH:mm)': Giờ ra phải sau Giờ vào.");
+                }
+                if (note != null && note.trim().length() > 500) {
+                    errors.add("Cột 'Ghi chú': tối đa 500 ký tự.");
                 }
             }
             case TYPE_CONTRACT -> {
@@ -670,70 +836,98 @@ public class DataImportExcelService {
                 String endStr = data.get("Ngày kết thúc (dd/MM/yyyy)");
                 String grossStr = data.get("Lương trước khấu trừ (VND) (*)");
                 String travelStr = data.get("Phụ cấp đi lại (VND)");
+                String statusStr = data.get("Trạng thái (ACTIVE/DRAFT)");
                 String signedStr = data.get("Ngày ký kết (dd/MM/yyyy)");
                 String notes = data.get("Ghi chú");
 
-                if (isBlank(contractCode)) return "Mã hợp đồng không được để trống.";
-                if (contractCode.trim().length() > 60) return "Mã hợp đồng không được vượt quá 60 ký tự.";
-                if (!seenCodes.add("CONTRACT:" + contractCode.trim().toUpperCase())) {
-                    return "Mã hợp đồng '" + contractCode.trim() + "' bị trùng lặp trong tệp Excel.";
+                String trimmedContract = contractCode != null ? contractCode.trim() : "";
+                if (isBlank(contractCode)) {
+                    errors.add("Cột 'Mã HĐ (*)': không được để trống.");
+                } else if (trimmedContract.length() > 60 || !trimmedContract.matches("^[A-Za-z0-9_/-]+$")) {
+                    errors.add("Cột 'Mã HĐ (*)': chỉ được chứa chữ, số, '-', '_', '/' (tối đa 60 ký tự).");
+                } else if (!seenCodes.add("CONTRACT:" + trimmedContract.toUpperCase(Locale.ROOT))) {
+                    errors.add("Cột 'Mã HĐ (*)': mã '" + trimmedContract + "' bị trùng lặp trong tệp Excel.");
                 }
 
-                if (isBlank(empCode)) return "Mã nhân viên không được để trống.";
-                Integer empId = findEmployeeIdByCode(companyId, empCode.trim());
-                if (empId == null) {
-                    return "Không tìm thấy nhân viên có mã '" + empCode.trim() + "' trong công ty.";
+                String trimmedEmpCode = empCode != null ? empCode.trim() : "";
+                if (isBlank(empCode)) {
+                    errors.add("Cột 'Mã NV (*)': không được để trống.");
+                } else {
+                    Integer empId = findEmployeeIdByCode(companyId, trimmedEmpCode);
+                    if (empId == null) {
+                        errors.add("Cột 'Mã NV (*)': không tìm thấy nhân viên có mã '" + trimmedEmpCode + "' trong công ty.");
+                    }
                 }
 
-                if (isBlank(rawType)) return "Loại hợp đồng không được để trống.";
-                String contractType = normalizeContractType(rawType);
-                if (!Set.of("PROBATION", "FIXED_TERM", "INDEFINITE").contains(contractType)) {
-                    return "Loại hợp đồng không hợp lệ (hỗ trợ: Thử việc, Có thời hạn, Không xác định thời hạn).";
+                String contractType = null;
+                if (isBlank(rawType)) {
+                    errors.add("Cột 'Loại hợp đồng (*)': không được để trống.");
+                } else {
+                    contractType = normalizeContractType(rawType);
+                    if (!Set.of("PROBATION", "FIXED_TERM", "INDEFINITE").contains(contractType)) {
+                        errors.add("Cột 'Loại hợp đồng (*)': không hợp lệ (hỗ trợ: Thử việc, Có thời hạn, Không xác định thời hạn).");
+                    }
                 }
 
-                if (isBlank(startStr)) return "Ngày bắt đầu hợp đồng không được để trống.";
-                LocalDate startDate = parseDateFlexible(startStr);
-                if (startDate == null) return "Ngày bắt đầu không đúng định dạng (dd/MM/yyyy).";
+                LocalDate startDate = null;
+                if (isBlank(startStr)) {
+                    errors.add("Cột 'Ngày bắt đầu (dd/MM/yyyy) (*)': không được để trống.");
+                } else {
+                    startDate = parseDateFlexible(startStr);
+                    if (startDate == null) {
+                        errors.add("Cột 'Ngày bắt đầu (dd/MM/yyyy) (*)': không đúng định dạng (dd/MM/yyyy).");
+                    }
+                }
 
                 LocalDate endDate = parseDateFlexible(endStr);
                 boolean hasEndStr = !isBlank(endStr) && !"không xác định".equalsIgnoreCase(endStr.trim()) && !"khong xac dinh".equalsIgnoreCase(endStr.trim());
-                if (!"INDEFINITE".equals(contractType) && !hasEndStr) {
-                    return "Hợp đồng '" + rawType.trim() + "' bắt buộc phải có Ngày kết thúc.";
+                if (contractType != null && !"INDEFINITE".equals(contractType) && !hasEndStr) {
+                    errors.add("Cột 'Ngày kết thúc (dd/MM/yyyy)': hợp đồng '" + rawType.trim() + "' bắt buộc phải có Ngày kết thúc.");
                 }
                 if (hasEndStr && endDate == null) {
-                    return "Ngày kết thúc không đúng định dạng (dd/MM/yyyy).";
+                    errors.add("Cột 'Ngày kết thúc (dd/MM/yyyy)': không đúng định dạng (dd/MM/yyyy).");
                 }
-                if (endDate != null && endDate.isBefore(startDate)) {
-                    return "Ngày kết thúc không được trước ngày bắt đầu.";
+                if (startDate != null && endDate != null && endDate.isBefore(startDate)) {
+                    errors.add("Cột 'Ngày kết thúc (dd/MM/yyyy)': không được trước ngày bắt đầu.");
                 }
 
-                if (isBlank(grossStr)) return "Lương trước khấu trừ không được để trống.";
-                try {
-                    BigDecimal gross = parseBigDecimalSafe(grossStr);
-                    if (gross.signum() < 0) return "Lương trước khấu trừ không được âm.";
-                } catch (Exception e) {
-                    return "Lương trước khấu trừ không đúng định dạng số.";
+                if (isBlank(grossStr)) {
+                    errors.add("Cột 'Lương trước khấu trừ (VND) (*)': không được để trống.");
+                } else {
+                    try {
+                        BigDecimal gross = parseBigDecimalSafe(grossStr);
+                        if (gross.signum() < 0) errors.add("Cột 'Lương trước khấu trừ (VND) (*)': không được âm.");
+                    } catch (Exception e) {
+                        errors.add("Cột 'Lương trước khấu trừ (VND) (*)': không đúng định dạng số.");
+                    }
                 }
 
                 if (!isBlank(travelStr)) {
                     try {
                         BigDecimal travel = parseBigDecimalSafe(travelStr);
-                        if (travel.signum() < 0) return "Phụ cấp đi lại không được âm.";
+                        if (travel.signum() < 0) errors.add("Cột 'Phụ cấp đi lại (VND)': không được âm.");
                     } catch (Exception e) {
-                        return "Phụ cấp đi lại không đúng định dạng số.";
+                        errors.add("Cột 'Phụ cấp đi lại (VND)': không đúng định dạng số.");
+                    }
+                }
+
+                if (!isBlank(statusStr)) {
+                    String st = statusStr.trim().toUpperCase(Locale.ROOT);
+                    if (!Set.of("ACTIVE", "DRAFT", "ĐANG HIỆU LỰC", "DANG HIEU LUC", "NHÁP", "NHAP").contains(st)) {
+                        errors.add("Cột 'Trạng thái (ACTIVE/DRAFT)': không hợp lệ (chỉ hỗ trợ ACTIVE hoặc DRAFT).");
                     }
                 }
 
                 if (!isBlank(signedStr) && parseDateFlexible(signedStr) == null) {
-                    return "Ngày ký kết không đúng định dạng (dd/MM/yyyy).";
+                    errors.add("Cột 'Ngày ký kết (dd/MM/yyyy)': không đúng định dạng (dd/MM/yyyy).");
                 }
 
                 if (notes != null && notes.length() > 1000) {
-                    return "Ghi chú không được vượt quá 1000 ký tự.";
+                    errors.add("Cột 'Ghi chú': không được vượt quá 1000 ký tự.");
                 }
             }
         }
-        return null;
+        return errors.isEmpty() ? null : String.join("; ", errors);
     }
 
     // =========================================================================
@@ -805,6 +999,11 @@ public class DataImportExcelService {
     public String detectFileType(Sheet sheet, String fallbackType) {
         if (sheet == null) return normalizeType(fallbackType);
 
+        boolean hasAttendance = false;
+        boolean hasContract = false;
+        boolean hasEmployee = false;
+        boolean hasUnsupportedOrg = false;
+
         int maxR = Math.min(12, sheet.getLastRowNum());
         for (int r = 0; r <= maxR; r++) {
             Row row = sheet.getRow(r);
@@ -815,21 +1014,28 @@ public class DataImportExcelService {
             }
             String rowText = sb.toString();
 
-            if (rowText.contains("mã phòng ban") || rowText.contains("tên phòng ban")
-                    || rowText.contains("mã chức danh") || rowText.contains("tên chức danh")
-                    || rowText.contains("cấp trách nhiệm")) {
-                throw new IllegalArgumentException("Hệ thống không hỗ trợ nhập file cho Phòng ban / Chức danh / Cấp trách nhiệm. Quản trị viên vui lòng tự thiết lập thủ công.");
+            if (rowText.contains("ngày chấm công") || (rowText.contains("giờ vào") && rowText.contains("giờ ra"))
+                    || rowText.contains("mẫu nhập dữ liệu excel - chấm công")) {
+                hasAttendance = true;
             }
             if (rowText.contains("mã hđ") || rowText.contains("hợp đồng lao động") || rowText.contains("loại hợp đồng")
                     || (rowText.contains("lương trước khấu trừ") && !rowText.contains("bảng lương"))) {
-                return TYPE_CONTRACT;
+                hasContract = true;
             }
-            if (rowText.contains("ngày chấm công") || (rowText.contains("giờ vào") && rowText.contains("giờ ra"))) {
-                return TYPE_ATTENDANCE;
+            if (rowText.contains("số cccd") || rowText.contains("ngày cấp cccd") || rowText.contains("quê quán")
+                    || rowText.contains("ngành học") || (rowText.contains("mã nv") && rowText.contains("email"))) {
+                hasEmployee = true;
             }
-            if (rowText.contains("số cccd") || rowText.contains("ngày cấp cccd") || rowText.contains("quê quán") || rowText.contains("ngành học")) {
-                return TYPE_EMPLOYEE;
+            if (rowText.contains("mã phòng ban") || rowText.contains("mã chức danh") || rowText.contains("cấp trách nhiệm")) {
+                hasUnsupportedOrg = true;
             }
+        }
+
+        if (hasAttendance) return TYPE_ATTENDANCE;
+        if (hasContract) return TYPE_CONTRACT;
+        if (hasEmployee) return TYPE_EMPLOYEE;
+        if (hasUnsupportedOrg) {
+            throw new IllegalArgumentException("Hệ thống không hỗ trợ nhập file cho Phòng ban / Chức danh / Cấp trách nhiệm. Quản trị viên vui lòng tự thiết lập thủ công.");
         }
 
         return normalizeType(fallbackType);

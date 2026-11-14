@@ -26,23 +26,8 @@
                 <section id="directReportsPanel" class="ea-reports">
                     <h2><%= com.hrms.i18n.Language.text(request, "ui_9f3108223d6f", "Cấp dưới trực tiếp (") %><span id="directReportsCount">0</span>)</h2>
                     <p id="directReportsWarning" role="alert"></p>
-                    <button id="manageTeamButton" type="button"><%= com.hrms.i18n.Language.text(request, "ui_4e31dde60a6d", "Quản lý thành viên nhóm") %></button>
                     <table data-pagination="direct-reports" style="margin-top: 18px;">
                         <thead><tr><th><%= com.hrms.i18n.Language.text(request, "ui_84979604c762", "Mã nhân viên") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_3da3c8c2738b", "Họ tên") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_6f358f848e2e", "Phòng ban") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_285d666f18b5", "Chức danh") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th></tr></thead>
                         <tbody id="directReportRows"></tbody>
                     </table>
                 </section>
-                <dialog id="manageTeamDialog" class="lc-modal ea-team-dialog" aria-labelledby="teamDialogTitle">
-                    <form id="manageTeamForm" novalidate>
-                        <h2 id="teamDialogTitle"><%= com.hrms.i18n.Language.text(request, "ui_4e31dde60a6d", "Quản lý thành viên nhóm") %></h2>
-                        <p id="teamManagerName"></p>
-                        <p id="teamMessage" role="alert"></p>
-                        <div id="teamMemberOptions" class="member-picker"></div>
-                        <label for="teamChangeReason"><%= com.hrms.i18n.Language.text(request, "ui_708291880d97", "Lý do phân công nhân viên chưa có Manager") %></label>
-                        <input id="teamChangeReason" name="reason" maxlength="500">
-                        <div class="form-actions">
-                            <button type="submit"><%= com.hrms.i18n.Language.text(request, "ui_54918fd75bf2", "Lưu thành viên nhóm") %></button>
-                            <button id="closeTeamDialog" type="button" class="secondary"><%= com.hrms.i18n.Language.text(request, "ui_d2b73ab2ada1", "Đóng") %></button>
-                        </div>
-                    </form>
-                </dialog>
