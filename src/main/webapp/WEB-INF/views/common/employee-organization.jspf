@@ -1,0 +1,33 @@
+<%@ page pageEncoding="UTF-8" %>
+                <form id="organizationForm" data-read-only="true" novalidate>
+                    <fieldset id="assignmentFields" disabled>
+                    <h2><%= com.hrms.i18n.Language.text(request, "ui_2a1cd18a5917", "Phân công tổ chức") %></h2>
+                    <input type="hidden" name="employeeId">
+                    <div class="form-grid">
+                        <div>
+                            <label><%= com.hrms.i18n.Language.text(request, "ui_14ddd70d2564", "Nhân viên") %></label>
+                            <input id="organizationEmployeeName" readonly>
+                        </div>
+                        <div>
+                            <label><%= com.hrms.i18n.Language.text(request, "ui_6f358f848e2e", "Phòng ban") %></label>
+                            <input id="organizationDepartmentName" readonly>
+                        </div>
+                        <div>
+                            <label><%= com.hrms.i18n.Language.text(request, "ui_285d666f18b5", "Chức danh") %></label>
+                            <input id="organizationPositionTitle" readonly>
+                        </div>
+                        <div>
+                            <label for="directManager"><%= com.hrms.i18n.Language.text(request, "ui_76530a4ee8b1", "Quản lý trực tiếp") %></label>
+                            <input id="directManager" readonly>
+                        </div>
+                    </div>
+                    </fieldset>
+                </form>
+                <section id="directReportsPanel" class="ea-reports">
+                    <h2><%= com.hrms.i18n.Language.text(request, "ui_9f3108223d6f", "Cấp dưới trực tiếp (") %><span id="directReportsCount">0</span>)</h2>
+                    <p id="directReportsWarning" role="alert"></p>
+                    <table data-pagination="direct-reports" style="margin-top: 18px;">
+                        <thead><tr><th><%= com.hrms.i18n.Language.text(request, "ui_84979604c762", "Mã nhân viên") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_3da3c8c2738b", "Họ tên") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_6f358f848e2e", "Phòng ban") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_285d666f18b5", "Chức danh") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th></tr></thead>
+                        <tbody id="directReportRows"></tbody>
+                    </table>
+                </section>

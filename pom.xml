@@ -17,6 +17,13 @@
     </properties>
 
     <dependencies>
+        <!-- Payroll adjustments: native Excel .xlsx/.xls templates and import. -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.5.1</version>
+        </dependency>
+
         <!-- Jakarta Servlet API - Tomcat 10.1+ -->
         <dependency>
             <groupId>jakarta.servlet</groupId>
@@ -50,6 +57,13 @@
             <groupId>com.microsoft.sqlserver</groupId>
             <artifactId>mssql-jdbc</artifactId>
             <version>13.2.0.jre11</version>
+        </dependency>
+
+        <!-- SMTP receipt email -->
+        <dependency>
+            <groupId>org.eclipse.angus</groupId>
+            <artifactId>jakarta.mail</artifactId>
+            <version>2.0.3</version>
         </dependency>
 
         <!-- JUnit 4 for unit testing -->

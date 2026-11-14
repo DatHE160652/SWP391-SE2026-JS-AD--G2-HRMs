@@ -13,7 +13,7 @@ Architecture     : B2B SaaS Multi-Tenant Platform
 MODULE 1: PUBLIC LANDING PAGE & MARKETING PORTAL
 -------------------------------------------------------------------------------
 [REQ-LAND-01] Navigation Header:
-  - Header toolbar MUST contain: Features (Tính năng), Pricing (Giá cả), 
+  - Header toolbar MUST contain: Features (Tính năng), Pricing (Giá cả),
     Solutions (Giải pháp), Why HRMs (Tại sao chọn), About Us (Về chúng tôi).
   - Top-Right Actions: "Sign In" (Đăng nhập) and "Request Demo / Register".
 

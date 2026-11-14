@@ -1,0 +1,70 @@
+<%@ page pageEncoding="UTF-8" %>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">${leavePendingMode ? 'Duyệt đơn nghỉ phép' : 'Đơn nghỉ phép'}</h1>
+        <p class="page-subtitle">Nhấn tên đơn để xem số ngày nghỉ, lý do, người tạo và chức danh.</p>
+    </div>
+    <div class="header-actions" style="display:flex;gap:10px;">
+        <c:if test="${not leavePendingMode}">
+            <button type="button" id="btnPendingOnly" class="button secondary">Đơn chờ duyệt</button>
+        </c:if>
+        <c:if test="${not leavePendingMode}">
+            <button type="button" id="btnHistory" class="button secondary">Lịch sử đơn</button>
+        </c:if>
+    </div>
+</div>
+
+<section class="panel">
+    <div class="filter-bar" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:16px;">
+        <div class="filter-group">
+            <label for="filterYear">Năm</label>
+            <select id="filterYear" class="form-control">
+                <option value="">Tất cả</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="filterMonth">Tháng</label>
+            <select id="filterMonth" class="form-control">
+                <option value="">Tất cả</option>
+                <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+                <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="filterDate">Ngày</label>
+            <select id="filterDate" class="form-control">
+                <option value="">Tất cả</option>
+            </select>
+        </div>
+        <c:if test="${not leavePendingMode}">
+            <div class="filter-group">
+                <label for="filterStatus">Trạng thái</label>
+                <select id="filterStatus" class="form-control">
+                    <option value="ALL">Tất cả</option>
+                    <option value="Pending">Chờ duyệt</option>
+                    <option value="Approved">Đã duyệt</option>
+                    <option value="Rejected">Từ chối</option>
+                    <option value="Cancelled">Đã hủy</option>
+                </select>
+            </div>
+        </c:if>
+        <button type="button" id="btnResetFilter" class="button secondary">Xóa lọc</button>
+    </div>
+
+    <p id="listMessage" role="alert"></p>
+    <table>
+        <thead>
+        <tr>
+            <th>Tên đơn</th>
+            <th>Người tạo</th>
+            <th style="width:220px;">Ngày nghỉ</th>
+            <th style="width:90px;">Số ngày</th>
+            <th style="width:140px;">Trạng thái</th>
+        </tr>
+        </thead>
+        <tbody id="pendingTableBody"></tbody>
+    </table>
+    <div id="paginationBar" class="pagination-bar"></div>
+</section>

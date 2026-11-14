@@ -1,4 +1,5 @@
 target/
+.smarttomcat/
 .idea/
 .vscode/
 *.iml
@@ -15,3 +16,8 @@ dist/
 # Local database/config files
 .env
 application-local.properties
+db.properties
+test/
+tests/
+mockups/
+*.properties

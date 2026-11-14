@@ -1,0 +1,189 @@
+const DepartmentApi = {
+    async get(url) {
+        const response = await fetch(departmentApiUrl(url), { headers: { Accept: 'application/json' } });
+        return handleDepartmentResponse(response);
+    },
+
+    async post(url, data) {
+        const response = await fetch(departmentApiUrl(url), {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+            },
+            body: new URLSearchParams({ ...data, csrfToken: data.csrfToken || document.querySelector('meta[name="organization-csrf-token"]')?.content || '' })
+        });
+        return handleDepartmentResponse(response);
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelector('#statusFilter')?.addEventListener('change', loadDepartments);
+    document.querySelector('#btnExportDepartments')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        const status = document.querySelector('#statusFilter')?.value || '';
+        window.location.href = departmentApiUrl(`/departments/export?status=${encodeURIComponent(status)}`);
+    });
+    const page = document.body.dataset.page;
+    if (page === 'department-list') {
+        loadDepartments();
+    }
+    if (page === 'department-form') {
+        setupDepartmentForm().catch(error => showDepartmentMessage(error.message, 'error'));
+    }
+});
+
+async function loadDepartments() {
+    const message = sessionStorage.getItem('departmentMessage');
+    if (message) { showDepartmentMessage(message); sessionStorage.removeItem('departmentMessage'); }
+    try {
+        const payload = await DepartmentApi.get('/departments');
+        renderDepartmentRows(payload.data);
+        document.querySelector('#totalDepartments').textContent = payload.data.length;
+    } catch (error) {
+        showDepartmentMessage(error.message, 'error');
+    }
+}
+
+async function setupDepartmentForm() {
+    const departmentId = new URLSearchParams(location.search).get('id');
+    const form = document.querySelector('#departmentForm');
+
+    if (departmentId) {
+        document.querySelector('#departmentFormTitle').textContent = HrmI18n.t('Cập nhật phòng ban');
+        const payload = await DepartmentApi.get(`/departments/detail?id=${departmentId}`);
+        fillDepartmentForm(form, payload.data);
+        document.querySelectorAll('a[href="department-list"]').forEach(link => {
+            link.href = 'department-detail?id=' + encodeURIComponent(departmentId);
+        });
+    }
+
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (departmentId) {
+            await updateDepartment(form);
+        } else {
+            await createDepartment(form);
+        }
+    });
+}
+
+async function loadDepartmentMembers(departmentId) {
+    const panel = document.querySelector('#departmentMembersPanel');
+    const list = document.querySelector('#departmentMemberList');
+    if (!panel || !list) return;
+    panel.classList.remove('hidden');
+    list.innerHTML = HrmI18n.fragment('<div class="lc-spinner">Đang tải nhân viên…</div>');
+    document.querySelector('#departmentMemberCount').textContent = '—';
+    try {
+        const payload = await DepartmentApi.get('/departments/members?departmentId=' + encodeURIComponent(departmentId));
+        const employees = (payload.data || []).filter(employee => String(employee.departmentId) === String(departmentId));
+        document.querySelector('#departmentMemberCount').textContent = String(employees.length);
+        list.innerHTML = employees.length ? '<div class="lc-table-wrap"><table data-pagination="department-members"><thead><tr>'
+            + HrmI18n.fragment('<th>Mã nhân viên</th><th>Họ tên</th><th>Chức danh</th><th>Quản lý trực tiếp</th></tr></thead><tbody>')
+            + employees.map(employee => '<tr><td>' + safeDepartmentValue(employee.employeeCode) + '</td><td>'
+                + safeDepartmentValue(employee.fullName) + '</td><td>' + safeDepartmentValue(employee.positionTitle || HrmI18n.t('Chưa phân công'))
+                + '</td><td>' + safeDepartmentValue(employee.managerName || HrmI18n.t('Chưa có quản lý')) + '</td></tr>').join('')
+            + '</tbody></table></div>' : HrmI18n.fragment('<div class="lc-empty">Phòng ban chưa có nhân viên.</div>');
+    } catch (error) {
+        document.querySelector('#departmentMemberCount').textContent = '—';
+        list.textContent = error.message;
+    }
+}
+
+async function createDepartment(form) {
+    try {
+        const payload = await DepartmentApi.post('/departments/create', readDepartmentForm(form));
+        sessionStorage.setItem('departmentMessage', payload.message);
+        location.assign('department-list');
+    } catch (error) {
+        if (!FormValidation.showErrors(form, error)) {
+            showDepartmentMessage(error.message, 'error');
+        }
+    }
+}
+
+async function updateDepartment(form) {
+    try {
+        const payload = await DepartmentApi.post('/departments/update', readDepartmentForm(form));
+        sessionStorage.setItem('departmentMessage', payload.message);
+        location.assign('department-detail?id=' + encodeURIComponent(form.elements.namedItem('departmentId').value));
+    } catch (error) {
+        if (!FormValidation.showErrors(form, error)) {
+            showDepartmentMessage(error.message, 'error');
+        }
+    }
+}
+
+async function setDepartmentActive(departmentId, active) {
+    if (!(await AppDialog.confirm(active ? HrmI18n.t('Kích hoạt lại bản ghi này?') : HrmI18n.t('Vô hiệu hóa bản ghi này?')))) {
+        return;
+    }
+
+    try {
+        const payload = await DepartmentApi.post(active ? '/departments/activate' : '/departments/deactivate', { departmentId });
+        showDepartmentMessage(payload.message);
+        await loadDepartments();
+    } catch (error) {
+        showDepartmentMessage(error.message, 'error');
+    }
+}
+
+function renderDepartmentRows(departments) {
+    const status = document.querySelector('#statusFilter')?.value || '';
+    departments = departments.filter(item => !status || (item.isActive) === (status === 'Active'));
+    const tbody = document.querySelector('#departmentRows');
+    if (!departments.length) {
+        tbody.innerHTML = HrmI18n.fragment('<tr><td colspan="5">Chưa có phòng ban.</td></tr>');
+        return;
+    }
+
+    tbody.innerHTML = departments.map(department => `
+        <tr>
+            <td><strong>${safeDepartmentValue(department.departmentCode)}</strong></td>
+            <td>${safeDepartmentValue(department.departmentName)}</td>
+            <td>${department.isActive ? HrmI18n.t('Đang hoạt động') : HrmI18n.t('Ngừng hoạt động')}</td>
+            <td>${department.createdAt ? safeDepartmentValue(new Date(department.createdAt).toLocaleDateString(HrmI18n.locale)) : '-'}</td>
+            <td class="actions">
+                ${department.isActive ? `<button type="button" data-initial-department="${department.departmentId}${HrmI18n.fragment("\">Phân công</button>")}` : ''}
+                <a href="department-detail?id=${department.departmentId}${HrmI18n.fragment("\">Chi tiết</a>\n                <a href=\"department-form?id=")}${department.departmentId}${HrmI18n.fragment("\">Sửa</a>\n                <a href=\"../position/position-list?departmentId=")}${department.departmentId}${HrmI18n.fragment("\">Chức danh</a>\n                <a href=\"../position/position-form?departmentId=")}${department.departmentId}${HrmI18n.fragment("\">Thêm chức danh</a>\n                <button class=\"danger\" onclick=\"setDepartmentActive(")}${department.departmentId}, ${!department.isActive})">${department.isActive ? HrmI18n.t('Vô hiệu hóa') : HrmI18n.t('Kích hoạt lại')}</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function fillDepartmentForm(form, department) {
+    Object.keys(department).forEach(key => {
+        if (form[key] && department[key] !== null) {
+            form[key].value = department[key];
+        }
+    });
+}
+
+function readDepartmentForm(form) {
+    return Object.fromEntries(new FormData(form).entries());
+}
+
+function departmentApiUrl(url) {
+    const first = location.pathname.split('/').filter(Boolean)[0] || '';
+    const contextPath = first === 'department' ? '' : `/${first}`;
+    return `${contextPath}${url}`;
+}
+
+async function handleDepartmentResponse(response) {
+    const payload = await response.json().then(HrmI18n.response);
+    if (!response.ok || payload.success === false) {
+        throw FormValidation.responseError(payload);
+    }
+    return payload;
+}
+
+function showDepartmentMessage(message, type = 'success') {
+    const element = document.querySelector('#message');
+    element.textContent = HrmI18n.t(message);
+    element.className = `message show ${type}`;
+}
+
+function safeDepartmentValue(value) {
+    return value === null || value === undefined || value === '' ? '-' : String(value).replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
+}

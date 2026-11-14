@@ -1,0 +1,231 @@
+<%@ page pageEncoding="UTF-8" %>
+<!-- Modal dùng chung: Nhập dữ liệu Excel hàng loạt (Batch Data Import) -->
+<div id="modalDataImport" class="import-modal-overlay" style="display:none;">
+    <div class="import-modal-box">
+        <div class="import-modal-header">
+            <h3 class="import-modal-title">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#062579" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span id="importModalTitleText">Nhập dữ liệu từ tệp Excel</span>
+            </h3>
+            <button class="import-modal-close" id="btnCloseImportModal" type="button" aria-label="Đóng">&times;</button>
+        </div>
+
+        <div class="import-modal-body">
+            <!-- Alert Thông báo chung -->
+            <div id="importGlobalAlert" class="import-alert" style="display:none;"></div>
+
+            <!-- Bước 1: Tải file mẫu chuẩn -->
+            <div class="import-step-card">
+                <div class="import-step-header">
+                    <span class="import-step-badge">Bước 1</span>
+                    <span class="import-step-name">Tải về tệp mẫu Excel chuẩn</span>
+                </div>
+                <p class="import-step-desc">
+                    Tệp mẫu đã được thiết lập sẵn các cột chuẩn 1-1 với hệ thống. Vui lòng không thay đổi tên các cột tiêu đề để tránh lỗi import.
+                </p>
+                <div style="margin-top: 10px;">
+                    <a id="btnDownloadImportTemplate" href="#" class="btn-import-template" download>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        <span>Tải tệp mẫu Excel (.xlsx)</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Bước 2: Kéo thả / Chọn tệp tải lên -->
+            <div class="import-step-card" style="margin-top: 16px;">
+                <div class="import-step-header">
+                    <span class="import-step-badge">Bước 2</span>
+                    <span class="import-step-name">Tải tệp dữ liệu lên để kiểm tra</span>
+                </div>
+
+                <div id="importDropZone" class="import-dropzone">
+                    <input type="file" id="inputImportFile" accept=".xlsx, .xls" style="display:none;">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#062579" stroke-width="1.8" style="margin-bottom:8px;">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="12" y1="18" x2="12" y2="12"></line>
+                        <polyline points="9 15 12 12 15 15"></polyline>
+                    </svg>
+                    <div style="font-weight:600; color:#1d2939; font-size:14px;">Kéo & Thả tệp Excel vào đây hoặc <span style="color:#062579; text-decoration:underline; cursor:pointer;" id="btnBrowseFile">Chọn tệp từ máy</span></div>
+                    <div style="color:#667085; font-size:12.5px; margin-top:4px;">Chỉ hỗ trợ tệp định dạng .xlsx hoặc .xls (Tối đa 10 MB)</div>
+                    <div id="importSelectedFileName" style="display:none; margin-top:10px; font-weight:700; color:#027a48; font-size:13px; background:#edfcf2; padding:6px 12px; border-radius:6px; border:1px solid #a6f4c5;"></div>
+                </div>
+
+                <!-- Spinner đang đọc -->
+                <div id="importLoadingSpinner" style="display:none; text-align:center; padding:18px;">
+                    <div class="import-spinner"></div>
+                    <div style="font-size:13px; color:#475467; margin-top:8px;">Đang đọc và kiểm tra tính hợp lệ của tệp...</div>
+                </div>
+            </div>
+
+            <!-- Bước 3: Xem trước kết quả kiểm tra (Preview) -->
+            <div id="importPreviewSection" class="import-step-card" style="display:none; margin-top: 16px;">
+                <div class="import-step-header" style="justify-content: space-between;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="import-step-badge">Bước 3</span>
+                        <span class="import-step-name">Kết quả kiểm tra dữ liệu</span>
+                    </div>
+                    <div class="import-summary-badges">
+                        <span class="import-badge total" id="badgeTotalRows">Tổng: 0 dòng</span>
+                        <span class="import-badge valid" id="badgeValidRows">✓ 0 hợp lệ</span>
+                        <span class="import-badge error" id="badgeErrorRows">✗ 0 lỗi</span>
+                    </div>
+                </div>
+
+                <!-- Bảng Preview dữ liệu -->
+                <div class="import-table-wrapper" id="importTableWrapper">
+                    <table class="import-preview-table" id="importPreviewTable">
+                        <thead id="importTableHead"></thead>
+                        <tbody id="importTableBody"></tbody>
+                    </table>
+                </div>
+                <div id="importPreviewLimitNotice" style="font-size:12px; color:#667085; margin-top:6px; font-style:italic;">
+                    * Hiển thị tối đa 50 dòng xem trước. Toàn bộ dòng hợp lệ sẽ được nạp khi xác nhận.
+                </div>
+            </div>
+        </div>
+
+        <div class="import-modal-footer">
+            <button type="button" class="btn-import-cancel" id="btnCancelImportModal">Hủy bỏ</button>
+            <button type="button" class="btn-import-confirm" id="btnConfirmImport" disabled>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Xác nhận Nhập dữ liệu</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+.import-modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(16, 24, 40, 0.6); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9999; animation: importFadeIn 0.2s ease;
+}
+.import-modal-box {
+    background: #ffffff; width: 92%; max-width: 900px; max-height: 88vh;
+    border-radius: 12px; box-shadow: 0 20px 24px -4px rgba(16, 24, 40, 0.1), 0 8px 8px -4px rgba(16, 24, 40, 0.04);
+    display: flex; flex-direction: column; overflow: hidden;
+}
+.import-modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 24px; border-bottom: 1px solid #eaecf0; background: #fafbfc;
+}
+.import-modal-title {
+    margin: 0; font-size: 17px; font-weight: 700; color: #101828;
+    display: flex; align-items: center; gap: 8px;
+}
+.import-modal-close {
+    background: none; border: none; font-size: 24px; color: #667085;
+    cursor: pointer; padding: 0 4px; line-height: 1; border-radius: 6px;
+}
+.import-modal-close:hover { color: #101828; background: #f2f4f7; }
+.import-modal-body {
+    padding: 20px 24px; overflow-y: auto; flex: 1;
+}
+.import-step-card {
+    background: #ffffff; border: 1px solid #eaecf0; border-radius: 8px; padding: 16px;
+}
+.import-step-header {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+}
+.import-step-badge {
+    background: #062579; color: #ffffff; font-size: 11px; font-weight: 700;
+    padding: 3px 8px; border-radius: 12px; text-transform: uppercase;
+}
+.import-step-name {
+    font-size: 14px; font-weight: 700; color: #101828;
+}
+.import-step-desc {
+    margin: 0; font-size: 13px; color: #475467; line-height: 1.5;
+}
+.btn-import-template {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #f0f4fe; color: #062579; border: 1px solid #c7d7fe;
+    padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 600;
+    text-decoration: none; transition: all 0.15s;
+}
+.btn-import-template:hover {
+    background: #e0eaff; border-color: #84adff;
+}
+.import-dropzone {
+    border: 2px dashed #d0d5dd; border-radius: 8px; padding: 24px 16px;
+    text-align: center; background: #fcfcfd; cursor: pointer; transition: all 0.2s;
+}
+.import-dropzone.dragover {
+    border-color: #062579; background: #f0f4fe;
+}
+.import-dropzone:hover {
+    border-color: #98a2b3;
+}
+.import-summary-badges {
+    display: flex; gap: 8px; font-size: 12px; font-weight: 700;
+}
+.import-badge {
+    padding: 3px 8px; border-radius: 6px;
+}
+.import-badge.total { background: #f2f4f7; color: #344054; }
+.import-badge.valid { background: #ecfdf3; color: #027a48; border: 1px solid #a6f4c5; }
+.import-badge.error { background: #fef3f2; color: #b42318; border: 1px solid #fecdca; }
+.import-table-wrapper {
+    margin-top: 10px; max-height: 260px; overflow: auto; border: 1px solid #eaecf0; border-radius: 6px;
+}
+.import-preview-table {
+    width: 100%; border-collapse: collapse; font-size: 12.5px;
+}
+.import-preview-table th {
+    background: #f8f9fc; color: #344054; font-weight: 700; padding: 8px 10px;
+    border-bottom: 1px solid #eaecf0; text-align: left; white-space: nowrap; position: sticky; top: 0;
+}
+.import-preview-table td {
+    padding: 7px 10px; border-bottom: 1px solid #f2f4f7; color: #1d2939; white-space: nowrap;
+}
+.import-preview-table tr.row-error {
+    background: #fffbfa;
+}
+.import-preview-table tr.row-error td {
+    color: #b42318;
+}
+.import-alert {
+    padding: 10px 14px; border-radius: 6px; margin-bottom: 14px; font-size: 13px; line-height: 1.4;
+}
+.import-alert.error { background: #fef3f2; color: #b42318; border: 1px solid #fecdca; }
+.import-alert.success { background: #ecfdf3; color: #027a48; border: 1px solid #a6f4c5; }
+.import-modal-footer {
+    display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+    padding: 14px 24px; border-top: 1px solid #eaecf0; background: #fafbfc;
+}
+.btn-import-cancel {
+    padding: 8px 16px; border: 1px solid #d0d5dd; background: #ffffff;
+    color: #344054; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.btn-import-cancel:hover { background: #f9fafb; }
+.btn-import-confirm {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 18px; border: 1px solid #062579; background: #062579;
+    color: #ffffff; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+}
+.btn-import-confirm:disabled {
+    background: #98a2b3; border-color: #98a2b3; cursor: not-allowed; opacity: 0.6;
+}
+.btn-import-confirm:not(:disabled):hover {
+    background: #041850; border-color: #041850;
+}
+.import-spinner {
+    display: inline-block; width: 26px; height: 26px; border: 3px solid rgba(6,37,121,0.2);
+    border-radius: 50%; border-top-color: #062579; animation: importSpin 0.7s linear infinite;
+}
+@keyframes importSpin { to { transform: rotate(360deg); } }
+@keyframes importFadeIn { from { opacity: 0; } to { opacity: 1; } }
+</style>
+
