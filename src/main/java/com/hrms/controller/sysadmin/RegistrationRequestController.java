@@ -98,9 +98,9 @@ public class RegistrationRequestController extends HttpServlet {
                 }
                 response.sendRedirect(request.getContextPath() + ApiRoutes.REGISTRATION_REQUEST_DETAILS + "?id=" + requestId);
             } else {
-                registrationRequestService.softDelete(requestId, principal.getUserId(), request.getRemoteAddr());
+                registrationRequestService.delete(requestId, principal.getUserId(), request.getRemoteAddr());
                 request.getSession(true).setAttribute(FLASH_MESSAGE,
-                        "Đã xóa mềm Registration Request. Hồ sơ gốc vẫn được lưu và không thể đăng ký lại bằng email/tên công ty này.");
+                        "Đã xóa vĩnh viễn Registration Request khỏi hệ thống.");
                 response.sendRedirect(request.getContextPath() + ApiRoutes.REGISTRATION_REQUESTS);
             }
         } catch (RequestActionException exception) {

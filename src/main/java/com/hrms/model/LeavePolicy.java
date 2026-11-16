@@ -5,6 +5,8 @@ public record LeavePolicy(int companyId, String quotaMode, int quotaDays, int ma
     public LeavePolicy {
         if (!"MONTHLY".equals(quotaMode) && !"ANNUAL".equals(quotaMode))
             throw new IllegalArgumentException("Chọn cấu hình theo tháng hoặc theo năm.");
+        if ("MONTHLY".equals(quotaMode) && (quotaDays < 0 || quotaDays >= 30))
+            throw new IllegalArgumentException("Quota theo tháng phải dưới 30 ngày (0–29 ngày).");
         if (quotaDays < 0 || quotaDays > 366 || maxDaysPerRequest < 1 || maxDaysPerRequest > 366)
             throw new IllegalArgumentException("Quota phải từ 0–366 và giới hạn mỗi đơn từ 1–366 ngày.");
     }

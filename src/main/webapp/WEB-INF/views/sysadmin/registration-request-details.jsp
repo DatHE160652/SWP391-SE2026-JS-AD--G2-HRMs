@@ -24,7 +24,7 @@
                     <button class="button button-primary" type="button" data-dialog-open="confirm-request-dialog"><svg class="icon" aria-hidden="true"><use href="${icons}#rocket"/></svg><%= com.hrms.i18n.Language.text(request, "ui_d067b3907a7e", "Phê duyệt &amp; khởi tạo tenant") %></button>
                 </c:when>
                 <c:when test="${item.status == 'CONVERTING'}"><p class="muted"><%= com.hrms.i18n.Language.text(request, "ui_5d0135eabd83", "Đang khởi tạo công ty; chưa thể thực hiện thao tác khác.") %></p></c:when>
-                <c:otherwise><p class="muted"><%= com.hrms.i18n.Language.text(request, "ui_d146c83fe0b4", "Yêu cầu đã được xử lý; không thể phê duyệt hoặc xóa mềm.") %></p></c:otherwise>
+                <c:otherwise><p class="muted"><%= com.hrms.i18n.Language.text(request, "ui_d146c83fe0b4", "Yêu cầu đã được xử lý; không thể phê duyệt hoặc xóa.") %></p></c:otherwise>
             </c:choose>
         </div>
     </section>
@@ -144,7 +144,7 @@
                 <input type="hidden" name="id" value="<c:out value='${item.registrationRequestId}'/>">
                 <input type="hidden" name="csrfToken" value="<c:out value='${sessionScope.systemAdminCsrfToken}'/>">
                 <h2 id="delete-request-title"><%= com.hrms.i18n.Language.text(request, "ui_9ac49d480bcc", "Từ chối đăng ký?") %></h2>
-                <p><%= com.hrms.i18n.Language.text(request, "ui_3d172165d341", "Hồ sơ gốc vẫn được lưu để Sale tiếp tục trao đổi. Request này sẽ bị ẩn khỏi danh sách và không thể đăng ký lại bằng email hoặc tên công ty này.") %></p>
+                <p><%= com.hrms.i18n.Language.text(request, "ui_3d172165d341", "Yêu cầu đăng ký này sẽ bị xóa vĩnh viễn khỏi cơ sở dữ liệu.") %></p>
                 <div class="dialog-actions"><button class="button" type="button" data-dialog-close><%= com.hrms.i18n.Language.text(request, "ui_34ca764caf22", "Hủy") %></button><button class="button button-danger" type="submit"><%= com.hrms.i18n.Language.text(request, "ui_d78db2998f42", "Xác nhận từ chối") %></button></div>
             </form>
         </dialog>

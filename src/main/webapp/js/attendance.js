@@ -1,3 +1,10 @@
+function formatLocalDate(date = new Date()) {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
+
 const AttendanceApi = {
     async get(url) {
         const response = await fetch(withContext(url), { headers: { 'Accept': 'application/json' } });
@@ -525,7 +532,7 @@ let currentSearchKeyword = '';
 
 async function initManagerAttendance() {
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = formatLocalDate(today);
 
     const dateInput = document.getElementById('teamDate');
     if (dateInput) {
@@ -656,7 +663,7 @@ async function initManagerAttendance() {
 
 async function loadAllAttendance() {
     const dateInput = document.getElementById('teamDate');
-    const date = dateInput ? dateInput.value : new Date().toISOString().split('T')[0];
+    const date = dateInput ? dateInput.value : formatLocalDate();
 
     try {
         const payload = await AttendanceApi.get(`/attendance/all?date=${date}`);
@@ -782,7 +789,7 @@ function renderAllAttendanceTable() {
             ? HrmI18n.fragment('<span class="badge RoleBadge Manager">Quản lý</span>')
             : HrmI18n.fragment('<span class="badge RoleBadge Employee">Nhân viên</span>');
 
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = formatLocalDate();
         const isToday = (date === todayStr);
         const isPast = (date && date < todayStr);
 
@@ -1103,7 +1110,10 @@ async function openShiftModal() {
 
     if (currentShiftSetting) {
         if (document.getElementById('inputShiftStartTime') && currentShiftSetting.shiftStartTime) {
-            document.getElementById('inputShiftStartTime').value = currentShiftSetting.shiftStartTime.substring(0, 5);
+            const startInput = document.getElementById('inputShiftStartTime');
+            const minStart = currentShiftSetting.shiftStartTime.substring(0, 5);
+            startInput.value = minStart;
+            startInput.min = minStart;
         }
         if (document.getElementById('inputShiftEndTime') && currentShiftSetting.shiftEndTime) {
             document.getElementById('inputShiftEndTime').value = currentShiftSetting.shiftEndTime.substring(0, 5);
@@ -1199,6 +1209,13 @@ async function saveShiftSetting() {
         await showAttendanceAlert(msg, 'warning');
         return;
     }
+    const minConfiguredStart = currentShiftSetting?.shiftStartTime ? currentShiftSetting.shiftStartTime.substring(0, 5) : null;
+    if (minConfiguredStart && startTime < minConfiguredStart) {
+        const msg = `${HrmI18n.fragment('Giờ vào ca mới không được sớm hơn giờ vào ca đã cấu hình (')}${minConfiguredStart}${HrmI18n.fragment('). Chỉ được tăng dần giờ vào ca.')}`;
+        showShiftModalMessage(msg, 'error');
+        await showAttendanceAlert(msg, 'warning');
+        return;
+    }
     if (endTime <= startTime) {
         const msg = HrmI18n.t('Giờ kết thúc ca làm việc phải sau giờ bắt đầu ca.');
         showShiftModalMessage(msg, 'error');
@@ -1280,7 +1297,7 @@ function openManualModal() {
     if (!modal) return;
 
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = formatLocalDate(today);
     const dd = String(today.getDate()).padStart(2, '0');
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const yyyy = today.getFullYear();
@@ -1383,7 +1400,9 @@ function updateManualPreview() {
             return;
         }
 
-        let totalDuration = outMinutes - inMinutes;
+        const shiftStartMinutes = startH * 60 + startM;
+        const effectiveInMinutes = Math.max(inMinutes, shiftStartMinutes);
+        let totalDuration = Math.max(0, outMinutes - effectiveInMinutes);
         let lunchDeducted = false;
         if (totalDuration >= 300 && lunchMin > 0) {
             totalDuration = Math.max(0, totalDuration - lunchMin);
@@ -1431,7 +1450,7 @@ function updateManualPreview() {
 async function saveManualAttendance() {
     const employeeId = document.getElementById('manualEmployeeSelect')?.value;
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = formatLocalDate(today);
     const checkInTime = document.getElementById('manualCheckInTime')?.value;
     const checkOutTime = document.getElementById('manualCheckOutTime')?.value;
     const note = document.getElementById('manualNote')?.value;

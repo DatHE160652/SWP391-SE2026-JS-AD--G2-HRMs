@@ -105,7 +105,10 @@ public class EmployeeLifecycleController extends HttpServlet {
             response.getWriter().write(ValidationSupport.errorJson(exception));
         } catch (SQLException exception) {
             log("Lifecycle write failed", exception);
-            write(response, 409, Map.of("success", false, "message", "Không lưu được dữ liệu. Vui lòng kiểm tra mã/email trùng, bản ghi đã chọn và thay đổi đồng thời."));
+            String message = exception.getErrorCode() == 51162
+                    ? "Đã đạt đến giới hạn của gói bạn đang dùng"
+                    : "Không lưu được dữ liệu. Vui lòng kiểm tra mã/email trùng, bản ghi đã chọn và thay đổi đồng thời.";
+            write(response, 409, Map.of("success", false, "message", message));
         }
     }
 

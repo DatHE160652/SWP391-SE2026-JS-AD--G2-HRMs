@@ -943,6 +943,13 @@ public class AttendanceController extends HttpServlet {
         if (startTime == null) {
             throw new IllegalArgumentException("Vui lòng chọn giờ bắt đầu ca làm việc.");
         }
+        CompanyShiftSetting currentSetting = attendanceService.getCompanyShiftSetting(companyId);
+        if (currentSetting != null && currentSetting.getShiftStartTime() != null
+                && startTime.isBefore(currentSetting.getShiftStartTime())) {
+            throw new IllegalArgumentException("Giờ vào ca mới (" + startTime
+                    + ") không được sớm hơn giờ vào ca đã cấu hình (" + currentSetting.getShiftStartTime()
+                    + "). Chỉ được tăng dần giờ vào ca.");
+        }
         LocalTime endTime = parseOptionalTime(request.getParameter("shiftEndTime"));
         if (endTime == null) {
             throw new IllegalArgumentException("Vui lòng chọn giờ kết thúc ca làm việc.");
@@ -1172,13 +1179,20 @@ public class AttendanceController extends HttpServlet {
             writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Vui lòng đăng nhập."));
             return;
         }
+        boolean isCompanyAdmin = principal.isCompanyAdministrator();
+        boolean isManager = "MANAGER".equalsIgnoreCase(principal.getRoleCode());
+        if (!isCompanyAdmin && (!isManager || principal.getEmployeeId() == null)) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN, error("Bạn không có quyền duyệt giải trình chấm công."));
+            return;
+        }
         int companyId = SecuritySupport.requireCompanyId(request);
         int explanationId = parseRequiredInt(request.getParameter("explanationId"), "Mã đơn không hợp lệ.");
         String decision = request.getParameter("decision");
         String comment = request.getParameter("comment");
 
         boolean approve = "APPROVE".equalsIgnoreCase(decision);
-        attendanceService.reviewExplanation(explanationId, principal.getUserId(), principal.getEmployeeId(), approve, comment, companyId);
+        Integer reviewerEmployeeId = isCompanyAdmin ? null : principal.getEmployeeId();
+        attendanceService.reviewExplanation(explanationId, principal.getUserId(), reviewerEmployeeId, approve, comment, companyId);
         writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"message\":" + (approve ? "\"Đã duyệt giải trình và tự động cập nhật ngày công!\"" : "\"Đã từ chối đơn giải trình.\"") + "}");
     }
 

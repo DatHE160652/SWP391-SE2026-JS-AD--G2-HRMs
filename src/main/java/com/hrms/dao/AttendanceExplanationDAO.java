@@ -186,6 +186,19 @@ public class AttendanceExplanationDAO {
         return null;
     }
 
+    public boolean isDirectSubordinate(int companyId, int employeeId, int managerEmployeeId) throws SQLException {
+        String sql = "SELECT 1 FROM dbo.Employees WHERE CompanyId = ? AND EmployeeId = ? AND ManagerId = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, companyId);
+            ps.setInt(2, employeeId);
+            ps.setInt(3, managerEmployeeId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
     public boolean updateStatus(int explanationId, String status, Integer reviewerId, String reviewerComment) throws SQLException {
         String sql = """
                 UPDATE dbo.AttendanceExplanations

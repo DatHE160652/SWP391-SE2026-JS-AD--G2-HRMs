@@ -8,6 +8,7 @@ import com.hrms.model.RegistrationRequestStats;
 import com.hrms.service.email.ActivationEmailSender;
 import com.hrms.service.email.ConfiguredActivationEmailSender;
 import com.hrms.service.email.EmailDeliveryException;
+import com.hrms.service.email.EmailRecipientVerifier;
 
 import java.net.URI;
 import java.security.SecureRandom;
@@ -19,23 +20,44 @@ public class RegistrationRequestService {
     private static final SecureRandom RANDOM = new SecureRandom();
     private final RegistrationRequestDAO registrationRequestDAO;
     private final ActivationEmailSender activationEmailSender;
+    private final EmailRecipientVerifier recipientVerifier;
 
     public RegistrationRequestService() {
-        this(new RegistrationRequestDAO());
+        this(new RegistrationRequestDAO(), new ConfiguredActivationEmailSender(), new EmailRecipientVerifier());
     }
 
     public RegistrationRequestService(RegistrationRequestDAO registrationRequestDAO) {
-        this(registrationRequestDAO, new ConfiguredActivationEmailSender());
+        this(registrationRequestDAO, new ConfiguredActivationEmailSender(), new EmailRecipientVerifier());
     }
 
     public RegistrationRequestService(RegistrationRequestDAO dao, ActivationEmailSender sender) {
+        this(dao, sender, null);
+    }
+
+    public RegistrationRequestService(RegistrationRequestDAO dao, ActivationEmailSender sender,
+            EmailRecipientVerifier recipientVerifier) {
         this.registrationRequestDAO = dao;
         this.activationEmailSender = sender;
+        this.recipientVerifier = recipientVerifier;
     }
 
     public ConfirmationResult confirm(int requestId, int actorId, String ipAddress)
             throws SQLException, RequestActionException {
         validateActionIds(requestId, actorId);
+        if (registrationRequestDAO.hasUndeliverableReceipt(requestId)) {
+            throw new RequestActionException(RequestActionException.Reason.CONFLICT,
+                    "Không thể khởi tạo công ty: email đăng ký không tồn tại hoặc không thể nhận thư.");
+        }
+        if (recipientVerifier != null) {
+            RegistrationRequest pending = registrationRequestDAO.findVisibleById(requestId);
+            if (pending != null && List.of("NEW", "UNDER_REVIEW").contains(pending.getStatus())) {
+                EmailRecipientVerifier.VerifyResult verifyResult = recipientVerifier.verify(pending.getEmail(), true);
+                if (!verifyResult.deliverable()) {
+                    throw new RequestActionException(RequestActionException.Reason.CONFLICT,
+                            "Không thể khởi tạo công ty: " + verifyResult.message());
+                }
+            }
+        }
         byte[] bytes = new byte[24];
         RANDOM.nextBytes(bytes);
         String temporaryPassword = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
@@ -71,14 +93,20 @@ public class RegistrationRequestService {
         }
     }
 
-    public void softDelete(int requestId, int actorId, String ipAddress)
+    public void delete(int requestId, int actorId, String ipAddress)
             throws SQLException, RequestActionException {
         validateActionIds(requestId, actorId);
-        requireSuccess(registrationRequestDAO.softDelete(requestId, actorId, ipAddress));
+        requireSuccess(registrationRequestDAO.delete(requestId, actorId, ipAddress));
+    }
+
+    public void softDelete(int requestId, int actorId, String ipAddress)
+            throws SQLException, RequestActionException {
+        delete(requestId, actorId, ipAddress);
     }
 
     private void validateActionIds(int requestId, int actorId) {
-        if (requestId <= 0 || actorId <= 0) throw new IllegalArgumentException("Mã yêu cầu hoặc người thực hiện không hợp lệ.");
+        if (requestId <= 0 || actorId <= 0)
+            throw new IllegalArgumentException("Mã yêu cầu hoặc người thực hiện không hợp lệ.");
     }
 
     private void requireSuccess(RegistrationRequestDAO.MutationResult result) throws RequestActionException {
@@ -89,7 +117,8 @@ public class RegistrationRequestService {
                     "Không tìm thấy Registration Request.");
             case "CONFLICT" -> throw new RequestActionException(RequestActionException.Reason.CONFLICT,
                     "Yêu cầu đã được xử lý hoặc email/tên công ty đã tồn tại. Vui lòng tải lại trang.");
-            case "CONFIRMED", "DELETED" -> { }
+            case "CONFIRMED", "DELETED" -> {
+            }
             default -> throw new IllegalStateException("Invalid mutation result.");
         }
     }
@@ -99,8 +128,10 @@ public class RegistrationRequestService {
             throw new IllegalArgumentException("Invalid workspace code.");
         }
         String template = System.getenv("HRM_ACTIVATION_LOGIN_URL_TEMPLATE");
-        if (template == null || template.isBlank()) template = System.getProperty("hrm.activation.loginUrlTemplate");
-        if (template == null || template.isBlank()) template = "https://{workspace}.hrms.com/login";
+        if (template == null || template.isBlank())
+            template = System.getProperty("hrm.activation.loginUrlTemplate");
+        if (template == null || template.isBlank())
+            template = "https://{workspace}.hrms.com/login";
         URI url = URI.create(template.replace("{workspace}", workspace));
         String host = url.getHost();
         boolean local = "localhost".equals(host) || "127.0.0.1".equals(host) || "[::1]".equals(host);
@@ -112,14 +143,15 @@ public class RegistrationRequestService {
     }
 
     public record ConfirmationResult(int companyId, String workspaceCode, String emailStatus,
-                                     boolean emailMetadataRecorded) { }
+            boolean emailMetadataRecorded) {
+    }
 
     public List<RegistrationRequest> getVisibleRequests() throws SQLException {
         return registrationRequestDAO.findVisibleRequests();
     }
 
     public RegistrationRequestFilter createFilter(String q, String status, String region, String date,
-                                                   String page, String size) {
+            String page, String size) {
         return new RegistrationRequestFilter(q, status, region, date, page, size);
     }
 
@@ -139,7 +171,8 @@ public class RegistrationRequestService {
         return registrationRequestDAO.findVisibleById(requestId);
     }
 
-    public RegistrationRequest openRequestDetails(int requestId, Integer actorId, String ipAddress) throws SQLException {
+    public RegistrationRequest openRequestDetails(int requestId, Integer actorId, String ipAddress)
+            throws SQLException {
         registrationRequestDAO.markUnderReviewIfNew(requestId, actorId, ipAddress);
         return registrationRequestDAO.findVisibleById(requestId);
     }

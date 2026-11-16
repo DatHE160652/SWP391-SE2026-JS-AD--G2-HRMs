@@ -221,6 +221,27 @@ public class RegistrationRequestDAO {
         }
     }
 
+    public boolean hasUndeliverableReceipt(int requestId) throws SQLException {
+        String sql = """
+                SELECT TOP (1) Status, ErrorCode
+                FROM EmailAttempts
+                WHERE RegistrationRequestId = ? AND EmailType = 'REQUEST_RECEIPT'
+                ORDER BY EmailAttemptId DESC
+                """;
+        try (Connection connection = connections.open();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, requestId);
+            try (ResultSet result = statement.executeQuery()) {
+                if (!result.next()) return false;
+                String status = result.getString("Status");
+                String errorCode = result.getString("ErrorCode");
+                return "FAILED".equalsIgnoreCase(status) && errorCode != null
+                        && List.of("MAIL_RECIPIENT_NOT_FOUND", "MAIL_DOMAIN_NOT_FOUND", "MAIL_RECIPIENT_INVALID")
+                                .contains(errorCode);
+            }
+        }
+    }
+
     public RegistrationRequestStats getStats(boolean includePlatformCounts) throws SQLException {
         String sql = "SELECT COUNT_BIG(CASE WHEN Status = 'NEW' THEN 1 END) AS NewCount, "
                 + "COUNT_BIG(CASE WHEN Status = 'UNDER_REVIEW' THEN 1 END) AS ReviewCount, "
@@ -459,7 +480,7 @@ public class RegistrationRequestDAO {
         }
     }
 
-    public MutationResult softDelete(int requestId, int actorId, String ipAddress) throws SQLException {
+    public MutationResult delete(int requestId, int actorId, String ipAddress) throws SQLException {
         try (Connection connection = connections.open()) {
             applyWriteOptions(connection);
             connection.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
@@ -476,16 +497,20 @@ public class RegistrationRequestDAO {
                 if (!List.of("NEW", "UNDER_REVIEW").contains(registration.getStatus())) {
                     connection.rollback(); completed = true; return MutationResult.conflict();
                 }
-                String sql = "UPDATE RegistrationRequests SET Status='DELETED', DeletedAt=SYSUTCDATETIME(), "
-                        + "DeletedByUserId=?, UpdatedAt=SYSUTCDATETIME() "
+                try (PreparedStatement statement = connection.prepareStatement(
+                        "DELETE FROM EmailAttempts WHERE RegistrationRequestId=?")) {
+                    statement.setInt(1, requestId);
+                    statement.executeUpdate();
+                }
+                String sql = "DELETE FROM RegistrationRequests "
                         + "WHERE RegistrationRequestId=? AND Status IN ('NEW','UNDER_REVIEW')";
                 try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                    statement.setInt(1, actorId); statement.setInt(2, requestId);
+                    statement.setInt(1, requestId);
                     if (statement.executeUpdate() != 1) {
                         connection.rollback(); completed = true; return MutationResult.conflict();
                     }
                 }
-                insertAudit(connection, actorId, "SOFT_DELETE_REQUEST", requestId,
+                insertAudit(connection, actorId, "DELETE_REQUEST", requestId,
                         registration.getStatus(), "DELETED", ipAddress);
                 connection.commit(); completed = true;
                 return MutationResult.deleted(registration);
@@ -502,6 +527,10 @@ public class RegistrationRequestDAO {
                 }
             }
         }
+    }
+
+    public MutationResult softDelete(int requestId, int actorId, String ipAddress) throws SQLException {
+        return delete(requestId, actorId, ipAddress);
     }
 
     private boolean isActiveSystemAdmin(Connection connection, int actorId) throws SQLException {

@@ -436,7 +436,6 @@ public class DataImportExcelService {
 
     private void executeImportAttendances(int companyId, Integer userId, List<ImportRowResult> rows, ImportExecuteResult result) throws SQLException {
         CompanyShiftSetting setting = new CompanyShiftSettingDAO().getShiftSetting(companyId);
-        int lunchBreak = setting != null ? setting.getLunchBreakMinutes() : 60;
 
         int processed = 0;
         int failed = 0;
@@ -491,14 +490,7 @@ public class DataImportExcelService {
                     continue;
                 }
 
-                BigDecimal totalHours = BigDecimal.ZERO;
-                if (inTime != null && outTime != null && outTime.isAfter(inTime)) {
-                    long minutes = Duration.between(inTime, outTime).toMinutes();
-                    if (minutes >= 300) {
-                        minutes = Math.max(0, minutes - lunchBreak);
-                    }
-                    totalHours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
-                }
+                BigDecimal totalHours = AttendanceService.calculateWorkedHours(inTime, outTime, setting);
 
                 String status = determineAttendanceStatus(inTime, outTime, setting);
                 attendanceDAO.upsertManualAdjustment(companyId, empId, date, inTime, outTime, totalHours, status,

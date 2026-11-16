@@ -60,5 +60,5 @@ public class LeaveRequest {
     public void setLegacy(boolean value) { legacy = value; }
     public List<LocalDate> getDates() { return dates; }
     public void setDates(List<LocalDate> value) { dates = List.copyOf(value); }
-    public String getTitle() { return "Đơn nghỉ phép #" + leaveRequestId; }
+    public String getTitle() { return "Đơn nghỉ phép"; }
 }

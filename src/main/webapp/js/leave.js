@@ -265,7 +265,12 @@ const LeaveApp = (() => {
 
     async function initPolicy() {
         const form = $('leavePolicyForm');
+        function syncQuotaLimit() {
+            const mode = $('quotaMode').value;
+            $('quotaDays').max = mode === 'MONTHLY' ? '29' : '366';
+        }
         function preview() {
+            syncQuotaLimit();
             const rawDays = Number($('quotaDays').value);
             const days = Number.isFinite(rawDays) && rawDays >= 0 ? Math.floor(rawDays) : 0;
             const mode = $('quotaMode').value;
@@ -286,7 +291,14 @@ const LeaveApp = (() => {
         }
         form.addEventListener('input',preview);
         form.addEventListener('submit',async event => {
-            event.preventDefault(); const btn=form.querySelector('button[type="submit"]'); btn.disabled=true;
+            event.preventDefault();
+            const mode = $('quotaMode').value;
+            const rawDays = Number($('quotaDays').value);
+            if (mode === 'MONTHLY' && (!Number.isInteger(rawDays) || rawDays < 0 || rawDays >= 30)) {
+                message('policyMessage', 'Quota theo tháng phải dưới 30 ngày (0–29 ngày).');
+                return;
+            }
+            const btn=form.querySelector('button[type="submit"]'); btn.disabled=true;
             try { await api('policy',new URLSearchParams(new FormData(form))); message('policyMessage','Đã lưu cấu hình.'); }
             catch(error) { message('policyMessage',error.message); }
             finally {btn.disabled=false;}

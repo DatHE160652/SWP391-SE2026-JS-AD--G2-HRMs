@@ -164,20 +164,13 @@ public class AttendanceService {
         }
 
         CompanyShiftSetting shiftSetting = shiftSettingDAO.getShiftSetting(companyId);
+        checkInTime = effectiveCheckInTime(checkInTime, shiftSetting);
 
         BigDecimal totalHours = BigDecimal.ZERO;
         String status = "Present";
 
         if (checkInTime != null && checkOutTime != null) {
-            Duration duration = Duration.between(checkInTime, checkOutTime);
-            long minutes = duration.toMinutes();
-            if (minutes >= 300 && shiftSetting.getLunchBreakMinutes() > 0) {
-                minutes = Math.max(0, minutes - shiftSetting.getLunchBreakMinutes());
-            }
-            totalHours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
-            if (totalHours.compareTo(BigDecimal.ZERO) < 0) {
-                totalHours = BigDecimal.ZERO;
-            }
+            totalHours = calculateWorkedHours(checkInTime, checkOutTime, shiftSetting);
 
             boolean isLate = checkInTime.isAfter(shiftSetting.getLateThreshold());
             boolean isEarly = checkOutTime.isBefore(shiftSetting.getShiftEndTime());
@@ -203,6 +196,31 @@ public class AttendanceService {
             adjusted.setWorkCredit(shiftSetting.calculateWorkCredit(adjusted.getTotalHours()));
         }
         return adjusted;
+    }
+
+    private static LocalTime effectiveCheckInTime(LocalTime checkInTime, CompanyShiftSetting shiftSetting) {
+        if (checkInTime == null || shiftSetting == null || shiftSetting.getShiftStartTime() == null) {
+            return checkInTime;
+        }
+        return checkInTime.isBefore(shiftSetting.getShiftStartTime()) ? shiftSetting.getShiftStartTime() : checkInTime;
+    }
+
+    public static BigDecimal calculateWorkedHours(LocalTime checkInTime, LocalTime checkOutTime, CompanyShiftSetting shiftSetting) {
+        if (checkInTime == null || checkOutTime == null || !checkOutTime.isAfter(checkInTime)) {
+            return BigDecimal.ZERO;
+        }
+        LocalTime shiftStart = shiftSetting != null ? shiftSetting.getShiftStartTime() : null;
+        LocalTime effectiveCheckIn = (shiftStart != null && checkInTime.isBefore(shiftStart)) ? shiftStart : checkInTime;
+        if (!checkOutTime.isAfter(effectiveCheckIn)) {
+            return BigDecimal.ZERO;
+        }
+        long minutes = Duration.between(effectiveCheckIn, checkOutTime).toMinutes();
+        int lunchBreak = shiftSetting != null ? shiftSetting.getLunchBreakMinutes() : 0;
+        if (minutes >= 300 && lunchBreak > 0) {
+            minutes = Math.max(0, minutes - lunchBreak);
+        }
+        BigDecimal totalHours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+        return totalHours.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : totalHours;
     }
 
     private void requireCompany(Integer companyId) {
@@ -233,6 +251,7 @@ public class AttendanceService {
         }
 
         CompanyShiftSetting shiftSetting = shiftSettingDAO.getShiftSetting(companyId);
+        checkInTime = effectiveCheckInTime(checkInTime, shiftSetting);
         LocalTime lateThreshold = shiftSetting.getLateThreshold();
         String status = checkInTime.isAfter(lateThreshold) ? "Late" : "Present";
 
@@ -277,24 +296,13 @@ public class AttendanceService {
         }
 
         CompanyShiftSetting shiftSetting = shiftSettingDAO.getShiftSetting(companyId);
-
-        Duration duration = Duration.between(existing.getCheckInTime(), checkOutTime);
-        long minutes = duration.toMinutes();
-
-        // Trừ thời gian ăn trưa nếu làm việc từ 5 tiếng trở lên
-        if (minutes >= 300 && shiftSetting.getLunchBreakMinutes() > 0) {
-            minutes = Math.max(0, minutes - shiftSetting.getLunchBreakMinutes());
-        }
-
-        BigDecimal totalHours = BigDecimal.valueOf(minutes)
-                .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
-        if (totalHours.compareTo(BigDecimal.ZERO) < 0) {
-            totalHours = BigDecimal.ZERO;
-        }
+        BigDecimal totalHours = calculateWorkedHours(existing.getCheckInTime(), checkOutTime, shiftSetting);
 
         String status = existing.getStatus();
         if (checkOutTime.isBefore(shiftSetting.getShiftEndTime())) {
-            status = "Early Leave";
+            if (!"Late".equalsIgnoreCase(status)) {
+                status = "Early Leave";
+            }
         } else if ("Absent".equalsIgnoreCase(status) || status == null) {
             status = "Present";
         }
@@ -467,6 +475,9 @@ public class AttendanceService {
         }
         if (!"PENDING".equalsIgnoreCase(exp.getStatus())) {
             throw new IllegalStateException("Đơn giải trình này đã được xử lý trước đó.");
+        }
+        if (reviewerEmployeeId != null && !explanationDAO.isDirectSubordinate(companyId, exp.getEmployeeId(), reviewerEmployeeId)) {
+            throw new SecurityException("Bạn chỉ có quyền duyệt đơn giải trình của nhân viên thuộc quyền quản lý trực tiếp.");
         }
         checkTimesheetNotLocked(companyId, exp.getAttendanceDate());
 

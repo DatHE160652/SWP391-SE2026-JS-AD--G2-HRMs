@@ -351,6 +351,24 @@ public class EmployeeLifecycleService {
                 throw new IllegalArgumentException("Tài khoản đang ngừng hoạt động do hợp đồng kết thúc. Cần kích hoạt hợp đồng mới và đến ngày hiệu lực trước khi mở tài khoản.");
             if ("create".equals(action)) {
                 if (userId != null) throw new IllegalArgumentException("Nhân viên đã có tài khoản truy cập.");
+                var quotaRows = dao.query(connection,
+                        """
+                        SELECT (SELECT COUNT_BIG(*) FROM Users WITH (UPDLOCK, HOLDLOCK) WHERE CompanyId = ?) AS AccountCount,
+                               (SELECT TOP (1) p.MaxAccounts
+                                FROM Subscriptions s WITH (UPDLOCK, HOLDLOCK)
+                                JOIN Plans p WITH (UPDLOCK, HOLDLOCK) ON p.PlanId = s.PlanId
+                                WHERE s.CompanyId = ?
+                                ORDER BY s.SubscriptionId DESC) AS MaxAccounts
+                        """,
+                        principal.getCompanyId(), principal.getCompanyId());
+                if (!quotaRows.isEmpty()) {
+                    long accountCount = ((Number) quotaRows.get(0).get("AccountCount")).longValue();
+                    Object maxObj = quotaRows.get(0).get("MaxAccounts");
+                    int maxAccounts = maxObj instanceof Number n ? n.intValue() : 20;
+                    if (accountCount >= maxAccounts) {
+                        throw new IllegalArgumentException("Đã đạt đến giới hạn của gói bạn đang dùng");
+                    }
+                }
                 String assignedRole=new com.hrms.dao.OrganizationRoleDAO().roleForEmployee(connection,principal.getCompanyId(),employeeId);
                 if (roleCode != null && !roleCode.isBlank() && !assignedRole.equals(roleCode))
                     throw new FieldValidationException("roleCode","Vai trò tài khoản phải theo chức danh đang được phân công.");
