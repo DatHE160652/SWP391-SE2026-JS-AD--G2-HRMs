@@ -1,7 +1,7 @@
 package com.hrms.controller.auth;
 
 import com.hrms.service.security.SystemAdminPrincipal;
-import com.hrms.service.SystemAdminAuthService;
+import com.hrms.service.sysadmin.SystemAdminAuthService;
 import com.hrms.util.SecuritySupport;
 
 import jakarta.servlet.ServletException;

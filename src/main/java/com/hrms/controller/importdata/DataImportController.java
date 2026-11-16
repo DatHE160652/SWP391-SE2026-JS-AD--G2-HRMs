@@ -3,7 +3,7 @@ package com.hrms.controller.importdata;
 import com.hrms.model.ImportExecuteResult;
 import com.hrms.model.ImportPreviewResult;
 import com.hrms.model.ImportRowResult;
-import com.hrms.service.DataImportExcelService;
+import com.hrms.service.importdata.DataImportExcelService;
 import com.hrms.service.security.TenantPrincipal;
 import com.hrms.util.SecuritySupport;
 import jakarta.servlet.ServletException;

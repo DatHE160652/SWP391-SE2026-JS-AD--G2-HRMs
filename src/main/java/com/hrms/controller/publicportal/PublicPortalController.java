@@ -2,8 +2,8 @@ package com.hrms.controller.publicportal;
 
 import com.hrms.service.security.TenantPrincipal;
 import com.hrms.model.publicportal.ConsultationSubmission;
-import com.hrms.service.TenantAuthService;
-import com.hrms.service.EmployeeHistoryService;
+import com.hrms.service.publicportal.TenantAuthService;
+import com.hrms.service.employee.EmployeeHistoryService;
 import com.hrms.service.publicportal.ConsultationRequestService;
 import com.hrms.util.SecuritySupport;
 

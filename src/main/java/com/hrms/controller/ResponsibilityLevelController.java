@@ -1,7 +1,7 @@
 package com.hrms.controller;
 
 import com.hrms.model.ResponsibilityLevel;
-import com.hrms.service.ResponsibilityLevelService;
+import com.hrms.service.companyadmin.ResponsibilityLevelService;
 import com.hrms.service.FieldValidationException;
 import com.hrms.util.SecuritySupport;
 import com.hrms.util.ValidationSupport;

@@ -89,8 +89,8 @@
     </main>
 
 
-<script src="../js/employee.js?v=<%= application.getResource("/js/employee.js").openConnection().getLastModified() %>"></script>
-<script src="../js/document.js?v=<%= application.getResource("/js/document.js").openConnection().getLastModified() %>"></script>
-<script src="${pageContext.request.contextPath}/js/organization-shell.js?v=<%= application.getResource("/js/organization-shell.js").openConnection().getLastModified() %>" defer></script>
+<script src="../js/companyadmin/employee.js?v=<%= application.getResource("/js/companyadmin/employee.js").openConnection().getLastModified() %>"></script>
+<script src="../js/employee/document.js?v=<%= application.getResource("/js/employee/document.js").openConnection().getLastModified() %>"></script>
+<script src="${pageContext.request.contextPath}/js/companyadmin/organization-shell.js?v=<%= application.getResource("/js/companyadmin/organization-shell.js").openConnection().getLastModified() %>" defer></script>
 </body>
 </html>

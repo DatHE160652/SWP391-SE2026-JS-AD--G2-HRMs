@@ -3,8 +3,8 @@ package com.hrms.controller;
 import com.hrms.util.ValidationSupport;
 
 import com.hrms.model.EmployeeAssignment;
-import com.hrms.dao.EmployeeAssignmentDAO.DepartmentMemberOption;
-import com.hrms.service.EmployeeAssignmentService;
+import com.hrms.dao.companyadmin.EmployeeAssignmentDAO.DepartmentMemberOption;
+import com.hrms.service.companyadmin.EmployeeAssignmentService;
 import com.hrms.service.security.TenantPrincipal;
 import com.hrms.util.SecuritySupport;
 
@@ -125,7 +125,7 @@ public class EmployeeAssignmentController extends HttpServlet {
                 EmployeeAssignment current = employeeAssignmentService.getEmployeeOrganization(companyId, employeeId);
                 Integer positionId = parseNullableInt(request.getParameter("positionId"));
                 if (positionId == null) throw new com.hrms.service.FieldValidationException("positionId","Vui lòng chọn chức danh thay thế; không xóa lịch sử phân công.");
-                var position = new com.hrms.service.PositionService().getPositionDetail(companyId,positionId);
+                var position = new com.hrms.service.companyadmin.PositionService().getPositionDetail(companyId,positionId);
                 if (position == null) throw new com.hrms.service.FieldValidationException("positionId","Không tìm thấy chức danh trong công ty.");
                 success = employeeAssignmentService.saveOrganization(companyId, employeeId, position.getDepartmentId(), positionId,
                         resolveManager(request,current.getManagerId()),principal.getUserId(),request.getParameter("reason"));

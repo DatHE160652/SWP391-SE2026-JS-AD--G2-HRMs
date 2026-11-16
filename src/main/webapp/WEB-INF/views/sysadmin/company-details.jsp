@@ -21,10 +21,8 @@
             <p><%= com.hrms.i18n.Language.text(request, "ui_01834dd867de", "Ngày tạo:") %> <strong><c:out value="${company.companyCreatedAtDisplay}"/></strong> <span class="workspace-code">Workspace: <c:out value="${company.workspaceCode}"/></span></p>
         </div>
         <div class="company-hero-actions">
-            <c:choose>
-                <c:when test="${company.subscriptionActive}"><button class="button button-activate" type="button" disabled aria-disabled="true" title="<%= com.hrms.i18n.Language.text(request, "ui_d6d7257196c1", "Subscription đang hoạt động") %>"><svg class="icon" aria-hidden="true"><use href="${icons}#check"/></svg><%= com.hrms.i18n.Language.text(request, "ui_c29d2e125612", "Kích hoạt Subscription") %></button><button class="button button-suspend" type="button" data-dialog-open="suspend-subscription-dialog"><svg class="icon" aria-hidden="true"><use href="${icons}#close"/></svg><%= com.hrms.i18n.Language.text(request, "ui_2883189c64c9", "Tạm ngưng Subscription") %></button></c:when>
-                <c:when test="${company.subscriptionSuspended}"><button class="button button-activate" type="button" data-dialog-open="activate-subscription-dialog"><svg class="icon" aria-hidden="true"><use href="${icons}#check"/></svg><%= com.hrms.i18n.Language.text(request, "ui_c29d2e125612", "Kích hoạt Subscription") %></button><button class="button button-suspend" type="button" disabled aria-disabled="true" title="<%= com.hrms.i18n.Language.text(request, "ui_eb931602db13", "Subscription đã tạm ngưng") %>"><svg class="icon" aria-hidden="true"><use href="${icons}#close"/></svg><%= com.hrms.i18n.Language.text(request, "ui_2883189c64c9", "Tạm ngưng Subscription") %></button></c:when>
-            </c:choose>
+            <button class="button button-primary" type="button" data-dialog-open="renew-subscription-dialog">Gia hạn gói</button>
+            <button class="button" type="button" data-dialog-open="change-plan-dialog">Đổi gói dịch vụ</button>
         </div>
     </section>
     <c:if test="${not empty actionMessage}"><div class="alert alert-success" role="status"><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("actionMessage")) %>'/></div></c:if>
@@ -99,7 +97,7 @@
             </div>
             <div><dt><%= com.hrms.i18n.Language.text(request, "ui_e18c02837795", "Ngày bắt đầu:") %></dt><dd><c:out value="${company.subscriptionStartDateDisplay}"/></dd>
             </div>
-            <div><dt><%= com.hrms.i18n.Language.text(request, "ui_ea3213ee56cf", "Ngày kết thúc:") %></dt><dd><c:out value="${company.subscriptionEndDateDisplay}"/></dd>
+            <div><dt><%= com.hrms.i18n.Language.text(request, "ui_ea3213ee56cf", "Ngày kết thúc:") %></dt><dd><c:out value="${company.subscriptionEndDateDisplay}"/><c:if test="${company.expiringSoon}"> <span class="status status-UNDER_REVIEW">Sắp hết hạn (còn ${company.daysRemaining} ngày)</span></c:if></dd>
             </div><c:if test="${company.subscriptionSuspended}">
             <div><dt><%= com.hrms.i18n.Language.text(request, "ui_39d30a18c65b", "Tạm ngưng lúc:") %></dt><dd><c:out value="${company.suspendedAtDisplay}"/></dd>
             </div>
@@ -108,20 +106,47 @@
         </section>
     </div>
 
-    <c:if test="${company.subscriptionActive}">
-    <dialog class="action-dialog" id="suspend-subscription-dialog" aria-labelledby="suspend-subscription-title">
-    <form method="post" action="${pageContext.request.contextPath}/systemadmin/company/suspend"><input type="hidden" name="id" value="<c:out value='${company.companyId}'/>"><input type="hidden" name="csrfToken" value="<c:out value='${sessionScope.systemAdminCsrfToken}'/>"><h2 id="suspend-subscription-title"><%= com.hrms.i18n.Language.text(request, "ui_db381a7248ed", "Xác nhận Tạm ngưng Subscription") %></h2><p>Workspace <strong><c:out value="${company.workspaceCode}"/></strong> <%= com.hrms.i18n.Language.text(request, "ui_8857ddac5c69", "sẽ bị chặn truy cập, kể cả các phiên tenant đang đăng nhập. Company và tài khoản vẫn được giữ nguyên.") %></p><label class="dialog-field" for="suspension-reason"><%= com.hrms.i18n.Language.text(request, "ui_e0e820b261f4", "Lý do tạm ngưng dịch vụ") %> <span aria-hidden="true">*</span></label><textarea id="suspension-reason" name="reason" maxlength="500" required rows="3" placeholder="<%= com.hrms.i18n.Language.text(request, "ui_6d6b4aebe683", "Nhập lý do tạm ngưng") %>"></textarea>
-    <div class="dialog-actions"><button class="button" type="button" data-dialog-close><%= com.hrms.i18n.Language.text(request, "ui_247d4b1efe9c", "Hủy bỏ") %></button><button class="button button-danger" type="submit"><%= com.hrms.i18n.Language.text(request, "ui_6cdc712ea0c8", "Xác nhận tạm ngưng") %></button>
-    </div>
-    </form>
-    </dialog></c:if>
-    <c:if test="${company.subscriptionSuspended}">
-    <dialog class="action-dialog" id="activate-subscription-dialog" aria-labelledby="activate-subscription-title">
-    <form method="post" action="${pageContext.request.contextPath}/systemadmin/company/activate"><input type="hidden" name="id" value="<c:out value='${company.companyId}'/>"><input type="hidden" name="csrfToken" value="<c:out value='${sessionScope.systemAdminCsrfToken}'/>"><h2 id="activate-subscription-title"><%= com.hrms.i18n.Language.text(request, "ui_85a4da3fb635", "Kích hoạt lại Subscription?") %></h2><p><%= com.hrms.i18n.Language.text(request, "ui_01ec9e32467e", "Kích hoạt lại Subscription hiện có cho") %> <strong><c:out value="${company.companyName}"/></strong><%= com.hrms.i18n.Language.text(request, "ui_28099819f0a4", ". Tài khoản bị khóa hoặc vô hiệu hóa sẽ không tự được mở lại.") %></p><label class="dialog-field" for="activation-reason"><%= com.hrms.i18n.Language.text(request, "ui_1ab8ccefe801", "Lý do kích hoạt lại dịch vụ") %> <span aria-hidden="true">*</span></label><textarea id="activation-reason" name="reason" maxlength="500" required rows="3" placeholder="<%= com.hrms.i18n.Language.text(request, "ui_185c5edfad26", "Nhập lý do kích hoạt lại") %>"></textarea>
-    <div class="dialog-actions"><button class="button" type="button" data-dialog-close><%= com.hrms.i18n.Language.text(request, "ui_d2b73ab2ada1", "Đóng") %></button><button class="button button-primary" type="submit"><%= com.hrms.i18n.Language.text(request, "ui_5f452ce1b293", "Xác nhận kích hoạt") %></button>
-    </div>
-    </form>
-    </dialog></c:if>
+    <dialog class="action-dialog" id="renew-subscription-dialog" aria-labelledby="renew-subscription-title">
+        <form method="post" action="${pageContext.request.contextPath}/systemadmin/company/renew">
+            <input type="hidden" name="id" value="<c:out value='${company.companyId}'/>">
+            <input type="hidden" name="csrfToken" value="<c:out value='${sessionScope.systemAdminCsrfToken}'/>">
+            <h2 id="renew-subscription-title">Gia hạn Subscription</h2>
+            <p>Gia hạn thời gian sử dụng cho <strong><c:out value="${company.companyName}"/></strong>. Nếu gói đang tạm ngưng do hết hạn, hệ thống sẽ tự kích hoạt lại sang <code>ACTIVE</code>.</p>
+            <label class="dialog-field" for="renew-months">Thời gian gia hạn thêm
+                <select id="renew-months" name="months" style="width:100%; margin-top:6px;">
+                    <option value="1">+1 tháng</option>
+                    <option value="3">+3 tháng</option>
+                    <option value="6">+6 tháng</option>
+                    <option value="12">+12 tháng (1 năm)</option>
+                </select>
+            </label>
+            <div class="dialog-actions">
+                <button class="button" type="button" data-dialog-close>Hủy bỏ</button>
+                <button class="button button-primary" type="submit">Xác nhận gia hạn</button>
+            </div>
+        </form>
+    </dialog>
+    <dialog class="action-dialog" id="change-plan-dialog" aria-labelledby="change-plan-title">
+        <form method="post" action="${pageContext.request.contextPath}/systemadmin/company/change-plan">
+            <input type="hidden" name="id" value="<c:out value='${company.companyId}'/>">
+            <input type="hidden" name="csrfToken" value="<c:out value='${sessionScope.systemAdminCsrfToken}'/>">
+            <h2 id="change-plan-title">Đổi gói dịch vụ (Plan)</h2>
+            <p>Gói hiện tại: <strong><c:out value="${company.planName}"/></strong> (<c:out value="${company.accountCount}"/> / <c:out value="${company.maxAccounts}"/> tài khoản đang dùng).</p>
+            <label class="dialog-field" for="new-plan-id">Chọn gói mới
+                <select id="new-plan-id" name="planId" style="width:100%; margin-top:6px;">
+                    <c:forEach var="plan" items="${activePlans}">
+                        <option value="${plan.planId}" ${plan.planName == company.planName ? 'selected' : ''}>
+                            <c:out value="${plan.planName}"/> — tối đa <c:out value="${plan.maxAccounts}"/> acc — <c:out value="${plan.formattedPrice}"/> đ/<c:out value="${plan.billingCycleLabel}"/>
+                        </option>
+                    </c:forEach>
+                </select>
+            </label>
+            <div class="dialog-actions">
+                <button class="button" type="button" data-dialog-close>Hủy bỏ</button>
+                <button class="button button-primary" type="submit">Cập nhật gói</button>
+            </div>
+        </form>
+    </dialog>
 </main>
 </body>
 </html>

@@ -209,7 +209,7 @@
     </main>
 
 
-<script src="../js/employee.js?v=<%= application.getResource("/js/employee.js").openConnection().getLastModified() %>"></script>
-<script src="../js/profile-update-periods.js?v=<%= System.currentTimeMillis() %>"></script>
+<script src="../js/companyadmin/employee.js?v=<%= application.getResource("/js/companyadmin/employee.js").openConnection().getLastModified() %>"></script>
+<script src="../js/employee/profile-update-periods.js?v=<%= System.currentTimeMillis() %>"></script>
 </body>
 </html>

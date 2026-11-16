@@ -25,8 +25,8 @@
 </div>
 </section>
 </main>
-<script src="${pageContext.request.contextPath}/js/department.js?v=<%= application.getResource("/js/department.js").openConnection().getLastModified() %>"></script>
+<script src="${pageContext.request.contextPath}/js/companyadmin/department.js?v=<%= application.getResource("/js/companyadmin/department.js").openConnection().getLastModified() %>"></script>
 <%@ include file="/WEB-INF/views/common/initial-assignment.jspf" %>
-<script src="${pageContext.request.contextPath}/js/organization-detail.js?v=<%= application.getResource("/js/organization-detail.js").openConnection().getLastModified() %>" defer></script>
-<script src="${pageContext.request.contextPath}/js/organization-shell.js?v=<%= application.getResource("/js/organization-shell.js").openConnection().getLastModified() %>" defer></script>
+<script src="${pageContext.request.contextPath}/js/companyadmin/organization-detail.js?v=<%= application.getResource("/js/companyadmin/organization-detail.js").openConnection().getLastModified() %>" defer></script>
+<script src="${pageContext.request.contextPath}/js/companyadmin/organization-shell.js?v=<%= application.getResource("/js/companyadmin/organization-shell.js").openConnection().getLastModified() %>" defer></script>
 </body></html>

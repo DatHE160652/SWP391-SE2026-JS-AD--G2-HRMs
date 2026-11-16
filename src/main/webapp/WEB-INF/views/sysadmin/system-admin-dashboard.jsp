@@ -30,8 +30,8 @@
         </div><strong class="stat-value"><c:out value="${stats.tenantUserCount}"/></strong><p class="stat-note"><%= com.hrms.i18n.Language.text(request, "ui_21300b107475", "Không gồm System Admin") %></p>
         </article>
         <article class="stat-card">
-        <div class="stat-heading"><h2><%= com.hrms.i18n.Language.text(request, "ui_active_subscription_card", "Tình trạng gói dịch vụ") %><br>(Subscription Active)</h2><span class="stat-icon stat-icon-emerald"><svg class="icon" aria-hidden="true"><use href="${icons}#check-circle"/></svg></span>
-        </div><strong class="stat-value"><c:out value="${stats.activeSubscriptionCount}"/></strong><p class="stat-note"><%= com.hrms.i18n.Language.text(request, "ui_active_subscription_note", "Doanh nghiệp đang hoạt động") %></p>
+        <div class="stat-heading"><h2><%= com.hrms.i18n.Language.text(request, "ui_active_subscription_card", "Tình trạng gói dịch vụ") %></h2><span class="stat-icon stat-icon-emerald"><svg class="icon" aria-hidden="true"><use href="${icons}#credit-card"/></svg></span>
+        </div><strong class="stat-value"><c:out value="${stats.planCount}"/></strong><p class="stat-note"><%= com.hrms.i18n.Language.text(request, "ui_plan_count_note", "Gói dịch vụ trên nền tảng") %></p>
         </article>
     </section>
     <section class="panel queue-panel" aria-labelledby="queue-title">

@@ -8,15 +8,23 @@ public final class RegistrationRequestStats {
     private final long companyCount;
     private final long tenantUserCount;
     private final long activeSubscriptionCount;
+    private final long planCount;
 
     public RegistrationRequestStats(long newCount, long reviewCount, long convertingCount,
             long convertedCount, long companyCount, long tenantUserCount) {
-        this(newCount, reviewCount, convertingCount, convertedCount, companyCount, tenantUserCount, 0L);
+        this(newCount, reviewCount, convertingCount, convertedCount, companyCount, tenantUserCount, 0L, 0L);
     }
 
     public RegistrationRequestStats(long newCount, long reviewCount, long convertingCount,
             long convertedCount, long companyCount, long tenantUserCount,
             long activeSubscriptionCount) {
+        this(newCount, reviewCount, convertingCount, convertedCount, companyCount, tenantUserCount,
+                activeSubscriptionCount, 0L);
+    }
+
+    public RegistrationRequestStats(long newCount, long reviewCount, long convertingCount,
+            long convertedCount, long companyCount, long tenantUserCount,
+            long activeSubscriptionCount, long planCount) {
         this.newCount = newCount;
         this.reviewCount = reviewCount;
         this.convertingCount = convertingCount;
@@ -24,6 +32,7 @@ public final class RegistrationRequestStats {
         this.companyCount = companyCount;
         this.tenantUserCount = tenantUserCount;
         this.activeSubscriptionCount = activeSubscriptionCount;
+        this.planCount = planCount;
     }
 
     public long getNewCount() {
@@ -56,5 +65,9 @@ public final class RegistrationRequestStats {
 
     public long getActiveSubscriptionCount() {
         return activeSubscriptionCount;
+    }
+
+    public long getPlanCount() {
+        return planCount;
     }
 }

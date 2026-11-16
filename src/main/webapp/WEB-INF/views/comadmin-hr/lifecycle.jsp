@@ -38,13 +38,13 @@
 <div class="lc-form-section"><div id="lc-action-error" class="lc-alert" role="alert"></div><div id="lc-action-fields" class="lc-form-grid"></div></div>
 <div class="lc-modal-footer"><button type="button" data-close class="secondary"><%= com.hrms.i18n.Language.text(request, "ui_d2b73ab2ada1", "Đóng") %></button><button id="lc-action-save" type="submit"><%= com.hrms.i18n.Language.text(request, "ui_a306970e8b81", "Lưu") %></button></div>
 </form></dialog><div id="lc-toast" class="lc-toast" role="status"></div>
-<script src="${pageContext.request.contextPath}/js/lifecycle-http.js?v=<%= application.getResource("/js/lifecycle-http.js").openConnection().getLastModified() %>" defer></script>
-<script src="${pageContext.request.contextPath}/js/organization-chart.js?v=<%= application.getResource("/js/organization-chart.js").openConnection().getLastModified() %>" defer></script>
-<script src="${pageContext.request.contextPath}/js/organization-explorer.js?v=<%= application.getResource("/js/organization-explorer.js").openConnection().getLastModified() %>" defer></script>
-<script src="${pageContext.request.contextPath}/js/dashboard.js?v=<%= application.getResource("/js/dashboard.js").openConnection().getLastModified() %>" defer></script>
+<script src="${pageContext.request.contextPath}/js/companyadmin/lifecycle-http.js?v=<%= application.getResource("/js/companyadmin/lifecycle-http.js").openConnection().getLastModified() %>" defer></script>
+<script src="${pageContext.request.contextPath}/js/companyadmin/organization-chart.js?v=<%= application.getResource("/js/companyadmin/organization-chart.js").openConnection().getLastModified() %>" defer></script>
+<script src="${pageContext.request.contextPath}/js/companyadmin/organization-explorer.js?v=<%= application.getResource("/js/companyadmin/organization-explorer.js").openConnection().getLastModified() %>" defer></script>
+<script src="${pageContext.request.contextPath}/js/companyadmin/dashboard.js?v=<%= application.getResource("/js/companyadmin/dashboard.js").openConnection().getLastModified() %>" defer></script>
 
 
-<script src="${pageContext.request.contextPath}/js/lifecycle.js?v=<%= application.getResource("/js/lifecycle.js").openConnection().getLastModified() %>" defer></script>
+<script src="${pageContext.request.contextPath}/js/companyadmin/lifecycle.js?v=<%= application.getResource("/js/companyadmin/lifecycle.js").openConnection().getLastModified() %>" defer></script>
 <%@ include file="/WEB-INF/views/common/import-modal.jspf" %>
-<script src="${pageContext.request.contextPath}/js/import-modal.js"></script>
+<script src="${pageContext.request.contextPath}/js/import/import-modal.js"></script>
 </body></html>

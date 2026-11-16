@@ -4,8 +4,8 @@ import com.hrms.model.RegistrationRequest;
 import com.hrms.model.RegistrationRequestFilter;
 import com.hrms.model.RegistrationRequestPage;
 import com.hrms.model.RegistrationRequestStats;
-import com.hrms.service.RegistrationRequestService;
-import com.hrms.service.RequestActionException;
+import com.hrms.service.sysadmin.RegistrationRequestService;
+import com.hrms.service.sysadmin.RequestActionException;
 import com.hrms.service.security.SystemAdminPrincipal;
 import com.hrms.util.SecuritySupport;
 
@@ -48,7 +48,9 @@ public class RegistrationRequestController extends HttpServlet {
             showDetails(request, response);
             return;
         }
-        if ("/systemadmin/registration-request/confirm".equals(path) || "/systemadmin/registration-request/delete".equals(path)) {
+        if ("/systemadmin/registration-request/confirm".equals(path)
+                || "/systemadmin/registration-request/delete".equals(path)
+                || "/systemadmin/registration-request/resend".equals(path)) {
             response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
             return;
         }
@@ -61,7 +63,8 @@ public class RegistrationRequestController extends HttpServlet {
         SecuritySupport.applyNoStore(response::setHeader);
         String path = request.getServletPath();
         if (!"/systemadmin/registration-request/confirm".equals(path)
-                && !"/systemadmin/registration-request/delete".equals(path)) {
+                && !"/systemadmin/registration-request/delete".equals(path)
+                && !"/systemadmin/registration-request/resend".equals(path)) {
             response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
             return;
         }
@@ -81,8 +84,13 @@ public class RegistrationRequestController extends HttpServlet {
         SystemAdminPrincipal principal = SecuritySupport.getPrincipal(request);
         try {
             if ("/systemadmin/registration-request/confirm".equals(path)) {
+                Integer planId = null;
+                String planRaw = request.getParameter("planId");
+                if (planRaw != null && !planRaw.isBlank()) {
+                    planId = parsePositiveId(planRaw);
+                }
                 RegistrationRequestService.ConfirmationResult result = registrationRequestService.confirm(
-                        requestId, principal.getUserId(), request.getRemoteAddr());
+                        requestId, principal.getUserId(), request.getRemoteAddr(), planId);
                 request.getSession(true).removeAttribute(FLASH_WARNING);
                 String emailNotice = switch (result.emailStatus()) {
                     case "ACCEPTED" -> " Máy chủ email đã chấp nhận gửi thông tin đăng nhập (chưa bảo đảm đã đến hộp thư).";
@@ -95,6 +103,17 @@ public class RegistrationRequestController extends HttpServlet {
                     request.getSession(true).setAttribute(FLASH_WARNING,
                             "Chưa ghi nhận được kết quả gửi email vào hệ thống. Không tạo lại tenant; gửi lại email thuộc.");
                 }
+                response.sendRedirect(request.getContextPath() + "/systemadmin/registration-request-details?id=" + requestId);
+            } else if ("/systemadmin/registration-request/resend".equals(path)) {
+                RegistrationRequestService.ConfirmationResult result = registrationRequestService.resendActivation(
+                        requestId, principal.getUserId(), request.getRemoteAddr());
+                request.getSession(true).removeAttribute(FLASH_WARNING);
+                String emailNotice = switch (result.emailStatus()) {
+                    case "ACCEPTED" -> "Đã cấp mật khẩu tạm mới và gửi lại email kích hoạt (máy chủ đã chấp nhận thư).";
+                    case "UNKNOWN" -> "Đã cấp mật khẩu tạm mới nhưng chưa xác định được kết quả gửi email.";
+                    default -> "Đã cấp mật khẩu tạm mới nhưng gửi email kích hoạt thất bại. Kiểm tra SMTP.";
+                };
+                request.getSession(true).setAttribute(FLASH_MESSAGE, emailNotice);
                 response.sendRedirect(request.getContextPath() + "/systemadmin/registration-request-details?id=" + requestId);
             } else {
                 registrationRequestService.delete(requestId, principal.getUserId(), request.getRemoteAddr());
@@ -138,6 +157,7 @@ public class RegistrationRequestController extends HttpServlet {
                     request.getParameter("date"), request.getParameter("page"), request.getParameter("size"));
             RegistrationRequestPage page = registrationRequestService.getPage(filter);
             setNavigation(request, "requests");
+            request.setAttribute("activePlans", new com.hrms.dao.sysadmin.PlanDAO().findActive());
             request.setAttribute("filter", filter);
             request.setAttribute("requestPage", page);
             request.setAttribute("registrationRequests", page.getItems());
@@ -173,6 +193,7 @@ public class RegistrationRequestController extends HttpServlet {
                 return;
             }
             setNavigation(request, "requests");
+            request.setAttribute("activePlans", new com.hrms.dao.sysadmin.PlanDAO().findActive());
             request.setAttribute("registrationRequest", registrationRequest);
             request.getRequestDispatcher("/WEB-INF/views/sysadmin/registration-request-details.jsp")
                     .forward(request, response);

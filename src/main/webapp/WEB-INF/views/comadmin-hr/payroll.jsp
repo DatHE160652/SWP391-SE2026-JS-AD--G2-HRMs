@@ -346,5 +346,5 @@
         <button class="btn primary" type="submit">Lưu cấu hình công thức</button>
     </div>
 </form></dialog>
-<script src="${pageContext.request.contextPath}/js/payroll.js?v=<%= application.getResource("/js/payroll.js").openConnection().getLastModified() %>"></script>
+<script src="${pageContext.request.contextPath}/js/companyadmin/payroll.js?v=<%= application.getResource("/js/companyadmin/payroll.js").openConnection().getLastModified() %>"></script>
 </body></html>

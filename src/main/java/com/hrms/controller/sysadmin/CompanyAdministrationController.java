@@ -2,9 +2,9 @@ package com.hrms.controller.sysadmin;
 
 import com.hrms.model.CompanyAdministrationFilter;
 import com.hrms.model.CompanyAdministrationView;
-import com.hrms.service.CompanyAdministrationService;
-import com.hrms.service.RequestActionException;
-import com.hrms.service.RegistrationRequestService;
+import com.hrms.service.sysadmin.CompanyAdministrationService;
+import com.hrms.service.sysadmin.RequestActionException;
+import com.hrms.service.sysadmin.RegistrationRequestService;
 import com.hrms.service.security.SystemAdminPrincipal;
 import com.hrms.util.SecuritySupport;
 
@@ -45,8 +45,8 @@ public class CompanyAdministrationController extends HttpServlet {
             showDetails(request, response);
             return;
         }
-        if ("/systemadmin/company/suspend".equals(path)
-                || "/systemadmin/company/activate".equals(path)) {
+        if ("/systemadmin/company/renew".equals(path)
+                || "/systemadmin/company/change-plan".equals(path)) {
             response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
             return;
         }
@@ -58,8 +58,8 @@ public class CompanyAdministrationController extends HttpServlet {
             throws ServletException, IOException {
         SecuritySupport.applyNoStore(response::setHeader);
         String path = request.getServletPath();
-        if (!"/systemadmin/company/suspend".equals(path)
-                && !"/systemadmin/company/activate".equals(path)) {
+        if (!"/systemadmin/company/renew".equals(path)
+                && !"/systemadmin/company/change-plan".equals(path)) {
             response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
             return;
         }
@@ -79,15 +79,16 @@ public class CompanyAdministrationController extends HttpServlet {
 
         SystemAdminPrincipal principal = SecuritySupport.getPrincipal(request);
         try {
-            String reason = request.getParameter("reason");
-            if ("/systemadmin/company/suspend".equals(path)) {
-                companyService.suspend(companyId, principal.getUserId(), reason, request.getRemoteAddr());
+            if ("/systemadmin/company/renew".equals(path)) {
+                int months = parsePositiveId(request.getParameter("months"));
+                companyService.renew(companyId, principal.getUserId(), months, request.getRemoteAddr());
                 request.getSession(true).setAttribute(FLASH_MESSAGE,
-                        "Đã tạm ngưng Subscription. Workspace đã bị chặn cho mọi phiên tenant.");
+                        "Đã gia hạn Subscription thêm " + months + " tháng.");
             } else {
-                companyService.activate(companyId, principal.getUserId(), reason, request.getRemoteAddr());
+                int planId = parsePositiveId(request.getParameter("planId"));
+                companyService.changePlan(companyId, principal.getUserId(), planId, request.getRemoteAddr());
                 request.getSession(true).setAttribute(FLASH_MESSAGE,
-                        "Đã kích hoạt lại Subscription. Workspace có thể đăng nhập nếu Company và tài khoản vẫn hợp lệ.");
+                        "Đã cập nhật gói dịch vụ (Plan) cho doanh nghiệp.");
             }
             response.sendRedirect(request.getContextPath() + "/systemadmin/company-details?id=" + companyId);
         } catch (RequestActionException exception) {
@@ -137,6 +138,7 @@ public class CompanyAdministrationController extends HttpServlet {
             setNavigation(request);
             consumeFlash(request);
             request.setAttribute("company", company);
+            request.setAttribute("activePlans", new com.hrms.dao.sysadmin.PlanDAO().findActive());
             request.getRequestDispatcher("/WEB-INF/views/sysadmin/company-details.jsp").forward(request, response);
         } catch (SQLException exception) {
             showError(request, response, "Không thể tải chi tiết Company.");

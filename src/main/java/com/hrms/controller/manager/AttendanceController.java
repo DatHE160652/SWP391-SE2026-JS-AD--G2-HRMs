@@ -1,17 +1,17 @@
 package com.hrms.controller.manager;
 
-import com.hrms.dao.AttendanceDAO.AttendanceDTO;
-import com.hrms.dao.AttendanceReportDAO;
-import com.hrms.dao.AttendanceSummaryDAO;
+import com.hrms.dao.manager.AttendanceDAO.AttendanceDTO;
+import com.hrms.dao.manager.AttendanceReportDAO;
+import com.hrms.dao.manager.AttendanceSummaryDAO;
 import com.hrms.model.AttendanceExplanation;
 import com.hrms.model.CompanyShiftSetting;
 import com.hrms.model.TimesheetLock;
 import com.hrms.model.Department;
 import com.hrms.model.Employee;
-import com.hrms.service.AttendanceService;
-import com.hrms.service.DepartmentService;
-import com.hrms.service.EmployeeService;
-import com.hrms.service.TimesheetExcelService;
+import com.hrms.service.manager.AttendanceService;
+import com.hrms.service.companyadmin.DepartmentService;
+import com.hrms.service.companyadmin.EmployeeService;
+import com.hrms.service.export.TimesheetExcelService;
 import com.hrms.service.security.TenantPrincipal;
 import com.hrms.util.SecuritySupport;
 

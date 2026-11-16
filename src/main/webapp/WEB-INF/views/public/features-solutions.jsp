@@ -145,7 +145,7 @@
             </section>
         </main>
         <%@ include file="public-footer.jspf" %>
-        <script src="${pageContext.request.contextPath}/js/public-portal.js?v=<%= application.getResource("/js/public-portal.js").openConnection().getLastModified() %>" defer>
+        <script src="${pageContext.request.contextPath}/js/publicportal/public-portal.js?v=<%= application.getResource("/js/publicportal/public-portal.js").openConnection().getLastModified() %>" defer>
         </script>
     </body>
 </html>

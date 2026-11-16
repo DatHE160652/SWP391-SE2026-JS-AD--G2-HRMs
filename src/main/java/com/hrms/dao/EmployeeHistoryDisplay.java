@@ -9,25 +9,27 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-final class EmployeeHistoryDisplay {
-    private static final Pattern REFERENCE = Pattern.compile("^\\s*(DocumentId|UserId|ContractId|ChangeId)\\s*[:=]\\s*([0-9]+)\\s*(?:;\\s*(.*))?$", Pattern.DOTALL);
+public final class EmployeeHistoryDisplay {
+    private static final Pattern REFERENCE = Pattern.compile(
+            "^\\s*(DocumentId|UserId|ContractId|ChangeId)\\s*[:=]\\s*([0-9]+)\\s*(?:;\\s*(.*))?$", Pattern.DOTALL);
     private final Connection connection;
     private final int companyId;
     private final int employeeId;
-    private final Map<String,String> names = new HashMap<>();
+    private final Map<String, String> names = new HashMap<>();
 
-    EmployeeHistoryDisplay(Connection connection, int companyId, int employeeId) {
+    public EmployeeHistoryDisplay(Connection connection, int companyId, int employeeId) {
         this.connection = connection;
         this.companyId = companyId;
         this.employeeId = employeeId;
     }
 
-    EmployeeHistoryValues.Values format(String oldValue, String newValue) throws SQLException {
+    public EmployeeHistoryValues.Values format(String oldValue, String newValue) throws SQLException {
         return new EmployeeHistoryValues.Values(display(oldValue), display(newValue));
     }
 
     private String display(String value) throws SQLException {
-        if (value == null) return null;
+        if (value == null)
+            return null;
         Matcher reference = REFERENCE.matcher(value);
         if (reference.matches()) {
             String field = reference.group(1);
@@ -43,7 +45,8 @@ final class EmployeeHistoryDisplay {
 
     private String resolve(String field, String identifier) throws SQLException {
         String key = field + ":" + identifier;
-        if (names.containsKey(key)) return names.get(key);
+        if (names.containsKey(key))
+            return names.get(key);
         String label = switch (field) {
             case "DocumentId" -> "Tài liệu";
             case "UserId" -> "Tài khoản";
@@ -56,19 +59,22 @@ final class EmployeeHistoryDisplay {
                     JOIN Employees employee ON employee.EmployeeId=document.EmployeeId
                     WHERE employee.CompanyId=? AND employee.EmployeeId=? AND document.DocumentId=?
                     """;
-            case "UserId" -> """
-                    SELECT COALESCE(NULLIF(account.Email,'') COLLATE DATABASE_DEFAULT,
-                        NULLIF(account.Username,'') COLLATE DATABASE_DEFAULT,
-                        account.DisplayName COLLATE DATABASE_DEFAULT) AS DisplayName
-                    FROM Users account JOIN Employees employee ON employee.CompanyId=account.CompanyId AND employee.UserId=account.UserId
-                    WHERE employee.CompanyId=? AND employee.EmployeeId=? AND account.UserId=?
-                    """;
-            case "ContractId" -> "SELECT ContractCode AS DisplayName FROM EmploymentContracts WHERE CompanyId=? AND EmployeeId=? AND ContractId=?";
-            default -> """
-                    SELECT positionRow.PositionTitle AS DisplayName FROM EmployeePositionChanges changeRow
-                    JOIN Positions positionRow ON positionRow.CompanyId=changeRow.CompanyId AND positionRow.PositionId=changeRow.NewPositionId
-                    WHERE changeRow.CompanyId=? AND changeRow.EmployeeId=? AND changeRow.PositionChangeId=?
-                    """;
+            case "UserId" ->
+                """
+                        SELECT COALESCE(NULLIF(account.Email,'') COLLATE DATABASE_DEFAULT,
+                            NULLIF(account.Username,'') COLLATE DATABASE_DEFAULT,
+                            account.DisplayName COLLATE DATABASE_DEFAULT) AS DisplayName
+                        FROM Users account JOIN Employees employee ON employee.CompanyId=account.CompanyId AND employee.UserId=account.UserId
+                        WHERE employee.CompanyId=? AND employee.EmployeeId=? AND account.UserId=?
+                        """;
+            case "ContractId" ->
+                "SELECT ContractCode AS DisplayName FROM EmploymentContracts WHERE CompanyId=? AND EmployeeId=? AND ContractId=?";
+            default ->
+                """
+                        SELECT positionRow.PositionTitle AS DisplayName FROM EmployeePositionChanges changeRow
+                        JOIN Positions positionRow ON positionRow.CompanyId=changeRow.CompanyId AND positionRow.PositionId=changeRow.NewPositionId
+                        WHERE changeRow.CompanyId=? AND changeRow.EmployeeId=? AND changeRow.PositionChangeId=?
+                        """;
         };
         String name = label + " không còn khả dụng";
         try {
@@ -78,7 +84,8 @@ final class EmployeeHistoryDisplay {
                 statement.setInt(2, employeeId);
                 statement.setInt(3, referenceId);
                 try (ResultSet rows = statement.executeQuery()) {
-                    if (rows.next() && rows.getString("DisplayName") != null) name = label + ": " + rows.getString("DisplayName");
+                    if (rows.next() && rows.getString("DisplayName") != null)
+                        name = label + ": " + rows.getString("DisplayName");
                 }
             }
         } catch (NumberFormatException ignored) {

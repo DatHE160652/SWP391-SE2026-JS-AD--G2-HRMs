@@ -62,7 +62,7 @@
 
     <servlet>
         <servlet-name>EmployeePasswordResetController</servlet-name>
-        <servlet-class>com.hrms.controller.hr.EmployeePasswordResetController</servlet-class>
+        <servlet-class>com.hrms.controller.companyadmin.EmployeePasswordResetController</servlet-class>
     </servlet>
     <servlet-mapping>
         <servlet-name>EmployeePasswordResetController</servlet-name>
@@ -114,7 +114,7 @@
 
     <servlet>
         <servlet-name>EmployeeController</servlet-name>
-        <servlet-class>com.hrms.controller.hr.EmployeeController</servlet-class>
+        <servlet-class>com.hrms.controller.companyadmin.EmployeeController</servlet-class>
     </servlet>
     <servlet-mapping>
         <servlet-name>EmployeeController</servlet-name>
@@ -322,7 +322,7 @@
 
     <servlet>
         <servlet-name>LeaveController</servlet-name>
-        <servlet-class>com.hrms.controller.hr.LeaveController</servlet-class>
+        <servlet-class>com.hrms.controller.companyadmin.LeaveController</servlet-class>
     </servlet>
     <servlet-mapping>
         <servlet-name>LeaveController</servlet-name>
@@ -373,11 +373,12 @@
         <url-pattern>/systemadmin/registration-request-details</url-pattern>
         <url-pattern>/systemadmin/registration-request/confirm</url-pattern>
         <url-pattern>/systemadmin/registration-request/delete</url-pattern>
+        <url-pattern>/systemadmin/registration-request/resend</url-pattern>
     </servlet-mapping>
 
     <servlet>
         <servlet-name>PayrollController</servlet-name>
-        <servlet-class>com.hrms.controller.hr.PayrollController</servlet-class>
+        <servlet-class>com.hrms.controller.companyadmin.PayrollController</servlet-class>
         <multipart-config>
             <max-file-size>5242880</max-file-size>
             <max-request-size>6291456</max-request-size>
@@ -400,13 +401,32 @@
         <servlet-name>CompanyAdministrationController</servlet-name>
         <url-pattern>/systemadmin/company</url-pattern>
         <url-pattern>/systemadmin/company-details</url-pattern>
-        <url-pattern>/systemadmin/company/suspend</url-pattern>
-        <url-pattern>/systemadmin/company/activate</url-pattern>
+        <url-pattern>/systemadmin/company/renew</url-pattern>
+        <url-pattern>/systemadmin/company/change-plan</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>PlanController</servlet-name>
+        <servlet-class>com.hrms.controller.sysadmin.PlanController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>PlanController</servlet-name>
+        <url-pattern>/systemadmin/plans</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>PlatformAuditController</servlet-name>
+        <servlet-class>com.hrms.controller.sysadmin.PlatformAuditController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>PlatformAuditController</servlet-name>
+        <url-pattern>/systemadmin/audit-logs</url-pattern>
+        <url-pattern>/systemadmin/audit-logs/rollback-renew</url-pattern>
     </servlet-mapping>
 
     <servlet>
         <servlet-name>EmployeeLifecycleController</servlet-name>
-        <servlet-class>com.hrms.controller.hr.EmployeeLifecycleController</servlet-class>
+        <servlet-class>com.hrms.controller.companyadmin.EmployeeLifecycleController</servlet-class>
     </servlet>
     <servlet-mapping>
         <servlet-name>EmployeeLifecycleController</servlet-name>

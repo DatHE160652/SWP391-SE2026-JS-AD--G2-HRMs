@@ -278,7 +278,7 @@
 </dialog>
 
 <script src="${pageContext.request.contextPath}/js/i18n-catalog.js"></script>
-<script src="${pageContext.request.contextPath}/js/bonus-campaign.js?v=<%= application.getResource("/js/bonus-campaign.js").openConnection().getLastModified() %>"></script>
+<script src="${pageContext.request.contextPath}/js/companyadmin/bonus-campaign.js?v=<%= application.getResource("/js/companyadmin/bonus-campaign.js").openConnection().getLastModified() %>"></script>
 </body>
 </html>
 

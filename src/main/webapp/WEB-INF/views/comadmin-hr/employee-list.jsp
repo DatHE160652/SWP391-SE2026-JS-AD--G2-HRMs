@@ -53,11 +53,11 @@
 <template id="lc-organization-template"><%@ include file="/WEB-INF/views/common/employee-organization.jspf" %></template>
 <%@ include file="/WEB-INF/views/common/lifecycle-action.jspf" %>
 <div id="lc-toast" class="lc-toast" role="status"></div>
-<script src="${pageContext.request.contextPath}/js/lifecycle-http.js?v=<%= application.getResource("/js/lifecycle-http.js").openConnection().getLastModified() %>" defer></script>
+<script src="${pageContext.request.contextPath}/js/companyadmin/lifecycle-http.js?v=<%= application.getResource("/js/companyadmin/lifecycle-http.js").openConnection().getLastModified() %>" defer></script>
 
 
 <%@ include file="/WEB-INF/views/common/import-modal.jspf" %>
-<script src="${pageContext.request.contextPath}/js/import-modal.js"></script>
+<script src="${pageContext.request.contextPath}/js/import/import-modal.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('lc-import-employees')?.addEventListener('click', function() {
@@ -69,5 +69,5 @@
         });
     });
 </script>
-<script src="${pageContext.request.contextPath}/js/employee.js?v=<%= application.getResource("/js/employee.js").openConnection().getLastModified() %>" defer></script>
-<script src="${pageContext.request.contextPath}/js/lifecycle.js?v=<%= application.getResource("/js/lifecycle.js").openConnection().getLastModified() %>" defer></script></body></html>
+<script src="${pageContext.request.contextPath}/js/companyadmin/employee.js?v=<%= application.getResource("/js/companyadmin/employee.js").openConnection().getLastModified() %>" defer></script>
+<script src="${pageContext.request.contextPath}/js/companyadmin/lifecycle.js?v=<%= application.getResource("/js/companyadmin/lifecycle.js").openConnection().getLastModified() %>" defer></script></body></html>

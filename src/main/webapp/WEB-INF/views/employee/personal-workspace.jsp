@@ -26,8 +26,8 @@
 </dialog>
 
 
-<script src="../js/employee.js?v=<%= application.getResource("/js/employee.js").openConnection().getLastModified() %>"></script>
-<script src="../js/organization-chart.js?v=<%= application.getResource("/js/organization-chart.js").openConnection().getLastModified() %>"></script>
-<script src="../js/organization-explorer.js?v=<%= application.getResource("/js/organization-explorer.js").openConnection().getLastModified() %>"></script>
-<script src="../js/personal-workspace.js?v=<%= application.getResource("/js/personal-workspace.js").openConnection().getLastModified() %>"></script>
+<script src="../js/companyadmin/employee.js?v=<%= application.getResource("/js/companyadmin/employee.js").openConnection().getLastModified() %>"></script>
+<script src="../js/companyadmin/organization-chart.js?v=<%= application.getResource("/js/companyadmin/organization-chart.js").openConnection().getLastModified() %>"></script>
+<script src="../js/companyadmin/organization-explorer.js?v=<%= application.getResource("/js/companyadmin/organization-explorer.js").openConnection().getLastModified() %>"></script>
+<script src="../js/employee/personal-workspace.js?v=<%= application.getResource("/js/employee/personal-workspace.js").openConnection().getLastModified() %>"></script>
 </body></html>

@@ -1,4 +1,5 @@
 package com.hrms.dao;
+import com.hrms.dao.companyadmin.ContractAccessPolicy;
 
 import com.hrms.model.TenantAccount;
 import com.hrms.model.User;
