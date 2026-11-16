@@ -61,7 +61,8 @@ public final class OrganizationTransaction {
         audit(connection,companyId,actorId,employeeId,type,values.oldValue(),values.newValue()+explanation);
         String employeeName;
         try (PreparedStatement statement=connection.prepareStatement("SELECT CONCAT(FullName,N' (',EmployeeCode,N')') FROM Employees WHERE CompanyId=? AND EmployeeId=?")) {
-            statement.setInt(1,companyId); statement.setInt(2,employeeId);
+            statement.setInt(1,companyId);
+            statement.setInt(2,employeeId);
             try (ResultSet rows=statement.executeQuery()) {
                 if (!rows.next()) throw new SQLException("Không tìm thấy nhân viên khi ghi lịch sử nhóm.");
                 employeeName=rows.getString(1);

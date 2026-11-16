@@ -14,8 +14,16 @@
 <%@ include file="/WEB-INF/views/common/tenant-shell.jspf" %>
 <main class="lc-main"><div class="lc-breadcrumb"><%= com.hrms.i18n.Language.text(request, "ui_852bf6ee4e97", "Cổng nhân viên /") %> <span id="personalBreadcrumb"></span></div>
 <div class="lc-heading"><div><h1 id="personalPageTitle"></h1><p id="personalPageDescription"></p></div></div>
-<div id="personalPageError" class="lc-alert" role="alert"></div><div id="personalWorkspaceContent" aria-live="polite"><div class="lc-spinner"><%= com.hrms.i18n.Language.text(request, "ui_e6b584854879", "Đang tải dữ liệu…") %></div></div></main>
-<dialog id="personalEmployeeDialog" class="lc-modal" aria-labelledby="personalEmployeeTitle"><header class="lc-modal-header"><h2 id="personalEmployeeTitle"><%= com.hrms.i18n.Language.text(request, "ui_56a31d8a7ea2", "Hồ sơ nhân viên") %></h2><button type="button" class="lc-close" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_d2b73ab2ada1", "Đóng") %>"><%= com.hrms.i18n.Language.text(request, "ui_67fba2f357af", "×") %></button></header><div class="lc-panel-body" id="personalEmployeeBody"></div></dialog>
+<div id="personalPageError" class="lc-alert" role="alert">
+</div>
+<div id="personalWorkspaceContent" aria-live="polite">
+<div class="lc-spinner"><%= com.hrms.i18n.Language.text(request, "ui_e6b584854879", "Đang tải dữ liệu…") %>
+</div>
+</div></main>
+<dialog id="personalEmployeeDialog" class="lc-modal" aria-labelledby="personalEmployeeTitle"><header class="lc-modal-header"><h2 id="personalEmployeeTitle"><%= com.hrms.i18n.Language.text(request, "ui_56a31d8a7ea2", "Hồ sơ nhân viên") %></h2><button type="button" class="lc-close" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_d2b73ab2ada1", "Đóng") %>"><%= com.hrms.i18n.Language.text(request, "ui_67fba2f357af", "×") %></button></header>
+<div class="lc-panel-body" id="personalEmployeeBody">
+</div>
+</dialog>
 
 
 <script src="../js/employee.js?v=<%= application.getResource("/js/employee.js").openConnection().getLastModified() %>"></script>

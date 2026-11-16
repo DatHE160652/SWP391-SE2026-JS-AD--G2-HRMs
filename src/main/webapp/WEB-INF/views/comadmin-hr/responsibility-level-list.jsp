@@ -33,7 +33,10 @@
         <section class="panel">
             <p class="page-subtitle"><%= com.hrms.i18n.Language.text(request, "ui_3d2fa6b6b539", "thứ bậc xác định thứ bậc trách nhiệm, không cấp quyền quản lý nhân viên hoặc quyền truy cập hệ thống.") %></p>
             <table data-pagination="responsibility-levels">
-                <thead><tr><th><%= com.hrms.i18n.Language.text(request, "ui_1780821b4a40", "Mã cấp") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_e36d4695d33b", "Tên cấp trách nhiệm") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_33939051c309", "Thứ bậc") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_42fbfed4a5dd", "Phụ cấp mặc định") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_e03c1401e314", "Trạng thái") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th></tr></thead>
+                <thead>
+                <tr><th><%= com.hrms.i18n.Language.text(request, "ui_1780821b4a40", "Mã cấp") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_e36d4695d33b", "Tên cấp trách nhiệm") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_33939051c309", "Thứ bậc") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_42fbfed4a5dd", "Phụ cấp mặc định") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_e03c1401e314", "Trạng thái") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th>
+                </tr>
+                </thead>
                 <tbody id="levelRows"></tbody>
             </table>
         </section>

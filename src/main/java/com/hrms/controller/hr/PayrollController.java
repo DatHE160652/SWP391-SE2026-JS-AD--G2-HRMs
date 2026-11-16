@@ -42,7 +42,8 @@ public class PayrollController extends HttpServlet {
             else PayrollService.ownEmployee(p);
             switch(path) {
                 case "/payroll", "/payroll/salaries" -> {
-                    preparePage(request,p);request.setAttribute("salaryPage",path.endsWith("/salaries"));
+                    preparePage(request,p);
+                    request.setAttribute("salaryPage",path.endsWith("/salaries"));
                     boolean slips=path.equals("/payroll") && "payslips".equals(request.getParameter("view"));
                     request.setAttribute("adminView",slips);
                     request.getRequestDispatcher(slips?"/WEB-INF/views/employee/payslips.jsp":
@@ -85,16 +86,19 @@ public class PayrollController extends HttpServlet {
                 }
                 case "/payroll/payslip" -> {
                     request.setAttribute("slip",service.payslip(p,longId(request,"id"),true));
-                    preparePage(request,p);request.setAttribute("adminView",true);
+                    preparePage(request,p);
+                    request.setAttribute("adminView",true);
                     request.getRequestDispatcher("/WEB-INF/views/employee/payslip-detail.jsp").forward(request,response);
                 }
                 case "/payslips" -> {
-                    preparePage(request,p);request.setAttribute("adminView",false);
+                    preparePage(request,p);
+                    request.setAttribute("adminView",false);
                     request.getRequestDispatcher("/WEB-INF/views/employee/payslips.jsp").forward(request,response);
                 }
                 case "/payslips/view" -> {
                     request.setAttribute("slip",service.payslip(p,longId(request,"id"),false));
-                    preparePage(request,p);request.setAttribute("adminView",false);
+                    preparePage(request,p);
+                    request.setAttribute("adminView",false);
                     request.getRequestDispatcher("/WEB-INF/views/employee/payslip-detail.jsp").forward(request,response);
                 }
                 case "/payslips/api/slips" -> ok(response,service.ownPayslips(p));
@@ -115,7 +119,8 @@ public class PayrollController extends HttpServlet {
             String path=path(request);
             if(path.equals("/payslips/api/read")) {
                 dao.readNotification(p.getCompanyId(),PayrollService.ownEmployee(p),longId(request,"notificationId"));
-                message(response,"Đã đánh dấu thông báo là đã đọc."); return;
+                message(response,"Đã đánh dấu thông báo là đã đọc.");
+                return;
             }
             PayrollService.requirePayrollAccess(p);
             switch(path) {
@@ -198,7 +203,8 @@ public class PayrollController extends HttpServlet {
                     }
                 }
                 case "/payroll/api/calculate" -> {
-                    int count=service.calculate(p,id(request,"periodId"));message(response,"Đã tính lương cho "+count+" nhân viên.");
+                    int count=service.calculate(p,id(request,"periodId"));
+                    message(response,"Đã tính lương cho "+count+" nhân viên.");
                 }
                 case "/payroll/api/review", "/payroll/api/approve", "/payroll/api/close", "/payroll/api/reopen" -> {
                     String action=path.substring(path.lastIndexOf('/')+1);
@@ -238,21 +244,26 @@ public class PayrollController extends HttpServlet {
     }
     private int id(HttpServletRequest request,String name) {
         long value=longId(request,name);
-        if(value>Integer.MAX_VALUE) throw new PayrollException(400,"Giá trị "+name+" không hợp lệ.");return (int)value;
+        if(value>Integer.MAX_VALUE) throw new PayrollException(400,"Giá trị "+name+" không hợp lệ.");
+        return (int)value;
     }
     private long longId(HttpServletRequest request,String name) {
-        try { long value=Long.parseLong(request.getParameter(name));if(value<1) throw new NumberFormatException();return value; }
+        try { long value=Long.parseLong(request.getParameter(name));
+        if(value<1) throw new NumberFormatException();
+        return value; }
         catch(NumberFormatException e) { throw new PayrollException(400,"Giá trị "+name+" không hợp lệ."); }
     }
     private void ok(HttpServletResponse response,Object data) throws IOException { json(response,object("success",true,"data",data)); }
     private void message(HttpServletResponse response,String message) throws IOException { json(response,object("success",true,"message",message)); }
     private void json(HttpServletResponse response,Object value) throws IOException {
-        response.setCharacterEncoding("UTF-8");response.setContentType("application/json; charset=UTF-8");
+        response.setCharacterEncoding("UTF-8");
+        response.setContentType("application/json; charset=UTF-8");
         response.getWriter().write(PayrollJson.encode(value));
     }
     private void failure(HttpServletRequest request,HttpServletResponse response,PayrollException e) throws IOException {
         if(path(request).contains("/api/")) {
-            response.setStatus(e.getStatus());json(response,object("success",false,"message",e.getMessage(),"errors",e.getErrors()));
+            response.setStatus(e.getStatus());
+            json(response,object("success",false,"message",e.getMessage(),"errors",e.getErrors()));
         } else response.sendError(e.getStatus(),e.getMessage());
     }
     private void databaseFailure(HttpServletRequest request,HttpServletResponse response,SQLException e) throws IOException {

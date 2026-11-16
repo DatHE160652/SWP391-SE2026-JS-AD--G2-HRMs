@@ -30,7 +30,8 @@ public class ResponsibilityLevelDAO {
     public ResponsibilityLevel getLevel(int companyId,int levelId) throws SQLException {
         try (Connection connection=DBConnection.getConnection();
              PreparedStatement statement=connection.prepareStatement(SELECT+" WHERE r.CompanyId=? AND r.ResponsibilityLevelId=?")) {
-            statement.setInt(1,companyId); statement.setInt(2,levelId);
+            statement.setInt(1,companyId);
+            statement.setInt(2,levelId);
             try (ResultSet rows=statement.executeQuery()) { return rows.next()?map(rows):null; }
         }
     }
@@ -42,9 +43,13 @@ public class ResponsibilityLevelDAO {
                      AND ((? IS NOT NULL AND LevelCode=?) OR (? IS NOT NULL AND RankOrder=?))
                      AND (? IS NULL OR ResponsibilityLevelId<>?)
                      """)) {
-            statement.setInt(1,companyId); statement.setString(2,code); statement.setString(3,code);
-            statement.setObject(4,rank,Types.INTEGER); statement.setObject(5,rank,Types.INTEGER);
-            statement.setObject(6,excludeId,Types.INTEGER); statement.setObject(7,excludeId,Types.INTEGER);
+            statement.setInt(1,companyId);
+            statement.setString(2,code);
+            statement.setString(3,code);
+            statement.setObject(4,rank,Types.INTEGER);
+            statement.setObject(5,rank,Types.INTEGER);
+            statement.setObject(6,excludeId,Types.INTEGER);
+            statement.setObject(7,excludeId,Types.INTEGER);
             try (ResultSet rows=statement.executeQuery()) { return rows.next(); }
         }
     }
@@ -99,8 +104,10 @@ public class ResponsibilityLevelDAO {
     private ResponsibilityLevel map(ResultSet rows) throws SQLException {
         ResponsibilityLevel level=new ResponsibilityLevel();
         level.setResponsibilityLevelId(rows.getInt("ResponsibilityLevelId"));
-        level.setCompanyId(rows.getInt("CompanyId")); level.setLevelCode(rows.getString("LevelCode"));
-        level.setLevelName(rows.getString("LevelName")); level.setRankOrder(rows.getInt("RankOrder"));
+        level.setCompanyId(rows.getInt("CompanyId"));
+        level.setLevelCode(rows.getString("LevelCode"));
+        level.setLevelName(rows.getString("LevelName"));
+        level.setRankOrder(rows.getInt("RankOrder"));
         level.setActive(rows.getBoolean("IsActive"));
         level.setDefaultAllowance(rows.getBigDecimal("DefaultAllowance"));
         level.clearAllowanceSpecified();

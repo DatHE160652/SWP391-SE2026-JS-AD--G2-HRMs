@@ -20,7 +20,9 @@ public class LeaveService {
 
     public LeaveService() { this(new LeavePolicyDAO(), new LeaveRequestDAO(), Clock.system(TIME_ZONE)); }
     public LeaveService(LeavePolicyDAO policies, LeaveRequestDAO requests, Clock clock) {
-        this.policies = policies; this.requests = requests; this.clock = clock;
+        this.policies = policies;
+        this.requests = requests;
+        this.clock = clock;
     }
     public LocalDate tomorrow() { return LocalDate.now(clock).plusDays(1); }
     public LeaveRequestDAO getLeaveRequestDAO() { return requests; }
@@ -163,7 +165,10 @@ public class LeaveService {
             JOIN Roles r ON r.RoleId=u.RoleId
             WHERE e.CompanyId=? AND e.EmployeeId=? AND e.UserId=? AND r.RoleCode=? AND e.Status='Active'
             """)) {
-            ps.setInt(1, actor.getCompanyId()); ps.setInt(2, actor.getEmployeeId()); ps.setInt(3, actor.getUserId()); ps.setString(4, actor.getRoleCode());
+            ps.setInt(1, actor.getCompanyId());
+            ps.setInt(2, actor.getEmployeeId());
+            ps.setInt(3, actor.getUserId());
+            ps.setString(4, actor.getRoleCode());
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) throw new SecurityException("Hồ sơ nhân viên không hợp lệ.");
                 if ("EMPLOYEE".equals(actor.getRoleCode()) && rs.getObject(1) == null)
@@ -191,7 +196,8 @@ public class LeaveService {
                 T result = work.run(conn);
                 conn.commit();
                 return result;
-            } catch (SQLException | RuntimeException ex) { conn.rollback(); throw ex; }
+            } catch (SQLException | RuntimeException ex) { conn.rollback();
+            throw ex; }
         }
     }
 }

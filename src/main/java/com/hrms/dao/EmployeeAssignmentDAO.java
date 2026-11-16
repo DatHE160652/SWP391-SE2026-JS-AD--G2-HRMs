@@ -193,7 +193,8 @@ public class EmployeeAssignmentDAO {
 
     public void requireManagerSnapshot(Connection connection,int companyId,int employeeId,Integer expected) throws SQLException {
         try(PreparedStatement statement=connection.prepareStatement("SELECT ManagerId FROM EmployeePositionAssignments WITH (UPDLOCK,HOLDLOCK) WHERE CompanyId=? AND EmployeeId=? AND EffectiveTo IS NULL")) {
-            statement.setInt(1,companyId);statement.setInt(2,employeeId);
+            statement.setInt(1,companyId);
+            statement.setInt(2,employeeId);
             try(ResultSet rows=statement.executeQuery()) {
                 if(rows.next()) {
                     if(!Objects.equals(expected,rows.getObject("ManagerId")) || rows.next())

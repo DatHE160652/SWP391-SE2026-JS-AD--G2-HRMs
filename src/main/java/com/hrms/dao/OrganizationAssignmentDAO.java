@@ -165,8 +165,10 @@ public class OrganizationAssignmentDAO {
                 SELECT 1 FROM EmployeePositionAssignments WITH (UPDLOCK,HOLDLOCK) WHERE CompanyId=? AND EmployeeId=? AND EffectiveTo IS NULL
                 UNION ALL SELECT 1 FROM EmployeePositionChanges WITH (UPDLOCK,HOLDLOCK) WHERE CompanyId=? AND EmployeeId=? AND Status IN ('PENDING','APPROVED')
                 """)) {
-            statement.setInt(1,companyId); statement.setInt(2,employeeId);
-            statement.setInt(3,companyId); statement.setInt(4,employeeId);
+            statement.setInt(1,companyId);
+            statement.setInt(2,employeeId);
+            statement.setInt(3,companyId);
+            statement.setInt(4,employeeId);
             try(ResultSet rows=statement.executeQuery()) {
                 if(rows.next()) throw new FieldValidationException("positionId","Nhân viên đang có phân công chức danh còn hiệu lực hoặc có đề xuất đang chờ xử lý.");
             }
@@ -180,8 +182,10 @@ public class OrganizationAssignmentDAO {
                 UPDATE Employees SET DepartmentId=?,PositionId=?,UpdatedAt=SYSUTCDATETIME()
                 WHERE CompanyId=? AND EmployeeId=?
                 """)) {
-            statement.setObject(1,departmentId,Types.INTEGER); statement.setObject(2,positionId,Types.INTEGER);
-            statement.setInt(3,companyId); statement.setInt(4,employeeId);
+            statement.setObject(1,departmentId,Types.INTEGER);
+            statement.setObject(2,positionId,Types.INTEGER);
+            statement.setInt(3,companyId);
+            statement.setInt(4,employeeId);
             if(statement.executeUpdate()!=1) throw new SQLException("Phân công nhân viên đã thay đổi.");
         }
         if(positionId!=null) {
@@ -189,8 +193,10 @@ public class OrganizationAssignmentDAO {
                     INSERT INTO EmployeePositionAssignments(CompanyId,EmployeeId,DepartmentId,PositionId,ManagerId,EffectiveFrom,ChangeType)
                     VALUES(?,?,?,?,?,CONVERT(date,SYSDATETIME()),'HIRE')
                     """)) {
-                statement.setInt(1,companyId); statement.setInt(2,employeeId);
-                statement.setInt(3,departmentId); statement.setInt(4,positionId);
+                statement.setInt(1,companyId);
+                statement.setInt(2,employeeId);
+                statement.setInt(3,departmentId);
+                statement.setInt(4,positionId);
                 statement.setObject(5,currentManager,Types.INTEGER);
                 statement.executeUpdate();
             }
@@ -220,7 +226,8 @@ public class OrganizationAssignmentDAO {
             Integer oldManager;
             try (PreparedStatement statement = connection.prepareStatement(
                     "SELECT DepartmentId,PositionId,ManagerId FROM Employees WITH (UPDLOCK,HOLDLOCK) WHERE CompanyId=? AND EmployeeId=?")) {
-                statement.setInt(1, companyId); statement.setInt(2, employeeId);
+                statement.setInt(1, companyId);
+                statement.setInt(2, employeeId);
                 try (ResultSet rows = statement.executeQuery()) {
                     if (!rows.next()) throw new IllegalArgumentException("Không tìm thấy nhân viên trong công ty của bạn.");
                     oldDepartment = (Integer) rows.getObject("DepartmentId");
@@ -357,7 +364,8 @@ public class OrganizationAssignmentDAO {
                 WHERE u.CompanyId=? AND u.UserId=? AND u.IsActive=1 AND u.IsLocked=0
                     AND r.RoleCode IN ('COMPANY_ADMIN')
                 """)) {
-            statement.setInt(1, companyId); statement.setObject(2, actorUserId, Types.INTEGER);
+            statement.setInt(1, companyId);
+            statement.setObject(2, actorUserId, Types.INTEGER);
             try (ResultSet rows = statement.executeQuery()) {
                 if (!rows.next()) throw new SecurityException("Cần tài khoản nhân sự hoặc quản trị viên công ty đang hoạt động để thay đổi chức danh.");
             }
@@ -371,7 +379,9 @@ public class OrganizationAssignmentDAO {
                 SELECT AssignmentId FROM EmployeePositionAssignments
                 WHERE CompanyId=? AND EmployeeId=? AND PositionId=? AND EffectiveTo IS NULL
                 """)) {
-            statement.setInt(1,companyId); statement.setInt(2,employeeId); statement.setInt(3,positionId);
+            statement.setInt(1,companyId);
+            statement.setInt(2,employeeId);
+            statement.setInt(3,positionId);
             try (ResultSet rows=statement.executeQuery()) {
                 if (!rows.next()) throw new SQLException("Không tìm thấy lịch sử phân công ban đầu.");
                 assignmentId=rows.getLong(1);
@@ -380,8 +390,11 @@ public class OrganizationAssignmentDAO {
         var values=new EmployeeHistoryValues(connection,companyId).format("DepartmentId="+oldDepartment+";PositionId=null",
                 "DepartmentId="+departmentId+";PositionId="+positionId);
         com.hrms.model.AuditLog log=new com.hrms.model.AuditLog();
-        log.setCompanyId(companyId); log.setUserId(actorId); log.setTableName("EmployeePositionAssignments");
-        log.setRecordId(String.valueOf(assignmentId)); log.setAction("ASSIGN_POSITION");
+        log.setCompanyId(companyId);
+        log.setUserId(actorId);
+        log.setTableName("EmployeePositionAssignments");
+        log.setRecordId(String.valueOf(assignmentId));
+        log.setAction("ASSIGN_POSITION");
         log.setOldValues(values.oldValue());
         String safeReason = reason == null ? "" : reason.replace('\r',' ').replace('\n',' ');
         log.setNewValues(values.newValue() + (safeReason.isBlank() ? "" : "\nLý do: " + safeReason));
@@ -393,12 +406,14 @@ public class OrganizationAssignmentDAO {
                                       Integer managerId, int actorUserId, String reason) throws SQLException {
         Date today;
         try (PreparedStatement statement = connection.prepareStatement("SELECT CONVERT(date,SYSDATETIME())");
-             ResultSet rows = statement.executeQuery()) { rows.next(); today = rows.getDate(1); }
+             ResultSet rows = statement.executeQuery()) { rows.next();
+             today = rows.getDate(1); }
         new PositionOccupancyDAO().validate(connection,companyId,employeeId,positionId,today.toLocalDate(),null);
         try (PreparedStatement statement = connection.prepareStatement("""
                 SELECT 1 FROM EmployeePositionChanges WHERE CompanyId=? AND EmployeeId=? AND Status IN ('PENDING','APPROVED')
                 """)) {
-            statement.setInt(1,companyId); statement.setInt(2,employeeId);
+            statement.setInt(1,companyId);
+            statement.setInt(2,employeeId);
             try (ResultSet rows=statement.executeQuery()) {
                 if (rows.next()) throw new FieldValidationException("positionId", "Vui lòng xử lý đề xuất chức danh đang chờ hoặc đã duyệt trước.");
             }
@@ -407,7 +422,10 @@ public class OrganizationAssignmentDAO {
                 SELECT 1 FROM PayrollPeriods WHERE CompanyId=? AND Status='Approved'
                     AND ([Year]>YEAR(?) OR ([Year]=YEAR(?) AND [Month]>=MONTH(?)))
                 """)) {
-            statement.setInt(1,companyId); statement.setDate(2,today); statement.setDate(3,today); statement.setDate(4,today);
+            statement.setInt(1,companyId);
+            statement.setDate(2,today);
+            statement.setDate(3,today);
+            statement.setDate(4,today);
             try (ResultSet rows=statement.executeQuery()) {
                 if (rows.next()) throw new FieldValidationException("positionId", "Kỳ lương đã duyệt không cho phép thay đổi tại ngày hiệu lực này.");
             }
@@ -418,10 +436,12 @@ public class OrganizationAssignmentDAO {
                 SELECT AssignmentId,PositionId,DepartmentId,EffectiveFrom FROM EmployeePositionAssignments
                 WITH (UPDLOCK,HOLDLOCK) WHERE CompanyId=? AND EmployeeId=? AND EffectiveTo IS NULL
                 """)) {
-            statement.setInt(1,companyId); statement.setInt(2,employeeId);
+            statement.setInt(1,companyId);
+            statement.setInt(2,employeeId);
             try (ResultSet rows=statement.executeQuery()) {
                 if (rows.next()) {
-                    assignmentId=rows.getLong("AssignmentId"); effectiveFrom=rows.getDate("EffectiveFrom");
+                    assignmentId=rows.getLong("AssignmentId");
+                    effectiveFrom=rows.getDate("EffectiveFrom");
                     if (rows.getInt("PositionId")!=oldPosition || !Objects.equals(rows.getObject("DepartmentId"),oldDepartment)
                             || effectiveFrom.after(today)) throw new FieldValidationException("positionId", "Lịch sử chức danh hiện tại chưa nhất quán. Vui lòng kiểm tra lịch sử nhân viên.");
                 }
@@ -440,7 +460,9 @@ public class OrganizationAssignmentDAO {
                         JOIN ResponsibilityLevels newLevel ON newLevel.CompanyId=newPosition.CompanyId AND newLevel.ResponsibilityLevelId=newPosition.ResponsibilityLevelId
                         WHERE oldPosition.CompanyId=? AND oldPosition.PositionId=?
                         """)) {
-                    statement.setInt(1,positionId); statement.setInt(2,companyId); statement.setInt(3,oldPosition);
+                    statement.setInt(1,positionId);
+                    statement.setInt(2,companyId);
+                    statement.setInt(3,oldPosition);
                     try (ResultSet rows=statement.executeQuery()) {
                         if (rows.next()) {
                             if (rows.getInt("NewRank")>rows.getInt("OldRank")) changeType="PROMOTION";
@@ -456,16 +478,25 @@ public class OrganizationAssignmentDAO {
                     Status,EffectiveDate,NewManagerId,Reason,CreatedByUserId,ApprovedByUserId,ApprovedAt)
                 VALUES(?,?,?,?,?,'APPROVED',?,?,?,?,?,SYSUTCDATETIME())
                 """, Statement.RETURN_GENERATED_KEYS)) {
-            statement.setInt(1,companyId); statement.setInt(2,employeeId); statement.setInt(3,oldPosition);
-            statement.setInt(4,positionId); statement.setString(5,changeType); statement.setDate(6,today);
-            statement.setObject(7,managerId,Types.INTEGER); statement.setString(8,reason);
-            statement.setInt(9,actorUserId); statement.setInt(10,actorUserId);
+            statement.setInt(1,companyId);
+            statement.setInt(2,employeeId);
+            statement.setInt(3,oldPosition);
+            statement.setInt(4,positionId);
+            statement.setString(5,changeType);
+            statement.setDate(6,today);
+            statement.setObject(7,managerId,Types.INTEGER);
+            statement.setString(8,reason);
+            statement.setInt(9,actorUserId);
+            statement.setInt(10,actorUserId);
             if (statement.executeUpdate()!=1) throw new SQLException("Không ghi nhận được thay đổi chức danh.");
-            try (ResultSet keys=statement.getGeneratedKeys()) { keys.next(); changeId=keys.getLong(1); }
+            try (ResultSet keys=statement.getGeneratedKeys()) { keys.next();
+            changeId=keys.getLong(1); }
         }
         if (!correction) {
             try (CallableStatement statement=connection.prepareCall("{call dbo.usp_ApplyApprovedPositionChange(?,?)}")) {
-                statement.setLong(1,changeId); statement.setDate(2,today); statement.execute();
+                statement.setLong(1,changeId);
+                statement.setDate(2,today);
+                statement.execute();
             }
             return;
         }
@@ -499,7 +530,8 @@ public class OrganizationAssignmentDAO {
             return;
         }
         try(PreparedStatement statement=connection.prepareStatement("SELECT 1 FROM Departments WITH (HOLDLOCK) WHERE CompanyId=? AND DepartmentId=? AND IsActive=1")) {
-            statement.setInt(1,companyId); statement.setInt(2,departmentId);
+            statement.setInt(1,companyId);
+            statement.setInt(2,departmentId);
             try(ResultSet rows=statement.executeQuery()) {
                 if(!rows.next()) throw new FieldValidationException("departmentId","Không tìm thấy phòng ban trong công ty của bạn.");
             }
@@ -510,7 +542,9 @@ public class OrganizationAssignmentDAO {
                 JOIN ResponsibilityLevels r ON r.CompanyId=p.CompanyId AND r.ResponsibilityLevelId=p.ResponsibilityLevelId
                 WHERE p.CompanyId=? AND p.DepartmentId=? AND p.PositionId=? AND p.IsActive=1 AND r.IsActive=1
                 """)) {
-            statement.setInt(1,companyId); statement.setInt(2,departmentId); statement.setInt(3,positionId);
+            statement.setInt(1,companyId);
+            statement.setInt(2,departmentId);
+            statement.setInt(3,positionId);
             try(ResultSet rows=statement.executeQuery()) {
                 if(!rows.next()) throw new FieldValidationException("positionId","Vui lòng chọn chức danh đang hoạt động thuộc đúng phòng ban và công ty.");
             }

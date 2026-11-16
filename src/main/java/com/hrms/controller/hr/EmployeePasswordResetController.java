@@ -32,7 +32,8 @@ public class EmployeePasswordResetController extends HttpServlet {
         try {
             var principal=SecuritySupport.getTenantPrincipal(request);
             service.requireEditor(principal);
-            if(!PAGE.equals(request.getServletPath())) { error(response,400,"Thao tác này yêu cầu POST."); return; }
+            if(!PAGE.equals(request.getServletPath())) { error(response,400,"Thao tác này yêu cầu POST.");
+            return; }
             HttpSession session=request.getSession();
             synchronized(session) {
                 Object existing=session.getAttribute(PAGE_CONTEXT_ATTRIBUTE);
@@ -68,7 +69,8 @@ public class EmployeePasswordResetController extends HttpServlet {
                 String id=request.getParameter("employeeId");
                 if(id==null || !id.matches("[1-9][0-9]{0,9}")) throw new IllegalArgumentException();
                 data=service.reset(principal,Integer.parseInt(id),request.getParameter("version"));
-            } else { error(response,400,"Thao tác không hợp lệ."); return; }
+            } else { error(response,400,"Thao tác không hợp lệ.");
+            return; }
             write(response,200,Map.of("success",true,"data",data));
         } catch(SecurityException exception) { error(response,403,"Không có quyền hoặc phiên thao tác không hợp lệ. Vui lòng tải lại trang."); }
         catch(EmployeePasswordResetDAO.ConflictException exception) { error(response,409,exception.getMessage()); }
@@ -91,7 +93,9 @@ public class EmployeePasswordResetController extends HttpServlet {
         write(response,status,Map.of("success",false,"message",message));
     }
     private static void write(HttpServletResponse response,int status,Object data) throws IOException {
-        response.setStatus(status); response.setCharacterEncoding("UTF-8");
-        response.setContentType("application/json; charset=UTF-8"); response.getWriter().write(Json.encode(data));
+        response.setStatus(status);
+        response.setCharacterEncoding("UTF-8");
+        response.setContentType("application/json; charset=UTF-8");
+        response.getWriter().write(Json.encode(data));
     }
 }

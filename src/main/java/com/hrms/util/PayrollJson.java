@@ -19,11 +19,13 @@ public final class PayrollJson {
         if(value instanceof Number || value instanceof Boolean) return value.toString();
         if(value instanceof Map<?,?> map) {
             java.util.StringJoiner join=new java.util.StringJoiner(",","{","}");
-            map.forEach((k,v)->join.add(encode(k.toString())+":"+encode(v)));return join.toString();
+            map.forEach((k,v)->join.add(encode(k.toString())+":"+encode(v)));
+            return join.toString();
         }
         if(value instanceof Iterable<?> values) {
             java.util.StringJoiner join=new java.util.StringJoiner(",","[","]");
-            for(Object v:values) join.add(encode(v));return join.toString();
+            for(Object v:values) join.add(encode(v));
+            return join.toString();
         }
         if(value.getClass().isRecord()) {
             Map<String,Object> map=new LinkedHashMap<>();
@@ -34,9 +36,13 @@ public final class PayrollJson {
         StringBuilder result=new StringBuilder("\"");
         for(char c:value.toString().toCharArray()) {
             switch(c) {
-                case '"' -> result.append("\\\"");case '\\' -> result.append("\\\\");
-                case '\n' -> result.append("\\n");case '\r' -> result.append("\\r");case '\t' -> result.append("\\t");
-                default -> { if(c<0x20) result.append(String.format("\\u%04x",(int)c));else result.append(c); }
+                case '"' -> result.append("\\\"");
+                case '\\' -> result.append("\\\\");
+                case '\n' -> result.append("\\n");
+                case '\r' -> result.append("\\r");
+                case '\t' -> result.append("\\t");
+                default -> { if(c<0x20) result.append(String.format("\\u%04x",(int)c));
+                else result.append(c); }
             }
         }
         return result.append('"').toString();

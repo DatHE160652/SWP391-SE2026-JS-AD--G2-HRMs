@@ -58,7 +58,8 @@ public class PayrollService {
 
     public PayrollSlipView payslip(TenantPrincipal p,long payslipId,boolean management) throws SQLException {
         Integer employeeId;
-        if (management) { requirePayrollAccess(p);employeeId=null; }
+        if (management) { requirePayrollAccess(p);
+        employeeId=null; }
         else employeeId=ownEmployee(p);
         if (payslipId<1) throw new PayrollException(400,"Mã phiếu lương không hợp lệ.");
         return dao.payslip(p.getCompanyId(),employeeId,payslipId);
@@ -104,7 +105,8 @@ public class PayrollService {
     }
 
     public int create(TenantPrincipal p,String name,int month,int year) throws SQLException {
-        requirePayrollAccess(p); validatePeriod(month,year);
+        requirePayrollAccess(p);
+        validatePeriod(month,year);
         String title=String.format("Bảng lương tháng %02d/%d",month,year);
         return dao.createPeriod(p.getCompanyId(),p.getUserId(),title,month,year);
     }
@@ -139,7 +141,9 @@ public class PayrollService {
         for(PayrollAdjustmentInput row:rows) {
             if(row.employeeCode()==null || row.employeeCode().isBlank() || !codes.add(row.employeeCode().toUpperCase(Locale.ROOT)))
                 throw new PayrollException(400,"Mã nhân viên bị trống hoặc trùng tại dòng "+row.rowNumber()+".");
-            money(row.bonus().toPlainString(),"Thưởng"); money(row.deduction().toPlainString(),"Khấu trừ"); note(row.note());
+            money(row.bonus().toPlainString(),"Thưởng");
+            money(row.deduction().toPlainString(),"Khấu trừ");
+            note(row.note());
         }
         return dao.importAdjustments(p.getCompanyId(),p.getUserId(),periodId,rows);
     }
@@ -229,7 +233,8 @@ public class PayrollService {
         dao.transition(p.getCompanyId(),p.getUserId(),periodId,action);
     }
     public int publish(TenantPrincipal p,int periodId) throws SQLException {
-        requirePayrollAccess(p); return dao.publish(p.getCompanyId(),p.getUserId(),periodId);
+        requirePayrollAccess(p);
+        return dao.publish(p.getCompanyId(),p.getUserId(),periodId);
     }
 
     public PayrollFormulaSettings formulaSettings(TenantPrincipal p) throws SQLException {

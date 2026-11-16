@@ -1,6 +1,5 @@
 package com.hrms.filter;
 
-import com.hrms.api.ApiRoutes;
 import com.hrms.service.security.SystemAdminPrincipal;
 import com.hrms.service.SystemAdminAuthService;
 import com.hrms.util.SecuritySupport;
@@ -36,7 +35,7 @@ public class SystemAdminAuthFilter implements Filter {
         SecuritySupport.applyNoStore(response::setHeader);
 
         String path = request.getServletPath();
-        if (ApiRoutes.SYSTEM_ADMIN_LOGIN.equals(path) || ApiRoutes.SYSTEM_ADMIN_LOGOUT.equals(path)) {
+        if ("/systemadmin/login".equals(path) || "/systemadmin/logout".equals(path)) {
             chain.doFilter(request, response);
             return;
         }
@@ -59,6 +58,6 @@ public class SystemAdminAuthFilter implements Filter {
         if (request.getSession(false) != null) {
             request.getSession(false).invalidate();
         }
-        response.sendRedirect(request.getContextPath() + ApiRoutes.SYSTEM_ADMIN_LOGIN);
+        response.sendRedirect(request.getContextPath() + "/systemadmin/login");
     }
 }

@@ -1,6 +1,5 @@
 package com.hrms.controller.auth;
 
-import com.hrms.api.ApiRoutes;
 import com.hrms.util.SecuritySupport;
 
 import jakarta.servlet.ServletException;
@@ -23,7 +22,7 @@ public class SystemAdminLogoutController extends HttpServlet {
         if (request.getSession(false) != null) {
             request.getSession(false).invalidate();
         }
-        response.sendRedirect(request.getContextPath() + ApiRoutes.SYSTEM_ADMIN_LOGIN);
+        response.sendRedirect(request.getContextPath() + "/systemadmin/login");
     }
 
     @Override

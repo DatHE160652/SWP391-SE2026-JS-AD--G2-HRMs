@@ -52,13 +52,16 @@ public class EmployeePasswordResetDAO {
                 requireActor(connection,actor);
                 List<Map<String,Object>> result=new ArrayList<>();
                 try (PreparedStatement statement=connection.prepareStatement(sql)) {
-                    int i=1; statement.setInt(i++,actor.getCompanyId());
+                    int i=1;
+                    statement.setInt(i++,actor.getCompanyId());
                     if(email!=null) statement.setString(i++,email);
                     if(identityNumber!=null) statement.setString(i,identityNumber);
                     try(ResultSet rows=statement.executeQuery()) { while(rows.next()) result.add(map(rows,actor)); }
                 }
-                connection.commit(); return result;
-            } catch(SQLException|RuntimeException exception) { connection.rollback(); throw exception; }
+                connection.commit();
+                return result;
+            } catch(SQLException|RuntimeException exception) { connection.rollback();
+            throw exception; }
         }
     }
 
@@ -77,7 +80,8 @@ public class EmployeePasswordResetDAO {
                 String locked=SELECT.replace("FROM Employees e", "FROM Employees e WITH (UPDLOCK,HOLDLOCK)")
                         .replace("LEFT JOIN Users u", "LEFT JOIN Users u WITH (UPDLOCK,HOLDLOCK)");
                 try(PreparedStatement statement=connection.prepareStatement(locked+" AND e.EmployeeId=?")) {
-                    statement.setInt(1,actor.getCompanyId()); statement.setInt(2,employeeId);
+                    statement.setInt(1,actor.getCompanyId());
+                    statement.setInt(2,employeeId);
                     try(ResultSet rows=statement.executeQuery()) {
                         if(!rows.next()) throw new ConflictException();
                         target=map(rows,actor);
@@ -87,14 +91,17 @@ public class EmployeePasswordResetDAO {
                     throw new ConflictException();
                 T prepared=preparation.prepare(target); // local configuration validation only, never SMTP
                 try(PreparedStatement statement=connection.prepareStatement("UPDATE Users SET Password=?,MustChangePassword=1,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND UserId=? AND RowVersion=?")) {
-                    statement.setString(1,hash); statement.setInt(2,actor.getCompanyId());
-                    statement.setInt(3,(Integer)target.get("userId")); statement.setBytes(4,version);
+                    statement.setString(1,hash);
+                    statement.setInt(2,actor.getCompanyId());
+                    statement.setInt(3,(Integer)target.get("userId"));
+                    statement.setBytes(4,version);
                     if(statement.executeUpdate()!=1) throw new ConflictException();
                 }
                 audit(connection,actor,employeeId,operationId,"PORTAL_RESET","PENDING");
                 connection.commit();
                 return prepared;
-            } catch(SQLException|RuntimeException exception) { connection.rollback(); throw exception; }
+            } catch(SQLException|RuntimeException exception) { connection.rollback();
+            throw exception; }
         }
     }
 
@@ -111,8 +118,10 @@ public class EmployeePasswordResetDAO {
                 AND NOT EXISTS (SELECT 1 FROM Employees ae WHERE ae.CompanyId=u.CompanyId AND ae.UserId=u.UserId AND ae.Status<>'Active')
                 """+" AND "+ContractAccessPolicy.ALLOWED;
         try(PreparedStatement statement=connection.prepareStatement(sql)) {
-            statement.setInt(1,actor.getUserId()); statement.setInt(2,actor.getCompanyId());
-            statement.setString(3,actor.getRoleCode()); statement.setString(4,actor.getWorkspaceCode());
+            statement.setInt(1,actor.getUserId());
+            statement.setInt(2,actor.getCompanyId());
+            statement.setString(3,actor.getRoleCode());
+            statement.setString(4,actor.getWorkspaceCode());
             try(ResultSet rows=statement.executeQuery()) {
                 if(!rows.next() || actor.getCredentialVersion()==null
                         || !java.security.MessageDigest.isEqual(actor.getCredentialVersion().getBytes(java.nio.charset.StandardCharsets.UTF_8),
@@ -129,7 +138,9 @@ public class EmployeePasswordResetDAO {
     }
     private void audit(Connection connection,TenantPrincipal actor,int employeeId,String operationId,String action,String status) throws SQLException {
         try(PreparedStatement statement=connection.prepareStatement("INSERT INTO AuditLogs (CompanyId,UserId,Action,TableName,RecordId,NewValues) VALUES (?,?,?,'Employees',?,?)")) {
-            statement.setInt(1,actor.getCompanyId()); statement.setInt(2,actor.getUserId()); statement.setString(3,action);
+            statement.setInt(1,actor.getCompanyId());
+            statement.setInt(2,actor.getUserId());
+            statement.setString(3,action);
             statement.setString(4,Integer.toString(employeeId));
             statement.setString(5,Json.encode(Map.of("operationId",operationId,"deliveryStatus",status)));
             if(statement.executeUpdate()!=1) throw new SQLException("Reset audit was not recorded.");
@@ -142,15 +153,23 @@ public class EmployeePasswordResetDAO {
         boolean active=rows.getBoolean("IsActive") && "Active".equals(rows.getString("Status"));
         String role=rows.getString("RoleCode");
         String reason=unavailableReason(userId,actor.getUserId(),role,active,rows.getBoolean("ContractAllowed"),rows.getString("Email"));
-        data.put("employeeId",rows.getInt("EmployeeId")); data.put("userId",userId);
-        data.put("employeeCode",rows.getString("EmployeeCode")); data.put("fullName",rows.getString("FullName"));
-        data.put("email",rows.getString("Email")); data.put("identityNumber",rows.getString("IdentityNumber"));
-        data.put("phone",rows.getString("Phone")); data.put("roleCode",role); data.put("isActive",active);
+        data.put("employeeId",rows.getInt("EmployeeId"));
+        data.put("userId",userId);
+        data.put("employeeCode",rows.getString("EmployeeCode"));
+        data.put("fullName",rows.getString("FullName"));
+        data.put("email",rows.getString("Email"));
+        data.put("identityNumber",rows.getString("IdentityNumber"));
+        data.put("phone",rows.getString("Phone"));
+        data.put("roleCode",role);
+        data.put("isActive",active);
         data.put("isLocked",rows.getBoolean("IsLocked") || rows.getBoolean("TimedLock"));
-        data.put("mustChangePassword",rows.getBoolean("MustChangePassword")); data.put("canReset",reason==null);
+        data.put("mustChangePassword",rows.getBoolean("MustChangePassword"));
+        data.put("canReset",reason==null);
         data.put("unavailableReason",reason);
-        byte[] version=rows.getBytes("RowVersion"); data.put("version",version==null?null:HexFormat.of().formatHex(version));
-        data.put("workspaceCode",rows.getString("WorkspaceCode")); return data;
+        byte[] version=rows.getBytes("RowVersion");
+        data.put("version",version==null?null:HexFormat.of().formatHex(version));
+        data.put("workspaceCode",rows.getString("WorkspaceCode"));
+        return data;
     }
     static String unavailableReason(Integer userId,Integer actorId,String role,boolean active,boolean contract,String email) {
         if(userId==null) return "Nhân viên chưa được cấp tài khoản. Vui lòng cấp tài khoản trước.";

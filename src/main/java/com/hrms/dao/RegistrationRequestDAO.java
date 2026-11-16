@@ -488,14 +488,20 @@ public class RegistrationRequestDAO {
             boolean completed = false;
             try {
                 if (!isActiveSystemAdmin(connection, actorId)) {
-                    connection.rollback(); completed = true; return MutationResult.forbidden();
+                    connection.rollback();
+                    completed = true;
+                    return MutationResult.forbidden();
                 }
                 RegistrationRequest registration = findForUpdate(connection, requestId);
                 if (registration == null) {
-                    connection.rollback(); completed = true; return MutationResult.notFound();
+                    connection.rollback();
+                    completed = true;
+                    return MutationResult.notFound();
                 }
                 if (!List.of("NEW", "UNDER_REVIEW").contains(registration.getStatus())) {
-                    connection.rollback(); completed = true; return MutationResult.conflict();
+                    connection.rollback();
+                    completed = true;
+                    return MutationResult.conflict();
                 }
                 try (PreparedStatement statement = connection.prepareStatement(
                         "DELETE FROM EmailAttempts WHERE RegistrationRequestId=?")) {
@@ -507,12 +513,15 @@ public class RegistrationRequestDAO {
                 try (PreparedStatement statement = connection.prepareStatement(sql)) {
                     statement.setInt(1, requestId);
                     if (statement.executeUpdate() != 1) {
-                        connection.rollback(); completed = true; return MutationResult.conflict();
+                        connection.rollback();
+                        completed = true;
+                        return MutationResult.conflict();
                     }
                 }
                 insertAudit(connection, actorId, "DELETE_REQUEST", requestId,
                         registration.getStatus(), "DELETED", ipAddress);
-                connection.commit(); completed = true;
+                connection.commit();
+                completed = true;
                 return MutationResult.deleted(registration);
             } catch (SQLException | RuntimeException exception) {
                 try { connection.rollback(); } catch (SQLException ignored) { }
@@ -570,9 +579,12 @@ public class RegistrationRequestDAO {
             String sql = "INSERT INTO Companies (WorkspaceCode,CompanyName,CompanyNameNormalized,Region,ContactEmail,ContactPhone,IsActive) "
                     + "OUTPUT INSERTED.CompanyId VALUES (?,?,?,?,?,?,1)";
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.setString(1, workspace); statement.setNString(2, request.getCompanyName());
-                statement.setNString(3, normalized); statement.setString(4, request.getRegion());
-                statement.setString(5, request.getEmail()); statement.setString(6, request.getPhone());
+                statement.setString(1, workspace);
+                statement.setNString(2, request.getCompanyName());
+                statement.setNString(3, normalized);
+                statement.setString(4, request.getRegion());
+                statement.setString(5, request.getEmail());
+                statement.setString(6, request.getPhone());
                 try (ResultSet result = statement.executeQuery()) {
                     if (result.next()) return new CompanyInsert(result.getInt(1), workspace);
                 }
@@ -626,7 +638,8 @@ public class RegistrationRequestDAO {
                     "SELECT 1 FROM Users WITH (UPDLOCK,HOLDLOCK) WHERE Username=?")) {
                 statement.setString(1, candidate);
                 try (ResultSet result = statement.executeQuery()) {
-                    if (!result.next()) { username = candidate; break; }
+                    if (!result.next()) { username = candidate;
+                    break; }
                 }
             }
         }
@@ -635,9 +648,12 @@ public class RegistrationRequestDAO {
                 + "OUTPUT INSERTED.UserId INTO @CreatedUsers VALUES (?,?,?,?,?,?,1,NULL,NULL,1,0)";
         try (PreparedStatement statement = connection.prepareStatement(
                 "DECLARE @CreatedUsers TABLE (UserId INT); " + sql + " SELECT UserId FROM @CreatedUsers")) {
-            statement.setInt(1, companyId); statement.setInt(2, roleId);
-            statement.setString(3, username); statement.setString(4, request.getEmail());
-            statement.setNString(5, request.getFullName()); statement.setString(6, password);
+            statement.setInt(1, companyId);
+            statement.setInt(2, roleId);
+            statement.setString(3, username);
+            statement.setString(4, request.getEmail());
+            statement.setNString(5, request.getFullName());
+            statement.setString(6, password);
             try (ResultSet result = statement.executeQuery()) {
                 if (result.next()) return result.getInt(1);
             }
@@ -664,14 +680,19 @@ public class RegistrationRequestDAO {
                 CROSS JOIN (SELECT CAST(SYSUTCDATETIME() AT TIME ZONE 'UTC' AT TIME ZONE 'SE Asia Standard Time' AS DATE) AS StartDate) d
                 WHERE p.PlanId = ?
                 """)) {
-            statement.setInt(1, companyId); statement.setInt(2, planId); statement.executeUpdate();
+            statement.setInt(1, companyId);
+            statement.setInt(2, planId);
+            statement.executeUpdate();
         }
     }
 
     private void insertAudit(Connection connection, int actorId, String action, int requestId,
                              String oldStatus, String newStatus, String ipAddress) throws SQLException {
-        AuditLog log = new AuditLog(); log.setUserId(actorId); log.setAction(action);
-        log.setTableName("RegistrationRequests"); log.setRecordId(String.valueOf(requestId));
+        AuditLog log = new AuditLog();
+        log.setUserId(actorId);
+        log.setAction(action);
+        log.setTableName("RegistrationRequests");
+        log.setRecordId(String.valueOf(requestId));
         log.setOldValues("{\"status\":\"" + oldStatus + "\"}");
         log.setNewValues("{\"status\":\"" + newStatus + "\"}");
         log.setIpAddress(ipAddress == null || ipAddress.length() > 50 ? null : ipAddress);
@@ -683,8 +704,10 @@ public class RegistrationRequestDAO {
         String sql = "INSERT INTO EmailAttempts (EmailType,RegistrationRequestId,UserId,RequestedByUserId,RecipientEmail,Status) "
                 + "OUTPUT INSERTED.EmailAttemptId VALUES ('ACCOUNT_ACTIVATION',?,?,?,?, 'PENDING')";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, requestId); statement.setInt(2, userId);
-            statement.setInt(3, actorId); statement.setString(4, recipient);
+            statement.setInt(1, requestId);
+            statement.setInt(2, userId);
+            statement.setInt(3, actorId);
+            statement.setString(4, recipient);
             try (ResultSet result = statement.executeQuery()) {
                 if (result.next()) return result.getLong(1);
             }

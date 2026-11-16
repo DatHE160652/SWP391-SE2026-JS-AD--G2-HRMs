@@ -248,7 +248,8 @@ public class PayrollDAO {
         try (Connection c = connections.open()) {
             ensureFormulaSchema(c);
             try (PreparedStatement s = c.prepareStatement(PERIOD_SELECT + " AND p.PayrollPeriodId=?")) {
-                s.setInt(1, companyId); s.setInt(2, periodId);
+                s.setInt(1, companyId);
+                s.setInt(2, periodId);
                 try (ResultSet r = s.executeQuery()) {
                     if (!r.next()) throw new PayrollException(404, "Không tìm thấy kỳ lương trong công ty của bạn.");
                     return period(r);
@@ -367,7 +368,8 @@ public class PayrollDAO {
             )
             """ : "") + """
             ORDER BY e.EmployeeCode""")) {
-            s.setInt(1, companyId); s.setInt(2, periodId);
+            s.setInt(1, companyId);
+            s.setInt(2, periodId);
             return rows(s);
         }
     }
@@ -756,14 +758,16 @@ public class PayrollDAO {
             c.setAutoCommit(false);
             try {
                 try (PreparedStatement s=c.prepareStatement(PERIOD_SELECT+" AND p.PayrollPeriodId=?")) {
-                    s.setInt(1,companyId);s.setInt(2,periodId);
+                    s.setInt(1,companyId);
+                    s.setInt(2,periodId);
                     try (ResultSet r=s.executeQuery()) {
                         if (!r.next()) throw new PayrollException(404,"Không tìm thấy kỳ lương trong công ty của bạn.");
                         editable(period(r));
                     }
                 }
                 PayrollCalculation result=calculation(c,companyId,periodId);
-                c.commit();return result;
+                c.commit();
+                return result;
             } catch (SQLException | RuntimeException e) {
                 try {c.rollback();} catch (SQLException rollback) {e.addSuppressed(rollback);}
                 throw e;
@@ -884,7 +888,8 @@ public class PayrollDAO {
         try (Connection c=connections.open();PreparedStatement s=c.prepareStatement(SLIP_SELECT+"""
             WHERE p.CompanyId=? AND p.PayrollPeriodId=? ORDER BY e.EmployeeCode,s.PayslipId
             """)) {
-            s.setInt(1,companyId);s.setInt(2,periodId);
+            s.setInt(1,companyId);
+            s.setInt(2,periodId);
             try (ResultSet r=s.executeQuery()) {
                 List<PayrollSlipView> result=new ArrayList<>();
                 while (r.next()) result.add(slip(r));
@@ -900,7 +905,8 @@ public class PayrollDAO {
             WHERE p.CompanyId=? AND e.EmployeeId=? AND p.PublishedAt IS NOT NULL AND p.Status='Approved'
             ORDER BY p.Year DESC,p.Month DESC
             """)) {
-                s.setInt(1, companyId); s.setInt(2, employeeId);
+                s.setInt(1, companyId);
+                s.setInt(2, employeeId);
                 try (ResultSet r = s.executeQuery()) {
                     List<PayrollSlipView> result = new ArrayList<>();
                     while (r.next()) result.add(slip(r));
@@ -916,7 +922,9 @@ public class PayrollDAO {
             ensureFormulaSchema(c);
             try (PreparedStatement s = c.prepareStatement(SLIP_SELECT
                 + " WHERE p.CompanyId=? AND s.PayslipId=?" + restriction)) {
-                s.setInt(1, companyId); s.setLong(2, id); if (employeeId != null) s.setInt(3, employeeId);
+                s.setInt(1, companyId);
+                s.setLong(2, id);
+                if (employeeId != null) s.setInt(3, employeeId);
                 try (ResultSet r = s.executeQuery()) {
                     if (!r.next()) throw new PayrollException(404, "Không tìm thấy phiếu lương.");
                     return slip(r);
@@ -934,7 +942,8 @@ public class PayrollDAO {
             WHERE n.CompanyId=? AND n.EmployeeId=? AND p.PublishedAt IS NOT NULL AND p.Status='Approved'
             ORDER BY n.CreatedAt DESC,n.NotificationId DESC
             """)) {
-            s.setInt(1, companyId); s.setInt(2, employeeId);
+            s.setInt(1, companyId);
+            s.setInt(2, employeeId);
             try (ResultSet r = s.executeQuery()) {
                 List<PayrollNotification> result = new ArrayList<>();
                 while (r.next()) result.add(new PayrollNotification(r.getLong("NotificationId"),r.getLong("PayslipId"),
@@ -953,7 +962,9 @@ public class PayrollDAO {
             WHERE n.CompanyId=? AND n.EmployeeId=? AND n.NotificationId=?
                 AND p.PublishedAt IS NOT NULL AND p.Status='Approved'
             """)) {
-            s.setInt(1, companyId); s.setInt(2, employeeId); s.setLong(3,id);
+            s.setInt(1, companyId);
+            s.setInt(2, employeeId);
+            s.setLong(3,id);
             if (s.executeUpdate() != 1) throw new PayrollException(404,"Không tìm thấy thông báo.");
         }
     }
@@ -975,10 +986,13 @@ public class PayrollDAO {
                 try (PreparedStatement s = c.prepareStatement("""
                     SELECT UserId FROM dbo.vw_PayrollOperators WHERE UserId=? AND CompanyId=?
                     """)) {
-                    s.setInt(1,userId); s.setInt(2,companyId);
+                    s.setInt(1,userId);
+                    s.setInt(2,companyId);
                     try (ResultSet r = s.executeQuery()) { if (!r.next()) throw new PayrollException(403,"Bạn không có quyền quản lý lương của công ty này."); }
                 }
-                T result = work.run(c); c.commit(); return result;
+                T result = work.run(c);
+                c.commit();
+                return result;
             } catch (SQLException | RuntimeException e) {
                 try { c.rollback(); } catch (SQLException rollback) { e.addSuppressed(rollback); }
                 if (e instanceof SQLException sql && (sql.getErrorCode()==2601 || sql.getErrorCode()==2627))
@@ -992,7 +1006,8 @@ public class PayrollDAO {
         try (PreparedStatement s = c.prepareStatement(PERIOD_COLUMNS + """
             FROM PayrollPeriods p WITH (UPDLOCK,HOLDLOCK) WHERE CompanyId=? AND PayrollPeriodId=?
             """)) {
-            s.setInt(1,companyId); s.setInt(2,periodId);
+            s.setInt(1,companyId);
+            s.setInt(2,periodId);
             try (ResultSet r=s.executeQuery()) {
                 if (!r.next()) throw new PayrollException(404,"Không tìm thấy kỳ lương trong công ty của bạn.");
                 return period(r);
@@ -1013,7 +1028,8 @@ public class PayrollDAO {
             FROM Payslips s JOIN PayrollPeriods p ON p.PayrollPeriodId=s.PayrollPeriodId
             WHERE p.CompanyId=? AND p.PayrollPeriodId=?
             """)) {
-            s.setInt(1, companyId); s.setInt(2, periodId);
+            s.setInt(1, companyId);
+            s.setInt(2, periodId);
             try (ResultSet r = s.executeQuery()) {
                 if (!r.next() || r.getInt("SlipCount") == 0) {
                     throw new PayrollException(409, "Kỳ lương chưa có dữ liệu bảng lương đã tính. Hãy tính lương hoặc nhập Excel trước khi rà soát và duyệt.");
@@ -1037,7 +1053,8 @@ public class PayrollDAO {
         try (PreparedStatement s=c.prepareStatement("""
             SELECT EmployeeId FROM Employees WHERE CompanyId=? AND EmployeeId=?
             """)) {
-            s.setInt(1,companyId); s.setInt(2,employeeId);
+            s.setInt(1,companyId);
+            s.setInt(2,employeeId);
             try (ResultSet r=s.executeQuery()) {
                 if (!r.next()) throw new PayrollException(404,"Nhân viên không thuộc công ty hoặc không có trong kỳ lương.");
             }
@@ -1062,7 +1079,8 @@ public class PayrollDAO {
             LEFT JOIN PayrollAdjustments a ON a.PayrollPeriodId=p.PayrollPeriodId AND a.EmployeeId=e.EmployeeId
             WHERE p.CompanyId=? AND p.PayrollPeriodId=? AND
             """ + ELIGIBLE + " ORDER BY e.EmployeeCode")) {
-            s.setInt(1,companyId);s.setInt(2,periodId);
+            s.setInt(1,companyId);
+            s.setInt(2,periodId);
             return PayrollCalculator.calculate(rows(s));
         }
     }
@@ -1073,7 +1091,8 @@ public class PayrollDAO {
             SELECT Bonus,Deduction,Note FROM PayrollAdjustments WITH (UPDLOCK,HOLDLOCK)
             WHERE PayrollPeriodId=? AND EmployeeId=?
             """)) {
-            s.setInt(1,periodId);s.setInt(2,employeeId);
+            s.setInt(1,periodId);
+            s.setInt(2,employeeId);
             try (ResultSet r=s.executeQuery()) {
                 if (r.next() && r.getBigDecimal("Bonus").compareTo(bonus)==0
                         && r.getBigDecimal("Deduction").compareTo(deduction)==0
@@ -1084,16 +1103,25 @@ public class PayrollDAO {
         try (PreparedStatement s=c.prepareStatement("""
             UPDATE PayrollAdjustments SET Bonus=?,Deduction=?,Note=? WHERE PayrollPeriodId=? AND EmployeeId=?
             """)) {
-            s.setBigDecimal(1,bonus); s.setBigDecimal(2,deduction); s.setString(3,note);
-            s.setInt(4,periodId); s.setInt(5,employeeId);
+            s.setBigDecimal(1,bonus);
+            s.setBigDecimal(2,deduction);
+            s.setString(3,note);
+            s.setInt(4,periodId);
+            s.setInt(5,employeeId);
             if (s.executeUpdate()>0) return true;
         }
         try (PreparedStatement s=c.prepareStatement("""
             INSERT INTO PayrollAdjustments(CompanyId,PayrollPeriodId,EmployeeId,Bonus,Deduction,Note,CreatedByUserId)
             VALUES(?,?,?,?,?,?,?)
             """)) {
-            s.setInt(1,companyId); s.setInt(2,periodId); s.setInt(3,employeeId); s.setBigDecimal(4,bonus); s.setBigDecimal(5,deduction);
-            s.setString(6,note); s.setInt(7,userId); s.executeUpdate();
+            s.setInt(1,companyId);
+            s.setInt(2,periodId);
+            s.setInt(3,employeeId);
+            s.setBigDecimal(4,bonus);
+            s.setBigDecimal(5,deduction);
+            s.setString(6,note);
+            s.setInt(7,userId);
+            s.executeUpdate();
         }
         return true;
     }
@@ -1110,8 +1138,13 @@ public class PayrollDAO {
             INSERT INTO AuditLogs(CompanyId,UserId,[Action],TableName,RecordId,OldValues,NewValues,CreatedAt)
             VALUES(?,?,?,'PayrollPeriods',?,?,?,SYSUTCDATETIME())
             """)) {
-            s.setInt(1,companyId);s.setInt(2,userId);s.setString(3,action);s.setString(4,String.valueOf(periodId));
-            s.setString(5,before==null?null:auditValues(before));s.setString(6,auditValues(after));s.executeUpdate();
+            s.setInt(1,companyId);
+            s.setInt(2,userId);
+            s.setString(3,action);
+            s.setString(4,String.valueOf(periodId));
+            s.setString(5,before==null?null:auditValues(before));
+            s.setString(6,auditValues(after));
+            s.executeUpdate();
         }
     }
 
@@ -1124,7 +1157,9 @@ public class PayrollDAO {
     }
 
     private void execute(Connection c,String sql,int companyId,int periodId) throws SQLException {
-        try (PreparedStatement s=c.prepareStatement(sql)) { s.setInt(1,companyId); s.setInt(2,periodId); s.executeUpdate(); }
+        try (PreparedStatement s=c.prepareStatement(sql)) { s.setInt(1,companyId);
+        s.setInt(2,periodId);
+        s.executeUpdate(); }
     }
 
     private List<PayrollRow> rows(PreparedStatement s) throws SQLException {
@@ -1141,15 +1176,26 @@ public class PayrollDAO {
 
     private PayrollPeriod period(ResultSet r) throws SQLException {
         PayrollPeriod p=new PayrollPeriod();
-        p.setPayrollPeriodId(r.getInt("PayrollPeriodId")); p.setCompanyId(r.getInt("CompanyId"));
-        p.setPeriodName(r.getString("PeriodName")); p.setMonth(r.getInt("Month")); p.setYear(r.getInt("Year"));
-        p.setStatus(r.getString("Status")); p.setClosed(r.getBoolean("IsClosed"));
-        p.setReviewedByUserId((Integer)r.getObject("ReviewedByUserId"));p.setReviewedAt(time(r,"ReviewedAt"));
-        p.setReviewedByName(r.getString("ReviewedByName"));p.setApprovedByName(r.getString("ApprovedByName"));
-        p.setApprovedByUserId((Integer)r.getObject("ApprovedByUserId")); p.setApprovedAt(time(r,"ApprovedAt"));
-        p.setCreatedAt(time(r,"CreatedAt")); p.setPublishedAt(time(r,"PublishedAt"));
-        p.setEmployeeCount(r.getInt("EmployeeCount"));p.setTotalIncome(r.getBigDecimal("TotalIncome"));
-        p.setTotalDeduction(r.getBigDecimal("TotalDeduction"));p.setTotalNetSalary(r.getBigDecimal("TotalNetSalary"));return p;
+        p.setPayrollPeriodId(r.getInt("PayrollPeriodId"));
+        p.setCompanyId(r.getInt("CompanyId"));
+        p.setPeriodName(r.getString("PeriodName"));
+        p.setMonth(r.getInt("Month"));
+        p.setYear(r.getInt("Year"));
+        p.setStatus(r.getString("Status"));
+        p.setClosed(r.getBoolean("IsClosed"));
+        p.setReviewedByUserId((Integer)r.getObject("ReviewedByUserId"));
+        p.setReviewedAt(time(r,"ReviewedAt"));
+        p.setReviewedByName(r.getString("ReviewedByName"));
+        p.setApprovedByName(r.getString("ApprovedByName"));
+        p.setApprovedByUserId((Integer)r.getObject("ApprovedByUserId"));
+        p.setApprovedAt(time(r,"ApprovedAt"));
+        p.setCreatedAt(time(r,"CreatedAt"));
+        p.setPublishedAt(time(r,"PublishedAt"));
+        p.setEmployeeCount(r.getInt("EmployeeCount"));
+        p.setTotalIncome(r.getBigDecimal("TotalIncome"));
+        p.setTotalDeduction(r.getBigDecimal("TotalDeduction"));
+        p.setTotalNetSalary(r.getBigDecimal("TotalNetSalary"));
+        return p;
     }
 
     private PayrollSlipView slip(ResultSet r) throws SQLException {
@@ -1166,10 +1212,12 @@ public class PayrollDAO {
     }
 
     private LocalDate date(ResultSet r,String name) throws SQLException {
-        Date date=r.getDate(name);return date==null?null:date.toLocalDate();
+        Date date=r.getDate(name);
+        return date==null?null:date.toLocalDate();
     }
 
     private LocalDateTime time(ResultSet r,String name) throws SQLException {
-        Timestamp timestamp=r.getTimestamp(name); return timestamp==null?null:timestamp.toLocalDateTime();
+        Timestamp timestamp=r.getTimestamp(name);
+        return timestamp==null?null:timestamp.toLocalDateTime();
     }
 }

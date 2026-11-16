@@ -83,13 +83,6 @@ public class EmployeeLifecycleController extends HttpServlet {
                 data = "create".equals(request.getParameter("action"))
                         ? Map.of("message","Đã tạo tài khoản. Mật khẩu ban đầu là mã định danh cá nhân; bắt buộc đổi ở lần đăng nhập đầu.","passwordPolicy","PERSONAL_ID_FIRST_LOGIN")
                         : password == null ? Map.of("message", "Đã cập nhật tài khoản nhân viên.") : Map.of("temporaryPassword", password);
-            } else if (path.equals("/lifecycle/api/changes/request") || path.equals("/lifecycle/api/changes/transition")) {
-                service.requireEditor(principal);
-                write(response, HttpServletResponse.SC_GONE, Map.of("success",false,"message",
-                        "Đã ngừng quy trình đề xuất. Vui lòng phân công hoặc chuyển chức danh trực tiếp tại Phòng ban."));
-                return;
-            } else if (path.equals("/lifecycle/api/compensation/save")) {
-                throw new IllegalArgumentException("Lương cơ bản không được cập nhật thủ công. Chỉ được cập nhật tự động theo hợp đồng lao động đã kích hoạt.");
             } else if (path.equals("/lifecycle/api/terminate")) {
                 data = service.terminate(principal, requiredInt(request.getParameter("employeeId")), request.getParameter("reason"));
             } else {

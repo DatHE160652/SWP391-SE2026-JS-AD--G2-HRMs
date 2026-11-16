@@ -76,7 +76,10 @@
             <c:otherwise>
                 <div class="table-wrap">
                     <table class="company-table">
-                        <thead><tr><th scope="col"><%= com.hrms.i18n.Language.text(request, "ui_9d6821753834", "Mã workspace") %></th><th scope="col"><%= com.hrms.i18n.Language.text(request, "ui_ff89a728e65f", "Doanh nghiệp SME") %></th><th scope="col"><%= com.hrms.i18n.Language.text(request, "ui_a3d0f0edfff1", "Đại diện (Company Admin)") %></th><th scope="col"><%= com.hrms.i18n.Language.text(request, "ui_c12e4bb02923", "Khu vực") %></th><th scope="col"><%= com.hrms.i18n.Language.text(request, "ui_4a60abe52524", "Tài khoản") %></th><th scope="col">Subscription</th><th scope="col" class="company-action-heading"><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th></tr></thead>
+                        <thead>
+                        <tr><th scope="col"><%= com.hrms.i18n.Language.text(request, "ui_9d6821753834", "Mã workspace") %></th><th scope="col"><%= com.hrms.i18n.Language.text(request, "ui_ff89a728e65f", "Doanh nghiệp SME") %></th><th scope="col"><%= com.hrms.i18n.Language.text(request, "ui_a3d0f0edfff1", "Đại diện (Company Admin)") %></th><th scope="col"><%= com.hrms.i18n.Language.text(request, "ui_c12e4bb02923", "Khu vực") %></th><th scope="col"><%= com.hrms.i18n.Language.text(request, "ui_4a60abe52524", "Tài khoản") %></th><th scope="col">Subscription</th><th scope="col" class="company-action-heading"><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th>
+                        </tr>
+                        </thead>
                         <tbody>
                         <c:forEach var="item" items="${companies}">
                             <tr class="${item.subscriptionSuspended ? 'subscription-suspended-row' : ''}">
@@ -84,7 +87,9 @@
                                 <td class="company-name"><c:out value="${item.companyName}"/></td>
                                 <td><strong class="company-representative"><c:out value="${item.companyAdminName}" default="—"/></strong><span class="company-email"><c:out value="${item.companyAdminEmail}" default="—"/></span></td>
                                 <td><span class="region-label"><c:set var="i18nDisplayLabel" value="${item.regionLabel}"/><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("i18nDisplayLabel")) %>'/></span></td>
-                                <td><div class="account-usage"><span><strong><c:out value="${item.accountCount}"/> / <c:out value="${item.maxAccounts}"/></strong><em class="${item.accountUsagePercent >= 90 ? 'near-limit' : ''}"><c:out value="${item.accountUsagePercent}"/>%</em></span><i><b style="width:${item.accountUsagePercent}%"></b></i></div></td>
+                                <td>
+                                <div class="account-usage"><span><strong><c:out value="${item.accountCount}"/> / <c:out value="${item.maxAccounts}"/></strong><em class="${item.accountUsagePercent >= 90 ? 'near-limit' : ''}"><c:out value="${item.accountUsagePercent}"/>%</em></span><i><b style="width:${item.accountUsagePercent}%"></b></i>
+                                </div></td>
                                 <td><span class="subscription-status ${item.subscriptionActive ? 'is-active' : 'is-suspended'}"><i></i><c:set var="i18nDisplayLabel" value="${item.subscriptionStatus}"/><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("i18nDisplayLabel")) %>'/></span><c:if test="${item.subscriptionSuspended}"><small class="suspension-reason"><c:out value="${item.suspensionReason}" default='<%= com.hrms.i18n.Language.text(request, "ui_0d79b58ac18b", "Đã tạm ngưng dịch vụ") %>'/></small></c:if></td>
                                 <td class="company-action"><a class="company-details-button" href="${pageContext.request.contextPath}/systemadmin/company-details?id=${item.companyId}"><%= com.hrms.i18n.Language.text(request, "ui_d72a6317ec65", "Chi tiết") %> <svg class="icon" aria-hidden="true"><use href="${icons}#arrow-right"/></svg></a></td>
                             </tr>

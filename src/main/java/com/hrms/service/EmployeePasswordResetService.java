@@ -11,7 +11,8 @@ public class EmployeePasswordResetService {
     private final EmployeePasswordResetDAO dao;
     private final PasswordResetEmailSender sender;
     public EmployeePasswordResetService() { this(new EmployeePasswordResetDAO(),new ConfiguredPasswordResetEmailSender()); }
-    public EmployeePasswordResetService(EmployeePasswordResetDAO dao,PasswordResetEmailSender sender) { this.dao=dao; this.sender=sender; }
+    public EmployeePasswordResetService(EmployeePasswordResetDAO dao,PasswordResetEmailSender sender) { this.dao=dao;
+    this.sender=sender; }
     public void requireEditor(TenantPrincipal actor) {
         if(actor==null || actor.getCompanyId()==null || actor.getCompanyId()<=0 || actor.getUserId()==null
                 || actor.getUserId()<=0 || !actor.isCompanyAdministrator() || actor.isMustChangePassword())
@@ -72,7 +73,8 @@ public class EmployeePasswordResetService {
             };
             if(!recorded) message += " Chưa ghi nhận được nhật ký kết quả gửi email; liên hệ quản trị hệ thống và cung cấp mã thao tác.";
             return Map.of("message",message,"deliveryStatus",status,"operationId",operationId,"emailMetadataRecorded",recorded);
-        } finally { temporary=null; Arrays.fill(expected,(byte)0); }
+        } finally { temporary=null;
+        Arrays.fill(expected,(byte)0); }
     }
     public static class ConfigurationException extends RuntimeException {
         public ConfigurationException() { super("Chưa thể đặt lại mật khẩu do cấu hình email hoặc URL đăng nhập không hợp lệ. Liên hệ quản trị hệ thống."); }

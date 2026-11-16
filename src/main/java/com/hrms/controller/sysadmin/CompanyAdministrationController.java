@@ -1,6 +1,5 @@
 package com.hrms.controller.sysadmin;
 
-import com.hrms.api.ApiRoutes;
 import com.hrms.model.CompanyAdministrationFilter;
 import com.hrms.model.CompanyAdministrationView;
 import com.hrms.service.CompanyAdministrationService;
@@ -38,16 +37,16 @@ public class CompanyAdministrationController extends HttpServlet {
             throws ServletException, IOException {
         SecuritySupport.applyNoStore(response::setHeader);
         String path = request.getServletPath();
-        if (ApiRoutes.SYSTEM_ADMIN_COMPANIES.equals(path)) {
+        if ("/systemadmin/company".equals(path)) {
             showList(request, response);
             return;
         }
-        if (ApiRoutes.SYSTEM_ADMIN_COMPANY_DETAILS.equals(path)) {
+        if ("/systemadmin/company-details".equals(path)) {
             showDetails(request, response);
             return;
         }
-        if (ApiRoutes.SYSTEM_ADMIN_COMPANY_SUSPEND.equals(path)
-                || ApiRoutes.SYSTEM_ADMIN_COMPANY_ACTIVATE.equals(path)) {
+        if ("/systemadmin/company/suspend".equals(path)
+                || "/systemadmin/company/activate".equals(path)) {
             response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
             return;
         }
@@ -59,8 +58,8 @@ public class CompanyAdministrationController extends HttpServlet {
             throws ServletException, IOException {
         SecuritySupport.applyNoStore(response::setHeader);
         String path = request.getServletPath();
-        if (!ApiRoutes.SYSTEM_ADMIN_COMPANY_SUSPEND.equals(path)
-                && !ApiRoutes.SYSTEM_ADMIN_COMPANY_ACTIVATE.equals(path)) {
+        if (!"/systemadmin/company/suspend".equals(path)
+                && !"/systemadmin/company/activate".equals(path)) {
             response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
             return;
         }
@@ -81,7 +80,7 @@ public class CompanyAdministrationController extends HttpServlet {
         SystemAdminPrincipal principal = SecuritySupport.getPrincipal(request);
         try {
             String reason = request.getParameter("reason");
-            if (ApiRoutes.SYSTEM_ADMIN_COMPANY_SUSPEND.equals(path)) {
+            if ("/systemadmin/company/suspend".equals(path)) {
                 companyService.suspend(companyId, principal.getUserId(), reason, request.getRemoteAddr());
                 request.getSession(true).setAttribute(FLASH_MESSAGE,
                         "Đã tạm ngưng Subscription. Workspace đã bị chặn cho mọi phiên tenant.");
@@ -90,7 +89,7 @@ public class CompanyAdministrationController extends HttpServlet {
                 request.getSession(true).setAttribute(FLASH_MESSAGE,
                         "Đã kích hoạt lại Subscription. Workspace có thể đăng nhập nếu Company và tài khoản vẫn hợp lệ.");
             }
-            response.sendRedirect(request.getContextPath() + ApiRoutes.SYSTEM_ADMIN_COMPANY_DETAILS + "?id=" + companyId);
+            response.sendRedirect(request.getContextPath() + "/systemadmin/company-details?id=" + companyId);
         } catch (RequestActionException exception) {
             showErrorWithStatus(request, response, statusFor(exception), exception.getMessage());
         } catch (IllegalArgumentException exception) {

@@ -39,12 +39,6 @@ public class EmployeeAssignmentController extends HttpServlet {
                         parseNullableInt(request.getParameter("departmentId")), parseRequiredInt(request.getParameter("id")))) + "}");
                 return;
             }
-            if ("/employees/team-options".equals(request.getServletPath())) {
-                writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":"
-                        + toJsonDepartmentMembers(employeeAssignmentService.getTeamOptions(companyId,
-                        parseRequiredInt(request.getParameter("id")))) + "}");
-                return;
-            }
             if ("/employees/direct-reports".equals(request.getServletPath())) {
                 writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":"
                         + toJsonDepartmentMembers(employeeAssignmentService.getDirectReports(companyId,
@@ -109,16 +103,6 @@ public class EmployeeAssignmentController extends HttpServlet {
                         resolveManager(request, before.getManagerId()),
                         principal.getUserId(), request.getParameter("reason"));
                 message = "Đã cập nhật phân công tổ chức.";
-            } else if ("/employees/manage-team".equals(request.getServletPath())) {
-                int managerId = parseRequiredInt(request.getParameter("managerId"));
-                int[] removals = parseIntArray(request.getParameter("removeEmployeeIds"));
-                if (removals.length > 0 && !"true".equals(request.getParameter("confirmRemovals"))) {
-                    throw new com.hrms.service.FieldValidationException("employeeIds", "Vui lòng xác nhận gỡ quản lý trực tiếp của những nhân viên đã chọn.");
-                }
-                success = employeeAssignmentService.manageTeam(companyId, managerId,
-                        parseIntArray(request.getParameter("addEmployeeIds")), removals,
-                        parseExpectedManagers(request.getParameter("expectedManagers")), "true".equals(request.getParameter("confirmTransfers")), principal.getUserId(),request.getParameter("reason"));
-                message = "Đã cập nhật thành viên nhóm.";
             } else if ("/departments/assign-members".equals(request.getServletPath())) {
                 int departmentId = parseRequiredInt(request.getParameter("departmentId"));
                 int managerId = parseRequiredInt(request.getParameter("managerId"));

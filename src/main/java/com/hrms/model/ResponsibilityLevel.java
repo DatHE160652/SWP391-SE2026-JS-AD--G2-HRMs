@@ -8,7 +8,8 @@ public class ResponsibilityLevel {
     private BigDecimal defaultAllowance;
     private boolean allowanceSpecified;
     public BigDecimal getDefaultAllowance() { return defaultAllowance; }
-    public void setDefaultAllowance(BigDecimal amount) { defaultAllowance=amount; allowanceSpecified=true; }
+    public void setDefaultAllowance(BigDecimal amount) { defaultAllowance=amount;
+    allowanceSpecified=true; }
     public boolean isAllowanceSpecified() { return allowanceSpecified; }
     public void clearAllowanceSpecified() { allowanceSpecified=false; }
     private Integer companyId;

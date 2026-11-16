@@ -25,8 +25,10 @@ public class OrganizationAllowanceDAO {
                 WHERE p.CompanyId=? AND p.PositionId=?
                 GROUP BY p.PositionId
                 """)) {
-            statement.setDate(1,Date.valueOf(date)); statement.setDate(2,Date.valueOf(date));
-            statement.setInt(3,companyId); statement.setInt(4,positionId);
+            statement.setDate(1,Date.valueOf(date));
+            statement.setDate(2,Date.valueOf(date));
+            statement.setInt(3,companyId);
+            statement.setInt(4,positionId);
             try (ResultSet rows=statement.executeQuery()) {
                 if (!rows.next()) throw new FieldValidationException("positionId","Không tìm thấy chức danh trong công ty.");
                 if (rows.getInt("PolicyCount")>1) throw new FieldValidationException("responsibilityLevelId","Có nhiều chính sách phụ cấp cùng hiệu lực. Quản trị viên cần xử lý trước.");
@@ -40,8 +42,10 @@ public class OrganizationAllowanceDAO {
                 SELECT PositionId FROM EmployeePositionAssignments WHERE CompanyId=? AND EmployeeId=?
                     AND EffectiveFrom<=? AND (EffectiveTo IS NULL OR EffectiveTo>?)
                 """)) {
-            statement.setInt(1,companyId); statement.setInt(2,employeeId);
-            statement.setDate(3,Date.valueOf(date)); statement.setDate(4,Date.valueOf(date));
+            statement.setInt(1,companyId);
+            statement.setInt(2,employeeId);
+            statement.setDate(3,Date.valueOf(date));
+            statement.setDate(4,Date.valueOf(date));
             try (ResultSet rows=statement.executeQuery()) {
                 if (!rows.next()) return null;
                 int positionId=rows.getInt(1);
@@ -59,7 +63,8 @@ public class OrganizationAllowanceDAO {
                 WHERE CompanyId=? AND ResponsibilityLevelId=? AND EffectiveFrom<=CONVERT(date,SYSDATETIME())
                     AND (EffectiveTo IS NULL OR EffectiveTo>CONVERT(date,SYSDATETIME()))
                 """)) {
-            statement.setInt(1,companyId); statement.setInt(2,levelId);
+            statement.setInt(1,companyId);
+            statement.setInt(2,levelId);
             try (ResultSet rows=statement.executeQuery()) {
                 rows.next();
                 if (rows.getInt(1)>1) throw new FieldValidationException("defaultAllowance","Các chính sách phụ cấp đang bị chồng lấn. Cần xử lý trước khi thay đổi.");
@@ -70,13 +75,17 @@ public class OrganizationAllowanceDAO {
                 WHERE CompanyId=? AND ResponsibilityLevelId=? AND EffectiveFrom<CONVERT(date,SYSDATETIME())
                     AND (EffectiveTo IS NULL OR EffectiveTo>CONVERT(date,SYSDATETIME()))
                 """)) {
-            statement.setInt(1,companyId); statement.setInt(2,levelId); statement.executeUpdate();
+            statement.setInt(1,companyId);
+            statement.setInt(2,levelId);
+            statement.executeUpdate();
         }
         try (PreparedStatement statement=connection.prepareStatement("""
                 UPDATE ResponsibilityAllowancePolicies SET Amount=? WHERE CompanyId=? AND ResponsibilityLevelId=?
                     AND EffectiveFrom=CONVERT(date,SYSDATETIME())
                 """)) {
-            statement.setBigDecimal(1,amount); statement.setInt(2,companyId); statement.setInt(3,levelId);
+            statement.setBigDecimal(1,amount);
+            statement.setInt(2,companyId);
+            statement.setInt(3,levelId);
             if (statement.executeUpdate()>0) return;
         }
         if (amount!=null) {
@@ -86,8 +95,12 @@ public class OrganizationAllowanceDAO {
                     FROM ResponsibilityAllowancePolicies WHERE CompanyId=? AND ResponsibilityLevelId=?
                         AND EffectiveFrom>CONVERT(date,SYSDATETIME())
                     """)) {
-                statement.setInt(1,companyId); statement.setInt(2,levelId); statement.setBigDecimal(3,amount);
-                statement.setInt(4,companyId); statement.setInt(5,levelId); statement.executeUpdate();
+                statement.setInt(1,companyId);
+                statement.setInt(2,levelId);
+                statement.setBigDecimal(3,amount);
+                statement.setInt(4,companyId);
+                statement.setInt(5,levelId);
+                statement.executeUpdate();
             }
         }
     }

@@ -1,6 +1,5 @@
 package com.hrms.controller.manager;
 
-import com.hrms.api.ApiRoutes;
 import com.hrms.dao.AttendanceDAO.AttendanceDTO;
 import com.hrms.dao.AttendanceReportDAO;
 import com.hrms.dao.AttendanceSummaryDAO;
@@ -17,7 +16,6 @@ import com.hrms.service.security.TenantPrincipal;
 import com.hrms.util.SecuritySupport;
 
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -37,36 +35,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@WebServlet(name = "AttendanceController", urlPatterns = {
-        ApiRoutes.ATTENDANCE_PERSONAL,
-        ApiRoutes.ATTENDANCE_TEAM,
-        ApiRoutes.ATTENDANCE_PAGE_MANAGER,
-        ApiRoutes.ATTENDANCE_PAGE_EMPLOYEE,
-        ApiRoutes.ATTENDANCE_PAGE_COMPANY,
-        ApiRoutes.ATTENDANCE_PAGE_MANAGER_PERSONAL,
-        "/attendance/manager-attendance.html",
-        "/attendance/employee-attendance.html",
-        "/attendance/company-attendance.html",
-        "/attendance/manager-personal-attendance.html",
-        "/attendance/attendance-report.html",
-        ApiRoutes.ATTENDANCE_PAGE_REPORT,
-        ApiRoutes.ATTENDANCE_ALL,
-        ApiRoutes.ATTENDANCE_CHECK_IN,
-        ApiRoutes.ATTENDANCE_CHECK_OUT,
-        ApiRoutes.ATTENDANCE_BATCH_COMPLETE,
-        ApiRoutes.ATTENDANCE_COMPANY,
-        ApiRoutes.ATTENDANCE_REPORT,
-        ApiRoutes.ATTENDANCE_EXPORT_REPORT,
-        ApiRoutes.ATTENDANCE_EXPORT_TIMESHEET,
-        ApiRoutes.ATTENDANCE_META,
-        ApiRoutes.ATTENDANCE_SHIFT_SETTING,
-        ApiRoutes.ATTENDANCE_MANUAL_ADJUST,
-        ApiRoutes.MANAGER_TEAM_ATTENDANCE,
-        ApiRoutes.MANAGER_EMPLOYEE_ATTENDANCE,
-        ApiRoutes.MANAGER_EMPLOYEE_ATTENDANCE_HTML,
-        ApiRoutes.MANAGER_COMPANY_ATTENDANCE_HTML,
-        ApiRoutes.MANAGER_ATTENDANCE_REPORT_HTML
-})
 public class AttendanceController extends HttpServlet {
     private final AttendanceService attendanceService;
     private final EmployeeService employeeService;
@@ -97,7 +65,7 @@ public class AttendanceController extends HttpServlet {
             SecuritySupport.requireCompanyId(request);
             SecuritySupport.applyNoStore(response::setHeader);
             request.setAttribute("organizationCsrfToken", SecuritySupport.ensurePublicCsrfToken(request.getSession(true)));
-            if (path.endsWith(".html") && path.startsWith(ApiRoutes.ATTENDANCE_PREFIX + "/")) {
+            if (path.endsWith(".html") && path.startsWith("/attendance/")) {
                 String canonical = path.substring(0, path.length() - ".html".length());
                 response.sendRedirect(request.getContextPath() + canonical);
                 return;
@@ -106,26 +74,26 @@ public class AttendanceController extends HttpServlet {
             TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
             boolean isCompanyAdmin = principal != null && principal.isCompanyAdministrator();
             if (isCompanyAdmin && (
-                    path.equals(ApiRoutes.ATTENDANCE_PAGE_MANAGER)
-                    || path.equals(ApiRoutes.ATTENDANCE_PAGE_MANAGER_PERSONAL)
-                    || path.equals(ApiRoutes.ATTENDANCE_PAGE_EMPLOYEE)
-                    || path.equals(ApiRoutes.MANAGER_TEAM_ATTENDANCE))) {
-                response.sendRedirect(request.getContextPath() + ApiRoutes.ATTENDANCE_PAGE_COMPANY);
+                    path.equals("/attendance/manager-attendance")
+                    || path.equals("/attendance/manager-personal-attendance")
+                    || path.equals("/attendance/employee-attendance")
+                    || path.equals("/manager/team-attendance"))) {
+                response.sendRedirect(request.getContextPath() + "/attendance/company-attendance");
                 return;
             }
 
             switch (path) {
-                case ApiRoutes.ATTENDANCE_PERSONAL -> handlePersonalAttendance(request, response);
-                case ApiRoutes.ATTENDANCE_TEAM -> handleTeamAttendance(request, response);
-                case ApiRoutes.MANAGER_TEAM_ATTENDANCE -> {
+                case "/attendance/personal" -> handlePersonalAttendance(request, response);
+                case "/attendance/team" -> handleTeamAttendance(request, response);
+                case "/manager/team-attendance" -> {
                     String accept = request.getHeader("Accept");
                     if (accept != null && accept.contains("application/json") && request.getParameter("managerId") != null) {
                         handleTeamAttendance(request, response);
                     } else {
-                        response.sendRedirect(request.getContextPath() + ApiRoutes.ATTENDANCE_PAGE_MANAGER);
+                        response.sendRedirect(request.getContextPath() + "/attendance/manager-attendance");
                     }
                 }
-                case ApiRoutes.ATTENDANCE_PAGE_MANAGER -> {
+                case "/attendance/manager-attendance" -> {
                     String view = request.getParameter("view");
                     if ("list".equalsIgnoreCase(view) || "timesheet".equalsIgnoreCase(view)) {
                         request.getRequestDispatcher("/WEB-INF/views/manager/attendance-list.jsp").forward(request, response);
@@ -135,26 +103,26 @@ public class AttendanceController extends HttpServlet {
                     if (accept != null && accept.contains("application/json") && request.getParameter("managerId") != null) {
                         handleTeamAttendance(request, response);
                     } else {
-                        request.getRequestDispatcher(ApiRoutes.VIEW_ATTENDANCE_MANAGER).forward(request, response);
+                        request.getRequestDispatcher("/WEB-INF/views/manager/manager-attendance.jsp").forward(request, response);
                     }
                 }
-                case ApiRoutes.ATTENDANCE_PAGE_EMPLOYEE ->
-                        request.getRequestDispatcher(ApiRoutes.VIEW_ATTENDANCE_EMPLOYEE).forward(request, response);
-                case ApiRoutes.ATTENDANCE_PAGE_COMPANY ->
-                        request.getRequestDispatcher(ApiRoutes.VIEW_ATTENDANCE_COMPANY).forward(request, response);
-                case ApiRoutes.ATTENDANCE_PAGE_MANAGER_PERSONAL ->
-                        request.getRequestDispatcher(ApiRoutes.VIEW_ATTENDANCE_MANAGER_PERSONAL).forward(request, response);
-                case ApiRoutes.ATTENDANCE_PAGE_REPORT ->
-                        request.getRequestDispatcher(ApiRoutes.VIEW_ATTENDANCE_REPORT).forward(request, response);
-                case ApiRoutes.MANAGER_EMPLOYEE_ATTENDANCE, ApiRoutes.MANAGER_EMPLOYEE_ATTENDANCE_HTML ->
-                        response.sendRedirect(request.getContextPath() + ApiRoutes.ATTENDANCE_PAGE_EMPLOYEE);
-                case ApiRoutes.MANAGER_COMPANY_ATTENDANCE_HTML ->
-                        response.sendRedirect(request.getContextPath() + ApiRoutes.ATTENDANCE_PAGE_COMPANY);
-                case ApiRoutes.MANAGER_ATTENDANCE_REPORT_HTML ->
-                        response.sendRedirect(request.getContextPath() + ApiRoutes.ATTENDANCE_PAGE_REPORT);
-                case ApiRoutes.ATTENDANCE_ALL -> handleAllAttendance(request, response);
-                case ApiRoutes.ATTENDANCE_COMPANY -> handleCompanyAttendance(request, response);
-                case ApiRoutes.ATTENDANCE_REPORT -> {
+                case "/attendance/employee-attendance" ->
+                        request.getRequestDispatcher("/WEB-INF/views/employee/employee-attendance.jsp").forward(request, response);
+                case "/attendance/company-attendance" ->
+                        request.getRequestDispatcher("/WEB-INF/views/comadmin-hr/company-attendance.jsp").forward(request, response);
+                case "/attendance/manager-personal-attendance" ->
+                        request.getRequestDispatcher("/WEB-INF/views/manager/manager-personal-attendance.jsp").forward(request, response);
+                case "/attendance/attendance-report" ->
+                        request.getRequestDispatcher("/WEB-INF/views/manager/attendance-report.jsp").forward(request, response);
+                case "/manager/employee-attendance", "/manager/employee-attendance.html" ->
+                        response.sendRedirect(request.getContextPath() + "/attendance/employee-attendance");
+                case "/manager/company-attendance.html" ->
+                        response.sendRedirect(request.getContextPath() + "/attendance/company-attendance");
+                case "/manager/attendance-report.html" ->
+                        response.sendRedirect(request.getContextPath() + "/attendance/attendance-report");
+                case "/attendance/all" -> handleAllAttendance(request, response);
+                case "/attendance/company" -> handleCompanyAttendance(request, response);
+                case "/attendance/report" -> {
                     String type = request.getParameter("type");
                     if ("timesheet".equalsIgnoreCase(type)) {
                         handleTimesheetData(request, response);
@@ -162,13 +130,13 @@ public class AttendanceController extends HttpServlet {
                         handleAttendanceReport(request, response);
                     }
                 }
-                case ApiRoutes.ATTENDANCE_EXPORT_REPORT -> handleExportReport(request, response);
-                case ApiRoutes.ATTENDANCE_EXPORT_TIMESHEET -> handleExportTimesheet(request, response);
-                case ApiRoutes.ATTENDANCE_META -> handleMeta(request, response);
-                case ApiRoutes.ATTENDANCE_SHIFT_SETTING -> handleGetShiftSetting(request, response);
-                case ApiRoutes.ATTENDANCE_EXPLANATION_MY -> handleMyExplanations(request, response);
-                case ApiRoutes.ATTENDANCE_EXPLANATION_PENDING -> handlePendingExplanations(request, response);
-                case ApiRoutes.ATTENDANCE_TIMESHEET_LOCK -> handleGetTimesheetLock(request, response);
+                case "/attendance/export-report" -> handleExportReport(request, response);
+                case "/attendance/export-timesheet" -> handleExportTimesheet(request, response);
+                case "/attendance/meta" -> handleMeta(request, response);
+                case "/attendance/shift-setting" -> handleGetShiftSetting(request, response);
+                case "/attendance/explanation/my-requests" -> handleMyExplanations(request, response);
+                case "/attendance/explanation/pending" -> handlePendingExplanations(request, response);
+                case "/attendance/timesheet-lock" -> handleGetTimesheetLock(request, response);
                 default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Endpoint not found."));
             }
         } catch (SecurityException e) {
@@ -197,10 +165,10 @@ public class AttendanceController extends HttpServlet {
             TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
             if (principal != null && principal.isCompanyAdministrator()) {
                 switch (path) {
-                    case ApiRoutes.ATTENDANCE_CHECK_IN,
-                         ApiRoutes.ATTENDANCE_CHECK_OUT,
-                         ApiRoutes.ATTENDANCE_BATCH_COMPLETE,
-                         ApiRoutes.ATTENDANCE_MANUAL_ADJUST -> {
+                    case "/attendance/check-in",
+                         "/attendance/check-out",
+                         "/attendance/batch-complete",
+                         "/attendance/manual-adjust" -> {
                         writeJson(response, HttpServletResponse.SC_FORBIDDEN,
                                 error("Tài khoản Quản trị Công ty chỉ có quyền giám sát và xem báo cáo tổng hợp chấm công. Thao tác điểm danh chỉ dành cho Quản lý phòng ban."));
                         return;
@@ -208,15 +176,15 @@ public class AttendanceController extends HttpServlet {
                 }
             }
             switch (path) {
-                case ApiRoutes.ATTENDANCE_CHECK_IN -> handleCheckIn(request, response);
-                case ApiRoutes.ATTENDANCE_CHECK_OUT -> handleCheckOut(request, response);
-                case ApiRoutes.ATTENDANCE_BATCH_COMPLETE -> handleBatchComplete(request, response);
-                case ApiRoutes.ATTENDANCE_SHIFT_SETTING -> handleSaveShiftSetting(request, response);
-                case ApiRoutes.ATTENDANCE_MANUAL_ADJUST -> handleManualAdjust(request, response);
-                case ApiRoutes.ATTENDANCE_EXPLANATION_SUBMIT -> handleSubmitExplanation(request, response);
-                case ApiRoutes.ATTENDANCE_EXPLANATION_CANCEL -> handleCancelExplanation(request, response);
-                case ApiRoutes.ATTENDANCE_EXPLANATION_REVIEW -> handleReviewExplanation(request, response);
-                case ApiRoutes.ATTENDANCE_TIMESHEET_LOCK -> handleSetTimesheetLock(request, response);
+                case "/attendance/check-in" -> handleCheckIn(request, response);
+                case "/attendance/check-out" -> handleCheckOut(request, response);
+                case "/attendance/batch-complete" -> handleBatchComplete(request, response);
+                case "/attendance/shift-setting" -> handleSaveShiftSetting(request, response);
+                case "/attendance/manual-adjust" -> handleManualAdjust(request, response);
+                case "/attendance/explanation/submit" -> handleSubmitExplanation(request, response);
+                case "/attendance/explanation/cancel" -> handleCancelExplanation(request, response);
+                case "/attendance/explanation/review" -> handleReviewExplanation(request, response);
+                case "/attendance/timesheet-lock" -> handleSetTimesheetLock(request, response);
                 default -> writeJson(response, HttpServletResponse.SC_NOT_FOUND, error("Endpoint not found."));
             }
         } catch (SecurityException e) {

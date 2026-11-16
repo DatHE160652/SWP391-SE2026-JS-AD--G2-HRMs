@@ -21,7 +21,8 @@ public class ResponsibilityLevelController extends HttpServlet {
             int companyId=SecuritySupport.requireCompanyId(request);
             if ("/responsibility-levels/detail".equals(request.getServletPath())) {
                 ResponsibilityLevel level=service.getLevel(companyId,id(request.getParameter("id")));
-                if (level==null) { write(response,404,error("Không tìm thấy cấp trách nhiệm.")); return; }
+                if (level==null) { write(response,404,error("Không tìm thấy cấp trách nhiệm."));
+                return; }
                 write(response,200,"{\"success\":true,\"data\":"+json(level)+"}");
             } else {
                 write(response,200,"{\"success\":true,\"data\":"+service.getLevels(companyId).stream()
@@ -60,7 +61,8 @@ public class ResponsibilityLevelController extends HttpServlet {
     private ResponsibilityLevel read(HttpServletRequest request,boolean updating) {
         ResponsibilityLevel level=new ResponsibilityLevel();
         if (updating) level.setResponsibilityLevelId(id(request.getParameter("responsibilityLevelId")));
-        level.setLevelCode(request.getParameter("levelCode")); level.setLevelName(request.getParameter("levelName"));
+        level.setLevelCode(request.getParameter("levelCode"));
+        level.setLevelName(request.getParameter("levelName"));
         try { level.setRankOrder(Integer.parseInt(request.getParameter("rankOrder"))); }
         catch (NumberFormatException exception) { throw new FieldValidationException("rankOrder","Thứ bậc phải là số nguyên không âm."); }
         String active=request.getParameter("isActive");
@@ -76,7 +78,9 @@ public class ResponsibilityLevelController extends HttpServlet {
     }
 
     private int id(String value) {
-        try { int parsed=Integer.parseInt(value); if (parsed<=0) throw new NumberFormatException(); return parsed; }
+        try { int parsed=Integer.parseInt(value);
+        if (parsed<=0) throw new NumberFormatException();
+        return parsed; }
         catch (NumberFormatException exception) { throw new IllegalArgumentException("Mã cấp trách nhiệm không hợp lệ."); }
     }
 
@@ -92,7 +96,9 @@ public class ResponsibilityLevelController extends HttpServlet {
         write(response,400,error("Không thể lưu cấp trách nhiệm. Kiểm tra mã, thứ bậc bị trùng hoặc tải lại trang."));
     }
     private void write(HttpServletResponse response,int status,String json) throws IOException {
-        response.setStatus(status); response.setCharacterEncoding("UTF-8");
-        response.setContentType("application/json; charset=UTF-8"); response.getWriter().write(json);
+        response.setStatus(status);
+        response.setCharacterEncoding("UTF-8");
+        response.setContentType("application/json; charset=UTF-8");
+        response.getWriter().write(json);
     }
 }

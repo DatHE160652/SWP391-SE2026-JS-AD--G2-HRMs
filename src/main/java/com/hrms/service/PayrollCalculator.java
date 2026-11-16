@@ -19,7 +19,8 @@ public final class PayrollCalculator {
         for (PayrollRow row:inputs) {
             String issue=row.salaryIssue();
             if (issue==null && row.baseSalary()==null) issue="Thiếu lịch sử lương có hiệu lực trong kỳ";
-            if (issue!=null) {errors.add(row.employeeCode()+": "+issue);continue;}
+            if (issue!=null) {errors.add(row.employeeCode()+": "+issue);
+            continue;}
             try {
                 BigDecimal base=PayrollService.money(row.baseSalary().toPlainString(),"Lương theo công");
                 BigDecimal contractBase=row.contractBaseSalary()==null?base:PayrollService.money(row.contractBaseSalary().toPlainString(),"Lương cơ bản");
@@ -28,7 +29,8 @@ public final class PayrollCalculator {
                 BigDecimal bonus=PayrollService.money(row.bonus()==null?"0":row.bonus().toPlainString(),"Thưởng");
                 BigDecimal deduction=PayrollService.money(row.deduction()==null?"0":row.deduction().toPlainString(),"Khấu trừ");
                 BigDecimal gross=base.add(allowance).add(travel).add(bonus),takeHome=gross;
-                income=income.add(gross);net=net.add(takeHome);
+                income=income.add(gross);
+                net=net.add(takeHome);
                 result.add(new PayrollRow(row.employeeId(),row.employeeCode(),row.fullName(),row.departmentName(),row.status(),
                         base,bonus,BigDecimal.ZERO,takeHome,row.note(),null,allowance,null,row.salaryEffectiveFrom(),row.salaryEffectiveTo(),
                         contractBase,row.actualWorkDays(),row.standardWorkDays(),travel));

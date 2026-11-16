@@ -16,38 +16,139 @@
     <main class="lc-main pay-main">
 
         <div class="pay-content">
-            <div class="page-heading"><div><div class="eyebrow">PAYROLL MANAGEMENT</div><h1><c:set var="i18nConditionalLabel" value="${salaryPage ? 'Lương cơ bản' : 'Quản lý kỳ lương'}"/><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("i18nConditionalLabel")) %>'/></h1><p><c:set var="i18nConditionalLabel" value="${salaryPage ? 'Theo dõi mức lương cơ bản, phụ cấp trách nhiệm và phụ cấp đi lại của nhân viên theo hợp đồng lao động đã kích hoạt.' : 'Từ dữ liệu lương đến phiếu lương — mọi bước trong cùng một không gian.'}"/><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("i18nConditionalLabel")) %>'/></p></div><c:if test="${not salaryPage}"><div class="toolbar-fields"><button class="btn secondary" id="openFormulaSettings" type="button">⚙ Cấu hình công thức lương</button><button class="btn primary" id="newPeriod"><%= com.hrms.i18n.Language.text(request, "ui_efeac4fb7566", "＋ Tạo kỳ lương") %></button></div></c:if></div>
+            <div class="page-heading">
+            <div>
+            <div class="eyebrow">PAYROLL MANAGEMENT</div><h1><c:set var="i18nConditionalLabel" value="${salaryPage ? 'Lương cơ bản' : 'Quản lý kỳ lương'}"/><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("i18nConditionalLabel")) %>'/></h1><p><c:set var="i18nConditionalLabel" value="${salaryPage ? 'Theo dõi mức lương cơ bản, phụ cấp trách nhiệm và phụ cấp đi lại của nhân viên theo hợp đồng lao động đã kích hoạt.' : 'Từ dữ liệu lương đến phiếu lương — mọi bước trong cùng một không gian.'}"/><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("i18nConditionalLabel")) %>'/></p>
+            </div><c:if test="${not salaryPage}">
+            <div class="toolbar-fields"><button class="btn secondary" id="openFormulaSettings" type="button">⚙ Cấu hình công thức lương</button><button class="btn primary" id="newPeriod"><%= com.hrms.i18n.Language.text(request, "ui_efeac4fb7566", "＋ Tạo kỳ lương") %></button>
+            </div></c:if>
+            </div>
             <div id="feedback" class="feedback" role="status" aria-live="polite" hidden></div>
             <c:choose><c:when test="${salaryPage}">
                 <div class="info-note"><%= com.hrms.i18n.Language.text(request, "ui_65457966627b", "Mức lương cơ bản, phụ cấp trách nhiệm và phụ cấp đi lại đang có hiệu lực hôm nay. Lương cơ bản không cập nhật thủ công mà chỉ được đồng bộ tự động từ hợp đồng lao động đã kích hoạt.") %></div>
-                <section class="pay-card"><div class="card-toolbar"><h2><%= com.hrms.i18n.Language.text(request, "ui_ef489d24a6a3", "Danh sách mức lương") %></h2><label class="search-field"><span>⌕</span><input id="salarySearch" type="search" placeholder="<%= com.hrms.i18n.Language.text(request, "ui_a43bbd25194e", "Tìm tên, mã nhân viên hoặc phòng ban") %>" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_be33b65f40bc", "Tìm nhân viên") %>"></label></div><div class="table-scroll"><table><thead><tr><th><%= com.hrms.i18n.Language.text(request, "ui_14ddd70d2564", "Nhân viên") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_6f358f848e2e", "Phòng ban") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_e03c1401e314", "Trạng thái") %></th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_832b5c6af3ff", "Lương cơ bản (VND)") %></th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_ac5d493eaa5e", "Phụ cấp trách nhiệm") %></th><th class="number">Phụ cấp đi lại</th><th><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th></tr></thead><tbody id="salaryRows"><tr><td colspan="7" class="empty"><%= com.hrms.i18n.Language.text(request, "ui_e6b584854879", "Đang tải dữ liệu…") %></td></tr></tbody></table></div><div class="pagination" id="salaryPagination"></div></section>
+                <section class="pay-card">
+                <div class="card-toolbar"><h2><%= com.hrms.i18n.Language.text(request, "ui_ef489d24a6a3", "Danh sách mức lương") %></h2><label class="search-field"><span>⌕</span><input id="salarySearch" type="search" placeholder="<%= com.hrms.i18n.Language.text(request, "ui_a43bbd25194e", "Tìm tên, mã nhân viên hoặc phòng ban") %>" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_be33b65f40bc", "Tìm nhân viên") %>"></label>
+                </div>
+                <div class="table-scroll">
+                <table>
+                <thead>
+                <tr><th><%= com.hrms.i18n.Language.text(request, "ui_14ddd70d2564", "Nhân viên") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_6f358f848e2e", "Phòng ban") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_e03c1401e314", "Trạng thái") %></th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_832b5c6af3ff", "Lương cơ bản (VND)") %></th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_ac5d493eaa5e", "Phụ cấp trách nhiệm") %></th><th class="number">Phụ cấp đi lại</th><th><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th>
+                </tr>
+                </thead>
+                <tbody id="salaryRows">
+                <tr><td colspan="7" class="empty"><%= com.hrms.i18n.Language.text(request, "ui_e6b584854879", "Đang tải dữ liệu…") %></td>
+                </tr>
+                </tbody>
+                </table>
+                </div>
+                <div class="pagination" id="salaryPagination">
+                </div>
+                </section>
             </c:when><c:otherwise>
                 <div id="formulaSummaryBanner" class="info-note" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
                     <div><strong>Công thức tính lương của công ty:</strong> <span id="formulaSummaryText">Thực nhận = ((Lương cơ bản × Công thực) / Số công tiêu chuẩn) + Phụ cấp trách nhiệm + Phụ cấp đi lại + Thưởng</span></div>
                 </div>
-                <section class="workflow-strip" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_b1b59e711b5a", "Quy trình tính lương") %>"><div><span>01</span><strong><%= com.hrms.i18n.Language.text(request, "ui_021c6e1c4d74", "Chuẩn bị") %></strong><small><%= com.hrms.i18n.Language.text(request, "ui_e7351d02e30c", "Lương & điều chỉnh") %></small></div><i>→</i><div><span>02</span><strong><%= com.hrms.i18n.Language.text(request, "ui_937bcc18133e", "Tính lương") %></strong><small><%= com.hrms.i18n.Language.text(request, "ui_aa88baac3881", "Kết quả tự động") %></small></div><i>→</i><div><span>03</span><strong><%= com.hrms.i18n.Language.text(request, "ui_ec0a446ca1fc", "Rà soát & duyệt") %></strong><small><%= com.hrms.i18n.Language.text(request, "ui_8e29bdbfc767", "Xác nhận bảng lương") %></small></div><i>→</i><div><span>04</span><strong><%= com.hrms.i18n.Language.text(request, "ui_3bec228bfe1a", "Công bố") %></strong><small><%= com.hrms.i18n.Language.text(request, "ui_f169d1a87a72", "Phiếu lương & thông báo") %></small></div></section>
-                <section class="pay-card periods-card"><div class="card-toolbar"><h2><%= com.hrms.i18n.Language.text(request, "ui_1f22d2859e01", "Kỳ lương") %> <span id="periodCount" class="count" aria-live="polite">0</span></h2><div class="toolbar-fields"><select id="yearFilter" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_a89c934bbacb", "Lọc năm") %>"><option value=""><%= com.hrms.i18n.Language.text(request, "ui_b97f711f0b89", "Tất cả năm") %></option></select><select id="statusFilter" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_fa369313d3b4", "Lọc trạng thái") %>"><option value=""><%= com.hrms.i18n.Language.text(request, "ui_872e04b463ff", "Tất cả trạng thái") %></option><option>Draft</option><option>Calculated</option><option>Reviewed</option><option>Approved</option></select><button class="btn secondary" id="refreshPeriods" type="button"><%= com.hrms.i18n.Language.text(request, "ui_9452d72a84cf", "↻ Tải lại") %></button></div></div><div id="periodList" class="period-list" role="group" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_5e96d41d7641", "Danh sách kỳ lương") %>" aria-busy="true"><div class="empty"><%= com.hrms.i18n.Language.text(request, "ui_64f660fad581", "Đang tải kỳ lương…") %></div></div></section>
+                <section class="workflow-strip" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_b1b59e711b5a", "Quy trình tính lương") %>">
+                <div><span>01</span><strong><%= com.hrms.i18n.Language.text(request, "ui_021c6e1c4d74", "Chuẩn bị") %></strong><small><%= com.hrms.i18n.Language.text(request, "ui_e7351d02e30c", "Lương & điều chỉnh") %></small>
+                </div><i>→</i>
+                <div><span>02</span><strong><%= com.hrms.i18n.Language.text(request, "ui_937bcc18133e", "Tính lương") %></strong><small><%= com.hrms.i18n.Language.text(request, "ui_aa88baac3881", "Kết quả tự động") %></small>
+                </div><i>→</i>
+                <div><span>03</span><strong><%= com.hrms.i18n.Language.text(request, "ui_ec0a446ca1fc", "Rà soát & duyệt") %></strong><small><%= com.hrms.i18n.Language.text(request, "ui_8e29bdbfc767", "Xác nhận bảng lương") %></small>
+                </div><i>→</i>
+                <div><span>04</span><strong><%= com.hrms.i18n.Language.text(request, "ui_3bec228bfe1a", "Công bố") %></strong><small><%= com.hrms.i18n.Language.text(request, "ui_f169d1a87a72", "Phiếu lương & thông báo") %></small>
+                </div>
+                </section>
+                <section class="pay-card periods-card">
+                <div class="card-toolbar"><h2><%= com.hrms.i18n.Language.text(request, "ui_1f22d2859e01", "Kỳ lương") %> <span id="periodCount" class="count" aria-live="polite">0</span></h2>
+                <div class="toolbar-fields"><select id="yearFilter" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_a89c934bbacb", "Lọc năm") %>"><option value=""><%= com.hrms.i18n.Language.text(request, "ui_b97f711f0b89", "Tất cả năm") %></option></select><select id="statusFilter" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_fa369313d3b4", "Lọc trạng thái") %>"><option value=""><%= com.hrms.i18n.Language.text(request, "ui_872e04b463ff", "Tất cả trạng thái") %></option><option>Draft</option><option>Calculated</option><option>Reviewed</option><option>Approved</option></select><button class="btn secondary" id="refreshPeriods" type="button"><%= com.hrms.i18n.Language.text(request, "ui_9452d72a84cf", "↻ Tải lại") %></button>
+                </div>
+                </div>
+                <div id="periodList" class="period-list" role="group" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_5e96d41d7641", "Danh sách kỳ lương") %>" aria-busy="true">
+                <div class="empty"><%= com.hrms.i18n.Language.text(request, "ui_64f660fad581", "Đang tải kỳ lương…") %>
+                </div>
+                </div>
+                </section>
                 <div id="periodDetailState" class="info-note" role="status" aria-live="polite" hidden></div>
                 <section id="periodWorkspace" hidden>
-                    <div class="period-heading"><div><div class="eyebrow"><%= com.hrms.i18n.Language.text(request, "ui_e8e259c18dc0", "KỲ LƯƠNG ĐANG CHỌN") %></div><h2 id="periodTitle"></h2><div id="periodBadges" class="badge-row"></div></div><div id="periodActions" class="action-row"></div></div>
+                    <div class="period-heading">
+                    <div>
+                    <div class="eyebrow"><%= com.hrms.i18n.Language.text(request, "ui_e8e259c18dc0", "KỲ LƯƠNG ĐANG CHỌN") %>
+                    </div><h2 id="periodTitle"></h2>
+                    <div id="periodBadges" class="badge-row">
+                    </div>
+                    </div>
+                    <div id="periodActions" class="action-row">
+                    </div>
+                    </div>
                     <div id="periodNotice" class="info-note"></div>
                     <div id="periodReviewHistory" class="info-note" hidden></div>
                     <section class="pay-card adjustments-card" aria-labelledby="adjustmentsTitle">
-                        <div class="card-toolbar"><div><h2 id="adjustmentsTitle">Điều chỉnh thưởng</h2><p class="subtle">Danh sách nhân viên trong công ty. Bạn có thể thiết lập đợt thưởng (Lương tháng 13 / Lễ Tết) tự động hoặc điều chỉnh riêng cho từng nhân viên.</p></div><div class="toolbar-fields"><button class="btn primary" id="openBonusCampaign" type="button">🎁 Thiết lập đợt thưởng (Tháng 13 / Lễ Tết)</button></div><span id="adjustmentLock" class="badge closed" hidden><%= com.hrms.i18n.Language.text(request, "ui_bcc435973804", "Chỉ xem · Kỳ đã khóa") %></span></div>
+                        <div class="card-toolbar">
+                        <div><h2 id="adjustmentsTitle">Điều chỉnh thưởng</h2><p class="subtle">Danh sách nhân viên trong công ty. Bạn có thể thiết lập đợt thưởng (Lương tháng 13 / Lễ Tết) tự động hoặc điều chỉnh riêng cho từng nhân viên.</p>
+                        </div>
+                        <div class="toolbar-fields"><button class="btn primary" id="openBonusCampaign" type="button">🎁 Thiết lập đợt thưởng (Tháng 13 / Lễ Tết)</button>
+                        </div><span id="adjustmentLock" class="badge closed" hidden><%= com.hrms.i18n.Language.text(request, "ui_bcc435973804", "Chỉ xem · Kỳ đã khóa") %></span>
+                        </div>
                         <div class="table-filter"><label class="search-field"><span>⌕</span><input id="adjustmentSearch" type="search" placeholder="<%= com.hrms.i18n.Language.text(request, "ui_c80238f61d7b", "Tìm tên hoặc mã nhân viên") %>" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_db845fbaf56b", "Tìm nhân viên để điều chỉnh") %>"></label><span id="adjustmentCount" class="subtle"></span></div>
-                        <div class="table-scroll"><table><thead><tr><th><%= com.hrms.i18n.Language.text(request, "ui_84979604c762", "Mã nhân viên") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_3da3c8c2738b", "Họ tên") %></th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_f6195db41766", "Lương cơ bản") %></th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_1dff4c8c3481", "Thưởng") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_02f03f68e75d", "Ghi chú") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th></tr></thead><tbody id="adjustmentRows"></tbody></table></div>
+                        <div class="table-scroll">
+                        <table>
+                        <thead>
+                        <tr><th><%= com.hrms.i18n.Language.text(request, "ui_84979604c762", "Mã nhân viên") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_3da3c8c2738b", "Họ tên") %></th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_f6195db41766", "Lương cơ bản") %></th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_1dff4c8c3481", "Thưởng") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_02f03f68e75d", "Ghi chú") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th>
+                        </tr>
+                        </thead>
+                        <tbody id="adjustmentRows">
+                        </tbody>
+                        </table>
+                        </div>
                         <div class="pagination" id="adjustmentPagination"></div>
                         <p class="adjustment-help subtle"><%= com.hrms.i18n.Language.text(request, "ui_bbcc23100aa1", "Chỉ hiển thị và cho phép điều chỉnh thưởng đối với nhân viên có hợp đồng hợp lệ trong kỳ lương.") %></p>
                     </section>
-                    <section class="pay-metrics"><div class="metric"><small><%= com.hrms.i18n.Language.text(request, "ui_d798a23f9959", "Nhân viên trong kỳ") %></small><strong id="metricEmployees">—</strong><span><%= com.hrms.i18n.Language.text(request, "ui_1c5cd70dab50", "Hồ sơ thuộc công ty") %></span></div><div class="metric"><small><%= com.hrms.i18n.Language.text(request, "ui_835bbc822b95", "Tổng thu nhập") %></small><strong id="metricIncome">—</strong><span><%= com.hrms.i18n.Language.text(request, "ui_49b9b0092cb4", "Lương + Phụ cấp + Thưởng · VND") %></span></div><div class="metric"><small>Tổng tiền thưởng</small><strong id="metricBonus">—</strong><span>Thưởng kỳ & tháng 13 · VND</span></div><div class="metric highlight"><small><%= com.hrms.i18n.Language.text(request, "ui_4e66b7d05033", "Tổng thực nhận") %></small><strong id="metricNet">—</strong><span id="metricNetNote"><%= com.hrms.i18n.Language.text(request, "ui_3a80f5c6f33c", "Chưa tính lương") %></span></div></section>
-                    <section class="pay-card"><div class="card-toolbar"><div><h2><%= com.hrms.i18n.Language.text(request, "ui_8a8ce94e2e7c", "Bảng lương nhân viên") %></h2><p class="subtle" id="payrollFormulaSubtle">((Lương cơ bản × Công thực) / Số công tiêu chuẩn) + Phụ cấp trách nhiệm + Phụ cấp đi lại + Thưởng = Thực nhận</p></div><div class="toolbar-fields"><button class="btn secondary" id="templateButton"><%= com.hrms.i18n.Language.text(request, "ui_50bacaa8f160", "↓ File mẫu Excel") %></button><button class="btn secondary" id="importButton"><%= com.hrms.i18n.Language.text(request, "ui_d5f91186d645", "↑ Nhập Excel") %></button></div></div><div class="table-filter"><label class="search-field"><span>⌕</span><input type="search" id="rowSearch" placeholder="<%= com.hrms.i18n.Language.text(request, "ui_c80238f61d7b", "Tìm tên hoặc mã nhân viên") %>" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_608ea43940cf", "Tìm nhân viên trong kỳ") %>"></label><span id="rowCount" class="subtle"></span></div><div class="table-scroll"><table><thead><tr><th><%= com.hrms.i18n.Language.text(request, "ui_84979604c762", "Mã nhân viên") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_3da3c8c2738b", "Họ tên") %></th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_f6195db41766", "Lương cơ bản") %></th><th class="number">Công thực / Chuẩn</th><th class="number">Lương theo công</th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_ac5d493eaa5e", "Phụ cấp trách nhiệm") %></th><th class="number">Phụ cấp đi lại</th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_1dff4c8c3481", "Thưởng") %></th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_bda3b5abe5e4", "Thực nhận") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th></tr></thead><tbody id="payrollRows"></tbody></table></div><div class="pagination" id="rowPagination"></div></section>
+                    <section class="pay-metrics">
+                    <div class="metric"><small><%= com.hrms.i18n.Language.text(request, "ui_d798a23f9959", "Nhân viên trong kỳ") %></small><strong id="metricEmployees">—</strong><span><%= com.hrms.i18n.Language.text(request, "ui_1c5cd70dab50", "Hồ sơ thuộc công ty") %></span>
+                    </div>
+                    <div class="metric"><small><%= com.hrms.i18n.Language.text(request, "ui_835bbc822b95", "Tổng thu nhập") %></small><strong id="metricIncome">—</strong><span><%= com.hrms.i18n.Language.text(request, "ui_49b9b0092cb4", "Lương + Phụ cấp + Thưởng · VND") %></span>
+                    </div>
+                    <div class="metric"><small>Tổng tiền thưởng</small><strong id="metricBonus">—</strong><span>Thưởng kỳ & tháng 13 · VND</span>
+                    </div>
+                    <div class="metric highlight"><small><%= com.hrms.i18n.Language.text(request, "ui_4e66b7d05033", "Tổng thực nhận") %></small><strong id="metricNet">—</strong><span id="metricNetNote"><%= com.hrms.i18n.Language.text(request, "ui_3a80f5c6f33c", "Chưa tính lương") %></span>
+                    </div>
+                    </section>
+                    <section class="pay-card">
+                    <div class="card-toolbar">
+                    <div><h2><%= com.hrms.i18n.Language.text(request, "ui_8a8ce94e2e7c", "Bảng lương nhân viên") %></h2><p class="subtle" id="payrollFormulaSubtle">((Lương cơ bản × Công thực) / Số công tiêu chuẩn) + Phụ cấp trách nhiệm + Phụ cấp đi lại + Thưởng = Thực nhận</p>
+                    </div>
+                    <div class="toolbar-fields"><button class="btn secondary" id="templateButton"><%= com.hrms.i18n.Language.text(request, "ui_50bacaa8f160", "↓ File mẫu Excel") %></button><button class="btn secondary" id="importButton"><%= com.hrms.i18n.Language.text(request, "ui_d5f91186d645", "↑ Nhập Excel") %></button>
+                    </div>
+                    </div>
+                    <div class="table-filter"><label class="search-field"><span>⌕</span><input type="search" id="rowSearch" placeholder="<%= com.hrms.i18n.Language.text(request, "ui_c80238f61d7b", "Tìm tên hoặc mã nhân viên") %>" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_608ea43940cf", "Tìm nhân viên trong kỳ") %>"></label><span id="rowCount" class="subtle"></span>
+                    </div>
+                    <div class="table-scroll">
+                    <table>
+                    <thead>
+                    <tr><th><%= com.hrms.i18n.Language.text(request, "ui_84979604c762", "Mã nhân viên") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_3da3c8c2738b", "Họ tên") %></th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_f6195db41766", "Lương cơ bản") %></th><th class="number">Công thực / Chuẩn</th><th class="number">Lương theo công</th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_ac5d493eaa5e", "Phụ cấp trách nhiệm") %></th><th class="number">Phụ cấp đi lại</th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_1dff4c8c3481", "Thưởng") %></th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_bda3b5abe5e4", "Thực nhận") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th>
+                    </tr>
+                    </thead>
+                    <tbody id="payrollRows">
+                    </tbody>
+                    </table>
+                    </div>
+                    <div class="pagination" id="rowPagination">
+                    </div>
+                    </section>
                 </section>
             </c:otherwise></c:choose>
             <footer class="pay-footer">HRMs Cloud <span>•</span> <%= com.hrms.i18n.Language.text(request, "ui_72fe236bc647", "Quản lý lương trong không gian công ty của bạn") %></footer>
         </div>
     </main>
 </div>
-<dialog id="createDialog" class="pay-dialog"><form id="createForm"><div class="dialog-heading"><div><div class="eyebrow"><%= com.hrms.i18n.Language.text(request, "ui_436b6784623d", "KỲ TÍNH LƯƠNG MỚI") %></div><h2><%= com.hrms.i18n.Language.text(request, "ui_fab76f892682", "Tạo kỳ lương") %></h2></div><button type="button" class="icon-button" data-dismiss aria-label="<%= com.hrms.i18n.Language.text(request, "ui_d2b73ab2ada1", "Đóng") %>">×</button></div>
+<dialog id="createDialog" class="pay-dialog">
+<form id="createForm">
+<div class="dialog-heading">
+<div>
+<div class="eyebrow"><%= com.hrms.i18n.Language.text(request, "ui_436b6784623d", "KỲ TÍNH LƯƠNG MỚI") %>
+</div><h2><%= com.hrms.i18n.Language.text(request, "ui_fab76f892682", "Tạo kỳ lương") %></h2>
+</div><button type="button" class="icon-button" data-dismiss aria-label="<%= com.hrms.i18n.Language.text(request, "ui_d2b73ab2ada1", "Đóng") %>">×</button>
+</div>
 <p class="subtle"><%= com.hrms.i18n.Language.text(request, "ui_e3f8da69a504", "Mỗi tháng chỉ có một kỳ lương trong công ty. Kỳ mới bắt đầu ở Draft.") %></p>
 <div class="info-note" style="margin-bottom: 12px; font-size: 12px; background: #eff6ff; border-color: #bfdbfe; color: #1e3a8a;">
     💡 <strong>Quy định:</strong> Chỉ tạo kỳ lương khi tháng làm việc đã kết thúc và đã chốt xong dữ liệu chấm công (chỉ tạo từ tháng trước trở về trước).
@@ -66,7 +167,10 @@
     </label>
 </div>
 <div class="dialog-error" role="alert" hidden></div>
-<div class="dialog-actions"><button type="button" class="btn secondary" data-dismiss><%= com.hrms.i18n.Language.text(request, "ui_34ca764caf22", "Hủy") %></button><button class="btn primary" type="submit"><%= com.hrms.i18n.Language.text(request, "ui_fab76f892682", "Tạo kỳ lương") %></button></div></form></dialog>
+<div class="dialog-actions"><button type="button" class="btn secondary" data-dismiss><%= com.hrms.i18n.Language.text(request, "ui_34ca764caf22", "Hủy") %></button><button class="btn primary" type="submit"><%= com.hrms.i18n.Language.text(request, "ui_fab76f892682", "Tạo kỳ lương") %></button>
+</div>
+</form>
+</dialog>
 <dialog id="salaryDialog" class="pay-dialog"><form id="salaryForm">
     <div class="dialog-heading"><h2><%= com.hrms.i18n.Language.text(request, "ui_9b3a291b86eb", "Cập nhật lương cơ bản") %></h2><button type="button" class="icon-button" data-dismiss aria-label="<%= com.hrms.i18n.Language.text(request, "ui_d2b73ab2ada1", "Đóng") %>">×</button></div>
     <p id="salaryEmployee" class="employee-label"></p><input name="employeeId" type="hidden">
@@ -83,9 +187,21 @@
     </div>
     <label><%= com.hrms.i18n.Language.text(request, "ui_651d62aeac55", "Ngày hiệu lực") %><input name="effectiveFrom" type="date" min="2000-01-01" max="9999-12-31" required></label>
     <p class="subtle"><%= com.hrms.i18n.Language.text(request, "ui_16c7f53c5f50", "Lưu thành lịch sử lương, giữ các mức lương trước ngày này và lịch lương đã hẹn sau đó. Thay đổi giữa tháng cần có quy tắc được xác nhận trước khi tính kỳ đó.") %></p>
-    <div class="dialog-error" role="alert" hidden></div><div class="dialog-actions"><button class="btn secondary" type="button" data-dismiss><%= com.hrms.i18n.Language.text(request, "ui_34ca764caf22", "Hủy") %></button><button class="btn primary" type="submit"><%= com.hrms.i18n.Language.text(request, "ui_ca8b15656335", "Lưu mức lương") %></button></div>
+    <div class="dialog-error" role="alert" hidden>
+    </div>
+    <div class="dialog-actions"><button class="btn secondary" type="button" data-dismiss><%= com.hrms.i18n.Language.text(request, "ui_34ca764caf22", "Hủy") %></button><button class="btn primary" type="submit"><%= com.hrms.i18n.Language.text(request, "ui_ca8b15656335", "Lưu mức lương") %></button>
+    </div>
 </form></dialog>
-<dialog id="calculationPreviewDialog" class="pay-dialog wide" aria-labelledby="calculationPreviewTitle"><div class="dialog-heading"><h2 id="calculationPreviewTitle"><%= com.hrms.i18n.Language.text(request, "ui_2d9d31d8c93c", "Xem trước bảng lương") %></h2><button type="button" class="icon-button" data-dismiss aria-label="<%= com.hrms.i18n.Language.text(request, "ui_d2b73ab2ada1", "Đóng") %>">×</button></div><div id="calculationPreviewContent" aria-live="polite"></div><div class="dialog-error" role="alert" hidden></div><div class="dialog-actions"><button type="button" class="btn secondary" data-dismiss><%= com.hrms.i18n.Language.text(request, "ui_79294ac84b35", "Đóng xem trước") %></button></div></dialog>
+<dialog id="calculationPreviewDialog" class="pay-dialog wide" aria-labelledby="calculationPreviewTitle">
+<div class="dialog-heading"><h2 id="calculationPreviewTitle"><%= com.hrms.i18n.Language.text(request, "ui_2d9d31d8c93c", "Xem trước bảng lương") %></h2><button type="button" class="icon-button" data-dismiss aria-label="<%= com.hrms.i18n.Language.text(request, "ui_d2b73ab2ada1", "Đóng") %>">×</button>
+</div>
+<div id="calculationPreviewContent" aria-live="polite">
+</div>
+<div class="dialog-error" role="alert" hidden>
+</div>
+<div class="dialog-actions"><button type="button" class="btn secondary" data-dismiss><%= com.hrms.i18n.Language.text(request, "ui_79294ac84b35", "Đóng xem trước") %></button>
+</div>
+</dialog>
 <dialog id="adjustmentDialog" class="pay-dialog" aria-labelledby="adjustmentTitle"><form id="adjustmentForm" novalidate>
     <div class="dialog-heading"><h2 id="adjustmentTitle">Điều chỉnh thưởng</h2><button type="button" class="icon-button" data-dismiss aria-label="<%= com.hrms.i18n.Language.text(request, "ui_d2b73ab2ada1", "Đóng") %>">×</button></div>
     <p id="adjustmentEmployee" class="employee-label"></p><input name="employeeId" type="hidden">
@@ -114,7 +230,18 @@
     <div class="dialog-error" role="alert" hidden></div>
     <div class="dialog-actions"><button type="button" class="btn secondary" data-dismiss><%= com.hrms.i18n.Language.text(request, "ui_34ca764caf22", "Hủy") %></button><button id="previewImport" type="button" class="btn secondary"><%= com.hrms.i18n.Language.text(request, "ui_6f65b67fd503", "Kiểm tra file") %></button><button id="saveImport" type="submit" class="btn primary" disabled>Nhập bảng lương</button></div>
 </form></dialog>
-<dialog id="confirmDialog" class="pay-dialog" aria-labelledby="confirmTitle" aria-describedby="confirmText"><form id="confirmForm"><div class="dialog-heading"><h2 id="confirmTitle"></h2><button type="button" class="icon-button" data-dismiss aria-label="<%= com.hrms.i18n.Language.text(request, "ui_d2b73ab2ada1", "Đóng") %>">×</button></div><p id="confirmText"></p><div id="confirmSummary" class="info-note" hidden></div><div class="dialog-error" role="alert" hidden></div><div class="dialog-actions"><button class="btn secondary" type="button" data-dismiss><%= com.hrms.i18n.Language.text(request, "ui_34ca764caf22", "Hủy") %></button><button class="btn primary" type="submit" id="confirmSubmit"><%= com.hrms.i18n.Language.text(request, "ui_d53daf2f4654", "Xác nhận") %></button></div></form></dialog>
+<dialog id="confirmDialog" class="pay-dialog" aria-labelledby="confirmTitle" aria-describedby="confirmText">
+<form id="confirmForm">
+<div class="dialog-heading"><h2 id="confirmTitle"></h2><button type="button" class="icon-button" data-dismiss aria-label="<%= com.hrms.i18n.Language.text(request, "ui_d2b73ab2ada1", "Đóng") %>">×</button>
+</div><p id="confirmText"></p>
+<div id="confirmSummary" class="info-note" hidden>
+</div>
+<div class="dialog-error" role="alert" hidden>
+</div>
+<div class="dialog-actions"><button class="btn secondary" type="button" data-dismiss><%= com.hrms.i18n.Language.text(request, "ui_34ca764caf22", "Hủy") %></button><button class="btn primary" type="submit" id="confirmSubmit"><%= com.hrms.i18n.Language.text(request, "ui_d53daf2f4654", "Xác nhận") %></button>
+</div>
+</form>
+</dialog>
 <dialog id="formulaSettingsDialog" class="pay-dialog wide"><form id="formulaSettingsForm">
     <div class="dialog-heading">
         <div>

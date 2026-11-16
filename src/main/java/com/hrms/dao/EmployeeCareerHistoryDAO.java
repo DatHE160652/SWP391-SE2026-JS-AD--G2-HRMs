@@ -23,7 +23,8 @@ public class EmployeeCareerHistoryDAO {
 
     private void requireEmployee(Connection connection,int companyId,int employeeId) throws SQLException {
         try (PreparedStatement statement=connection.prepareStatement("SELECT 1 FROM Employees WHERE CompanyId=? AND EmployeeId=?")) {
-            statement.setInt(1,companyId); statement.setInt(2,employeeId);
+            statement.setInt(1,companyId);
+            statement.setInt(2,employeeId);
             try (ResultSet rows=statement.executeQuery()) {
                 if (!rows.next()) throw new SecurityException("Không tìm thấy nhân viên trong công ty của bạn.");
             }
@@ -123,7 +124,9 @@ public class EmployeeCareerHistoryDAO {
                 """;
         List<ManagerRow> pending=new ArrayList<>();
         try (PreparedStatement statement=connection.prepareStatement(sql)) {
-            statement.setInt(1,companyId); statement.setInt(2,companyId); statement.setString(3,String.valueOf(employeeId));
+            statement.setInt(1,companyId);
+            statement.setInt(2,companyId);
+            statement.setString(3,String.valueOf(employeeId));
             try (ResultSet rows=statement.executeQuery()) {
                 while (rows.next()) pending.add(new ManagerRow(rows.getLong("LogId"),rows.getString("Action"),
                         timestamp(rows,"CreatedAt"),rows.getString("EffectiveDate"),rows.getString("OldValues"),rows.getString("NewValues"),rows.getString("ChangedBy")));
@@ -143,7 +146,8 @@ public class EmployeeCareerHistoryDAO {
 
     private PreparedStatement prepare(Connection connection,String sql,int companyId,int employeeId) throws SQLException {
         PreparedStatement statement=connection.prepareStatement(sql);
-        statement.setInt(1,companyId); statement.setInt(2,employeeId);
+        statement.setInt(1,companyId);
+        statement.setInt(2,employeeId);
         return statement;
     }
 
@@ -158,11 +162,13 @@ public class EmployeeCareerHistoryDAO {
     }
 
     private String reason(String value) {
-        String reason=line(value,"Lý do:"); return reason==null?null:reason.substring("Lý do:".length()).strip();
+        String reason=line(value,"Lý do:");
+        return reason==null?null:reason.substring("Lý do:".length()).strip();
     }
 
     private String timestamp(ResultSet rows,String column) throws SQLException {
-        Timestamp value=rows.getTimestamp(column); return value==null?null:value.toLocalDateTime().toString();
+        Timestamp value=rows.getTimestamp(column);
+        return value==null?null:value.toLocalDateTime().toString();
     }
 
     private String level(ResultSet rows,String name,String rank) throws SQLException {

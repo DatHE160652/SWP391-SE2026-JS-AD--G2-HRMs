@@ -267,8 +267,6 @@
         <url-pattern>/employees/organization</url-pattern>
         <url-pattern>/employees/direct-reports</url-pattern>
         <url-pattern>/employees/eligible-managers</url-pattern>
-        <url-pattern>/employees/team-options</url-pattern>
-        <url-pattern>/employees/manage-team</url-pattern>
         <url-pattern>/employees/assign-department</url-pattern>
         <url-pattern>/employees/assign-organization</url-pattern>
         <url-pattern>/employees/assign-position</url-pattern>
@@ -423,14 +421,26 @@
         <url-pattern>/lifecycle/api/accounts/action</url-pattern>
         <url-pattern>/lifecycle/api/compensation</url-pattern>
         <url-pattern>/lifecycle/api/allowance</url-pattern>
-        <url-pattern>/lifecycle/api/compensation/save</url-pattern>
         <url-pattern>/lifecycle/api/organization</url-pattern>
         <url-pattern>/lifecycle/api/organization-admins</url-pattern>
         <url-pattern>/lifecycle/api/dashboard</url-pattern>
-        <url-pattern>/lifecycle/api/changes</url-pattern>
-        <url-pattern>/lifecycle/api/changes/request</url-pattern>
-        <url-pattern>/lifecycle/api/changes/transition</url-pattern>
         <url-pattern>/lifecycle/api/terminate</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>DataImportController</servlet-name>
+        <servlet-class>com.hrms.controller.importdata.DataImportController</servlet-class>
+        <multipart-config>
+            <max-file-size>10485760</max-file-size>
+            <max-request-size>20971520</max-request-size>
+            <file-size-threshold>1048576</file-size-threshold>
+        </multipart-config>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>DataImportController</servlet-name>
+        <url-pattern>/data/import/template</url-pattern>
+        <url-pattern>/data/import/preview</url-pattern>
+        <url-pattern>/data/import/execute</url-pattern>
     </servlet-mapping>
 
     <servlet>

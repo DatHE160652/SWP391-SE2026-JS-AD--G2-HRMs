@@ -67,10 +67,24 @@
 
         <section class="summary-grid" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));">
             <div class="summary-card"><div class="summary-label"><%= com.hrms.i18n.Language.text(request, "ui_fa1a0311252f", "Số ngày đi làm") %></div><div id="totalWorkingDays" class="summary-number">0</div></div>
-            <div class="summary-card"><div class="summary-label"><%= com.hrms.i18n.Language.text(request, "ui_1ba1fa4b2b12", "Số ngày công") %></div><div id="totalWorkCredits" class="summary-number text-success" style="font-size: 24px;"><%= com.hrms.i18n.Language.text(request, "ui_ad40299b9b92", "0 công") %></div></div>
-            <div class="summary-card"><div class="summary-label"><%= com.hrms.i18n.Language.text(request, "ui_fae054de5cea", "Tổng giờ làm") %></div><div id="totalHours" class="summary-number text-success" style="font-size: 24px;"><%= com.hrms.i18n.Language.text(request, "ui_d245a9a1d25c", "0 giờ") %></div></div>
+            <div class="summary-card">
+            <div class="summary-label"><%= com.hrms.i18n.Language.text(request, "ui_1ba1fa4b2b12", "Số ngày công") %>
+            </div>
+            <div id="totalWorkCredits" class="summary-number text-success" style="font-size: 24px;"><%= com.hrms.i18n.Language.text(request, "ui_ad40299b9b92", "0 công") %>
+            </div>
+            </div>
+            <div class="summary-card">
+            <div class="summary-label"><%= com.hrms.i18n.Language.text(request, "ui_fae054de5cea", "Tổng giờ làm") %>
+            </div>
+            <div id="totalHours" class="summary-number text-success" style="font-size: 24px;"><%= com.hrms.i18n.Language.text(request, "ui_d245a9a1d25c", "0 giờ") %>
+            </div>
+            </div>
             <div class="summary-card"><div class="summary-label"><%= com.hrms.i18n.Language.text(request, "ui_eeb85b25d751", "Đúng giờ") %></div><div id="presentDays" class="summary-number text-success">0</div></div>
-            <div class="summary-card"><div class="summary-label"><%= com.hrms.i18n.Language.text(request, "ui_605a2078868b", "Vắng / Nghỉ phép") %></div><div id="absentDays" class="summary-number text-danger" style="font-size: 22px;">0</div></div>
+            <div class="summary-card">
+            <div class="summary-label"><%= com.hrms.i18n.Language.text(request, "ui_605a2078868b", "Vắng / Nghỉ phép") %>
+            </div>
+            <div id="absentDays" class="summary-number text-danger" style="font-size: 22px;">0</div>
+            </div>
         </section>
 
         <div id="message" class="message"></div>
