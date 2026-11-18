@@ -316,7 +316,7 @@
         </div>
     </main>
 
-<script src="../js/attendance.js?v=<%= application.getResource("/js/attendance.js").openConnection().getLastModified() %>"></script>
-<script src="../js/payroll-notifications.js?v=<%= application.getResource("/js/payroll-notifications.js").openConnection().getLastModified() %>"></script>
+<script src="../js/manager/attendance.js?v=<%= application.getResource("/js/manager/attendance.js").openConnection().getLastModified() %>"></script>
+<script src="../js/companyadmin/payroll-notifications.js?v=<%= application.getResource("/js/companyadmin/payroll-notifications.js").openConnection().getLastModified() %>"></script>
 </body>
 </html>

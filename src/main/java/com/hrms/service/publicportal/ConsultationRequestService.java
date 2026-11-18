@@ -1,6 +1,6 @@
 package com.hrms.service.publicportal;
 
-import com.hrms.dao.RegistrationRequestDAO;
+import com.hrms.dao.sysadmin.RegistrationRequestDAO;
 import com.hrms.model.RegistrationRequest;
 import com.hrms.model.publicportal.ConsultationSubmission;
 import com.hrms.model.publicportal.ConsultationValidation;

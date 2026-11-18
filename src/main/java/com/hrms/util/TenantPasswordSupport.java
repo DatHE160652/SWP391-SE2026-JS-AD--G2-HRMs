@@ -15,17 +15,20 @@ public final class TenantPasswordSupport {
     private static final SecureRandom RANDOM = new SecureRandom();
     private TenantPasswordSupport() { }
     public static String temporaryPassword() {
-        byte[] bytes = new byte[24]; RANDOM.nextBytes(bytes);
+        byte[] bytes = new byte[24];
+        RANDOM.nextBytes(bytes);
         try { return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes); }
         finally { Arrays.fill(bytes, (byte) 0); }
     }
     public static String hash(String password) {
         if (password == null || password.isEmpty() || password.length() > 1024) throw new IllegalArgumentException("Mật khẩu phải có từ 1 đến 1024 ký tự.");
-        byte[] salt = new byte[16]; RANDOM.nextBytes(salt);
+        byte[] salt = new byte[16];
+        RANDOM.nextBytes(salt);
         byte[] key = derive(password, salt);
         try { return PREFIX + ITERATIONS + "$" + Base64.getEncoder().encodeToString(salt)
                     + "$" + Base64.getEncoder().encodeToString(key); }
-        finally { Arrays.fill(key, (byte) 0); Arrays.fill(salt, (byte) 0); }
+        finally { Arrays.fill(key, (byte) 0);
+        Arrays.fill(salt, (byte) 0); }
     }
     public static boolean verify(String password, String stored) {
         if (password == null || stored == null || password.isEmpty() || password.length() > 1024) return false;
@@ -36,7 +39,8 @@ public final class TenantPasswordSupport {
                 || parts[1].length() != 24 || parts[2].length() != 44) return false;
         byte[] salt = null, expected = null, actual = null;
         try {
-            salt = Base64.getDecoder().decode(parts[1]); expected = Base64.getDecoder().decode(parts[2]);
+            salt = Base64.getDecoder().decode(parts[1]);
+            expected = Base64.getDecoder().decode(parts[2]);
             if (salt.length != 16 || expected.length != 32) return false;
             actual = derive(password, salt);
             return MessageDigest.isEqual(expected, actual);

@@ -1,10 +1,10 @@
 package com.hrms.controller;
 
-import com.hrms.dao.DocumentUpdatePeriodDAO;
-import com.hrms.dao.ProfileUpdateDAO;
+import com.hrms.dao.employee.DocumentUpdatePeriodDAO;
+import com.hrms.dao.employee.ProfileUpdateDAO;
 import com.hrms.model.ProfileUpdatePeriod;
 import com.hrms.service.FieldValidationException;
-import com.hrms.service.ProfileUpdateService;
+import com.hrms.service.employee.ProfileUpdateService;
 import com.hrms.service.security.TenantPrincipal;
 import com.hrms.util.Json;
 import com.hrms.util.SecuritySupport;

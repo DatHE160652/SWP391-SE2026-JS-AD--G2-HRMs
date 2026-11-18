@@ -3,7 +3,7 @@ package com.hrms.controller;
 import com.hrms.util.ValidationSupport;
 
 import com.hrms.model.EmployeeDocument;
-import com.hrms.service.DocumentService;
+import com.hrms.service.employee.DocumentService;
 import com.hrms.service.security.TenantPrincipal;
 import com.hrms.util.SecuritySupport;
 
@@ -77,7 +77,7 @@ public class DocumentController extends HttpServlet {
                 TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
                 EmployeeDocument document = documentService.getDocument(parseRequiredInt(request.getParameter("documentId")));
                 if (request.getServletPath().startsWith("/documents/me/")) ensureOwnDocument(requireEmployeePrincipal(request), document);
-                com.hrms.model.Employee owner = new com.hrms.service.EmployeeService()
+                com.hrms.model.Employee owner = new com.hrms.service.companyadmin.EmployeeService()
                         .getEmployeeById(SecuritySupport.requireCompanyId(request), document.getEmployeeId());
                 if (owner == null) throw new SecurityException("Không tìm thấy tài liệu trong công ty của bạn.");
                 boolean active = request.getServletPath().endsWith("/activate");
@@ -220,11 +220,11 @@ public class DocumentController extends HttpServlet {
         SecuritySupport.requireOrganizationEditor(request);
         int companyId = SecuritySupport.requireCompanyId(request);
         String employeeId = request.getParameter("employeeId");
-        if (employeeId != null && new com.hrms.service.EmployeeService().getEmployeeById(companyId, parseRequiredInt(employeeId)) == null)
+        if (employeeId != null && new com.hrms.service.companyadmin.EmployeeService().getEmployeeById(companyId, parseRequiredInt(employeeId)) == null)
             throw new SecurityException("Không tìm thấy nhân viên trong công ty của bạn.");
         if (request.getServletPath().equals("/documents/download")) {
             EmployeeDocument document = documentService.getDocument(parseRequiredInt(request.getParameter("id")));
-            if (new com.hrms.service.EmployeeService().getEmployeeById(companyId, document.getEmployeeId()) == null)
+            if (new com.hrms.service.companyadmin.EmployeeService().getEmployeeById(companyId, document.getEmployeeId()) == null)
                 throw new SecurityException("Không tìm thấy tài liệu trong công ty của bạn.");
         }
     }

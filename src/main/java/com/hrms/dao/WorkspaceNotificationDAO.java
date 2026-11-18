@@ -1,4 +1,6 @@
 package com.hrms.dao;
+import com.hrms.dao.employee.DocumentUpdatePeriodDAO;
+import com.hrms.dao.employee.ProfileUpdateDAO;
 
 import com.hrms.service.security.TenantPrincipal;
 import com.hrms.util.DBConnection;

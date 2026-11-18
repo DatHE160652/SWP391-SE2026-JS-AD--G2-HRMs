@@ -47,7 +47,7 @@
     </main>
 
 
-<script src="../js/department.js?v=<%= application.getResource("/js/department.js").openConnection().getLastModified() %>"></script>
-<script src="${pageContext.request.contextPath}/js/organization-shell.js?v=<%= application.getResource("/js/organization-shell.js").openConnection().getLastModified() %>" defer></script>
+<script src="../js/companyadmin/department.js?v=<%= application.getResource("/js/companyadmin/department.js").openConnection().getLastModified() %>"></script>
+<script src="${pageContext.request.contextPath}/js/companyadmin/organization-shell.js?v=<%= application.getResource("/js/companyadmin/organization-shell.js").openConnection().getLastModified() %>" defer></script>
 </body>
 </html>

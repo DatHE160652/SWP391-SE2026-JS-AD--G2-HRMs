@@ -110,7 +110,10 @@
             <div class="form-actions"><button type="submit" id="createProfilePeriodButton"><%= com.hrms.i18n.Language.text(request, "ui_3fbd9d29d460", "Tạo đợt cập nhật") %></button></div>
         </form>
         <section class="panel">
-            <div class="profile-section-heading"><div><h2><%= com.hrms.i18n.Language.text(request, "ui_367ca500e1f4", "Lịch sử các đợt cập nhật") %></h2><p><%= com.hrms.i18n.Language.text(request, "ui_88884717af34", "Theo dõi trạng thái và quản lý các đợt của công ty.") %></p></div></div>
+            <div class="profile-section-heading">
+            <div><h2><%= com.hrms.i18n.Language.text(request, "ui_367ca500e1f4", "Lịch sử các đợt cập nhật") %></h2><p><%= com.hrms.i18n.Language.text(request, "ui_88884717af34", "Theo dõi trạng thái và quản lý các đợt của công ty.") %></p>
+            </div>
+            </div>
             <div class="lc-table-wrap"><table data-pagination="${updatePeriodType}-update-periods">
                 <thead>
                 <tr>
@@ -206,7 +209,7 @@
     </main>
 
 
-<script src="../js/employee.js?v=<%= application.getResource("/js/employee.js").openConnection().getLastModified() %>"></script>
-<script src="../js/profile-update-periods.js?v=<%= System.currentTimeMillis() %>"></script>
+<script src="../js/companyadmin/employee.js?v=<%= application.getResource("/js/companyadmin/employee.js").openConnection().getLastModified() %>"></script>
+<script src="../js/employee/profile-update-periods.js?v=<%= System.currentTimeMillis() %>"></script>
 </body>
 </html>

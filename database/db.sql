@@ -30,11 +30,11 @@ CREATE TABLE Plans (
     PlanId INT IDENTITY(1,1) PRIMARY KEY,
     PlanName NVARCHAR(100) NOT NULL UNIQUE,
     MaxEmployees INT NULL,                          -- Legacy HR; không dùng để giới hạn tài khoản
-    MaxAccounts INT NOT NULL DEFAULT 20 CHECK (MaxAccounts = 20),
-    MaxManagers INT NOT NULL DEFAULT 3 CHECK (MaxManagers = 3),
+    MaxAccounts INT NOT NULL DEFAULT 20 CONSTRAINT CK_Plans_MaxAccounts_Positive CHECK (MaxAccounts >= 1),
+    MaxManagers INT NOT NULL DEFAULT 3 CONSTRAINT CK_Plans_MaxManagers_Positive CHECK (MaxManagers >= 1),
     Price DECIMAL(18,2) NOT NULL DEFAULT 59000.00 CHECK (Price >= 0),
     BillingCycle NVARCHAR(20) NOT NULL DEFAULT 'MONTHLY'
-        CHECK (BillingCycle = 'MONTHLY'),           -- Đơn vị giá tham chiếu, chưa quyết định hết hạn
+        CONSTRAINT CK_Plans_BillingCycle_Valid CHECK (BillingCycle IN ('MONTHLY', 'YEARLY')),
     IsActive BIT NOT NULL DEFAULT 1,
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     CONSTRAINT CK_Plans_MaxEmployees CHECK (MaxEmployees IS NULL OR MaxEmployees > 0)

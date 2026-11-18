@@ -24,7 +24,10 @@
                     <button class="button button-primary" type="button" data-dialog-open="confirm-request-dialog"><svg class="icon" aria-hidden="true"><use href="${icons}#rocket"/></svg><%= com.hrms.i18n.Language.text(request, "ui_d067b3907a7e", "Phê duyệt &amp; khởi tạo tenant") %></button>
                 </c:when>
                 <c:when test="${item.status == 'CONVERTING'}"><p class="muted"><%= com.hrms.i18n.Language.text(request, "ui_5d0135eabd83", "Đang khởi tạo công ty; chưa thể thực hiện thao tác khác.") %></p></c:when>
-                <c:otherwise><p class="muted"><%= com.hrms.i18n.Language.text(request, "ui_d146c83fe0b4", "Yêu cầu đã được xử lý; không thể phê duyệt hoặc xóa mềm.") %></p></c:otherwise>
+                <c:when test="${item.status == 'CONVERTED' and not item.companyAdminActivated}">
+                    <button class="button button-primary" type="button" data-dialog-open="resend-activation-dialog"><svg class="icon" aria-hidden="true"><use href="${icons}#mail"/></svg>Gửi lại email kích hoạt</button>
+                </c:when>
+                <c:otherwise><p class="muted"><%= com.hrms.i18n.Language.text(request, "ui_d146c83fe0b4", "Yêu cầu đã được xử lý; không thể phê duyệt hoặc xóa.") %></p></c:otherwise>
             </c:choose>
         </div>
     </section>
@@ -136,6 +139,17 @@
                 <input type="hidden" name="csrfToken" value="<c:out value='${sessionScope.systemAdminCsrfToken}'/>">
                 <h2 id="confirm-request-title"><%= com.hrms.i18n.Language.text(request, "ui_22aa9d57f6ed", "Phê duyệt và khởi tạo tenant?") %></h2>
                 <p><%= com.hrms.i18n.Language.text(request, "ui_e91e1417f55e", "Hệ thống sẽ tạo công ty, workspace, Company Admin và thuê bao ACTIVE. Sau khi lưu thành công, hệ thống sẽ thử gửi mật khẩu tạm tới email liên hệ. Gửi email thất bại không hủy công ty đã tạo; người dùng phải đổi mật khẩu tạm để hoàn tất kích hoạt.") %></p>
+                <c:if test="${not empty activePlans}">
+                    <label class="dialog-field" for="confirm-plan-id">Gói dịch vụ áp dụng
+                        <select id="confirm-plan-id" name="planId" style="width:100%; margin-top:6px;">
+                            <c:forEach var="plan" items="${activePlans}">
+                                <option value="${plan.planId}">
+                                    <c:out value="${plan.planName}"/> — <c:out value="${plan.maxAccounts}"/> acc — <c:out value="${plan.formattedPrice}"/> đ/<c:out value="${plan.billingCycleLabel}"/>
+                                </option>
+                            </c:forEach>
+                        </select>
+                    </label>
+                </c:if>
                 <div class="dialog-actions"><button class="button" type="button" data-dialog-close><%= com.hrms.i18n.Language.text(request, "ui_34ca764caf22", "Hủy") %></button><button class="button button-primary" type="submit"><%= com.hrms.i18n.Language.text(request, "ui_1f2e9334c608", "Xác nhận phê duyệt") %></button></div>
             </form>
         </dialog>
@@ -144,8 +158,19 @@
                 <input type="hidden" name="id" value="<c:out value='${item.registrationRequestId}'/>">
                 <input type="hidden" name="csrfToken" value="<c:out value='${sessionScope.systemAdminCsrfToken}'/>">
                 <h2 id="delete-request-title"><%= com.hrms.i18n.Language.text(request, "ui_9ac49d480bcc", "Từ chối đăng ký?") %></h2>
-                <p><%= com.hrms.i18n.Language.text(request, "ui_3d172165d341", "Hồ sơ gốc vẫn được lưu để Sale tiếp tục trao đổi. Request này sẽ bị ẩn khỏi danh sách và không thể đăng ký lại bằng email hoặc tên công ty này.") %></p>
+                <p><%= com.hrms.i18n.Language.text(request, "ui_3d172165d341", "Yêu cầu đăng ký này sẽ bị xóa vĩnh viễn khỏi cơ sở dữ liệu.") %></p>
                 <div class="dialog-actions"><button class="button" type="button" data-dialog-close><%= com.hrms.i18n.Language.text(request, "ui_34ca764caf22", "Hủy") %></button><button class="button button-danger" type="submit"><%= com.hrms.i18n.Language.text(request, "ui_d78db2998f42", "Xác nhận từ chối") %></button></div>
+            </form>
+        </dialog>
+    </c:if>
+    <c:if test="${item.status == 'CONVERTED' and not item.companyAdminActivated}">
+        <dialog class="action-dialog" id="resend-activation-dialog" aria-labelledby="resend-activation-title">
+            <form method="post" action="${pageContext.request.contextPath}/systemadmin/registration-request/resend">
+                <input type="hidden" name="id" value="<c:out value='${item.registrationRequestId}'/>">
+                <input type="hidden" name="csrfToken" value="<c:out value='${sessionScope.systemAdminCsrfToken}'/>">
+                <h2 id="resend-activation-title">Gửi lại email kích hoạt?</h2>
+                <p>Hệ thống sẽ tạo mật khẩu tạm mới bằng <code>SecureRandom</code> cho Company Admin (<strong><c:out value="${item.companyAdminEmail}"/></strong>) và gửi lại thư kích hoạt. Chỉ thực hiện khi tài khoản chưa đổi mật khẩu tạm.</p>
+                <div class="dialog-actions"><button class="button" type="button" data-dialog-close>Hủy</button><button class="button button-primary" type="submit">Xác nhận gửi lại</button></div>
             </form>
         </dialog>
     </c:if>

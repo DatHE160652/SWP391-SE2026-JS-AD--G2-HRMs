@@ -107,13 +107,28 @@ public class CompanyAdministrationView {
     public String getSuspendedAtDisplay() { return TimeSupport.formatUtc(suspendedAt); }
     public String getSubscriptionStartDateDisplay() { return formatDate(subscriptionStartDate); }
     public String getSubscriptionEndDateDisplay() {
-        LocalDate effectiveEndDate = subscriptionEndDate;
-        if (effectiveEndDate == null && subscriptionStartDate != null) {
-            effectiveEndDate = "YEARLY".equalsIgnoreCase(billingCycle)
-                    ? subscriptionStartDate.plusYears(1)
-                    : subscriptionStartDate.plusMonths(1);
-        }
-        return formatDate(effectiveEndDate);
+        return formatDate(getEffectiveEndDate());
+    }
+
+    public LocalDate getEffectiveEndDate() {
+        if (subscriptionEndDate != null) return subscriptionEndDate;
+        if (subscriptionStartDate == null) return null;
+        return "YEARLY".equalsIgnoreCase(billingCycle)
+                ? subscriptionStartDate.plusYears(1)
+                : subscriptionStartDate.plusMonths(1);
+    }
+
+    public long getDaysRemaining() {
+        LocalDate end = getEffectiveEndDate();
+        if (end == null) return Long.MAX_VALUE;
+        LocalDate today = LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+        return java.time.temporal.ChronoUnit.DAYS.between(today, end);
+    }
+
+    public boolean isExpiringSoon() {
+        if (!isSubscriptionActive()) return false;
+        long days = getDaysRemaining();
+        return days >= 0 && days <= 7;
     }
 
     private String formatDate(LocalDate date) {

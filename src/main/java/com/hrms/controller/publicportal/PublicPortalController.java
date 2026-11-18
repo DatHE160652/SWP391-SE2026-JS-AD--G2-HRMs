@@ -1,10 +1,9 @@
 package com.hrms.controller.publicportal;
 
-import com.hrms.api.ApiRoutes;
 import com.hrms.service.security.TenantPrincipal;
 import com.hrms.model.publicportal.ConsultationSubmission;
-import com.hrms.service.TenantAuthService;
-import com.hrms.service.EmployeeHistoryService;
+import com.hrms.service.publicportal.TenantAuthService;
+import com.hrms.service.employee.EmployeeHistoryService;
 import com.hrms.service.publicportal.ConsultationRequestService;
 import com.hrms.util.SecuritySupport;
 
@@ -42,15 +41,15 @@ public class PublicPortalController extends HttpServlet {
             throws ServletException, IOException {
         SecuritySupport.applyNoStore(response::setHeader);
         String path = request.getServletPath();
-        if (path == null || path.isEmpty()) path = ApiRoutes.PUBLIC_HOME;
+        if (path == null || path.isEmpty()) path = "/homepage";
         switch (path) {
-            case ApiRoutes.PUBLIC_HOME -> render(request, response, "home.jsp");
-            case ApiRoutes.PUBLIC_FEATURES -> render(request, response, "features-solutions.jsp");
-            case ApiRoutes.PUBLIC_PRICING -> render(request, response, "pricing.jsp");
-            case ApiRoutes.PUBLIC_FAQ -> showFaq(request, response);
-            case ApiRoutes.PUBLIC_CONSULTATION -> showConsultation(request, response);
-            case ApiRoutes.TENANT_LOGIN -> render(request, response, "tenant-login.jsp");
-            case ApiRoutes.TENANT_LOGOUT -> logoutTenant(request, response);
+            case "/homepage" -> render(request, response, "home.jsp");
+            case "/features-solutions" -> render(request, response, "features-solutions.jsp");
+            case "/Pricing" -> render(request, response, "pricing.jsp");
+            case "/faqs" -> showFaq(request, response);
+            case "/consultation-request" -> showConsultation(request, response);
+            case "/login" -> render(request, response, "tenant-login.jsp");
+            case "/logout" -> logoutTenant(request, response);
             case "/change-password" -> showChangePassword(request, response);
             default -> response.sendError(HttpServletResponse.SC_NOT_FOUND);
         }
@@ -62,11 +61,11 @@ public class PublicPortalController extends HttpServlet {
         request.setCharacterEncoding("UTF-8");
         SecuritySupport.applyNoStore(response::setHeader);
         String path = request.getServletPath();
-        if (ApiRoutes.PUBLIC_CONSULTATION.equals(path)) {
+        if ("/consultation-request".equals(path)) {
             submitConsultation(request, response);
-        } else if (ApiRoutes.TENANT_LOGIN.equals(path)) {
+        } else if ("/login".equals(path)) {
             submitTenantLogin(request, response);
-        } else if (ApiRoutes.TENANT_LOGOUT.equals(path)) {
+        } else if ("/logout".equals(path)) {
             logoutTenant(request, response);
         } else if ("/change-password".equals(path)) {
             submitChangePassword(request, response);
@@ -116,14 +115,14 @@ public class PublicPortalController extends HttpServlet {
         if (session != null) {
             session.invalidate();
         }
-        response.sendRedirect(request.getContextPath() + ApiRoutes.TENANT_LOGIN);
+        response.sendRedirect(request.getContextPath() + "/login");
     }
 
     private void showChangePassword(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
         if (principal == null) {
-            response.sendRedirect(request.getContextPath() + ApiRoutes.TENANT_LOGIN);
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
         SecuritySupport.ensureTenantCsrfToken(request.getSession(true));
@@ -134,7 +133,7 @@ public class PublicPortalController extends HttpServlet {
             throws ServletException, IOException {
         TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
         if (principal == null || principal.getUserId() == null) {
-            response.sendRedirect(request.getContextPath() + ApiRoutes.TENANT_LOGIN);
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
@@ -173,7 +172,7 @@ public class PublicPortalController extends HttpServlet {
                     principal.getWorkspaceCode(), principal.getEmail(), newPassword);
             if (updatedPrincipal == null) {
                 request.getSession().invalidate();
-                response.sendRedirect(request.getContextPath() + ApiRoutes.TENANT_LOGIN);
+                response.sendRedirect(request.getContextPath() + "/login");
                 return;
             }
             request.changeSessionId();
@@ -243,7 +242,7 @@ public class PublicPortalController extends HttpServlet {
             session.setAttribute(FLASH_SUCCESS, Boolean.TRUE);
             if (!submission.isEmailSent()) session.setAttribute(FLASH_EMAIL_WARNING,
                     "Yêu cầu đã được lưu ở trạng thái NEW. Email xác nhận chưa gửi được; đội ngũ HRMs vẫn sẽ tiếp nhận yêu cầu.");
-            response.sendRedirect(request.getContextPath() + ApiRoutes.PUBLIC_CONSULTATION);
+            response.sendRedirect(request.getContextPath() + "/consultation-request");
         } catch (ConsultationRequestService.InvalidConsultationException exception) {
             renderConsultationError(request, response, "Vui lòng kiểm tra lại thông tin.", exception.getValidation().getErrors());
         } catch (ConsultationRequestService.DuplicateConsultationException exception) {

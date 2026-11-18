@@ -3,12 +3,11 @@ package com.hrms.controller.importdata;
 import com.hrms.model.ImportExecuteResult;
 import com.hrms.model.ImportPreviewResult;
 import com.hrms.model.ImportRowResult;
-import com.hrms.service.DataImportExcelService;
+import com.hrms.service.importdata.DataImportExcelService;
 import com.hrms.service.security.TenantPrincipal;
 import com.hrms.util.SecuritySupport;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -27,11 +26,6 @@ import java.util.Map;
  * - POST /data/import/preview  : Upload & validate file, returning preview JSON
  * - POST /data/import/execute  : Commit validated data into database
  */
-@WebServlet(name = "DataImportController", urlPatterns = {
-        "/data/import/template",
-        "/data/import/preview",
-        "/data/import/execute"
-})
 @MultipartConfig(
         fileSizeThreshold = 1024 * 1024,      // 1 MB
         maxFileSize = 10 * 1024 * 1024,       // 10 MB

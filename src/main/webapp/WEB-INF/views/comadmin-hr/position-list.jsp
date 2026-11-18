@@ -65,7 +65,7 @@
     </main>
 
 
-<script src="../js/position.js?v=<%= application.getResource("/js/position.js").openConnection().getLastModified() %>"></script>
-<script src="${pageContext.request.contextPath}/js/organization-shell.js?v=<%= application.getResource("/js/organization-shell.js").openConnection().getLastModified() %>" defer></script>
+<script src="../js/companyadmin/position.js?v=<%= application.getResource("/js/companyadmin/position.js").openConnection().getLastModified() %>"></script>
+<script src="${pageContext.request.contextPath}/js/companyadmin/organization-shell.js?v=<%= application.getResource("/js/companyadmin/organization-shell.js").openConnection().getLastModified() %>" defer></script>
 </body>
 </html>

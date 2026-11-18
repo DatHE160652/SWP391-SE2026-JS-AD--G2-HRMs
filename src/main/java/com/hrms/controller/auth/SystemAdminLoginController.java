@@ -1,8 +1,7 @@
 package com.hrms.controller.auth;
 
-import com.hrms.api.ApiRoutes;
 import com.hrms.service.security.SystemAdminPrincipal;
-import com.hrms.service.SystemAdminAuthService;
+import com.hrms.service.sysadmin.SystemAdminAuthService;
 import com.hrms.util.SecuritySupport;
 
 import jakarta.servlet.ServletException;
@@ -31,7 +30,7 @@ public class SystemAdminLoginController extends HttpServlet {
             throws ServletException, IOException {
         SecuritySupport.applyNoStore(response::setHeader);
         if (SecuritySupport.isSystemAdmin(request)) {
-            response.sendRedirect(request.getContextPath() + ApiRoutes.SYSTEM_ADMIN_DASHBOARD);
+            response.sendRedirect(request.getContextPath() + "/systemadmin/dashboard");
             return;
         }
         SecuritySupport.ensureCsrfToken(request.getSession(true));
@@ -69,7 +68,7 @@ public class SystemAdminLoginController extends HttpServlet {
             HttpSession session = request.getSession(false);
             session.setAttribute(SecuritySupport.PRINCIPAL_ATTRIBUTE, principal);
             SecuritySupport.ensureCsrfToken(session);
-            response.sendRedirect(request.getContextPath() + ApiRoutes.SYSTEM_ADMIN_DASHBOARD);
+            response.sendRedirect(request.getContextPath() + "/systemadmin/dashboard");
         } catch (SQLException exception) {
             String diagnostic = "Database connection or authentication query failed";
             if ("Missing database configuration: HRM_DB_USER".equals(exception.getMessage())) {

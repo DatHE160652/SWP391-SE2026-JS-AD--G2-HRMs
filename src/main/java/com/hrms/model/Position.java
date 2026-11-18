@@ -10,7 +10,8 @@ public class Position {
     private Integer reportsToPositionId;
     private boolean reportingPositionSpecified;
     public Integer getReportsToPositionId() { return reportsToPositionId; }
-    public void setReportsToPositionId(Integer value) { reportsToPositionId=value; reportingPositionSpecified=true; }
+    public void setReportsToPositionId(Integer value) { reportsToPositionId=value;
+    reportingPositionSpecified=true; }
     public boolean isReportingPositionSpecified() { return reportingPositionSpecified; }
 	private Integer positionId;
 	private Integer companyId;
@@ -24,7 +25,8 @@ public class Position {
     private BigDecimal effectiveAllowance;
     private boolean allowanceSpecified;
     public BigDecimal getPositionAllowance() { return positionAllowance; }
-    public void setPositionAllowance(BigDecimal amount) { positionAllowance=amount; allowanceSpecified=true; }
+    public void setPositionAllowance(BigDecimal amount) { positionAllowance=amount;
+    allowanceSpecified=true; }
     public boolean isAllowanceSpecified() { return allowanceSpecified; }
     public BigDecimal getEffectiveAllowance() { return effectiveAllowance; }
     public void setEffectiveAllowance(BigDecimal amount) { effectiveAllowance=amount; }

@@ -4,7 +4,7 @@ import com.hrms.util.ValidationSupport;
 import com.hrms.util.SecuritySupport;
 
 import com.hrms.model.Position;
-import com.hrms.service.PositionService;
+import com.hrms.service.companyadmin.PositionService;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;

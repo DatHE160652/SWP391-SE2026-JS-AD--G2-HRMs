@@ -55,6 +55,6 @@
         </div>
     </form>
 </dialog>
-<script src="${pageContext.request.contextPath}/js/reset-employee-password.js?v=<%= application.getResource("/js/reset-employee-password.js").openConnection().getLastModified() %>" defer></script>
+<script src="${pageContext.request.contextPath}/js/companyadmin/reset-employee-password.js?v=<%= application.getResource("/js/companyadmin/reset-employee-password.js").openConnection().getLastModified() %>" defer></script>
 </body>
 </html>

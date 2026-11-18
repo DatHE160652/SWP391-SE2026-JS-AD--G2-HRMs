@@ -3,8 +3,8 @@ package com.hrms.controller;
 import com.hrms.util.ValidationSupport;
 
 import com.hrms.model.EmployeeAssignment;
-import com.hrms.dao.EmployeeAssignmentDAO.DepartmentMemberOption;
-import com.hrms.service.EmployeeAssignmentService;
+import com.hrms.dao.companyadmin.EmployeeAssignmentDAO.DepartmentMemberOption;
+import com.hrms.service.companyadmin.EmployeeAssignmentService;
 import com.hrms.service.security.TenantPrincipal;
 import com.hrms.util.SecuritySupport;
 
@@ -37,12 +37,6 @@ public class EmployeeAssignmentController extends HttpServlet {
                 writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":"
                         + toJsonDepartmentMembers(employeeAssignmentService.getEligibleManagers(companyId,
                         parseNullableInt(request.getParameter("departmentId")), parseRequiredInt(request.getParameter("id")))) + "}");
-                return;
-            }
-            if ("/employees/team-options".equals(request.getServletPath())) {
-                writeJson(response, HttpServletResponse.SC_OK, "{\"success\":true,\"data\":"
-                        + toJsonDepartmentMembers(employeeAssignmentService.getTeamOptions(companyId,
-                        parseRequiredInt(request.getParameter("id")))) + "}");
                 return;
             }
             if ("/employees/direct-reports".equals(request.getServletPath())) {
@@ -109,16 +103,6 @@ public class EmployeeAssignmentController extends HttpServlet {
                         resolveManager(request, before.getManagerId()),
                         principal.getUserId(), request.getParameter("reason"));
                 message = "Đã cập nhật phân công tổ chức.";
-            } else if ("/employees/manage-team".equals(request.getServletPath())) {
-                int managerId = parseRequiredInt(request.getParameter("managerId"));
-                int[] removals = parseIntArray(request.getParameter("removeEmployeeIds"));
-                if (removals.length > 0 && !"true".equals(request.getParameter("confirmRemovals"))) {
-                    throw new com.hrms.service.FieldValidationException("employeeIds", "Vui lòng xác nhận gỡ quản lý trực tiếp của những nhân viên đã chọn.");
-                }
-                success = employeeAssignmentService.manageTeam(companyId, managerId,
-                        parseIntArray(request.getParameter("addEmployeeIds")), removals,
-                        parseExpectedManagers(request.getParameter("expectedManagers")), "true".equals(request.getParameter("confirmTransfers")), principal.getUserId(),request.getParameter("reason"));
-                message = "Đã cập nhật thành viên nhóm.";
             } else if ("/departments/assign-members".equals(request.getServletPath())) {
                 int departmentId = parseRequiredInt(request.getParameter("departmentId"));
                 int managerId = parseRequiredInt(request.getParameter("managerId"));
@@ -141,7 +125,7 @@ public class EmployeeAssignmentController extends HttpServlet {
                 EmployeeAssignment current = employeeAssignmentService.getEmployeeOrganization(companyId, employeeId);
                 Integer positionId = parseNullableInt(request.getParameter("positionId"));
                 if (positionId == null) throw new com.hrms.service.FieldValidationException("positionId","Vui lòng chọn chức danh thay thế; không xóa lịch sử phân công.");
-                var position = new com.hrms.service.PositionService().getPositionDetail(companyId,positionId);
+                var position = new com.hrms.service.companyadmin.PositionService().getPositionDetail(companyId,positionId);
                 if (position == null) throw new com.hrms.service.FieldValidationException("positionId","Không tìm thấy chức danh trong công ty.");
                 success = employeeAssignmentService.saveOrganization(companyId, employeeId, position.getDepartmentId(), positionId,
                         resolveManager(request,current.getManagerId()),principal.getUserId(),request.getParameter("reason"));
