@@ -47,16 +47,13 @@ public class EmployeeService {
     public boolean createEmployeeProfile(Employee employee, int companyId, String employeeCodeMode, Integer actorId) throws SQLException {
         if (employee.getDepartmentId() != null && employee.getPositionId() == null)
             throw new FieldValidationException("positionId", "Chọn chức danh thuộc phòng ban, hoặc để trống cả hai để phân công sau.");
+        employee.setStatus("Active");
         return createEmployee(employee, companyId, employeeCodeMode, null, actorId, false);
     }
 
     private boolean createEmployee(Employee employee, int companyId, String employeeCodeMode,
             EmployeeCompensation compensation, Integer actorId, boolean assignInitialManager) throws SQLException {
         if (!assignInitialManager) employee.setManagerId(null);
-        if (employeeCodeMode != null && !"MANUAL".equals(employeeCodeMode)) {
-            throw new FieldValidationException("employeeCodeMode", "Mã nhân viên phải được nhập thủ công; không còn hỗ trợ tự động tạo mã.");
-        }
-        employee.setEmployeeCode(validateManualEmployeeCode(employee.getEmployeeCode()));
         employee.setCompanyId(companyId);
         validate(employee, true);
         validateUniquePhone(employee);
@@ -68,9 +65,10 @@ public class EmployeeService {
             connection.setAutoCommit(false);
 
             try {
-                OrganizationTransaction.lockCompany(connection, companyId);
+                employee.setEmployeeCode(com.hrms.dao.companyadmin.EmployeeCodeGenerator.next(connection, companyId));
                 new EmployeeLifecycleDAO().requireActor(connection, companyId, actorId);
                 new EmployeeLifecycleDAO().validateEmail(connection, employee);
+                employeeDAO.validateUniqueIdentityNumber(connection, companyId, employee.getIdentityNumber(), 0);
                 new OrganizationAssignmentDAO().validateSelection(connection, companyId, employee.getDepartmentId(), employee.getPositionId());
                 if (employeeCodeExists(connection, companyId, employee.getEmployeeCode())) {
                     throw new FieldValidationException("employeeCode", "Mã nhân viên đã tồn tại trong công ty.");
@@ -130,6 +128,7 @@ public class EmployeeService {
                 OrganizationTransaction.lockCompany(connection, employee.getCompanyId());
                 new EmployeeLifecycleDAO().requireActor(connection, employee.getCompanyId(), actorId);
                 new EmployeeLifecycleDAO().validateEmail(connection, employee);
+                employeeDAO.validateUniqueIdentityNumber(connection, employee.getCompanyId(), employee.getIdentityNumber(), employee.getEmployeeId());
                 new OrganizationAssignmentDAO().assignOrganization(connection, employee.getCompanyId(), employee.getEmployeeId(),
                         employee.getDepartmentId(), employee.getPositionId());
                 boolean updated = employeeDAO.updateEmployee(connection, employee);
@@ -166,21 +165,32 @@ public class EmployeeService {
         if (!creating && employee.getEmployeeId() <= 0) {
             throw new IllegalArgumentException("Vui lòng chọn nhân viên.");
         }
+        if (creating && java.util.stream.Stream.of(employee.getFullName(), employee.getEmail(), employee.getPhone(), employee.getGender(), employee.getIdentityNumber())
+                .allMatch(value -> value == null || value.isBlank()) && employee.getDateOfBirth() == null) {
+            throw new IllegalArgumentException("Vui lòng nhập đầy đủ thông tin bắt buộc.");
+        }
         if (employee.getFullName() == null || employee.getFullName().isBlank()) {
             throw new FieldValidationException("fullName", "Vui lòng nhập họ và tên.");
         }
+        if (employee.getFullName().length() > 150 || !employee.getFullName().matches("[\\p{L}\\p{M}\\s]+")) {
+            throw new FieldValidationException("fullName", "Họ tên chỉ được chứa chữ cái và khoảng trắng, tối đa 150 ký tự.");
+        }
         validateEmail(employee.getEmail());
         employee.setPhone(com.hrms.util.ValidationSupport.validatePhone(employee.getPhone()));
-        if (employee.getGender() == null || employee.getGender().isBlank()) {
-            throw new FieldValidationException("gender", "Vui lòng chọn giới tính.");
-        }
         if (employee.getDateOfBirth() == null) {
             throw new FieldValidationException("dateOfBirth", "Vui lòng nhập ngày sinh.");
         }
+        if (employee.getDateOfBirth().toLocalDate().isAfter(java.time.LocalDate.now())) {
+            throw new FieldValidationException("dateOfBirth", "Ngày sinh không được ở tương lai.");
+        }
+        if (!java.util.Set.of("Male", "Female", "Other").contains(employee.getGender() == null ? "" : employee.getGender())) {
+            throw new FieldValidationException("gender", "Vui lòng chọn giới tính hợp lệ.");
+        }
+        employee.setIdentityNumber(validateIdentityNumber(employee.getIdentityNumber(), creating));
         if (!java.util.Set.of("Active", "Inactive").contains(employee.getStatus() == null ? "" : employee.getStatus())) {
             throw new FieldValidationException("status", "Vui lòng chọn đang hoạt động hoặc ngừng hoạt động.");
         }
-        employee.setIdentityNumber(validateIdentityNumber(employee.getIdentityNumber(), creating));
+
         if (employee.getStatus() == null || employee.getStatus().isBlank()) {
             throw new FieldValidationException("status", "Vui lòng chọn trạng thái.");
         }
@@ -239,9 +249,9 @@ public class EmployeeService {
 
     private static void validateEmail(String email) {
         if (email == null || email.isBlank())
-            throw new FieldValidationException("email", "Vui lòng nhập email.");
+            throw new FieldValidationException("email", "Vui lòng nhập email công ty.");
         if (email.length() > 150 || !email.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"))
-            throw new FieldValidationException("email", "Vui lòng nhập địa chỉ email hợp lệ.");
+            throw new FieldValidationException("email", "Vui lòng nhập địa chỉ email công ty hợp lệ.");
     }
 
     private static void checkLength(String field, String value, int maximum) {

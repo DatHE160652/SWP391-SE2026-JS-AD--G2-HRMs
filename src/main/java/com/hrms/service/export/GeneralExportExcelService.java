@@ -83,7 +83,7 @@ public class GeneralExportExcelService {
                 createCell(row, 12, e.getHometown() != null ? e.getHometown() : "-", dataStyle);
                 createCell(row, 13, e.getMajor() != null ? e.getMajor() : "-", dataStyle);
                 createCell(row, 14, e.getPermanentAddress() != null ? e.getPermanentAddress() : "-", dataStyle);
-                createCell(row, 15, "Active".equalsIgnoreCase(e.getStatus()) ? "Đang làm việc" : "Ngừng hoạt động", centerStyle);
+                createCell(row, 15, "Active".equals(e.getProfileStatus()) ? "Đang hoạt động" : "Không hoạt động", centerStyle);
             }
 
             autoSizeColumns(sheet, headers.length);
@@ -120,7 +120,7 @@ public class GeneralExportExcelService {
             String[] headers = {
                     "STT", "Mã HĐ", "Mã NV", "Họ và tên", "Loại hợp đồng",
                     "Ngày bắt đầu", "Ngày kết thúc", "Lương trước khấu trừ (VND)",
-                    "Phụ cấp đi lại (VND)", "Trạng thái", "Ngày ký kết",
+                    "Phụ cấp theo hợp đồng (VND)", "Trạng thái", "Ngày ký kết",
                     "Ngày chấm dứt", "Lý do chấm dứt", "Ghi chú"
             };
 

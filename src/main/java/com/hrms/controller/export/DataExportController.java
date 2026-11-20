@@ -161,6 +161,12 @@ public class DataExportController extends HttpServlet {
 
         List<Map<String, Object>> contracts = lifecycleService.read(principal, "contracts", employeeId);
 
+        String department = trimToNull(request.getParameter("departmentId"));
+        if (department != null) {
+            contracts = contracts.stream().filter(c -> "UNASSIGNED".equals(department)
+                    ? c.get("DepartmentId") == null : department.equals(String.valueOf(c.get("DepartmentId")))).toList();
+        }
+
         if (status != null && !status.isBlank()) {
             contracts = contracts.stream().filter(c ->
                     status.equalsIgnoreCase(String.valueOf(c.get("DisplayStatus")))

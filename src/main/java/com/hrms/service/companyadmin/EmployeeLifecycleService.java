@@ -82,6 +82,7 @@ public class EmployeeLifecycleService {
             throw new SecurityException("Vui lòng đăng nhập bằng tài khoản nhân sự hoặc quản trị viên công ty.");
         try (Connection connection = DBConnection.getConnection()) {
             requireCurrentActor(connection, principal);
+            com.hrms.dao.companyadmin.CompanyAllowanceDAO.ensureSchema(connection);
         }
     }
 
@@ -100,8 +101,8 @@ public class EmployeeLifecycleService {
             if (employeeId != null && dao.query(connection, "SELECT 1 FROM Employees WHERE CompanyId=? AND EmployeeId=?", companyId, employeeId).isEmpty())
                 throw new SecurityException("Không tìm thấy nhân viên trong công ty của bạn.");
             return switch (resource) {
-                case "contracts" -> dao.query(connection, """
-                        SELECT c.*,e.FullName,e.EmployeeCode,
+                case "contracts" -> withContractAllowances(connection, companyId, dao.query(connection, """
+                        SELECT c.*,e.FullName,e.EmployeeCode,e.DepartmentId,
                             CONVERT(varchar(33),COALESCE(c.UpdatedAt,c.CreatedAt),126) AS Version,
                             CASE WHEN c.Status='ACTIVE' AND c.EndDate<CONVERT(date,SYSDATETIME()) THEN 'EXPIRED'
                                  WHEN c.Status='ACTIVE' AND c.StartDate>CONVERT(date,SYSDATETIME()) THEN 'SCHEDULED'
@@ -109,7 +110,7 @@ public class EmployeeLifecycleService {
                             CASE WHEN c.Status='ACTIVE' AND c.EndDate BETWEEN CONVERT(date,SYSDATETIME()) AND DATEADD(day,30,CONVERT(date,SYSDATETIME())) THEN 1 ELSE 0 END AS Expiring
                         FROM EmploymentContracts c JOIN Employees e ON e.CompanyId=c.CompanyId AND e.EmployeeId=c.EmployeeId
                         WHERE c.CompanyId=? AND (? IS NULL OR c.EmployeeId=?) ORDER BY c.StartDate DESC,c.ContractId DESC
-                        """, companyId, employeeId, employeeId);
+                        """, companyId, employeeId, employeeId));
                 case "allowance" -> dao.currentAllowance(connection,companyId,employeeId);
                 case "compensation" -> dao.compensationHistory(connection,companyId,employeeId);
                 case "accounts" -> dao.query(connection, """
@@ -178,11 +179,70 @@ public class EmployeeLifecycleService {
         }
     }
 
+    private List<Map<String,Object>> withContractAllowances(Connection connection,int companyId,List<Map<String,Object>> contracts) throws SQLException {
+        var grouped = new java.util.HashMap<Long,java.util.List<Map<String,Object>>>();
+        for (var line : dao.query(connection,"SELECT ContractId,AllowanceTypeId,TypeName,Amount FROM ContractAllowances WHERE CompanyId=? ORDER BY ContractId,AllowanceTypeId",companyId))
+            grouped.computeIfAbsent(((Number)line.get("ContractId")).longValue(),key -> new java.util.ArrayList<>()).add(line);
+        for (var contract : contracts)
+            contract.put("Allowances", grouped.getOrDefault(((Number)contract.get("ContractId")).longValue(),java.util.List.of()));
+        var copies=new java.util.HashMap<Long,java.util.List<Map<String,Object>>>();
+        for (var copy : dao.query(connection,"""
+                SELECT d.ContractId,d.DocumentId,d.FileName,d.MimeType,d.FileSizeBytes,d.UploadedDate
+                FROM EmployeeDocuments d JOIN EmploymentContracts c ON c.ContractId=d.ContractId AND c.EmployeeId=d.EmployeeId
+                WHERE c.CompanyId=? AND d.Status='Active' ORDER BY d.UploadedDate DESC,d.DocumentId DESC
+                """,companyId))
+            copies.computeIfAbsent(((Number)copy.get("ContractId")).longValue(),key -> new java.util.ArrayList<>()).add(copy);
+        for (var contract : contracts)
+            contract.put("HardCopies",copies.getOrDefault(((Number)contract.get("ContractId")).longValue(),java.util.List.of()));
+        return contracts;
+    }
+
+    public List<Map<String,Object>> allowanceTypes(TenantPrincipal principal) throws SQLException {
+        requireEditor(principal);
+        return OrganizationTransaction.execute(principal.getCompanyId(), connection -> {
+            requireCurrentActor(connection,principal);
+            return new com.hrms.dao.companyadmin.CompanyAllowanceDAO().types(connection,principal.getCompanyId());
+        });
+    }
+
+    public Map<String,Object> previewContractAllowances(TenantPrincipal principal,int employeeId,LocalDate date) throws SQLException {
+        requireEditor(principal);
+        return OrganizationTransaction.execute(principal.getCompanyId(), connection -> {
+            requireCurrentActor(connection,principal);
+            return new com.hrms.dao.companyadmin.CompanyAllowanceDAO().preview(connection,principal.getCompanyId(),employeeId,date);
+        });
+    }
+
+    public long saveAllowanceType(TenantPrincipal principal,Integer id,String name,java.util.Map<Integer,BigDecimal> levelAmounts,boolean active) throws SQLException {
+        requireEditor(principal);
+        return OrganizationTransaction.execute(principal.getCompanyId(), connection -> {
+            requireCurrentActor(connection,principal);
+            long typeId = new com.hrms.dao.companyadmin.CompanyAllowanceDAO().saveType(connection,principal.getCompanyId(),id,name,BigDecimal.ZERO,active);
+            new com.hrms.dao.companyadmin.CompanyAllowanceDAO().saveLevelAmounts(connection,principal.getCompanyId(),(int)typeId,levelAmounts);
+            var log = new com.hrms.model.AuditLog();
+            log.setCompanyId(principal.getCompanyId());
+            log.setUserId(principal.getUserId());
+            log.setTableName("CompanyAllowanceTypes");
+            log.setRecordId(String.valueOf(typeId));
+            log.setAction("SAVE_ALLOWANCE_TYPE");
+            log.setNewValues(name+"; LevelAmounts="+levelAmounts+"; IsActive="+active);
+            new com.hrms.dao.AuditLogDAO().insert(connection,log);
+            return typeId;
+        });
+    }
+
     public long saveContract(TenantPrincipal principal, EmploymentContract contract) throws SQLException {
+        return saveContract(principal,contract,null);
+    }
+
+    public long saveContract(TenantPrincipal principal, EmploymentContract contract, ContractHardCopy hardCopy) throws SQLException {
         requireEditor(principal);
         validateContract(contract);
         return OrganizationTransaction.execute(principal.getCompanyId(), connection -> {
             requireCurrentActor(connection, principal);
+            com.hrms.dao.companyadmin.EmployeeProfileAccess.requireActive(connection,principal.getCompanyId(),contract.employeeId());
+            var fixedAllowances = new com.hrms.dao.companyadmin.CompanyAllowanceDAO().fixedAllowances(connection,principal.getCompanyId(),contract.employeeId(),contract.startDate());
+            BigDecimal allowanceTotal = com.hrms.dao.companyadmin.CompanyAllowanceDAO.total(fixedAllowances);
             var employee = dao.employee(connection, principal.getCompanyId(), contract.employeeId());
             if (!"Active".equals(employee.get("Status"))) throw new IllegalArgumentException("Chỉ tạo hợp đồng cho nhân viên đang hoạt động.");
             long contractId;
@@ -191,7 +251,7 @@ public class EmployeeLifecycleService {
                         INSERT INTO EmploymentContracts(CompanyId,EmployeeId,ContractCode,ContractType,StartDate,EndDate,GrossSalary,Notes,Status,CreatedByUserId,TravelAllowance)
                         VALUES(?,?,?,?,?,?,?,?,'DRAFT',?,?)
                         """, principal.getCompanyId(), contract.employeeId(), contract.contractCode().strip(), contract.contractType(),
-                        contract.startDate(), contract.endDate(), contract.grossSalary(), contract.notes(), principal.getUserId(), contract.travelAllowance());
+                        contract.startDate(), contract.endDate(), contract.grossSalary(), contract.notes(), principal.getUserId(), allowanceTotal);
             } else {
                 contractId = contract.contractId();
                 if (dao.execute(connection, """
@@ -199,22 +259,32 @@ public class EmployeeLifecycleService {
                         WHERE CompanyId=? AND ContractId=? AND EmployeeId=? AND Status='DRAFT'
                             AND CONVERT(varchar(33),COALESCE(UpdatedAt,CreatedAt),126)=?
                         """, contract.contractCode().strip(), contract.contractType(), contract.startDate(), contract.endDate(), contract.grossSalary(), contract.notes(),
-                        contract.travelAllowance(), principal.getCompanyId(), contractId, contract.employeeId(), contract.expectedUpdatedAt()) != 1)
+                        allowanceTotal, principal.getCompanyId(), contractId, contract.employeeId(), contract.expectedUpdatedAt()) != 1)
                     throw new IllegalArgumentException("Bản nháp đã thay đổi hoặc hợp đồng đã ký. Vui lòng tải lại trước khi chỉnh sửa.");
             }
+            new com.hrms.dao.companyadmin.CompanyAllowanceDAO().saveLines(connection,principal.getCompanyId(),contractId,fixedAllowances);
             OrganizationTransaction.audit(connection, principal.getCompanyId(), principal.getUserId(), contract.employeeId(), "SAVE_CONTRACT", null, "ContractId="+contractId);
+            new com.hrms.dao.companyadmin.ContractDocumentDAO().insert(connection,principal.getCompanyId(),contract.employeeId(),contractId,contract.contractCode().strip(),principal.getUserId(),hardCopy);
             return contractId;
         });
     }
 
     public long recordSignedContract(TenantPrincipal principal, EmploymentContract contract, LocalDate signedDate,
             boolean synchronizeSalary) throws SQLException {
+        return recordSignedContract(principal,contract,signedDate,synchronizeSalary,null);
+    }
+
+    public long recordSignedContract(TenantPrincipal principal, EmploymentContract contract, LocalDate signedDate,
+            boolean synchronizeSalary, ContractHardCopy hardCopy) throws SQLException {
         requireEditor(principal);
         validateContract(contract);
         if (contract.contractId() != null)
             throw new IllegalArgumentException("Hợp đồng đã có trên hệ thống phải sử dụng bản ghi hiện có, không ghi nhận lại.");
         return OrganizationTransaction.execute(principal.getCompanyId(), connection -> {
             requireCurrentActor(connection, principal);
+            com.hrms.dao.companyadmin.EmployeeProfileAccess.requireActive(connection,principal.getCompanyId(),contract.employeeId());
+            var fixedAllowances = new com.hrms.dao.companyadmin.CompanyAllowanceDAO().fixedAllowances(connection,principal.getCompanyId(),contract.employeeId(),contract.startDate());
+            BigDecimal allowanceTotal = com.hrms.dao.companyadmin.CompanyAllowanceDAO.total(fixedAllowances);
             var employee = dao.employee(connection, principal.getCompanyId(), contract.employeeId());
             LocalDate today = LocalDate.parse(dao.query(connection, "SELECT CONVERT(date,SYSDATETIME()) AS Today").get(0).get("Today").toString());
             if (signedDate == null || signedDate.isAfter(today))
@@ -238,13 +308,33 @@ public class EmployeeLifecycleService {
                     VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
                     """, principal.getCompanyId(), contract.employeeId(), contract.contractCode().strip(), contract.contractType(),
                     contract.startDate(), contract.endDate(), contract.grossSalary(), contract.notes(), expired ? "EXPIRED" : "ACTIVE",
-                    signedDate, principal.getUserId(), contract.travelAllowance());
+                    signedDate, principal.getUserId(), allowanceTotal);
+            new com.hrms.dao.companyadmin.CompanyAllowanceDAO().saveLines(connection,principal.getCompanyId(),contractId,fixedAllowances);
             if (synchronizeSalary)
                 new com.hrms.dao.companyadmin.ContractCompensationDAO().synchronize(connection, principal.getCompanyId(), contract.employeeId(),
-                        contractId, contract.contractCode().strip(), contract.startDate(), contract.grossSalary(), contract.travelAllowance(), principal.getUserId());
+                        contractId, contract.contractCode().strip(), contract.startDate(), contract.grossSalary(), allowanceTotal, principal.getUserId());
             OrganizationTransaction.audit(connection, principal.getCompanyId(), principal.getUserId(), contract.employeeId(),
                     "RECORD_SIGNED_CONTRACT", null, "ContractId="+contractId+"; "+(synchronizeSalary ? "Đồng bộ lương theo hợp đồng" : "Giữ nguyên lịch sử lương"));
+            new com.hrms.dao.companyadmin.ContractDocumentDAO().insert(connection,principal.getCompanyId(),contract.employeeId(),contractId,contract.contractCode().strip(),principal.getUserId(),hardCopy);
             return contractId;
+        });
+    }
+
+    public Map<String,Object> missingContractHardCopyTarget(TenantPrincipal principal,long contractId) throws SQLException {
+        requireEditor(principal);
+        try (var connection=DBConnection.getConnection()) {
+            return new com.hrms.dao.companyadmin.ContractDocumentDAO().missingHardCopyTarget(connection,principal.getCompanyId(),contractId);
+        }
+    }
+
+    public void addContractHardCopy(TenantPrincipal principal,long contractId,ContractHardCopy copy) throws SQLException {
+        requireEditor(principal);
+        OrganizationTransaction.execute(principal.getCompanyId(),connection -> {
+            requireCurrentActor(connection,principal);
+            var contract=new com.hrms.dao.companyadmin.ContractDocumentDAO().addMissingHardCopy(connection,principal.getCompanyId(),contractId,principal.getUserId(),copy);
+            OrganizationTransaction.audit(connection,principal.getCompanyId(),principal.getUserId(),((Number)contract.get("EmployeeId")).intValue(),
+                    "UPLOAD_CONTRACT_HARD_COPY",null,"ContractId="+contractId+"; "+copy.file().getOriginalFileName());
+            return null;
         });
     }
 
@@ -296,6 +386,7 @@ public class EmployeeLifecycleService {
             LocalDate end = contract.get("EndDate") == null ? null : LocalDate.parse(contract.get("EndDate").toString());
             String auditAction = "CONTRACT_" + (action == null ? "" : action.toUpperCase(java.util.Locale.ROOT));
             if ("activate".equals(action)) {
+                com.hrms.dao.companyadmin.EmployeeProfileAccess.requireActive(connection,principal.getCompanyId(),employeeId);
                 if (!"DRAFT".equals(status)) throw new IllegalArgumentException("Chỉ được kích hoạt hợp đồng ở trạng thái bản nháp.");
                 if (!"Active".equals(dao.employee(connection, principal.getCompanyId(), employeeId).get("Status")))
                     throw new IllegalArgumentException("Nhân viên phải đang hoạt động.");
@@ -336,6 +427,7 @@ public class EmployeeLifecycleService {
         if (!principal.isCompanyAdministrator()) throw new SecurityException("Chỉ quản trị viên công ty được quản lý tài khoản nhân viên.");
         if ("role".equals(action)) throw new FieldValidationException("roleCode","Vai trò Employee/Manager được đồng bộ khi phân công phòng ban và chức danh, không phân quyền riêng tại đây.");
         if (!Set.of("create","lock","unlock","role").contains(action == null ? "" : action)) throw new IllegalArgumentException("Vui lòng chọn thao tác tài khoản hợp lệ.");
+        try (var connection=DBConnection.getConnection()) { com.hrms.dao.companyadmin.ActiveAccountQuotaDAO.ensureSchema(connection); }
         return OrganizationTransaction.execute(principal.getCompanyId(), connection -> {
             requireCurrentActor(connection, principal);
             var employee = dao.employee(connection, principal.getCompanyId(), employeeId);
@@ -353,24 +445,7 @@ public class EmployeeLifecycleService {
                 throw new IllegalArgumentException("Tài khoản đang ngừng hoạt động do hợp đồng kết thúc. Cần kích hoạt hợp đồng mới và đến ngày hiệu lực trước khi mở tài khoản.");
             if ("create".equals(action)) {
                 if (userId != null) throw new IllegalArgumentException("Nhân viên đã có tài khoản truy cập.");
-                var quotaRows = dao.query(connection,
-                        """
-                        SELECT (SELECT COUNT_BIG(*) FROM Users WITH (UPDLOCK, HOLDLOCK) WHERE CompanyId = ?) AS AccountCount,
-                               (SELECT TOP (1) p.MaxAccounts
-                                FROM Subscriptions s WITH (UPDLOCK, HOLDLOCK)
-                                JOIN Plans p WITH (UPDLOCK, HOLDLOCK) ON p.PlanId = s.PlanId
-                                WHERE s.CompanyId = ?
-                                ORDER BY s.SubscriptionId DESC) AS MaxAccounts
-                        """,
-                        principal.getCompanyId(), principal.getCompanyId());
-                if (!quotaRows.isEmpty()) {
-                    long accountCount = ((Number) quotaRows.get(0).get("AccountCount")).longValue();
-                    Object maxObj = quotaRows.get(0).get("MaxAccounts");
-                    int maxAccounts = maxObj instanceof Number n ? n.intValue() : 20;
-                    if (accountCount >= maxAccounts) {
-                        throw new IllegalArgumentException("Đã đạt đến giới hạn của gói bạn đang dùng");
-                    }
-                }
+                new com.hrms.dao.companyadmin.ActiveAccountQuotaDAO().requireCapacity(connection,principal.getCompanyId(),null);
                 String assignedRole=new com.hrms.dao.companyadmin.OrganizationRoleDAO().roleForEmployee(connection,principal.getCompanyId(),employeeId);
                 if (roleCode != null && !roleCode.isBlank() && !assignedRole.equals(roleCode))
                     throw new FieldValidationException("roleCode","Vai trò tài khoản phải theo chức danh đang được phân công.");
@@ -392,7 +467,10 @@ public class EmployeeLifecycleService {
                 if (userId == null) throw new IllegalArgumentException("Nhân viên chưa có tài khoản truy cập.");
                 switch (action) {
                     case "lock" -> dao.execute(connection, "UPDATE Users SET IsLocked=1,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND UserId=?", principal.getCompanyId(), userId);
-                    case "unlock" -> dao.execute(connection, "UPDATE Users SET IsLocked=0,IsActive=1,LockedUntil=NULL,FailedLoginAttempts=0,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND UserId=?", principal.getCompanyId(), userId);
+                    case "unlock" -> {
+                        new com.hrms.dao.companyadmin.ActiveAccountQuotaDAO().requireCapacity(connection,principal.getCompanyId(),userId);
+                        dao.execute(connection, "UPDATE Users SET IsLocked=0,IsActive=1,LockedUntil=NULL,FailedLoginAttempts=0,UpdatedAt=SYSUTCDATETIME() WHERE CompanyId=? AND UserId=?", principal.getCompanyId(), userId);
+                    }
                     default -> throw new IllegalArgumentException("Thao tác tài khoản không hợp lệ.");
                 }
             }
@@ -407,6 +485,7 @@ public class EmployeeLifecycleService {
         requireReason(reason);
         return OrganizationTransaction.execute(principal.getCompanyId(), connection -> {
             requireCurrentActor(connection, principal);
+            com.hrms.dao.companyadmin.EmployeeProfileAccess.requireActive(connection,principal.getCompanyId(),employeeId);
             var employee = dao.employee(connection, principal.getCompanyId(), employeeId);
             if (!"Active".equals(employee.get("Status"))) throw new IllegalArgumentException("Chỉ thực hiện ngừng làm việc cho nhân viên đang hoạt động.");
             if (java.util.Objects.equals(employee.get("UserId"), principal.getUserId())) throw new IllegalArgumentException("Bạn không được tự thực hiện ngừng làm việc cho chính mình.");
@@ -519,6 +598,7 @@ public class EmployeeLifecycleService {
         if (effectiveDate == null || effectiveDate.isBefore(LocalDate.now())) throw new IllegalArgumentException("Ngày hiệu lực không được ở quá khứ.");
         return OrganizationTransaction.execute(principal.getCompanyId(),connection -> {
             requireCurrentActor(connection,principal);
+            com.hrms.dao.companyadmin.EmployeeProfileAccess.requireActive(connection,principal.getCompanyId(),employeeId);
             var employee=dao.employee(connection,principal.getCompanyId(),employeeId);
             if (!"Active".equals(employee.get("Status")) || employee.get("PositionId")==null) throw new IllegalArgumentException("Nhân viên phải đang hoạt động và có phân công hiện tại.");
             if (!dao.query(connection,"SELECT 1 FROM EmployeePositionChanges WHERE CompanyId=? AND EmployeeId=? AND Status IN ('PENDING','APPROVED')",principal.getCompanyId(),employeeId).isEmpty()) throw new IllegalArgumentException("Vui lòng xử lý đề xuất đang chờ trước.");
@@ -560,6 +640,7 @@ public class EmployeeLifecycleService {
             if(records.isEmpty()) throw new IllegalArgumentException("Không tìm thấy đề xuất thay đổi chức danh trong công ty.");
             var change=records.get(0);
             int employeeId=((Number)change.get("EmployeeId")).intValue();
+            if (!"REJECT".equals(action)) com.hrms.dao.companyadmin.EmployeeProfileAccess.requireActive(connection,principal.getCompanyId(),employeeId);
             if("APPROVE".equals(action) || "REJECT".equals(action)) {
                 if(!"PENDING".equals(change.get("Status"))) throw new IllegalArgumentException("Chỉ được duyệt đề xuất đang chờ phê duyệt.");
                 dao.execute(connection,"UPDATE EmployeePositionChanges SET Status=?,ApprovedByUserId=?,ApprovedAt=SYSUTCDATETIME() WHERE CompanyId=? AND PositionChangeId=?",

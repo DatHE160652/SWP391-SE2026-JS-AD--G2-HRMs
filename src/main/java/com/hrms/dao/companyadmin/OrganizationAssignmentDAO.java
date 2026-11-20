@@ -21,7 +21,7 @@ public class OrganizationAssignmentDAO {
                     SELECT e.EmployeeId,e.EmployeeCode,e.FullName FROM Employees e
                     WHERE e.CompanyId=? AND e.Status='Active'
                     AND
-                    """ + UNASSIGNED + " ORDER BY e.FullName,e.EmployeeId", companyId);
+                    """ + UNASSIGNED + " AND " + EmployeeProfileAccess.ACTIVE_ACCOUNT + " ORDER BY e.FullName,e.EmployeeId", companyId);
         }
     }
 
@@ -84,6 +84,7 @@ public class OrganizationAssignmentDAO {
             requireActor(connection, companyId, actorId);
             var dao = new EmployeeLifecycleDAO();
             var employee = dao.employee(connection, companyId, employeeId);
+            EmployeeProfileAccess.requireActive(connection,companyId,employeeId);
             java.time.LocalDate today = java.time.LocalDate.parse(dao.query(connection,
                     "SELECT CONVERT(date,SYSDATETIME()) AS Today").get(0).get("Today").toString());
             if (effectiveFrom == null || effectiveFrom.isAfter(today))
@@ -156,6 +157,7 @@ public class OrganizationAssignmentDAO {
                 Integer oldPosition=(Integer)rows.getObject("PositionId");
                 currentManager=(Integer)rows.getObject("ManagerId");
                 if (Objects.equals(oldDepartment,departmentId) && Objects.equals(oldPosition,positionId)) return;
+                EmployeeProfileAccess.requireActive(connection,companyId,employeeId);
                 if (!Objects.equals(oldDepartment, departmentId) && rows.getObject("ManagerId") != null) {
                     throw new FieldValidationException("managerId", "Vui lòng xử lý quản lý trực tiếp hiện tại trước khi đổi phòng ban. Hệ thống không tự gỡ quản lý.");
                 }
@@ -216,6 +218,7 @@ public class OrganizationAssignmentDAO {
             requireActor(connection, companyId, actorUserId);
             var dao = new EmployeeLifecycleDAO();
             var employee = dao.employee(connection, companyId, employeeId);
+            EmployeeProfileAccess.requireActive(connection,companyId,employeeId);
             if (!"Active".equals(employee.get("Status")))
                 throw new FieldValidationException("employeeId", "Chỉ phân công cho nhân viên đang hoạt động.");
             validateSelection(connection, companyId, departmentId, positionId);

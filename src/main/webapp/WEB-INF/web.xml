@@ -427,6 +427,11 @@
     <servlet>
         <servlet-name>EmployeeLifecycleController</servlet-name>
         <servlet-class>com.hrms.controller.companyadmin.EmployeeLifecycleController</servlet-class>
+        <multipart-config>
+            <max-file-size>10485760</max-file-size>
+            <max-request-size>12582912</max-request-size>
+            <file-size-threshold>1048576</file-size-threshold>
+        </multipart-config>
     </servlet>
     <servlet-mapping>
         <servlet-name>EmployeeLifecycleController</servlet-name>
@@ -436,11 +441,15 @@
         <url-pattern>/lifecycle/dashboard</url-pattern>
         <url-pattern>/lifecycle/api/contracts</url-pattern>
         <url-pattern>/lifecycle/api/contracts/save</url-pattern>
+        <url-pattern>/lifecycle/api/contracts/hard-copy</url-pattern>
         <url-pattern>/lifecycle/api/contracts/transition</url-pattern>
         <url-pattern>/lifecycle/api/accounts</url-pattern>
         <url-pattern>/lifecycle/api/accounts/action</url-pattern>
         <url-pattern>/lifecycle/api/compensation</url-pattern>
         <url-pattern>/lifecycle/api/allowance</url-pattern>
+        <url-pattern>/lifecycle/api/allowance-types</url-pattern>
+        <url-pattern>/lifecycle/api/allowance-preview</url-pattern>
+        <url-pattern>/lifecycle/api/allowance-types/save</url-pattern>
         <url-pattern>/lifecycle/api/organization</url-pattern>
         <url-pattern>/lifecycle/api/organization-admins</url-pattern>
         <url-pattern>/lifecycle/api/dashboard</url-pattern>

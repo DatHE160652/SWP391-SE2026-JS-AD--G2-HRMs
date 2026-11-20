@@ -29,7 +29,7 @@ public class CompanyAdministrationDAO {
             c.ContactEmail, c.ContactPhone, c.CreatedAt AS CompanyCreatedAt,
             admin.DisplayName AS CompanyAdminName, admin.Email AS CompanyAdminEmail,
             admin.ActivatedAt AS CompanyAdminActivatedAt,
-            (SELECT COUNT_BIG(*) FROM Users account WHERE account.CompanyId = c.CompanyId) AS AccountCount,
+            (SELECT COUNT_BIG(*) FROM Users account WHERE account.CompanyId = c.CompanyId AND account.IsActive=1 AND account.IsLocked=0) AS AccountCount,
             s.SubscriptionId, s.Status AS SubscriptionStatus, s.StartDate, s.EndDate,
             s.SuspendedAt, s.SuspensionReason,
             p.PlanName, p.MaxAccounts, p.Price, p.BillingCycle
@@ -313,7 +313,7 @@ public class CompanyAdministrationDAO {
                 }
                 long currentAccounts = 0;
                 try (PreparedStatement ps = connection.prepareStatement(
-                        "SELECT COUNT_BIG(*) FROM Users WITH (UPDLOCK, HOLDLOCK) WHERE CompanyId = ?")) {
+                        "SELECT COUNT_BIG(*) FROM Users WITH (UPDLOCK, HOLDLOCK) WHERE CompanyId = ? AND IsActive=1 AND IsLocked=0")) {
                     ps.setInt(1, companyId);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (rs.next())

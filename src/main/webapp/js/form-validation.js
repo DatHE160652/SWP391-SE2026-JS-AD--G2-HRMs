@@ -100,8 +100,13 @@ window.FormValidation = (() => {
         if (missing) {
             return '';
         }
+        if (field.name === 'fullName' && field.form?.dataset.validationOrder && !/^[\p{L}\p{M}\s]+$/u.test(value)) {
+            return HrmI18n.t('Họ tên chỉ được chứa chữ cái và khoảng trắng.');
+        }
         if (field.type === 'email' && (field.validity.typeMismatch || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))) {
-            return HrmI18n.t('Vui lòng nhập địa chỉ email hợp lệ.');
+            return field.form?.id === 'lc-employee-form'
+                ? HrmI18n.t('Vui lòng nhập địa chỉ email công ty hợp lệ.')
+                : HrmI18n.t('Vui lòng nhập địa chỉ email hợp lệ.');
         }
         if (field.name === 'identityNumber' && !/^[0-9]{12}$/.test(value)) {
             return HrmI18n.t('Mã định danh (CCCD) phải gồm đúng 12 chữ số.');
@@ -175,8 +180,17 @@ window.FormValidation = (() => {
 
     function validate(root) {
         clear(root);
-        // DOM order follows the form from top to bottom (left to right per row).
-        for (const field of fields(root)) {
+        const order = root.dataset?.validationOrder?.split(',');
+        const allFields = fields(root);
+        const ordered = order ? order.map(name => allFields.find(field => field.name === name)).filter(Boolean) : [];
+        const alert = order && root.querySelector('[role="alert"]');
+        if (alert) alert.textContent = '';
+        if (ordered.length && ordered.every(field => !field.value.trim() && !field.validity.badInput)) {
+            if (alert) alert.textContent = HrmI18n.t('Vui lòng nhập đầy đủ thông tin bắt buộc.');
+            focusInvalid(ordered[0]);
+            return false;
+        }
+        for (const field of [...ordered, ...allFields.filter(field => !ordered.includes(field))]) {
             if (!validateField(field)) {
                 focusInvalid(field);
                 return false;
