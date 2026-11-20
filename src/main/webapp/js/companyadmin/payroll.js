@@ -390,7 +390,7 @@
         try {
             const result = (await api('/payroll/api/preview?periodId=' + encodeURIComponent(id))).data;
             if (sequence !== state.request || state.selected?.payrollPeriodId !== id) { dialog.close(); return; }
-            $('#calculationPreviewContent').innerHTML = `<p>${result.rows.length}${HrmI18n.fragment(" nhân viên · Kết quả xem trước chưa được lưu.</p>\n                <div class=\"info-note\">Tổng thu nhập: <strong>")}${money(result.totalIncome)}${HrmI18n.fragment(" ₫</strong><br>Tổng tiền thưởng: <strong>")}${money(decimal(result.rows.reduce((sum, r) => sum + cents(r.bonus), 0n)))}${HrmI18n.fragment(" ₫</strong><br>Tổng thực nhận: <strong>")}${money(result.totalNetSalary)}${HrmI18n.fragment(" ₫</strong></div>\n                <div class=\"table-scroll\"><table><thead><tr><th>Mã nhân viên</th><th>Họ tên</th><th class=\"number\">Lương cơ bản</th><th class=\"number\">Công thực / Chuẩn</th><th class=\"number\">Lương theo công</th><th class=\"number\">Phụ cấp trách nhiệm</th><th class=\"number\">Phụ cấp đi lại</th><th class=\"number\">Thưởng</th><th class=\"number\">Thực nhận</th></tr></thead><tbody>")}${result.rows.map(row => `<tr><td>${safe(row.employeeCode)}</td><td>${safe(row.fullName)}</td><td class="number">${money(row.contractBaseSalary ?? row.baseSalary)}</td><td class="number">${days(row.actualWorkDays)} / ${days(row.standardWorkDays)}</td><td class="number">${money(row.baseSalary)}</td><td class="number">${money(row.responsibilityAllowance)}</td><td class="number">${money(row.travelAllowance ?? '0')}</td><td class="number">${money(row.bonus)}</td><td class="number net-value">${money(row.netSalary)}</td></tr>`).join('')}</tbody></table></div>`;
+            $('#calculationPreviewContent').innerHTML = `<p>${result.rows.length}${HrmI18n.fragment(" nhân viên · Kết quả xem trước chưa được lưu.</p>\n                <div class=\"info-note\">Tổng thu nhập: <strong>")}${money(result.totalIncome)}${HrmI18n.fragment(" ₫</strong><br>Tổng tiền thưởng: <strong>")}${money(decimal(result.rows.reduce((sum, r) => sum + cents(r.bonus), 0n)))}${HrmI18n.fragment(" ₫</strong><br>Tổng thực nhận: <strong>")}${money(result.totalNetSalary)}${HrmI18n.fragment(" ₫</strong></div>\n                <div class=\"table-scroll\"><table><thead><tr><th>Mã nhân viên</th><th>Họ tên</th><th class=\"number\">Lương cơ bản</th><th class=\"number\">Công thực / Chuẩn</th><th class=\"number\">Lương theo công</th><th class=\"number\">Phụ cấp trách nhiệm</th><th class=\"number\">Phụ cấp theo hợp đồng</th><th class=\"number\">Thưởng</th><th class=\"number\">Thực nhận</th></tr></thead><tbody>")}${result.rows.map(row => `<tr><td>${safe(row.employeeCode)}</td><td>${safe(row.fullName)}</td><td class="number">${money(row.contractBaseSalary ?? row.baseSalary)}</td><td class="number">${days(row.actualWorkDays)} / ${days(row.standardWorkDays)}</td><td class="number">${money(row.baseSalary)}</td><td class="number">${money(row.responsibilityAllowance)}</td><td class="number">${money(row.travelAllowance ?? '0')}</td><td class="number">${money(row.bonus)}</td><td class="number net-value">${money(row.netSalary)}</td></tr>`).join('')}</tbody></table></div>`;
         } catch (error) { $('#calculationPreviewContent').textContent = HrmI18n.t('Chưa có kết quả xem trước.'); dialogError(dialog, error); }
         finally { state.busy = false; button.disabled = false; }
     }
@@ -676,7 +676,7 @@
         return active.length ? active.join(', ') : '0 công';
     }
     function buildFormulaDescription(cfg) {
-        if (!cfg) return 'Thực nhận = ((Lương cơ bản × Công thực) / Số công tiêu chuẩn) + Phụ cấp trách nhiệm + Phụ cấp đi lại + Thưởng';
+        if (!cfg) return 'Thực nhận = ((Lương cơ bản × Công thực) / Số công tiêu chuẩn) + Phụ cấp trách nhiệm + Phụ cấp theo hợp đồng + Thưởng';
         const parts = [];
         if (cfg.salaryCalculationMode === 'FIXED_MONTHLY') {
             parts.push('Lương cơ bản');
@@ -690,7 +690,7 @@
             parts.push(`((Lương cơ bản × Công thực${cfg.includePaidLeave !== false ? ' [gồm phép hưởng lương]' : ''}) / ${stdText})`);
         }
         if (cfg.includeResponsibilityAllowance !== false) parts.push('Phụ cấp trách nhiệm');
-        if (cfg.includeTravelAllowance !== false) parts.push('Phụ cấp đi lại');
+        if (cfg.includeTravelAllowance !== false) parts.push('Phụ cấp theo hợp đồng');
         parts.push('Thưởng');
         return 'Thực nhận = ' + parts.join(' + ');
     }

@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
     const contractFacts=contract=>facts([
         [HrmI18n.t('Mã hợp đồng'),contract.ContractCode],[HrmI18n.t('Loại hợp đồng'),contract.ContractType],[HrmI18n.t('Trạng thái'),contract.Status],
         [HrmI18n.t('Ngày bắt đầu'),contract.StartDate],[HrmI18n.t('Ngày hết hạn'),contract.EndDate || HrmI18n.t('Không xác định thời hạn')],
-        [HrmI18n.t('Ngày ký'),contract.SignedDate],[HrmI18n.t('Lương Gross'),money(contract.GrossSalary)],[HrmI18n.t('Phụ cấp đi lại'),money(contract.TravelAllowance)],
+        [HrmI18n.t('Ngày ký'),contract.SignedDate],[HrmI18n.t('Lương Gross'),money(contract.GrossSalary)],[HrmI18n.t('Phụ cấp theo hợp đồng'),money(contract.TravelAllowance)],
         [HrmI18n.t('Ngày chấm dứt'),contract.TerminatedDate],[HrmI18n.t('Lý do chấm dứt'),contract.TerminationReason],[HrmI18n.t('Ghi chú'),contract.Notes]
     ]);
     async function openEmployee(employeeId){
@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
                 [HrmI18n.t('Chức danh / Chức vụ'),person.PositionTitle],[HrmI18n.t('Cấp bậc'),person.LevelName],['Manager',person.ManagerName],[HrmI18n.t('Email liên lạc'),person.Email]
             ])+HrmI18n.fragment('<h3 class="personal-private-title">Thông tin cá nhân</h3>')+facts([
                 [HrmI18n.t('Số điện thoại'),person.Phone],[HrmI18n.t('Số CCCD/CMND'),person.IdentityNumber],[HrmI18n.t('Địa chỉ thường trú'),person.PermanentAddress],
-                [HrmI18n.t('Quê quán'),person.Hometown],[HrmI18n.t('Lương Gross'),person.GrossSalary],[HrmI18n.t('Phụ cấp chức vụ'),person.PositionAllowance],[HrmI18n.t('Phụ cấp đi lại'),person.TravelAllowance]
+                [HrmI18n.t('Quê quán'),person.Hometown],[HrmI18n.t('Lương Gross'),person.GrossSalary],[HrmI18n.t('Phụ cấp chức vụ'),person.PositionAllowance],[HrmI18n.t('Phụ cấp theo hợp đồng'),person.TravelAllowance]
             ])+HrmI18n.fragment('<p class="personal-protected">Các trường được che không thuộc quyền xem của tài khoản này.</p>')
                 +(result.canViewContracts?HrmI18n.fragment('<h3 class="personal-private-title">Hợp đồng lao động</h3>')+personalTable('colleague-contracts-'+employeeId,
                     [HrmI18n.t('Loại hợp đồng'),HrmI18n.t('Ngày bắt đầu'),HrmI18n.t('Ngày hết hạn')],result.contracts.map(contract=>[HrmVietnamese.label(contract.ContractType),contract.StartDate,contract.EndDate || HrmI18n.t('Không xác định thời hạn')])):'');

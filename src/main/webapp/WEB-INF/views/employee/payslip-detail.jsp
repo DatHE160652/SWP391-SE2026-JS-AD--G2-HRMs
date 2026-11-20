@@ -131,7 +131,7 @@
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td>Phụ cấp đi lại</td>
+                                    <td>Phụ cấp theo hợp đồng</td>
                                     <td class="number">+
                                         <fmt:formatNumber value="${slip.travelAllowance()}" minFractionDigits="0"
                                             maxFractionDigits="2" />
@@ -159,7 +159,7 @@
                             </tbody>
                         </table>
                         <div class="slip-foot">Thực nhận = ((Lương cơ bản × Công thực) / Số công tiêu chuẩn) + Phụ cấp
-                            trách nhiệm + Phụ cấp đi lại + Thưởng.<br>
+                            trách nhiệm + Phụ cấp theo hợp đồng + Thưởng.<br>
                             <%= com.hrms.i18n.Language.text(request, "ui_c3ec71043aa8" , "Ngày tạo (UTC):" ) %>
                                 <c:out value="${slip.generatedAt()}" />
                                 <c:if test="${not empty slip.publishedAt()}"><br>

@@ -32,7 +32,7 @@
                 <div class="table-scroll">
                 <table>
                 <thead>
-                <tr><th><%= com.hrms.i18n.Language.text(request, "ui_14ddd70d2564", "Nhân viên") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_6f358f848e2e", "Phòng ban") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_e03c1401e314", "Trạng thái") %></th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_832b5c6af3ff", "Lương cơ bản (VND)") %></th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_ac5d493eaa5e", "Phụ cấp trách nhiệm") %></th><th class="number">Phụ cấp đi lại</th><th><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th>
+                <tr><th><%= com.hrms.i18n.Language.text(request, "ui_14ddd70d2564", "Nhân viên") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_6f358f848e2e", "Phòng ban") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_e03c1401e314", "Trạng thái") %></th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_832b5c6af3ff", "Lương cơ bản (VND)") %></th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_ac5d493eaa5e", "Phụ cấp trách nhiệm") %></th><th class="number">Phụ cấp theo hợp đồng</th><th><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th>
                 </tr>
                 </thead>
                 <tbody id="salaryRows">
@@ -46,7 +46,7 @@
                 </section>
             </c:when><c:otherwise>
                 <div id="formulaSummaryBanner" class="info-note" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
-                    <div><strong>Công thức tính lương của công ty:</strong> <span id="formulaSummaryText">Thực nhận = ((Lương cơ bản × Công thực) / Số công tiêu chuẩn) + Phụ cấp trách nhiệm + Phụ cấp đi lại + Thưởng</span></div>
+                    <div><strong>Công thức tính lương của công ty:</strong> <span id="formulaSummaryText">Thực nhận = ((Lương cơ bản × Công thực) / Số công tiêu chuẩn) + Phụ cấp trách nhiệm + Phụ cấp theo hợp đồng + Thưởng</span></div>
                 </div>
                 <section class="workflow-strip" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_b1b59e711b5a", "Quy trình tính lương") %>">
                 <div><span>01</span><strong><%= com.hrms.i18n.Language.text(request, "ui_021c6e1c4d74", "Chuẩn bị") %></strong><small><%= com.hrms.i18n.Language.text(request, "ui_e7351d02e30c", "Lương & điều chỉnh") %></small>
@@ -115,7 +115,7 @@
                     </section>
                     <section class="pay-card">
                     <div class="card-toolbar">
-                    <div><h2><%= com.hrms.i18n.Language.text(request, "ui_8a8ce94e2e7c", "Bảng lương nhân viên") %></h2><p class="subtle" id="payrollFormulaSubtle">((Lương cơ bản × Công thực) / Số công tiêu chuẩn) + Phụ cấp trách nhiệm + Phụ cấp đi lại + Thưởng = Thực nhận</p>
+                    <div><h2><%= com.hrms.i18n.Language.text(request, "ui_8a8ce94e2e7c", "Bảng lương nhân viên") %></h2><p class="subtle" id="payrollFormulaSubtle">((Lương cơ bản × Công thực) / Số công tiêu chuẩn) + Phụ cấp trách nhiệm + Phụ cấp theo hợp đồng + Thưởng = Thực nhận</p>
                     </div>
                     <div class="toolbar-fields"><button class="btn secondary" id="templateButton"><%= com.hrms.i18n.Language.text(request, "ui_50bacaa8f160", "↓ File mẫu Excel") %></button><button class="btn secondary" id="importButton"><%= com.hrms.i18n.Language.text(request, "ui_d5f91186d645", "↑ Nhập Excel") %></button>
                     </div>
@@ -125,7 +125,7 @@
                     <div class="table-scroll">
                     <table>
                     <thead>
-                    <tr><th><%= com.hrms.i18n.Language.text(request, "ui_84979604c762", "Mã nhân viên") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_3da3c8c2738b", "Họ tên") %></th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_f6195db41766", "Lương cơ bản") %></th><th class="number">Công thực / Chuẩn</th><th class="number">Lương theo công</th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_ac5d493eaa5e", "Phụ cấp trách nhiệm") %></th><th class="number">Phụ cấp đi lại</th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_1dff4c8c3481", "Thưởng") %></th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_bda3b5abe5e4", "Thực nhận") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th>
+                    <tr><th><%= com.hrms.i18n.Language.text(request, "ui_84979604c762", "Mã nhân viên") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_3da3c8c2738b", "Họ tên") %></th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_f6195db41766", "Lương cơ bản") %></th><th class="number">Công thực / Chuẩn</th><th class="number">Lương theo công</th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_ac5d493eaa5e", "Phụ cấp trách nhiệm") %></th><th class="number">Phụ cấp theo hợp đồng</th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_1dff4c8c3481", "Thưởng") %></th><th class="number"><%= com.hrms.i18n.Language.text(request, "ui_bda3b5abe5e4", "Thực nhận") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th>
                     </tr>
                     </thead>
                     <tbody id="payrollRows">
@@ -337,7 +337,7 @@
         </label>
         <label style="display:flex;align-items:center;gap:8px;flex-direction:row;font-weight:500;cursor:pointer;">
             <input type="checkbox" name="includeTravelAllowance" value="true" checked style="width:16px;height:16px;">
-            <span>Cộng <strong>Phụ cấp đi lại</strong> (theo Hợp đồng lao động đang hiệu lực)</span>
+            <span>Cộng <strong>Phụ cấp theo hợp đồng</strong> (theo Hợp đồng lao động đang hiệu lực)</span>
         </label>
     </div>
     <div class="dialog-error" role="alert" hidden></div>
