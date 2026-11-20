@@ -37,8 +37,11 @@ public class DocumentService {
         ensureEmployeeExists(employeeId);
         if(uploadedBy==null) throw new SecurityException("Vui lòng đăng nhập trước khi tải tài liệu lên.");
         var employee=employeeDAO.getEmployeeById(employeeId);
+        if (documentType == null || documentType.isBlank()) {
+            throw new FieldValidationException("documentType", "Vui lòng chọn loại tài liệu.");
+        }
         if (documentName == null || documentName.isBlank()) {
-            throw new FieldValidationException("documentName", "Vui lòng nhập tên tài liệu.");
+            documentName = documentType.trim();
         }
         try(Connection connection=DBConnection.getConnection()) {
             requireUploader(connection,employeeId,employee.getCompanyId(),uploadedBy,documentType,true);
