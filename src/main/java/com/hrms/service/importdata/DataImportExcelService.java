@@ -336,7 +336,7 @@ public class DataImportExcelService {
         try (Connection conn = DBConnection.getConnection()) {
             conn.setAutoCommit(false);
             try {
-                String checkSql = "SELECT EmployeeId, FullName FROM Employees WHERE CompanyId = ? AND UPPER(EmployeeCode) = UPPER(?)";
+                com.hrms.dao.companyadmin.OrganizationTransaction.lockCompany(conn, companyId);
                 String insertSql = """
                         INSERT INTO Employees (
                             CompanyId, EmployeeCode, FullName, Email, Phone, Status,
@@ -345,44 +345,27 @@ public class DataImportExcelService {
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, SYSDATETIME())
                         """;
 
-                try (PreparedStatement psCheck = conn.prepareStatement(checkSql);
-                     PreparedStatement psInsert = conn.prepareStatement(insertSql)) {
+                try (PreparedStatement psInsert = conn.prepareStatement(insertSql)) {
 
                     int inserted = 0;
-                    int skipped = 0;
-                    List<String> skippedMessages = new ArrayList<>();
+
+
 
                     for (ImportRowResult r : rows) {
                         Map<String, String> d = r.getData();
-                        String code = d.get("Mã NV (*)");
+                        String code = com.hrms.dao.companyadmin.EmployeeCodeGenerator.next(conn, companyId);
                         String name = d.get("Họ tên (*)");
-
-                        psCheck.setInt(1, companyId);
-                        psCheck.setString(2, code.trim());
-                        Integer existingId = null;
-                        String existingName = null;
-                        try (ResultSet rs = psCheck.executeQuery()) {
-                            if (rs.next()) {
-                                existingId = rs.getInt("EmployeeId");
-                                existingName = rs.getString("FullName");
-                            }
-                        }
-
-                        if (existingId != null) {
-                            skipped++;
-                            String displayName = (existingName != null && !existingName.isBlank())
-                                    ? existingName.trim()
-                                    : (name != null ? name.trim() : "");
-                            skippedMessages.add("ID: " + code.trim() + ", Tên nhân viên: " + displayName + " đã tồn tại, không thể cập nhật.");
-                            continue;
-                        }
-
                         String email = d.get("Email (*)");
                         String phone = d.get("Điện thoại (*)");
                         String status = "Chưa hoạt động".equalsIgnoreCase(d.get("Trạng thái (*)")) ? "Inactive" : "Active";
                         Date dob = parseSqlDate(d.get("Ngày sinh (*)"));
                         String gender = normalizeGender(d.get("Giới tính (*)"));
                         String idNum = d.get("Số CCCD/CMND (*)");
+                        try {
+                            employeeDAO.validateUniqueIdentityNumber(conn, companyId, idNum, 0);
+                        } catch (com.hrms.service.FieldValidationException e) {
+                            throw new IllegalArgumentException("Dòng " + r.getRowNumber() + ": " + e.getMessage(), e);
+                        }
                         Date idDate = parseSqlDate(d.get("Ngày cấp CCCD"));
                         String idPlace = d.get("Nơi cấp");
                         String address = d.get("Địa chỉ thường trú");
@@ -411,21 +394,10 @@ public class DataImportExcelService {
                     result.setTotalProcessed(rows.size());
                     result.setInsertedCount(inserted);
                     result.setUpdatedCount(0);
-                    result.setFailedCount(skipped);
-                    if (skipped > 0) {
-                        result.setErrorMessages(skippedMessages);
-                        if (inserted == 0) {
-                            result.setSuccess(false);
-                            result.setMessage("Không thể cập nhật: " + skipped + " nhân viên đã tồn tại trên hệ thống.");
-                        } else {
-                            result.setSuccess(true);
-                            result.setMessage("Đã thêm mới " + inserted + " nhân viên. Có " + skipped + " nhân viên đã tồn tại, không thể cập nhật:");
-                        }
-                    } else {
-                        result.setSuccess(true);
-                        result.setMessage("Nhập hồ sơ nhân sự thành công: Thêm mới " + inserted + " nhân viên.");
-                    }
-                } catch (SQLException e) {
+                    result.setFailedCount(0);
+                    result.setSuccess(true);
+                    result.setMessage("Nhập hồ sơ nhân sự thành công: Thêm mới " + inserted + " nhân viên.");
+                } catch (SQLException | RuntimeException e) {
                     conn.rollback();
                     throw e;
                 }
@@ -521,8 +493,10 @@ public class DataImportExcelService {
 
     private void executeImportContracts(int companyId, Integer userId, List<ImportRowResult> rows, ImportExecuteResult result) throws SQLException {
         try (Connection conn = DBConnection.getConnection()) {
+            com.hrms.dao.companyadmin.CompanyAllowanceDAO.ensureSchema(conn);
             conn.setAutoCommit(false);
             try {
+                com.hrms.dao.companyadmin.OrganizationTransaction.lockCompany(conn,companyId);
                 String checkSql = """
                         SELECT c.ContractId, e.FullName
                         FROM EmploymentContracts c
@@ -583,7 +557,14 @@ public class DataImportExcelService {
                         Date startDate = parseSqlDate(startStr);
                         Date endDate = parseSqlDate(endStr);
                         BigDecimal grossSalary = parseBigDecimalSafe(grossStr);
-                        BigDecimal travelAllowance = parseBigDecimalSafe(travelStr);
+                        java.util.List<com.hrms.model.ContractAllowance> fixedAllowances;
+                        try {
+                            com.hrms.dao.companyadmin.EmployeeProfileAccess.requireActive(conn,companyId,empId);
+                            fixedAllowances = new com.hrms.dao.companyadmin.CompanyAllowanceDAO().fixedAllowances(conn,companyId,empId,startDate.toLocalDate());
+                        } catch (IllegalArgumentException e) {
+                            throw new IllegalArgumentException("Dòng " + r.getRowNumber() + ": " + e.getMessage(),e);
+                        }
+                        BigDecimal travelAllowance = com.hrms.dao.companyadmin.CompanyAllowanceDAO.total(fixedAllowances);
                         String status = normalizeContractStatus(statusStr, endDate);
                         Date signedDate = parseSqlDate(signedStr);
                         if (signedDate == null && "ACTIVE".equals(status)) {
@@ -607,6 +588,7 @@ public class DataImportExcelService {
                         try (ResultSet gk = psInsert.getGeneratedKeys()) {
                             if (gk.next()) finalContractId = gk.getLong(1);
                         }
+                        new com.hrms.dao.companyadmin.CompanyAllowanceDAO().saveLines(conn,companyId,finalContractId,fixedAllowances);
                         inserted++;
 
                         if ("ACTIVE".equals(status) && grossSalary != null && grossSalary.signum() >= 0
@@ -639,7 +621,7 @@ public class DataImportExcelService {
                         result.setSuccess(true);
                         result.setMessage("Nhập hợp đồng lao động thành công: Thêm mới " + inserted + " hợp đồng.");
                     }
-                } catch (SQLException e) {
+                } catch (SQLException | RuntimeException e) {
                     conn.rollback();
                     throw e;
                 }
@@ -657,7 +639,7 @@ public class DataImportExcelService {
         List<String> errors = new ArrayList<>();
         switch (type) {
             case TYPE_EMPLOYEE -> {
-                String code = data.get("Mã NV (*)");
+
                 String name = data.get("Họ tên (*)");
                 String email = data.get("Email (*)");
                 String phone = data.get("Điện thoại (*)");
@@ -670,13 +652,6 @@ public class DataImportExcelService {
                 String address = data.get("Địa chỉ thường trú");
                 String hometown = data.get("Quê quán");
                 String major = data.get("Ngành học");
-
-                String trimmedCode = code != null ? code.trim() : "";
-                if (isBlank(code)) {
-                    errors.add("Cột 'Mã NV (*)': không được để trống.");
-                } else if (trimmedCode.length() > 50 || !trimmedCode.matches("^[A-Za-z0-9_-]+$")) {
-                    errors.add("Cột 'Mã NV (*)': chỉ được chứa chữ, số, dấu '-' hoặc '_' (tối đa 50 ký tự).");
-                }
 
                 String trimmedName = name != null ? name.trim() : "";
                 if (isBlank(name)) {
@@ -756,9 +731,6 @@ public class DataImportExcelService {
                 if (hometown != null && hometown.trim().length() > 200) errors.add("Cột 'Quê quán': tối đa 200 ký tự.");
                 if (major != null && major.trim().length() > 200) errors.add("Cột 'Ngành học': tối đa 200 ký tự.");
 
-                if (!trimmedCode.isEmpty() && !seenCodes.add("EMP_CODE:" + trimmedCode.toUpperCase(Locale.ROOT))) {
-                    errors.add("Cột 'Mã NV (*)': mã '" + trimmedCode + "' bị trùng lặp trong tệp Excel.");
-                }
                 if (!trimmedEmail.isEmpty() && !seenCodes.add("EMP_EMAIL:" + trimmedEmail.toLowerCase(Locale.ROOT))) {
                     errors.add("Cột 'Email (*)': email '" + trimmedEmail + "' bị trùng lặp trong tệp Excel.");
                 }
@@ -964,7 +936,7 @@ public class DataImportExcelService {
                     "Trạng thái (ACTIVE/DRAFT)", "Ngày ký kết (dd/MM/yyyy)", "Ghi chú"
             };
             default -> new String[]{
-                    "Mã NV (*)", "Họ tên (*)", "Email (*)", "Điện thoại (*)",
+                    "Họ tên (*)", "Email (*)", "Điện thoại (*)",
                     "Trạng thái (*)", "Ngày sinh (*)", "Giới tính (*)", "Số CCCD/CMND (*)",
                     "Ngày cấp CCCD", "Nơi cấp", "Địa chỉ thường trú", "Quê quán", "Ngành học"
             };
@@ -982,7 +954,7 @@ public class DataImportExcelService {
                     "Có hiệu lực", "01/01/2026", "Hợp đồng lao động 12 tháng"
             };
             default -> new String[]{
-                    "NV001", "Nguyễn Văn A", "vana@company.com", "0912345678",
+                    "Nguyễn Văn A", "vana@company.com", "0912345678",
                     "Đang làm việc", "15/08/1995", "Nam", "001095012345",
                     "10/05/2021", "Cục CSQLHC về TTXH", "Cầu Giấy, Hà Nội", "Hà Nội", "Công nghệ thông tin"
             };
@@ -1068,6 +1040,9 @@ public class DataImportExcelService {
 
     private boolean isSampleRow(String type, Row row) {
         if (row == null) return false;
+        if (TYPE_EMPLOYEE.equals(type)
+                && "Nguyễn Văn A".equalsIgnoreCase(getCellStringValue(row.getCell(0)))
+                && "vana@company.com".equalsIgnoreCase(getCellStringValue(row.getCell(1)))) return true;
         for (int c = 0; c < Math.min(6, row.getLastCellNum()); c++) {
             String val = getCellStringValue(row.getCell(c));
             if ("HDLD-001".equalsIgnoreCase(val) || "DEV-01".equalsIgnoreCase(val)

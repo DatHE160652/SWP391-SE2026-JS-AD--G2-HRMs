@@ -356,6 +356,7 @@ public class EmployeeController extends HttpServlet {
                 + "\"dateOfBirth\":" + quoteDate(employee.getDateOfBirth()) + ","
                 + "\"identityNumber\":" + quote(employee.getIdentityNumber()) + ","
                 + "\"status\":" + quote(employee.getStatus()) + ","
+                + "\"profileStatus\":" + quote(employee.getProfileStatus()) + ","
                 + "\"userId\":" + nullableInteger(employee.getUserId()) + ","
                 + "\"username\":" + quote(employee.getUsername()) + ","
                 + "\"accountEmail\":" + quote(employee.getAccountEmail()) + ","

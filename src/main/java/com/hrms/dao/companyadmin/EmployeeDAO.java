@@ -14,6 +14,25 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class EmployeeDAO {
+    /** Caller must hold the company transaction lock until the profile is saved. */
+    public void validateUniqueIdentityNumber(Connection connection, int companyId,
+            String identityNumber, int excludeEmployeeId) throws SQLException {
+        if (identityNumber == null || identityNumber.isBlank()) return;
+        String sql = "SELECT TOP (1) EmployeeId FROM Employees "
+                + "WHERE CompanyId = ? AND LTRIM(RTRIM(IdentityNumber)) = ? AND EmployeeId <> ?";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, companyId);
+            statement.setString(2, identityNumber.trim());
+            statement.setInt(3, excludeEmployeeId);
+            try (ResultSet rows = statement.executeQuery()) {
+                if (rows.next()) {
+                    throw new com.hrms.service.FieldValidationException("identityNumber",
+                            "Số CCCD đã tồn tại trong Workspace.");
+                }
+            }
+        }
+    }
+
     private static final String PROFILE_CONTRACT = """
             OUTER APPLY (SELECT TOP(1) c.ContractType,c.ContractCode,
                 CASE WHEN c.Status='ACTIVE' AND c.StartDate>CONVERT(date,SYSDATETIME()) THEN 'UPCOMING'
@@ -34,8 +53,8 @@ public class EmployeeDAO {
                        d.DepartmentName, p.PositionTitle, manager.FullName AS ManagerName,
                        profileContract.ContractType,profileContract.ContractCode,profileContract.ContractStatus,
                        u.UserId, u.Username, u.Email AS AccountEmail,
-                """ + "CASE WHEN " + ContractAccessPolicy.ALLOWED + """
-                    THEN u.IsActive ELSE CAST(0 AS bit) END AS AccountActive
+                """ + "CASE WHEN u.IsActive=1 AND u.IsLocked=0 AND " + ContractAccessPolicy.ALLOWED + """
+                    THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END AS AccountActive
                 FROM Employees e
                 LEFT JOIN Users u ON e.CompanyId=u.CompanyId AND e.UserId = u.UserId
                 LEFT JOIN Departments d ON d.CompanyId=e.CompanyId AND d.DepartmentId=e.DepartmentId
@@ -70,8 +89,8 @@ public class EmployeeDAO {
                        d.DepartmentName, p.PositionTitle, manager.FullName AS ManagerName,
                        profileContract.ContractType,profileContract.ContractCode,profileContract.ContractStatus,
                        u.UserId, u.Username, u.Email AS AccountEmail,
-                """ + "CASE WHEN " + ContractAccessPolicy.ALLOWED + """
-                    THEN u.IsActive ELSE CAST(0 AS bit) END AS AccountActive
+                """ + "CASE WHEN u.IsActive=1 AND u.IsLocked=0 AND " + ContractAccessPolicy.ALLOWED + """
+                    THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END AS AccountActive
                 FROM Employees e
                 LEFT JOIN Users u ON e.CompanyId=u.CompanyId AND e.UserId = u.UserId
                 LEFT JOIN Departments d ON d.CompanyId=e.CompanyId AND d.DepartmentId=e.DepartmentId

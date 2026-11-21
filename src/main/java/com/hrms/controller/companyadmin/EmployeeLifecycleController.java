@@ -38,7 +38,9 @@ public class EmployeeLifecycleController extends HttpServlet {
                 request.getRequestDispatcher("/WEB-INF/views/comadmin-hr/lifecycle.jsp").forward(request, response);
                 return;
             }
-            Object data = "dashboard".equals(resource) ? service.dashboard(principal)
+            Object data = "allowance-preview".equals(resource) ? service.previewContractAllowances(principal,requiredInt(request.getParameter("employeeId")),date(request.getParameter("startDate")))
+                    : "allowance-types".equals(resource) ? service.allowanceTypes(principal)
+                    : "dashboard".equals(resource) ? service.dashboard(principal)
                     : service.read(principal, resource, optionalInt(request.getParameter("employeeId")));
             write(response, 200, Map.of("success", true, "data", data));
         } catch (SecurityException exception) {
@@ -67,21 +69,40 @@ public class EmployeeLifecycleController extends HttpServlet {
                 var contract = new EmploymentContract(id == null || id.isBlank() ? null : Long.valueOf(id),
                         requiredInt(request.getParameter("employeeId")), request.getParameter("contractCode"),
                         request.getParameter("contractType"),
-                        date(request.getParameter("startDate")), date(request.getParameter("endDate")),
+                        date(request.getParameter("startDate")), "true".equals(request.getParameter("durationBased"))
+                                ? com.hrms.service.companyadmin.ContractDuration.endDate(request.getParameter("contractType"),
+                                        date(request.getParameter("startDate")), request.getParameter("duration"), request.getParameter("durationUnit"))
+                                : date(request.getParameter("endDate")),
                         decimal(request.getParameter("grossSalary")),
                         request.getParameter("notes"), request.getParameter("version"),
-                        decimal(request.getParameter("travelAllowance")));
+                        null, null);
                 String mode = request.getParameter("creationMode");
                 if ("SIGNED_EXISTING".equals(mode)) {
                     String salary = request.getParameter("synchronizeSalary");
                     if (salary != null && !Set.of("true", "false").contains(salary))
                         throw new IllegalArgumentException("Lựa chọn đồng bộ lương không hợp lệ.");
-                    data = service.recordSignedContract(principal, contract, date(request.getParameter("signedDate")),
-                            "true".equals(salary));
+                    data = saveWithHardCopy(request,principal,contract,date(request.getParameter("signedDate")),"true".equals(salary),true);
                 } else if (mode == null || "DRAFT".equals(mode)) {
-                    data = service.saveContract(principal, contract);
+                    data = saveWithHardCopy(request,principal,contract,null,false,false);
                 } else
                     throw new IllegalArgumentException("Vui lòng chọn cách ghi nhận hợp đồng hợp lệ.");
+            } else if (path.equals("/lifecycle/api/contracts/hard-copy")) {
+                long contractId=Long.parseLong(request.getParameter("contractId"));
+                var contract=service.missingContractHardCopyTarget(principal,contractId);
+                var part=request.getContentType()!=null && request.getContentType().toLowerCase(java.util.Locale.ROOT).startsWith("multipart/form-data")
+                        ? request.getPart("contractFile") : null;
+                try (var copy=com.hrms.service.companyadmin.ContractHardCopy.receive(part,((Number)contract.get("EmployeeId")).intValue(),getServletContext())) {
+                    if (copy==null) throw new com.hrms.service.FieldValidationException("contractFile","Vui lòng chọn hợp đồng bản cứng.");
+                    service.addContractHardCopy(principal,contractId,copy);
+                    copy.retain();
+                }
+                data="Đã bổ sung hợp đồng bản cứng.";
+            } else if (path.equals("/lifecycle/api/allowance-types/save")) {
+                String active = request.getParameter("active");
+                if (!Set.of("true","false").contains(active == null ? "" : active))
+                    throw new IllegalArgumentException("Vui lòng chọn trạng thái loại phụ cấp.");
+                data = service.saveAllowanceType(principal, optionalInt(request.getParameter("allowanceTypeId")),
+                        request.getParameter("typeName"), readLevelAmounts(request), "true".equals(active));
             } else if (path.equals("/lifecycle/api/contracts/transition")) {
                 service.transitionContract(principal, Long.parseLong(request.getParameter("contractId")),
                         request.getParameter("action"),
@@ -107,6 +128,11 @@ public class EmployeeLifecycleController extends HttpServlet {
             write(response, 200, Map.of("success", true, "data", data));
         } catch (SecurityException exception) {
             write(response, 403, Map.of("success", false, "message", exception.getMessage()));
+        } catch (jakarta.servlet.ServletException | IllegalStateException exception) {
+            write(response,400,Map.of("success",false,"message","Tệp tải lên không hợp lệ hoặc vượt quá 10 MB."));
+        } catch (IOException exception) {
+            log("Contract hard-copy upload failed",exception);
+            write(response,500,Map.of("success",false,"message","Không lưu được tệp hợp đồng. Vui lòng thử lại."));
         } catch (IllegalArgumentException exception) {
             response.setStatus(400);
             response.setContentType("application/json; charset=UTF-8");
@@ -114,10 +140,43 @@ public class EmployeeLifecycleController extends HttpServlet {
         } catch (SQLException exception) {
             log("Lifecycle write failed", exception);
             String message = exception.getErrorCode() == 51162
-                    ? "Đã đạt đến giới hạn của gói bạn đang dùng"
+                    ? com.hrms.dao.companyadmin.ActiveAccountQuotaDAO.LIMIT_MESSAGE
                     : "Không lưu được dữ liệu. Vui lòng kiểm tra mã/email trùng, bản ghi đã chọn và thay đổi đồng thời.";
             write(response, 409, Map.of("success", false, "message", message));
         }
+    }
+
+    private long saveWithHardCopy(HttpServletRequest request,com.hrms.service.security.TenantPrincipal principal,
+            EmploymentContract contract,LocalDate signedDate,boolean synchronizeSalary,boolean signedExisting)
+            throws SQLException,IOException,jakarta.servlet.ServletException {
+        if (new com.hrms.dao.companyadmin.EmployeeDAO().getEmployeeById(principal.getCompanyId(),contract.employeeId())==null)
+            throw new SecurityException("Không tìm thấy nhân viên trong công ty của bạn.");
+        var part=request.getContentType()!=null && request.getContentType().toLowerCase(java.util.Locale.ROOT).startsWith("multipart/form-data")
+                ? request.getPart("contractFile") : null;
+        try (var copy=com.hrms.service.companyadmin.ContractHardCopy.receive(part,contract.employeeId(),getServletContext())) {
+            long id=signedExisting ? service.recordSignedContract(principal,contract,signedDate,synchronizeSalary,copy)
+                    : service.saveContract(principal,contract,copy);
+            if (copy!=null) copy.retain();
+            return id;
+        }
+    }
+
+    static java.util.Map<Integer,BigDecimal> readLevelAmounts(HttpServletRequest request) {
+        String[] ids=request.getParameterValues("responsibilityLevelId");
+        String[] amounts=request.getParameterValues("levelAmount");
+        if (ids==null && amounts==null) return java.util.Map.of();
+        if (ids==null || amounts==null || ids.length!=amounts.length || ids.length>100)
+            throw new IllegalArgumentException("Danh sách mức phụ cấp theo cấp trách nhiệm không hợp lệ.");
+        var result=new java.util.LinkedHashMap<Integer,BigDecimal>();
+        for (int i=0;i<ids.length;i++) {
+            int id=requiredInt(ids[i]);
+            if (result.containsKey(id)) throw new IllegalArgumentException("Cấp trách nhiệm bị trùng.");
+            BigDecimal amount=decimal(amounts[i]);
+            if (amount==null) throw new IllegalArgumentException("Nhập mức phụ cấp cho từng cấp trách nhiệm.");
+            com.hrms.dao.companyadmin.OrganizationAllowanceDAO.validate(amount,"levelAmount");
+            result.put(id,amount);
+        }
+        return result;
     }
 
     private static Integer optionalInt(String value) {

@@ -92,6 +92,7 @@ public class EmployeeAssignmentDAO {
         return OrganizationTransaction.execute(companyId, connection -> {
             var employees = members(connection, companyId);
             var employee = requireEmployee(employees, employeeId);
+            if (managerId!=null) { EmployeeProfileAccess.requireActive(connection,companyId,employeeId); EmployeeProfileAccess.requireActive(connection,companyId,managerId); }
             requireManagerSnapshot(connection,companyId,employeeId,employee.managerId());
             requireInitialManagerAssignment(employee.managerId(),managerId);
             validateManagerAssignment(employees, employeeId, managerId, employee.departmentId());
@@ -118,6 +119,8 @@ public class EmployeeAssignmentDAO {
                 if (employee.managerId() != null && !Objects.equals(employee.managerId(), managerId)) {
                     throw new FieldValidationException("employeeIds", "Nhân viên đã có quản lý. Vui lòng sử dụng phân công trực tiếp tại Phòng ban.");
                 }
+                EmployeeProfileAccess.requireActive(connection,companyId,employeeId);
+                EmployeeProfileAccess.requireActive(connection,companyId,managerId);
                 validateManagerAssignment(employees, employeeId, managerId, employee.departmentId());
                 updateManager(connection, companyId, employeeId, managerId);
                 if (actorId!=null) OrganizationTransaction.recordManagerChange(connection,companyId,actorId,employeeId,employee.managerId(),managerId,null);
@@ -151,6 +154,8 @@ public class EmployeeAssignmentDAO {
                 }
                 requireManagerSnapshot(connection,companyId,employeeId,member.managerId());
                 requireInitialManagerAssignment(member.managerId(),managerId);
+                EmployeeProfileAccess.requireActive(connection,companyId,employeeId);
+                EmployeeProfileAccess.requireActive(connection,companyId,managerId);
                 validateManagerAssignment(employees, employeeId, managerId, member.departmentId());
                 updateManager(connection, companyId, employeeId, managerId);
                 OrganizationTransaction.recordManagerChange(connection,companyId,actorId,employeeId,member.managerId(),managerId,reason);
@@ -173,6 +178,7 @@ public class EmployeeAssignmentDAO {
 
     public void validateManagerAssignment(Connection connection, int companyId, int employeeId,
             Integer managerId, Integer departmentId, Integer positionId) throws SQLException {
+        if (managerId!=null) { EmployeeProfileAccess.requireActive(connection,companyId,employeeId); EmployeeProfileAccess.requireActive(connection,companyId,managerId); }
         var employees = members(connection, companyId);
         if (positionId != null) {
             String targetRole = new OrganizationRoleDAO().roleForPosition(connection, companyId, positionId);

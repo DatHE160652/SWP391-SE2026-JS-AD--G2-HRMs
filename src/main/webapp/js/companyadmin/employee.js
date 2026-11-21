@@ -1,3 +1,9 @@
+function employeeProfileActive(employee) {
+    return employee.profileStatus ? employee.profileStatus === 'Active' : Boolean(employee.userId && employee.accountActive === true);
+}
+function employeeProfileStatusLabel(employee) {
+    return HrmI18n.t(employeeProfileActive(employee) ? 'Đang hoạt động' : 'Không hoạt động');
+}
 const EmployeeApi = {
     async get(url) {
         const response = await fetch(withContext(url), { headers: { Accept: 'application/json' } });
@@ -161,13 +167,13 @@ function showEmployeeFormError(form, error) {
 function updateEmployeeCodeInput(form) {
     const editing = form.dataset.editing === 'true';
     form.employeeCode.disabled = false;
-    form.employeeCode.readOnly = editing;
-    form.employeeCode.required = !editing;
-    form.employeeCode.placeholder = HrmI18n.t('Nhập mã đang dùng tại công ty');
+    form.employeeCode.readOnly = true;
+    form.employeeCode.required = false;
+    form.employeeCode.placeholder = HrmI18n.t('Tự động tạo theo Workspace + số thứ tự');
     const hint = document.querySelector('#employeeCodeHint');
     if (hint) hint.textContent = editing
         ? HrmI18n.t('Mã nhân viên hiện tại được giữ nguyên.')
-        : HrmI18n.t('Nhập mã đang dùng tại công ty, không bắt buộc định dạng.');
+        : HrmI18n.t('Mã được tạo tự động khi lưu nhân viên.');
 }
 
 async function setupMyProfile() {
@@ -430,7 +436,7 @@ async function setEmployeeActive(employeeId, active) {
 
 function renderEmployeeRows(employees) {
     const status = document.querySelector('#statusFilter')?.value || '';
-    employees = employees.filter(item => !status || (item.status === 'Active') === (status === 'Active'));
+    employees = employees.filter(item => !status || employeeProfileActive(item) === (status === 'Active'));
     const tbody = document.querySelector('#employeeRows');
     if (!employees.length) {
         tbody.innerHTML = HrmI18n.fragment('<tr><td colspan="7">Không có nhân viên phù hợp.</td></tr>');
@@ -444,7 +450,7 @@ function renderEmployeeRows(employees) {
             <td>${safe(employee.phone)}</td>
             <td>${safe(employee.gender)}</td>
             <td>${safe(employee.identityNumber)}</td>
-            <td><span class="badge ${safe(employee.status)}">${safe(globalThis.HrmVietnamese?.label(employee.status) ?? employee.status)}</span></td>
+            <td><span class="badge ${employeeProfileActive(employee) ? 'Active' : 'Inactive'}">${safe(employeeProfileStatusLabel(employee))}</span></td>
             <td class="actions">
                 <a href="employee-detail?id=${employee.employeeId}">Xem</a>
                 <a href="employee-form?id=${employee.employeeId}${HrmI18n.fragment("\">Chỉnh sửa</a>\n                <button class=\"danger\" onclick=\"setEmployeeActive(")}${employee.employeeId}, ${employee.status !== 'Active'})">${employee.status === 'Active' ? HrmI18n.t('Vô hiệu hóa') : HrmI18n.t('Kích hoạt lại')}</button>
@@ -456,9 +462,9 @@ function renderEmployeeRows(employees) {
 function renderSummary(employees) {
     document.querySelector('#totalEmployees').textContent = employees.length;
     document.querySelector('#activeEmployees').textContent = employees
-        .filter(employee => employee.status === 'Active').length;
+        .filter(employeeProfileActive).length;
     document.querySelector('#otherEmployees').textContent = employees
-        .filter(employee => employee.status !== 'Active').length;
+        .filter(employee => !employeeProfileActive(employee)).length;
 }
 
 function openEmployeeDetailTab() {
@@ -492,7 +498,7 @@ function renderEmployeeDetail(employee) {
     document.querySelector('#profileTab').innerHTML=[
         [HrmI18n.t('Mã nhân viên'),employee.employeeCode],[HrmI18n.t('Họ tên'),employee.fullName],['Email',employee.email],
         [HrmI18n.t('Điện thoại'),employee.phone],[HrmI18n.t('Giới tính'),gender],[HrmI18n.t('Ngày sinh'),employee.dateOfBirth],
-        [HrmI18n.t('Số CCCD/CMND'),employee.identityNumber],[HrmI18n.t('Trạng thái'),status]
+        [HrmI18n.t('Số CCCD/CMND'),employee.identityNumber],[HrmI18n.t('Trạng thái'),employeeProfileStatusLabel(employee)]
     ].map(([label,value]) => detailItem(label,value)).join('');
     document.querySelector('#employmentTab').innerHTML=[
         [HrmI18n.t('Trạng thái làm việc'),status],[HrmI18n.t('Phòng ban'),employee.departmentName],
@@ -597,7 +603,7 @@ function renderMyCompensation(compensation) {
         + HrmI18n.fragment('<p>Lương theo hợp đồng đã có hiệu lực; phụ cấp chức vụ theo cấu hình cấp trách nhiệm hiện hành.</p></div>')
         + '<div class="detail-grid">'
         + detailItem(HrmI18n.t('Lương Gross'),current ? money(current.BaseSalary) : HrmI18n.t('Chưa có lương có hiệu lực'))
-        + detailItem(HrmI18n.t('Phụ cấp đi lại'),money(current?.TravelAllowance))
+        + detailItem(HrmI18n.t('Phụ cấp theo hợp đồng'),money(current?.TravelAllowance))
         + detailItem(HrmI18n.t('Phụ cấp chức vụ'),allowance?.Amount != null ? money(allowance.Amount)
             : allowance ? HrmI18n.t('Chưa cấu hình phụ cấp có hiệu lực') : HrmI18n.t('Chưa có phân công tổ chức có hiệu lực'))
         + detailItem(HrmI18n.t('Cấp trách nhiệm'),allowance?.LevelName || HrmI18n.t('Chưa phân công'))
@@ -605,7 +611,7 @@ function renderMyCompensation(compensation) {
         + detailItem(HrmI18n.t('Hợp đồng nguồn'),current?.ContractCode || HrmI18n.t('Chưa ghi nhận')) + '</div>'
         + HrmI18n.fragment('<section class="personal-salary-history"><h3>Lịch sử lương</h3><div class="lc-table-wrap">')
         + HrmI18n.fragment('<table data-pagination="my-compensation-history"><thead><tr><th>Hiệu lực từ</th><th>Đến ngày</th>')
-        + HrmI18n.fragment('<th>Lương Gross</th><th>Phụ cấp đi lại</th><th>Hợp đồng</th></tr></thead><tbody>')
+        + HrmI18n.fragment('<th>Lương Gross</th><th>Phụ cấp theo hợp đồng</th><th>Hợp đồng</th></tr></thead><tbody>')
         + (history.length ? history.map(record => '<tr><td>' + safe(record.EffectiveFrom) + '</td><td>'
             + safe(Number(record.IsSuperseded) === 1 ? HrmI18n.t('Thay thế trong ngày') : record.EffectiveTo || HrmI18n.t('Hiện tại'))
             + '</td><td>' + safe(money(record.BaseSalary)) + '</td><td>' + safe(money(record.TravelAllowance))

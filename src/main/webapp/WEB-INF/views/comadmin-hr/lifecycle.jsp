@@ -21,8 +21,17 @@
 <div><h2 id="lc-employee-contracts-title"><%= com.hrms.i18n.Language.text(request, "ui_0fa5602ac885", "Hợp đồng của nhân viên") %></h2><p id="lc-employee-contracts-summary" class="lc-muted"></p>
 </div><button class="lc-close" type="button" data-close aria-label="<%= com.hrms.i18n.Language.text(request, "ui_2a52667f673a", "Đóng danh sách hợp đồng") %>"><%= com.hrms.i18n.Language.text(request, "ui_67fba2f357af", "×") %></button>
 </div>
+<div class="lc-filterbar">
+<select id="lc-employee-contract-status" aria-label="Trạng thái hợp đồng của nhân viên"></select>
+<select id="lc-employee-contract-type" aria-label="Loại hợp đồng của nhân viên"></select>
+</div>
 <div id="lc-employee-contracts-list"></div>
-<div class="lc-modal-footer"><button type="button" data-close class="secondary"><%= com.hrms.i18n.Language.text(request, "ui_d2b73ab2ada1", "Đóng") %></button></div>
+<div class="lc-modal-footer"><button type="button" id="lc-employee-contract-record-signed" class="secondary"><%= com.hrms.i18n.Language.text(request, "employee_record_signed_contract", "Ghi nhận hợp đồng đã ký") %></button><button type="button" id="lc-employee-contract-create"><%= com.hrms.i18n.Language.text(request, "employee_create_contract", "Tạo hợp đồng mới") %></button><button type="button" data-close class="secondary"><%= com.hrms.i18n.Language.text(request, "ui_d2b73ab2ada1", "Đóng") %></button></div>
+</dialog>
+<dialog id="lc-allowance-settings" class="lc-modal" aria-labelledby="lc-allowance-settings-title">
+<div class="lc-modal-header"><h2 id="lc-allowance-settings-title">Loại phụ cấp của công ty</h2><button type="button" class="lc-close" data-close aria-label="Đóng">×</button></div>
+<div class="lc-form-section"><p class="lc-form-hint">Thiết lập mức phụ cấp cố định cho từng cấp trách nhiệm của công ty. Hợp đồng tự áp dụng mức theo cấp của nhân viên tại ngày bắt đầu; không nhập tiền riêng trên hợp đồng. Dùng 0 nếu không áp dụng. Thay đổi cấu hình không sửa hợp đồng đã lưu.</p><div id="lc-allowance-settings-error" class="lc-alert" role="alert"></div><div id="lc-allowance-settings-list"></div></div>
+<div class="lc-modal-footer"><button type="button" data-close class="secondary">Đóng</button></div>
 </dialog>
 <dialog id="lc-unregistered-accounts" class="lc-modal lc-unregistered-accounts" aria-labelledby="lc-unregistered-accounts-title">
 <div class="lc-modal-header">

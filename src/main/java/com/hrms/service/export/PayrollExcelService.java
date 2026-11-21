@@ -24,7 +24,7 @@ public class PayrollExcelService {
         "Công chuẩn",
         "Lương theo công",
         "Phụ cấp trách nhiệm",
-        "Phụ cấp đi lại",
+        "Phụ cấp theo hợp đồng",
         "Thưởng",
         "Ghi chú"
     );
@@ -55,7 +55,7 @@ public class PayrollExcelService {
                 else if (h.contains("standardwork") || h.contains("congchuan") || h.contains("ngaycongchuan")) colStdWork = c;
                 else if (h.contains("earnedbase") || h.contains("luongtheocong") || h.contains("luongcong")) colEarnedBase = c;
                 else if (h.contains("responsibility") || h.contains("trachnhiem")) colResp = c;
-                else if (h.contains("travel") || h.contains("dilai")) colTravel = c;
+                else if (h.contains("travel") || h.contains("dilai") || h.contains("phucaptheohopdong")) colTravel = c;
                 else if (h.contains("bonus") || h.contains("thuong") || h.contains("tienthuong")) colBonus = c;
                 else if (h.contains("note") || h.contains("ghichu")) colNote = c;
             }
@@ -82,7 +82,7 @@ public class PayrollExcelService {
                             : contractBase.multiply(actualWork).divide(stdWork, 2, RoundingMode.HALF_UP);
 
                     BigDecimal resp = amount(row.getCell(colResp), "Phụ cấp trách nhiệm", evaluator);
-                    BigDecimal travel = amount(row.getCell(colTravel), "Phụ cấp đi lại", evaluator);
+                    BigDecimal travel = amount(row.getCell(colTravel), "Phụ cấp theo hợp đồng", evaluator);
                     BigDecimal bonus = amount(row.getCell(colBonus), "Thưởng", evaluator);
                     String note = PayrollService.note(text(row.getCell(colNote), evaluator));
 

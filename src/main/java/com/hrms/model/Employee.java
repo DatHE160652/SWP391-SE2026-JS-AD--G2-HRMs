@@ -147,6 +147,11 @@ public class Employee {
         return status;
     }
 
+    /** Profile activity follows the linked account, including accounts awaiting first login. */
+    public String getProfileStatus() {
+        return userId != null && Boolean.TRUE.equals(accountActive) ? "Active" : "Inactive";
+    }
+
     public void setStatus(String status) {
         this.status = status;
     }

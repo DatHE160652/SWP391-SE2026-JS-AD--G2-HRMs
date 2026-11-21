@@ -120,7 +120,7 @@ public class EmployeeLifecycleDAO {
         if (employee.getEmail() != null && !query(connection,
                 "SELECT 1 FROM Employees WITH (UPDLOCK,HOLDLOCK) WHERE CompanyId=? AND Email=? AND EmployeeId<>?",
                 employee.getCompanyId(), employee.getEmail(), employee.getEmployeeId()).isEmpty())
-            throw new FieldValidationException("email", "Email đã được sử dụng bởi nhân viên khác trong công ty.");
+            throw new FieldValidationException("email", "Email công ty đã được sử dụng bởi nhân viên khác trong công ty.");
     }
 
     public Integer resolveInitialManager(Connection connection, Employee employee) throws SQLException {
