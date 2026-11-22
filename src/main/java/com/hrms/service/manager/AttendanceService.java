@@ -255,7 +255,6 @@ public class AttendanceService {
         }
 
         CompanyShiftSetting shiftSetting = shiftSettingDAO.getShiftSetting(companyId);
-        checkInTime = effectiveCheckInTime(checkInTime, shiftSetting);
 
         BigDecimal totalHours = BigDecimal.ZERO;
         String status = "Present";
@@ -342,7 +341,6 @@ public class AttendanceService {
         }
 
         CompanyShiftSetting shiftSetting = shiftSettingDAO.getShiftSetting(companyId);
-        checkInTime = effectiveCheckInTime(checkInTime, shiftSetting);
         LocalTime lateThreshold = shiftSetting.getLateThreshold();
         String status = checkInTime.isAfter(lateThreshold) ? "Late" : "Present";
 

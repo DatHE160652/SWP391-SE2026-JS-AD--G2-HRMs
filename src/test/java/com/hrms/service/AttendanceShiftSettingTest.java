@@ -392,4 +392,67 @@ public class AttendanceShiftSettingTest {
         CompanyShiftSetting newSetting = new CompanyShiftSetting(1, LocalTime.of(9, 0), LocalTime.of(18, 0), 60, 10);
         service.saveCompanyShiftSetting(newSetting, 1, 99);
     }
+
+    @Test
+    public void testEarlyArrivalCheckIn_PreservesActualCheckInTimeAndCalculatesFromShiftStart() throws SQLException {
+        AttendanceDAO mockAttendanceDAO = mock(AttendanceDAO.class);
+        CompanyShiftSettingDAO mockShiftDAO = mock(CompanyShiftSettingDAO.class);
+
+        // Company setup: 08:00 - 17:00, lunch 60 min, grace 0 min, min half 4.0h, min full 7.5h
+        CompanyShiftSetting setting = new CompanyShiftSetting(1, LocalTime.of(8, 0), LocalTime.of(17, 0), 60, 0,
+                new BigDecimal("4.00"), new BigDecimal("7.50"));
+
+        LocalDate today = LocalDate.now();
+        LocalTime earlyCheckInTime = LocalTime.of(7, 0); // Arrives early at 7:00 AM
+        LocalTime checkOutTime = LocalTime.of(17, 0);    // Leaves at 5:00 PM
+
+        when(mockAttendanceDAO.getEmployeeCompanyId(101)).thenReturn(1);
+        when(mockShiftDAO.getShiftSetting(1)).thenReturn(setting);
+        when(mockAttendanceDAO.getAttendanceByEmployeeAndDate(101, today)).thenReturn(null);
+
+        AttendanceService service = new AttendanceService(mockAttendanceDAO, mockShiftDAO);
+
+        // Perform Check-in at 07:00
+        service.checkIn(101, today, earlyCheckInTime);
+
+        // 1. Verify that the actual check-in time (07:00:00) is saved to the database, NOT mutated to 08:00:00
+        verify(mockAttendanceDAO).insertCheckIn(eq(101), eq(1), eq(today), eq(earlyCheckInTime), eq("Present"));
+
+        // 2. Verify work calculation:
+        // Duration from shift start (08:00) to check-out (17:00) is 9h (540 min).
+        // Since >= 5h (300 min), 1h lunch (60 min) is deducted -> 480 min = 8.00 hours.
+        BigDecimal workedHours = AttendanceService.calculateWorkedHours(earlyCheckInTime, checkOutTime, setting);
+        assertEquals(new BigDecimal("8.00"), workedHours);
+
+        // 3. Verify work credit:
+        // 8.00h >= 7.50h threshold -> 1.0 công
+        BigDecimal credit = setting.calculateWorkCredit(workedHours);
+        assertEquals(BigDecimal.valueOf(1.0), credit);
+    }
+
+    @Test
+    public void testManualAdjustment_EarlyArrival_PreservesActualCheckInTime() throws SQLException {
+        AttendanceDAO mockAttendanceDAO = mock(AttendanceDAO.class);
+        CompanyShiftSettingDAO mockShiftDAO = mock(CompanyShiftSettingDAO.class);
+
+        CompanyShiftSetting setting = new CompanyShiftSetting(1, LocalTime.of(8, 0), LocalTime.of(17, 0), 60, 0,
+                new BigDecimal("4.00"), new BigDecimal("7.50"));
+
+        LocalDate today = LocalDate.now();
+        LocalTime earlyCheckInTime = LocalTime.of(7, 0);
+        LocalTime checkOutTime = LocalTime.of(17, 0);
+
+        when(mockShiftDAO.getShiftSetting(1)).thenReturn(setting);
+
+        AttendanceService service = new AttendanceService(mockAttendanceDAO, mockShiftDAO);
+        service.manualAdjustAttendance(1, 101, today, earlyCheckInTime, checkOutTime, "Điểm danh sớm", 1);
+
+        // Verify actual check-in time 07:00 is passed to upsertManualAdjustment
+        verify(mockAttendanceDAO).upsertManualAdjustment(
+                eq(1), eq(101), eq(today),
+                eq(earlyCheckInTime), eq(checkOutTime),
+                eq(new BigDecimal("8.00")), eq("Present"),
+                eq("Điểm danh sớm"), eq(1)
+        );
+    }
 }
