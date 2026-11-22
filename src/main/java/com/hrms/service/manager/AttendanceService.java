@@ -125,6 +125,97 @@ public class AttendanceService {
         return attendanceDAO.getAttendanceReportForManager(companyId, managerId, departmentId, month, year);
     }
 
+    public static class ShiftSettingStatus {
+        private final boolean canEditToday;
+        private final boolean willApplyTomorrow;
+        private final String statusMessage;
+        private final CompanyShiftSetting setting;
+
+        public ShiftSettingStatus(boolean canEditToday, boolean willApplyTomorrow, String statusMessage, CompanyShiftSetting setting) {
+            this.canEditToday = canEditToday;
+            this.willApplyTomorrow = willApplyTomorrow;
+            this.statusMessage = statusMessage;
+            this.setting = setting;
+        }
+
+        public boolean isCanEditToday() { return canEditToday; }
+        public boolean isWillApplyTomorrow() { return willApplyTomorrow; }
+        public String getStatusMessage() { return statusMessage; }
+        public CompanyShiftSetting getSetting() { return setting; }
+    }
+
+    public ShiftSettingStatus getShiftSettingStatus(int companyId) throws SQLException {
+        requireCompany(companyId);
+        CompanyShiftSetting setting = shiftSettingDAO.getShiftSetting(companyId);
+        LocalDate today = LocalDate.now();
+
+        // 1. Kiểm tra giới hạn: Trong 1 ngày chỉ được thiết lập tối đa 1 lần
+        boolean updatedTodayDirect = setting.getUpdatedAt() != null && setting.getUpdatedAt().toLocalDate().isEqual(today);
+        boolean pendingUpdatedToday = setting.getPendingEffectiveDate() != null
+                && setting.getPendingUpdatedAt() != null
+                && setting.getPendingUpdatedAt().toLocalDate().isEqual(today);
+
+        if (pendingUpdatedToday) {
+            java.time.format.DateTimeFormatter timeFmt = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+            java.time.format.DateTimeFormatter dateFmt = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            String timeStr = setting.getPendingUpdatedAt().format(timeFmt);
+            String effDateStr = setting.getPendingEffectiveDate().format(dateFmt);
+            return new ShiftSettingStatus(false, true,
+                    "Hôm nay bạn đã cập nhật ca làm việc mới lúc " + timeStr + " (sẽ áp dụng từ ngày mai " + effDateStr 
+                            + "). Mỗi ngày chỉ được phép thiết lập tối đa 1 lần. Phải sang ngày hôm sau mới có thể cập nhật tiếp!",
+                    setting);
+        }
+
+        if (updatedTodayDirect) {
+            java.time.format.DateTimeFormatter timeFmt = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+            String timeStr = setting.getUpdatedAt().format(timeFmt);
+            return new ShiftSettingStatus(false, false,
+                    "Hôm nay bạn đã cài đặt ca làm việc rồi lúc " + timeStr + ". Mỗi ngày chỉ được phép thiết lập tối đa 1 lần. Phải sang ngày hôm sau mới có thể cập nhật tiếp!",
+                    setting);
+        }
+
+        // 2. Nếu hôm nay chưa thiết lập, kiểm tra xem đã có nhân sự nào điểm danh trong ngày chưa
+        boolean hasAttendanceToday = attendanceDAO.hasAnyAttendanceOnDate(companyId, today);
+        if (hasAttendanceToday) {
+            java.time.format.DateTimeFormatter dateFmt = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            String tomorrowStr = today.plusDays(1).format(dateFmt);
+            return new ShiftSettingStatus(true, true,
+                    "Hôm nay đã có nhân viên trong công ty điểm danh vào ca. Cài đặt ca làm việc mới sẽ chính thức có hiệu lực từ ngày mai (" 
+                            + tomorrowStr + ") để không làm sai lệch ngày công hôm nay (chỉ được lưu 1 lần trong ngày).",
+                    setting);
+        }
+
+        return new ShiftSettingStatus(true, false,
+                "Hôm nay chưa có nhân viên nào điểm danh. Ca làm việc sẽ được áp dụng ngay hôm nay (chỉ được lưu 1 lần trong ngày).",
+                setting);
+    }
+
+    public String saveCompanyShiftSetting(CompanyShiftSetting setting, int companyId, Integer userId) throws SQLException {
+        if (setting == null) {
+            throw new IllegalArgumentException("Dữ liệu cài đặt ca làm việc không hợp lệ.");
+        }
+        requireCompany(companyId);
+        setting.setCompanyId(companyId);
+        setting.setUpdatedByUserId(userId);
+
+        ShiftSettingStatus status = getShiftSettingStatus(companyId);
+        if (!status.isCanEditToday()) {
+            throw new IllegalStateException(status.getStatusMessage());
+        }
+
+        LocalDate today = LocalDate.now();
+        if (status.isWillApplyTomorrow()) {
+            LocalDate tomorrow = today.plusDays(1);
+            shiftSettingDAO.savePendingShiftSetting(setting, tomorrow, userId);
+            java.time.format.DateTimeFormatter dateFmt = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            return "Đã lưu ca làm việc mới thành công! Do hôm nay đã có nhân viên điểm danh, ca mới sẽ chính thức áp dụng từ ngày mai (" 
+                    + tomorrow.format(dateFmt) + "). Hôm nay bạn không thể chỉnh sửa thêm nữa, phải sang ngày mai mới có thể cập nhật tiếp!";
+        } else {
+            shiftSettingDAO.saveShiftSetting(setting);
+            return "Đã lưu cài đặt ca làm việc thành công và áp dụng cho ngày hôm nay! Mỗi ngày chỉ được thiết lập 1 lần.";
+        }
+    }
+
     public CompanyShiftSetting getCompanyShiftSetting(int companyId) throws SQLException {
         requireCompany(companyId);
         return shiftSettingDAO.getShiftSetting(companyId);
@@ -164,7 +255,6 @@ public class AttendanceService {
         }
 
         CompanyShiftSetting shiftSetting = shiftSettingDAO.getShiftSetting(companyId);
-        checkInTime = effectiveCheckInTime(checkInTime, shiftSetting);
 
         BigDecimal totalHours = BigDecimal.ZERO;
         String status = "Present";
@@ -251,7 +341,6 @@ public class AttendanceService {
         }
 
         CompanyShiftSetting shiftSetting = shiftSettingDAO.getShiftSetting(companyId);
-        checkInTime = effectiveCheckInTime(checkInTime, shiftSetting);
         LocalTime lateThreshold = shiftSetting.getLateThreshold();
         String status = checkInTime.isAfter(lateThreshold) ? "Late" : "Present";
 

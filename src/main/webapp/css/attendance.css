@@ -1280,6 +1280,35 @@
     margin-top: 14px !important;
 }
 
+#shiftModalMessage {
+    padding: 11px 14px !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+    font-weight: 500 !important;
+    margin-bottom: 16px !important;
+}
+#shiftModalMessage.error {
+    background: #fef3f2 !important;
+    color: #b42318 !important;
+    border: 1px solid #fecdca !important;
+}
+#shiftModalMessage.warning {
+    background: #fffcf5 !important;
+    color: #b54708 !important;
+    border: 1px solid #fedf89 !important;
+}
+#shiftModalMessage.info {
+    background: #f0f9ff !important;
+    color: #026aa2 !important;
+    border: 1px solid #b9e6fe !important;
+}
+#shiftModalMessage.success {
+    background: #ecfdf3 !important;
+    color: #027a48 !important;
+    border: 1px solid #a6f4c5 !important;
+}
+
 .btn-shift-cancel {
     background: #ffffff !important;
     border: 1px solid #d0d5dd !important;

@@ -17,7 +17,7 @@ dist/
 .env
 application-local.properties
 db.properties
-test/
+/test/
 tests/
 mockups/
 *.properties

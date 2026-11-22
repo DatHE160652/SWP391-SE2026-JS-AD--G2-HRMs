@@ -5,6 +5,7 @@ import com.hrms.util.DBConnection;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -12,6 +13,7 @@ import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDate;
 import java.time.LocalTime;
 
 public class CompanyShiftSettingDAO {
@@ -31,13 +33,18 @@ public class CompanyShiftSettingDAO {
 
     public CompanyShiftSetting getShiftSetting(int companyId) throws SQLException {
         checkSchemaIfNeeded();
+        promotePendingShiftIfNeeded(companyId);
         String sql = """
                 SELECT s.CompanyId, s.ShiftStartTime, s.ShiftEndTime, s.LunchBreakMinutes,
                        s.GracePeriodMinutes, s.TimesheetCutoffDay, s.MinHoursHalfDay, s.MinHoursFullDay,
                        s.UpdatedAt, s.UpdatedByUserId,
-                       u.DisplayName AS UpdatedByName
+                       u.DisplayName AS UpdatedByName,
+                       s.PendingShiftStartTime, s.PendingShiftEndTime, s.PendingLunchBreakMinutes,
+                       s.PendingGracePeriodMinutes, s.PendingEffectiveDate, s.PendingUpdatedAt, s.PendingUpdatedByUserId,
+                       pu.DisplayName AS PendingUpdatedByName
                 FROM dbo.CompanyShiftSettings s
                 LEFT JOIN dbo.Users u ON s.UpdatedByUserId = u.UserId
+                LEFT JOIN dbo.Users pu ON s.PendingUpdatedByUserId = pu.UserId
                 WHERE s.CompanyId = ?
                 """;
 
@@ -159,6 +166,75 @@ public class CompanyShiftSettingDAO {
         }
     }
 
+    public void promotePendingShiftIfNeeded(int companyId) {
+        String sql = """
+                UPDATE dbo.CompanyShiftSettings
+                SET ShiftStartTime = PendingShiftStartTime,
+                    ShiftEndTime = PendingShiftEndTime,
+                    LunchBreakMinutes = ISNULL(PendingLunchBreakMinutes, LunchBreakMinutes),
+                    GracePeriodMinutes = ISNULL(PendingGracePeriodMinutes, GracePeriodMinutes),
+                    UpdatedAt = SYSDATETIME(),
+                    UpdatedByUserId = PendingUpdatedByUserId,
+                    PendingShiftStartTime = NULL,
+                    PendingShiftEndTime = NULL,
+                    PendingLunchBreakMinutes = NULL,
+                    PendingGracePeriodMinutes = NULL,
+                    PendingEffectiveDate = NULL,
+                    PendingUpdatedAt = NULL,
+                    PendingUpdatedByUserId = NULL
+                WHERE CompanyId = ? AND PendingEffectiveDate IS NOT NULL AND PendingEffectiveDate <= CAST(GETDATE() AS DATE)
+                """;
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, companyId);
+            ps.executeUpdate();
+        } catch (SQLException ignored) {
+            // Silently handled if columns not created yet or table missing
+        }
+    }
+
+    public boolean savePendingShiftSetting(CompanyShiftSetting setting, LocalDate effectiveDate, Integer userId) throws SQLException {
+        if (setting == null || setting.getCompanyId() <= 0) {
+            throw new IllegalArgumentException("Thông tin công ty không hợp lệ.");
+        }
+        if (setting.getShiftStartTime() == null || setting.getShiftEndTime() == null) {
+            throw new IllegalArgumentException("Giờ bắt đầu và kết thúc ca không được để trống.");
+        }
+        if (!setting.getShiftEndTime().isAfter(setting.getShiftStartTime())) {
+            throw new IllegalArgumentException("Giờ kết thúc ca làm việc phải sau giờ bắt đầu ca.");
+        }
+        if (effectiveDate == null) {
+            effectiveDate = LocalDate.now().plusDays(1);
+        }
+        ensureTableExists();
+        String sql = """
+                UPDATE dbo.CompanyShiftSettings
+                SET PendingShiftStartTime = ?,
+                    PendingShiftEndTime = ?,
+                    PendingLunchBreakMinutes = ?,
+                    PendingGracePeriodMinutes = ?,
+                    PendingEffectiveDate = ?,
+                    PendingUpdatedAt = SYSDATETIME(),
+                    PendingUpdatedByUserId = ?
+                WHERE CompanyId = ?
+                """;
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setTime(1, Time.valueOf(setting.getShiftStartTime()));
+            ps.setTime(2, Time.valueOf(setting.getShiftEndTime()));
+            ps.setInt(3, setting.getLunchBreakMinutes());
+            ps.setInt(4, setting.getGracePeriodMinutes());
+            ps.setDate(5, Date.valueOf(effectiveDate));
+            if (userId != null && userId > 0) {
+                ps.setInt(6, userId);
+            } else {
+                ps.setNull(6, Types.INTEGER);
+            }
+            ps.setInt(7, setting.getCompanyId());
+            return ps.executeUpdate() > 0;
+        }
+    }
+
     public void ensureTableExists() {
         String ddl = """
                 IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CompanyShiftSettings')
@@ -192,6 +268,17 @@ public class CompanyShiftSettingDAO {
                     IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.CompanyShiftSettings') AND name = 'MinHoursFullDay')
                     BEGIN
                         ALTER TABLE dbo.CompanyShiftSettings ADD MinHoursFullDay DECIMAL(4,2) NOT NULL DEFAULT 6.00;
+                    END
+                    IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.CompanyShiftSettings') AND name = 'PendingEffectiveDate')
+                    BEGIN
+                        ALTER TABLE dbo.CompanyShiftSettings ADD
+                            PendingShiftStartTime TIME(0) NULL,
+                            PendingShiftEndTime TIME(0) NULL,
+                            PendingLunchBreakMinutes INT NULL,
+                            PendingGracePeriodMinutes INT NULL,
+                            PendingEffectiveDate DATE NULL,
+                            PendingUpdatedAt DATETIME2 NULL,
+                            PendingUpdatedByUserId INT NULL;
                     END
                 END
                 """;
@@ -253,6 +340,26 @@ public class CompanyShiftSettingDAO {
             setting.setUpdatedByUserId(updatedByUserId);
         }
         setting.setUpdatedByName(rs.getString("UpdatedByName"));
+
+        try {
+            Time pStart = rs.getTime("PendingShiftStartTime");
+            if (pStart != null) setting.setPendingShiftStartTime(pStart.toLocalTime());
+            Time pEnd = rs.getTime("PendingShiftEndTime");
+            if (pEnd != null) setting.setPendingShiftEndTime(pEnd.toLocalTime());
+            int pLunch = rs.getInt("PendingLunchBreakMinutes");
+            if (!rs.wasNull()) setting.setPendingLunchBreakMinutes(pLunch);
+            int pGrace = rs.getInt("PendingGracePeriodMinutes");
+            if (!rs.wasNull()) setting.setPendingGracePeriodMinutes(pGrace);
+            Date pDate = rs.getDate("PendingEffectiveDate");
+            if (pDate != null) setting.setPendingEffectiveDate(pDate.toLocalDate());
+            Timestamp pUp = rs.getTimestamp("PendingUpdatedAt");
+            if (pUp != null) setting.setPendingUpdatedAt(pUp.toLocalDateTime());
+            int pUid = rs.getInt("PendingUpdatedByUserId");
+            if (!rs.wasNull()) setting.setPendingUpdatedByUserId(pUid);
+            setting.setPendingUpdatedByName(rs.getString("PendingUpdatedByName"));
+        } catch (SQLException ignored) {
+            // Columns not queried or not yet created
+        }
 
         return setting;
     }
