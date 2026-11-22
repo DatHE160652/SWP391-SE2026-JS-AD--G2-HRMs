@@ -420,6 +420,8 @@ public class AttendanceManagerDailyScreenTest {
         CompanyShiftSetting setting = AttendanceTestHelper.createShiftSetting(
                 COMPANY_ID, LocalTime.of(9, 0), LocalTime.of(18, 0), 45, 10);
         when(attendanceService.getCompanyShiftSetting(COMPANY_ID)).thenReturn(setting);
+        when(attendanceService.getShiftSettingStatus(COMPANY_ID)).thenReturn(
+                new AttendanceService.ShiftSettingStatus(true, false, "OK", setting));
 
         controller.doGet(request, response);
 
@@ -461,10 +463,14 @@ public class AttendanceManagerDailyScreenTest {
                 COMPANY_ID, LocalTime.of(9, 0), LocalTime.of(18, 0), 60, 15);
         updated.setTimesheetCutoffDay(5);
         when(attendanceService.getCompanyShiftSetting(COMPANY_ID)).thenReturn(updated);
+        when(attendanceService.saveCompanyShiftSetting(any(CompanyShiftSetting.class), eq(COMPANY_ID), anyInt()))
+                .thenReturn("Cập nhật cấu hình giờ giấc và ngày chốt công thành công");
+        when(attendanceService.getShiftSettingStatus(COMPANY_ID)).thenReturn(
+                new AttendanceService.ShiftSettingStatus(false, false, "OK", updated));
 
         controller.doPost(request, response);
 
-        verify(attendanceService).updateCompanyShiftSetting(any(CompanyShiftSetting.class));
+        verify(attendanceService).saveCompanyShiftSetting(any(CompanyShiftSetting.class), eq(COMPANY_ID), anyInt());
         verify(response).setStatus(HttpServletResponse.SC_OK);
         String json = responseWriter.toString();
         assertTrue(json.contains("\"success\":true"));

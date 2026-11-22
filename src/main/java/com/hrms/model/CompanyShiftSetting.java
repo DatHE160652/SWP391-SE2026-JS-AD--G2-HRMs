@@ -29,6 +29,15 @@ public class CompanyShiftSetting {
     private Integer updatedByUserId;
     private String updatedByName;
 
+    private LocalTime pendingShiftStartTime;
+    private LocalTime pendingShiftEndTime;
+    private int pendingLunchBreakMinutes = DEFAULT_LUNCH_BREAK_MINUTES;
+    private int pendingGracePeriodMinutes = DEFAULT_GRACE_PERIOD_MINUTES;
+    private java.time.LocalDate pendingEffectiveDate;
+    private LocalDateTime pendingUpdatedAt;
+    private Integer pendingUpdatedByUserId;
+    private String pendingUpdatedByName;
+
     public CompanyShiftSetting() {
     }
 
@@ -152,6 +161,74 @@ public class CompanyShiftSetting {
 
     public void setUpdatedByName(String updatedByName) {
         this.updatedByName = updatedByName;
+    }
+
+    public LocalTime getPendingShiftStartTime() {
+        return pendingShiftStartTime;
+    }
+
+    public void setPendingShiftStartTime(LocalTime pendingShiftStartTime) {
+        this.pendingShiftStartTime = pendingShiftStartTime;
+    }
+
+    public LocalTime getPendingShiftEndTime() {
+        return pendingShiftEndTime;
+    }
+
+    public void setPendingShiftEndTime(LocalTime pendingShiftEndTime) {
+        this.pendingShiftEndTime = pendingShiftEndTime;
+    }
+
+    public int getPendingLunchBreakMinutes() {
+        return pendingLunchBreakMinutes;
+    }
+
+    public void setPendingLunchBreakMinutes(int pendingLunchBreakMinutes) {
+        this.pendingLunchBreakMinutes = pendingLunchBreakMinutes;
+    }
+
+    public int getPendingGracePeriodMinutes() {
+        return pendingGracePeriodMinutes;
+    }
+
+    public void setPendingGracePeriodMinutes(int pendingGracePeriodMinutes) {
+        this.pendingGracePeriodMinutes = pendingGracePeriodMinutes;
+    }
+
+    public java.time.LocalDate getPendingEffectiveDate() {
+        return pendingEffectiveDate;
+    }
+
+    public void setPendingEffectiveDate(java.time.LocalDate pendingEffectiveDate) {
+        this.pendingEffectiveDate = pendingEffectiveDate;
+    }
+
+    public LocalDateTime getPendingUpdatedAt() {
+        return pendingUpdatedAt;
+    }
+
+    public void setPendingUpdatedAt(LocalDateTime pendingUpdatedAt) {
+        this.pendingUpdatedAt = pendingUpdatedAt;
+    }
+
+    public Integer getPendingUpdatedByUserId() {
+        return pendingUpdatedByUserId;
+    }
+
+    public void setPendingUpdatedByUserId(Integer pendingUpdatedByUserId) {
+        this.pendingUpdatedByUserId = pendingUpdatedByUserId;
+    }
+
+    public String getPendingUpdatedByName() {
+        return pendingUpdatedByName;
+    }
+
+    public void setPendingUpdatedByName(String pendingUpdatedByName) {
+        this.pendingUpdatedByName = pendingUpdatedByName;
+    }
+
+    public boolean hasPendingShift() {
+        return pendingEffectiveDate != null;
     }
 
     /**

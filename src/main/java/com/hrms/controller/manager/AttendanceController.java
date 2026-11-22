@@ -894,9 +894,14 @@ public class AttendanceController extends HttpServlet {
     // Configure Company Shift & Working Hours: setup time
     private void handleGetShiftSetting(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
         int companyId = SecuritySupport.requireCompanyId(request);
-        CompanyShiftSetting setting = attendanceService.getCompanyShiftSetting(companyId);
-        writeJson(response, HttpServletResponse.SC_OK,
-                "{\"success\":true,\"data\":" + toJson(setting) + "}");
+        AttendanceService.ShiftSettingStatus status = attendanceService.getShiftSettingStatus(companyId);
+        CompanyShiftSetting setting = status.getSetting();
+        String json = "{\"success\":true,\"data\":" + toJson(setting)
+                + ",\"canEditToday\":" + status.isCanEditToday()
+                + ",\"willApplyTomorrow\":" + status.isWillApplyTomorrow()
+                + ",\"statusMessage\":" + quote(status.getStatusMessage())
+                + "}";
+        writeJson(response, HttpServletResponse.SC_OK, json);
     }
 
     // lưu time và ngày chốt công được setup với từng công ty (Chỉ Admin / HR)
@@ -910,13 +915,6 @@ public class AttendanceController extends HttpServlet {
         LocalTime startTime = parseOptionalTime(request.getParameter("shiftStartTime"));
         if (startTime == null) {
             throw new IllegalArgumentException("Vui lòng chọn giờ bắt đầu ca làm việc.");
-        }
-        CompanyShiftSetting currentSetting = attendanceService.getCompanyShiftSetting(companyId);
-        if (currentSetting != null && currentSetting.getShiftStartTime() != null
-                && startTime.isBefore(currentSetting.getShiftStartTime())) {
-            throw new IllegalArgumentException("Giờ vào ca mới (" + startTime
-                    + ") không được sớm hơn giờ vào ca đã cấu hình (" + currentSetting.getShiftStartTime()
-                    + "). Chỉ được tăng dần giờ vào ca.");
         }
         LocalTime endTime = parseOptionalTime(request.getParameter("shiftEndTime"));
         if (endTime == null) {
@@ -962,11 +960,16 @@ public class AttendanceController extends HttpServlet {
         setting.setMinHoursFullDay(minHoursFullDay);
         setting.setUpdatedByUserId(principal.getUserId());
 
-        attendanceService.updateCompanyShiftSetting(setting);
+        String message = attendanceService.saveCompanyShiftSetting(setting, companyId, principal.getUserId());
 
-        CompanyShiftSetting updated = attendanceService.getCompanyShiftSetting(companyId);
+        AttendanceService.ShiftSettingStatus status = attendanceService.getShiftSettingStatus(companyId);
+        CompanyShiftSetting updated = status.getSetting();
         writeJson(response, HttpServletResponse.SC_OK,
-                "{\"success\":true,\"message\":\"Cập nhật cấu hình giờ giấc và ngày chốt công thành công!\",\"data\":" + toJson(updated) + "}");
+                "{\"success\":true,\"message\":" + quote(message)
+                + ",\"canEditToday\":" + status.isCanEditToday()
+                + ",\"willApplyTomorrow\":" + status.isWillApplyTomorrow()
+                + ",\"statusMessage\":" + quote(status.getStatusMessage())
+                + ",\"data\":" + toJson(updated) + "}");
     }
 
     private String toJson(CompanyShiftSetting s) {
@@ -983,7 +986,16 @@ public class AttendanceController extends HttpServlet {
                 + "\"minHoursFullDay\":" + s.getMinHoursFullDay() + ","
                 + "\"updatedAt\":" + (s.getUpdatedAt() != null ? quote(s.getUpdatedAt().toString()) : "null") + ","
                 + "\"updatedByUserId\":" + s.getUpdatedByUserId() + ","
-                + "\"updatedByName\":" + quote(s.getUpdatedByName())
+                + "\"updatedByName\":" + quote(s.getUpdatedByName()) + ","
+                + "\"hasPendingShift\":" + s.hasPendingShift() + ","
+                + "\"pendingShiftStartTime\":" + (s.getPendingShiftStartTime() != null ? quote(s.getPendingShiftStartTime().format(timeFmt)) : "null") + ","
+                + "\"pendingShiftEndTime\":" + (s.getPendingShiftEndTime() != null ? quote(s.getPendingShiftEndTime().format(timeFmt)) : "null") + ","
+                + "\"pendingLunchBreakMinutes\":" + s.getPendingLunchBreakMinutes() + ","
+                + "\"pendingGracePeriodMinutes\":" + s.getPendingGracePeriodMinutes() + ","
+                + "\"pendingEffectiveDate\":" + (s.getPendingEffectiveDate() != null ? quote(s.getPendingEffectiveDate().toString()) : "null") + ","
+                + "\"pendingUpdatedAt\":" + (s.getPendingUpdatedAt() != null ? quote(s.getPendingUpdatedAt().toString()) : "null") + ","
+                + "\"pendingUpdatedByUserId\":" + s.getPendingUpdatedByUserId() + ","
+                + "\"pendingUpdatedByName\":" + quote(s.getPendingUpdatedByName())
                 + "}";
     }
 

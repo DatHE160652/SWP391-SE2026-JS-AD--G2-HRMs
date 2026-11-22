@@ -1072,12 +1072,22 @@ async function performSingleCheckOut(employeeId, date, name) {
    Cài đặt giờ giấc làm việc công ty (Shift Settings)
    ========================================================================= */
 let currentShiftSetting = null;
+let shiftSettingStatus = {
+    canEditToday: true,
+    willApplyTomorrow: false,
+    statusMessage: ''
+};
 
 async function loadShiftSetting() {
     try {
         const payload = await AttendanceApi.get('/attendance/shift-setting');
         if (payload && payload.data) {
             currentShiftSetting = payload.data;
+            shiftSettingStatus = {
+                canEditToday: payload.canEditToday !== false,
+                willApplyTomorrow: payload.willApplyTomorrow === true,
+                statusMessage: payload.statusMessage || ''
+            };
             updateShiftBanner(currentShiftSetting);
         }
     } catch (err) {
@@ -1104,16 +1114,18 @@ async function openShiftModal() {
     const modal = document.getElementById('modalShiftSetting');
     if (!modal) return;
 
-    if (!currentShiftSetting) {
-        await loadShiftSetting();
-    }
+    // Luôn tải lại cấu hình và trạng thái kiểm tra mới nhất
+    await loadShiftSetting();
+
+    const saveBtn = document.getElementById('btnSaveShiftSetting');
+    const formInputs = modal.querySelectorAll('input:not([type="hidden"])');
+    const msgEl = document.getElementById('shiftModalMessage');
 
     if (currentShiftSetting) {
         if (document.getElementById('inputShiftStartTime') && currentShiftSetting.shiftStartTime) {
             const startInput = document.getElementById('inputShiftStartTime');
             const minStart = currentShiftSetting.shiftStartTime.substring(0, 5);
             startInput.value = minStart;
-            startInput.min = minStart;
         }
         if (document.getElementById('inputShiftEndTime') && currentShiftSetting.shiftEndTime) {
             document.getElementById('inputShiftEndTime').value = currentShiftSetting.shiftEndTime.substring(0, 5);
@@ -1135,16 +1147,47 @@ async function openShiftModal() {
         }
         const metaEl = document.getElementById('shiftSettingMetaInfo');
         if (metaEl) {
-            metaEl.textContent = currentShiftSetting.updatedAt
+            let metaHtml = currentShiftSetting.updatedAt
                 ? `${HrmI18n.fragment("Lần cập nhật gần nhất: ")}${currentShiftSetting.updatedAt}${HrmI18n.fragment(" bởi ")}${currentShiftSetting.updatedByName || HrmI18n.t('Hệ thống')}.`
                 : HrmI18n.t('Đang áp dụng thiết lập mặc định của công ty.');
+            if (currentShiftSetting.hasPendingShift && currentShiftSetting.pendingEffectiveDate) {
+                metaHtml += `<br><span style="color:#b54708; font-weight:600;">⏳ Ca mới chờ hiệu lực từ ${currentShiftSetting.pendingEffectiveDate}: ${currentShiftSetting.pendingShiftStartTime ? currentShiftSetting.pendingShiftStartTime.substring(0,5) : ''} - ${currentShiftSetting.pendingShiftEndTime ? currentShiftSetting.pendingShiftEndTime.substring(0,5) : ''} (Đã thiết lập hôm nay).</span>`;
+            }
+            metaEl.innerHTML = metaHtml;
         }
     }
 
-    const msgEl = document.getElementById('shiftModalMessage');
+    // Hiển thị trạng thái giới hạn 1 lần/ngày & có người điểm danh chưa
     if (msgEl) {
-        msgEl.style.display = 'none';
-        msgEl.textContent = '';
+        if (shiftSettingStatus.canEditToday === false) {
+            msgEl.className = 'message warning';
+            msgEl.textContent = shiftSettingStatus.statusMessage || HrmI18n.t('Hôm nay đã thiết lập ca làm việc rồi. Mỗi ngày chỉ được phép cập nhật 1 lần!');
+            msgEl.style.display = 'block';
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.style.opacity = '0.5';
+                saveBtn.style.cursor = 'not-allowed';
+                saveBtn.title = HrmI18n.t('Đã lưu thiết lập hôm nay. Phải sang ngày hôm sau mới có thể cập nhật tiếp.');
+            }
+            formInputs.forEach(input => input.disabled = true);
+        } else {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.style.opacity = '1';
+                saveBtn.style.cursor = 'pointer';
+                saveBtn.title = '';
+            }
+            formInputs.forEach(input => input.disabled = false);
+
+            if (shiftSettingStatus.willApplyTomorrow) {
+                msgEl.className = 'message info';
+                msgEl.textContent = shiftSettingStatus.statusMessage || HrmI18n.t('Lưu ý: Hôm nay đã có nhân viên điểm danh. Thiết lập mới sẽ áp dụng từ ngày mai và chỉ được lưu 1 lần trong ngày!');
+                msgEl.style.display = 'block';
+            } else {
+                msgEl.style.display = 'none';
+                msgEl.textContent = '';
+            }
+        }
     }
 
     updateShiftLivePreview();
@@ -1261,6 +1304,13 @@ async function saveShiftSetting() {
         if (payload && payload.data) {
             currentShiftSetting = payload.data;
             updateShiftBanner(currentShiftSetting);
+        }
+        if (payload && payload.canEditToday !== undefined) {
+            shiftSettingStatus = {
+                canEditToday: payload.canEditToday !== false,
+                willApplyTomorrow: payload.willApplyTomorrow === true,
+                statusMessage: payload.statusMessage || ''
+            };
         }
         showMessage(payload.message || HrmI18n.t('Cập nhật giờ giấc làm việc & ngày chốt công thành công!'), 'success');
         closeShiftModal();

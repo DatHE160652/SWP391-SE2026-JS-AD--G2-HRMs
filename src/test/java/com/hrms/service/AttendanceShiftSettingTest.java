@@ -1,16 +1,24 @@
 package com.hrms.service;
 
+import com.hrms.dao.manager.AttendanceDAO;
+import com.hrms.dao.manager.AttendanceSummaryDAO;
 import com.hrms.dao.manager.CompanyShiftSettingDAO;
 import com.hrms.model.CompanyShiftSetting;
 import com.hrms.service.manager.AttendanceService;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.sql.SQLException;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 public class AttendanceShiftSettingTest {
 
@@ -252,5 +260,136 @@ public class AttendanceShiftSettingTest {
         } catch (Exception e) {
             fail("Unexpected exception: " + e.getMessage());
         }
+    }
+
+    @Test
+    public void testShiftSettingStatus_NoAttendance_CanEditTodayDirectly() throws SQLException {
+        AttendanceDAO mockAttendanceDAO = mock(AttendanceDAO.class);
+        CompanyShiftSettingDAO mockShiftDAO = mock(CompanyShiftSettingDAO.class);
+
+        CompanyShiftSetting setting = new CompanyShiftSetting(1);
+        setting.setUpdatedAt(LocalDateTime.now().minusDays(2)); // Updated 2 days ago
+
+        when(mockShiftDAO.getShiftSetting(1)).thenReturn(setting);
+        when(mockAttendanceDAO.hasAnyAttendanceOnDate(eq(1), any(LocalDate.class))).thenReturn(false);
+
+        AttendanceService service = new AttendanceService(mockAttendanceDAO, mockShiftDAO);
+        AttendanceService.ShiftSettingStatus status = service.getShiftSettingStatus(1);
+
+        assertTrue("Should be allowed to edit today", status.isCanEditToday());
+        assertFalse("Should apply today directly since no one checked in", status.isWillApplyTomorrow());
+        assertTrue(status.getStatusMessage().contains("chưa có nhân viên nào điểm danh"));
+    }
+
+    @Test
+    public void testShiftSettingStatus_WithAttendance_WillApplyTomorrow() throws SQLException {
+        AttendanceDAO mockAttendanceDAO = mock(AttendanceDAO.class);
+        CompanyShiftSettingDAO mockShiftDAO = mock(CompanyShiftSettingDAO.class);
+
+        CompanyShiftSetting setting = new CompanyShiftSetting(1);
+        setting.setUpdatedAt(LocalDateTime.now().minusDays(3));
+
+        when(mockShiftDAO.getShiftSetting(1)).thenReturn(setting);
+        when(mockAttendanceDAO.hasAnyAttendanceOnDate(eq(1), any(LocalDate.class))).thenReturn(true);
+
+        AttendanceService service = new AttendanceService(mockAttendanceDAO, mockShiftDAO);
+        AttendanceService.ShiftSettingStatus status = service.getShiftSettingStatus(1);
+
+        assertTrue("Should be allowed to set for tomorrow", status.isCanEditToday());
+        assertTrue("Must apply from tomorrow because employees already checked in today", status.isWillApplyTomorrow());
+        assertTrue(status.getStatusMessage().contains("đã có nhân viên trong công ty điểm danh"));
+    }
+
+    @Test
+    public void testShiftSettingStatus_AlreadyUpdatedDirectlyToday_CannotEditAgain() throws SQLException {
+        AttendanceDAO mockAttendanceDAO = mock(AttendanceDAO.class);
+        CompanyShiftSettingDAO mockShiftDAO = mock(CompanyShiftSettingDAO.class);
+
+        CompanyShiftSetting setting = new CompanyShiftSetting(1);
+        setting.setUpdatedAt(LocalDateTime.now()); // Already updated earlier today
+
+        when(mockShiftDAO.getShiftSetting(1)).thenReturn(setting);
+
+        AttendanceService service = new AttendanceService(mockAttendanceDAO, mockShiftDAO);
+        AttendanceService.ShiftSettingStatus status = service.getShiftSettingStatus(1);
+
+        assertFalse("Cannot edit again today", status.isCanEditToday());
+        assertTrue(status.getStatusMessage().contains("Hôm nay bạn đã cài đặt ca làm việc rồi"));
+    }
+
+    @Test
+    public void testShiftSettingStatus_AlreadyUpdatedPendingToday_CannotEditAgain() throws SQLException {
+        AttendanceDAO mockAttendanceDAO = mock(AttendanceDAO.class);
+        CompanyShiftSettingDAO mockShiftDAO = mock(CompanyShiftSettingDAO.class);
+
+        CompanyShiftSetting setting = new CompanyShiftSetting(1);
+        setting.setPendingEffectiveDate(LocalDate.now().plusDays(1));
+        setting.setPendingUpdatedAt(LocalDateTime.now()); // Saved pending update today
+
+        when(mockShiftDAO.getShiftSetting(1)).thenReturn(setting);
+
+        AttendanceService service = new AttendanceService(mockAttendanceDAO, mockShiftDAO);
+        AttendanceService.ShiftSettingStatus status = service.getShiftSettingStatus(1);
+
+        assertFalse("Cannot edit again today when pending shift already recorded today", status.isCanEditToday());
+        assertTrue(status.getStatusMessage().contains("Mỗi ngày chỉ được phép thiết lập tối đa 1 lần"));
+    }
+
+    @Test
+    public void testSaveCompanyShiftSetting_SavesDirectlyWhenNoAttendance() throws SQLException {
+        AttendanceDAO mockAttendanceDAO = mock(AttendanceDAO.class);
+        CompanyShiftSettingDAO mockShiftDAO = mock(CompanyShiftSettingDAO.class);
+
+        CompanyShiftSetting currentSetting = new CompanyShiftSetting(1);
+        currentSetting.setUpdatedAt(LocalDateTime.now().minusDays(5));
+
+        when(mockShiftDAO.getShiftSetting(1)).thenReturn(currentSetting);
+        when(mockAttendanceDAO.hasAnyAttendanceOnDate(eq(1), any(LocalDate.class))).thenReturn(false);
+
+        AttendanceService service = new AttendanceService(mockAttendanceDAO, mockShiftDAO);
+
+        CompanyShiftSetting newSetting = new CompanyShiftSetting(1, LocalTime.of(8, 0), LocalTime.of(17, 0), 60, 0);
+        String msg = service.saveCompanyShiftSetting(newSetting, 1, 99);
+
+        verify(mockShiftDAO, times(1)).saveShiftSetting(newSetting);
+        verify(mockShiftDAO, never()).savePendingShiftSetting(any(), any(), any());
+        assertTrue(msg.contains("áp dụng cho ngày hôm nay"));
+    }
+
+    @Test
+    public void testSaveCompanyShiftSetting_SavesPendingWhenAttendanceExists() throws SQLException {
+        AttendanceDAO mockAttendanceDAO = mock(AttendanceDAO.class);
+        CompanyShiftSettingDAO mockShiftDAO = mock(CompanyShiftSettingDAO.class);
+
+        CompanyShiftSetting currentSetting = new CompanyShiftSetting(1);
+        currentSetting.setUpdatedAt(LocalDateTime.now().minusDays(5));
+
+        when(mockShiftDAO.getShiftSetting(1)).thenReturn(currentSetting);
+        when(mockAttendanceDAO.hasAnyAttendanceOnDate(eq(1), any(LocalDate.class))).thenReturn(true);
+
+        AttendanceService service = new AttendanceService(mockAttendanceDAO, mockShiftDAO);
+
+        CompanyShiftSetting newSetting = new CompanyShiftSetting(1, LocalTime.of(9, 0), LocalTime.of(18, 0), 60, 10);
+        String msg = service.saveCompanyShiftSetting(newSetting, 1, 99);
+
+        verify(mockShiftDAO, never()).saveShiftSetting(newSetting);
+        verify(mockShiftDAO, times(1)).savePendingShiftSetting(eq(newSetting), eq(LocalDate.now().plusDays(1)), eq(99));
+        assertTrue(msg.contains("áp dụng từ ngày mai"));
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testSaveCompanyShiftSetting_RejectsSecondAttemptOnSameDay() throws SQLException {
+        AttendanceDAO mockAttendanceDAO = mock(AttendanceDAO.class);
+        CompanyShiftSettingDAO mockShiftDAO = mock(CompanyShiftSettingDAO.class);
+
+        CompanyShiftSetting currentSetting = new CompanyShiftSetting(1);
+        currentSetting.setUpdatedAt(LocalDateTime.now()); // Already saved today
+
+        when(mockShiftDAO.getShiftSetting(1)).thenReturn(currentSetting);
+
+        AttendanceService service = new AttendanceService(mockAttendanceDAO, mockShiftDAO);
+
+        CompanyShiftSetting newSetting = new CompanyShiftSetting(1, LocalTime.of(9, 0), LocalTime.of(18, 0), 60, 10);
+        service.saveCompanyShiftSetting(newSetting, 1, 99);
     }
 }

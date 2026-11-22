@@ -693,6 +693,23 @@ public class AttendanceDAO {
         throw new SecurityException("Không tìm thấy nhân viên trong workspace.");
     }
 
+    public boolean hasAnyAttendanceOnDate(int companyId, LocalDate date) throws SQLException {
+        if (date == null) return false;
+        String sql = """
+                SELECT TOP 1 1 FROM dbo.Attendances
+                WHERE CompanyId = ? AND AttendanceDate = ?
+                  AND (CheckInTime IS NOT NULL OR Status IN ('Present', 'Late', 'Early Leave'))
+                """;
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, companyId);
+            ps.setDate(2, Date.valueOf(date));
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
     private List<AttendanceReportDAO> mapAttendanceReports(String sql, List<Object> params) throws SQLException {
         List<AttendanceReportDAO> reports = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
