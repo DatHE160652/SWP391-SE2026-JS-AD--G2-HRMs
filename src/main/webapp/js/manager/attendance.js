@@ -1124,8 +1124,8 @@ async function openShiftModal() {
     if (currentShiftSetting) {
         if (document.getElementById('inputShiftStartTime') && currentShiftSetting.shiftStartTime) {
             const startInput = document.getElementById('inputShiftStartTime');
-            const minStart = currentShiftSetting.shiftStartTime.substring(0, 5);
-            startInput.value = minStart;
+            startInput.value = currentShiftSetting.shiftStartTime.substring(0, 5);
+            startInput.removeAttribute('min');
         }
         if (document.getElementById('inputShiftEndTime') && currentShiftSetting.shiftEndTime) {
             document.getElementById('inputShiftEndTime').value = currentShiftSetting.shiftEndTime.substring(0, 5);
@@ -1248,13 +1248,6 @@ async function saveShiftSetting() {
 
     if (!startTime || !endTime) {
         const msg = HrmI18n.t('Vui lòng nhập đầy đủ giờ vào ca và giờ tan ca.');
-        showShiftModalMessage(msg, 'error');
-        await showAttendanceAlert(msg, 'warning');
-        return;
-    }
-    const minConfiguredStart = currentShiftSetting?.shiftStartTime ? currentShiftSetting.shiftStartTime.substring(0, 5) : null;
-    if (minConfiguredStart && startTime < minConfiguredStart) {
-        const msg = `${HrmI18n.fragment('Giờ vào ca mới không được sớm hơn giờ vào ca đã cấu hình (')}${minConfiguredStart}${HrmI18n.fragment('). Chỉ được tăng dần giờ vào ca.')}`;
         showShiftModalMessage(msg, 'error');
         await showAttendanceAlert(msg, 'warning');
         return;
