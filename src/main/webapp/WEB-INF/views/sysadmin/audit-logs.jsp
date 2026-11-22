@@ -70,17 +70,6 @@
                                             ? 'selected' : '' }>Gửi lại email kích hoạt</option>
                                         <option value="DELETE_REQUEST" ${actionFilter=='DELETE_REQUEST' ? 'selected'
                                             : '' }>Từ chối / Xóa yêu cầu</option>
-                                        <option value="RENEW_SUBSCRIPTION" ${actionFilter=='RENEW_SUBSCRIPTION'
-                                            ? 'selected' : '' }>Gia hạn gói dịch vụ</option>
-                                        <option value="ROLLBACK_RENEW_SUBSCRIPTION"
-                                            ${actionFilter=='ROLLBACK_RENEW_SUBSCRIPTION' ? 'selected' : '' }>
-                                            Khôi phục lại</option>
-                                        <option value="CHANGE_PLAN" ${actionFilter=='CHANGE_PLAN' ? 'selected' : '' }>
-                                            Đổi gói dịch vụ</option>
-                                        <option value="CREATE_PLAN" ${actionFilter=='CREATE_PLAN' ? 'selected' : '' }>
-                                            Tạo gói dịch vụ</option>
-                                        <option value="UPDATE_PLAN" ${actionFilter=='UPDATE_PLAN' ? 'selected' : '' }>
-                                            Cập nhật gói dịch vụ</option>
                                     </select>
                                 </label>
                             </c:if>
@@ -215,17 +204,6 @@
                                     </c:if>
                                 </dl>
                                 <div class="dialog-actions">
-                                    <c:if
-                                        test="${log.canRollbackRenew() and log.actorUserId() == sessionScope.systemAdminPrincipal.userId}">
-                                        <form method="post"
-                                            action="${pageContext.request.contextPath}/systemadmin/audit-logs/rollback-renew"
-                                            style="display:inline;">
-                                            <input type="hidden" name="csrfToken"
-                                                value="<c:out value='${sessionScope.systemAdminCsrfToken}'/>">
-                                            <input type="hidden" name="logId" value="${log.logId()}">
-                                            <button class="button button-danger" type="submit">Khôi phục lại</button>
-                                        </form>
-                                    </c:if>
                                     <button class="button button-primary" type="button" data-dialog-close>Đóng</button>
                                 </div>
                             </dialog>

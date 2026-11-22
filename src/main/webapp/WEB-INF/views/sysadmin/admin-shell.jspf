@@ -19,9 +19,6 @@
         <a aria-label="<%= com.hrms.i18n.Language.text(request, "ui_42d662171e9b", "Doanh nghiệp") %>" class="nav-link ${activeNav == 'companies' ? 'active' : ''}" aria-current="${activeNav == 'companies' ? 'page' : 'false'}" href="${pageContext.request.contextPath}/systemadmin/company">
             <svg class="icon" aria-hidden="true"><use href="${icons}#building"/></svg><span><%= com.hrms.i18n.Language.text(request, "ui_191b41950b0f", "Quản lý doanh nghiệp") %></span>
         </a>
-        <a aria-label="Gói dịch vụ" class="nav-link ${activeNav == 'plans' ? 'active' : ''}" aria-current="${activeNav == 'plans' ? 'page' : 'false'}" href="${pageContext.request.contextPath}/systemadmin/plans">
-            <svg class="icon" aria-hidden="true"><use href="${icons}#credit-card"/></svg><span>Gói dịch vụ</span>
-        </a>
         <a aria-label="Nhật ký & Email" class="nav-link ${activeNav == 'audit' ? 'active' : ''}" aria-current="${activeNav == 'audit' ? 'page' : 'false'}" href="${pageContext.request.contextPath}/systemadmin/audit-logs">
             <svg class="icon" aria-hidden="true"><use href="${icons}#shield"/></svg><span>Nhật ký &amp; Email</span>
         </a>

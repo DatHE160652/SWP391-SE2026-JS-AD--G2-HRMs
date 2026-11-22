@@ -84,13 +84,8 @@ public class RegistrationRequestController extends HttpServlet {
         SystemAdminPrincipal principal = SecuritySupport.getPrincipal(request);
         try {
             if ("/systemadmin/registration-request/confirm".equals(path)) {
-                Integer planId = null;
-                String planRaw = request.getParameter("planId");
-                if (planRaw != null && !planRaw.isBlank()) {
-                    planId = parsePositiveId(planRaw);
-                }
                 RegistrationRequestService.ConfirmationResult result = registrationRequestService.confirm(
-                        requestId, principal.getUserId(), request.getRemoteAddr(), planId);
+                        requestId, principal.getUserId(), request.getRemoteAddr());
                 request.getSession(true).removeAttribute(FLASH_WARNING);
                 String emailNotice = switch (result.emailStatus()) {
                     case "ACCEPTED" -> " Máy chủ email đã chấp nhận gửi thông tin đăng nhập (chưa bảo đảm đã đến hộp thư).";
@@ -157,7 +152,6 @@ public class RegistrationRequestController extends HttpServlet {
                     request.getParameter("date"), request.getParameter("page"), request.getParameter("size"));
             RegistrationRequestPage page = registrationRequestService.getPage(filter);
             setNavigation(request, "requests");
-            request.setAttribute("activePlans", new com.hrms.dao.sysadmin.PlanDAO().findActive());
             request.setAttribute("filter", filter);
             request.setAttribute("requestPage", page);
             request.setAttribute("registrationRequests", page.getItems());
@@ -193,7 +187,6 @@ public class RegistrationRequestController extends HttpServlet {
                 return;
             }
             setNavigation(request, "requests");
-            request.setAttribute("activePlans", new com.hrms.dao.sysadmin.PlanDAO().findActive());
             request.setAttribute("registrationRequest", registrationRequest);
             request.getRequestDispatcher("/WEB-INF/views/sysadmin/registration-request-details.jsp")
                     .forward(request, response);

@@ -401,17 +401,6 @@
         <servlet-name>CompanyAdministrationController</servlet-name>
         <url-pattern>/systemadmin/company</url-pattern>
         <url-pattern>/systemadmin/company-details</url-pattern>
-        <url-pattern>/systemadmin/company/renew</url-pattern>
-        <url-pattern>/systemadmin/company/change-plan</url-pattern>
-    </servlet-mapping>
-
-    <servlet>
-        <servlet-name>PlanController</servlet-name>
-        <servlet-class>com.hrms.controller.sysadmin.PlanController</servlet-class>
-    </servlet>
-    <servlet-mapping>
-        <servlet-name>PlanController</servlet-name>
-        <url-pattern>/systemadmin/plans</url-pattern>
     </servlet-mapping>
 
     <servlet>
@@ -421,7 +410,6 @@
     <servlet-mapping>
         <servlet-name>PlatformAuditController</servlet-name>
         <url-pattern>/systemadmin/audit-logs</url-pattern>
-        <url-pattern>/systemadmin/audit-logs/rollback-renew</url-pattern>
     </servlet-mapping>
 
     <servlet>

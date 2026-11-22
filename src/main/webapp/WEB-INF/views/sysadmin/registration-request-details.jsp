@@ -139,18 +139,7 @@
                 <input type="hidden" name="csrfToken" value="<c:out value='${sessionScope.systemAdminCsrfToken}'/>">
                 <h2 id="confirm-request-title"><%= com.hrms.i18n.Language.text(request, "ui_22aa9d57f6ed", "Phê duyệt và khởi tạo tenant?") %></h2>
                 <p><%= com.hrms.i18n.Language.text(request, "ui_e91e1417f55e", "Hệ thống sẽ tạo công ty, workspace, Company Admin và thuê bao ACTIVE. Sau khi lưu thành công, hệ thống sẽ thử gửi mật khẩu tạm tới email liên hệ. Gửi email thất bại không hủy công ty đã tạo; người dùng phải đổi mật khẩu tạm để hoàn tất kích hoạt.") %></p>
-                <c:if test="${not empty activePlans}">
-                    <label class="dialog-field" for="confirm-plan-id">Gói dịch vụ áp dụng
-                        <select id="confirm-plan-id" name="planId" style="width:100%; margin-top:6px;">
-                            <c:forEach var="plan" items="${activePlans}">
-                                <option value="${plan.planId}">
-                                    <c:out value="${plan.planName}"/> — <c:out value="${plan.maxAccounts}"/> acc — <c:out value="${plan.formattedPrice}"/> đ/<c:out value="${plan.billingCycleLabel}"/>
-                                </option>
-                            </c:forEach>
-                        </select>
-                    </label>
-                </c:if>
-                <div class="dialog-actions"><button class="button" type="button" data-dialog-close><%= com.hrms.i18n.Language.text(request, "ui_34ca764caf22", "Hủy") %></button><button class="button button-primary" type="submit"><%= com.hrms.i18n.Language.text(request, "ui_1f2e9334c608", "Xác nhận phê duyệt") %></button></div>
+                                <div class="dialog-actions"><button class="button" type="button" data-dialog-close><%= com.hrms.i18n.Language.text(request, "ui_34ca764caf22", "Hủy") %></button><button class="button button-primary" type="submit"><%= com.hrms.i18n.Language.text(request, "ui_1f2e9334c608", "Xác nhận phê duyệt") %></button></div>
             </form>
         </dialog>
         <dialog class="action-dialog" id="delete-request-dialog" aria-labelledby="delete-request-title">

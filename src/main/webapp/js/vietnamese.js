@@ -7,7 +7,7 @@
         PENDING:HrmI18n.t('Chờ duyệt'), Pending:HrmI18n.t('Chờ duyệt'), APPROVED:HrmI18n.t('Đã duyệt'), Approved:HrmI18n.t('Đã duyệt'), REJECTED:HrmI18n.t('Đã từ chối'), Rejected:HrmI18n.t('Đã từ chối'),
         APPLIED:HrmI18n.t('Đã áp dụng'), ENDED:HrmI18n.t('Đã kết thúc'), SCHEDULED:HrmI18n.t('Chờ hiệu lực'), CORRECTED:HrmI18n.t('Đã hiệu chỉnh trong ngày'),
         LOCKED:HrmI18n.t('Đã khóa'), REVOKED:HrmI18n.t('Đã thu hồi'), NONE:HrmI18n.t('Chưa có tài khoản'),
-        SYSTEM_ADMIN:HrmI18n.t('Quản trị viên hệ thống'), COMPANY_ADMIN:'Company Admin / HR', HR:'Company Admin / HR', MANAGER:HrmI18n.t('Quản lý'), EMPLOYEE:HrmI18n.t('Nhân viên'),
+        SYSTEM_ADMIN:HrmI18n.t('Quản trị viên hệ thống'), COMPANY_ADMIN:'Company Admin', MANAGER:HrmI18n.t('Quản lý'), EMPLOYEE:HrmI18n.t('Nhân viên'),
         PROBATION:HrmI18n.t('Thử việc'), FIXED_TERM:HrmI18n.t('Có thời hạn'), INDEFINITE:HrmI18n.t('Không xác định thời hạn'),
         Male:HrmI18n.t('Nam'), Female:HrmI18n.t('Nữ'), Other:HrmI18n.t('Khác'),
         ONBOARDING:HrmI18n.t('Tạo hồ sơ nhân viên'), HIRE:HrmI18n.t('Phân công ban đầu'), BASELINE:HrmI18n.t('Ghi nhận phân công ban đầu'),

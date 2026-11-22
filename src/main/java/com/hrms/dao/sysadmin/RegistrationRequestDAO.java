@@ -408,11 +408,6 @@ public class RegistrationRequestDAO {
 
     public MutationResult confirmAndProvision(int requestId, int actorId, String password, String ipAddress)
             throws SQLException {
-        return confirmAndProvision(requestId, actorId, password, ipAddress, null);
-    }
-
-    public MutationResult confirmAndProvision(int requestId, int actorId, String password, String ipAddress,
-                                              Integer requestedPlanId) throws SQLException {
         try (Connection connection = connections.open()) {
             applyWriteOptions(connection);
             connection.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
@@ -453,10 +448,8 @@ public class RegistrationRequestDAO {
 
                 CompanyInsert company = insertCompany(connection, registration, requestId);
                 int companyId = company.companyId();
-                int planId = (requestedPlanId != null && requestedPlanId > 0)
-                        ? resolveActivePlan(connection, requestedPlanId)
-                        : findDefaultPlan(connection);
-                if (planId <= 0) throw new SQLException("Selected or default active subscription plan is missing.");
+                int planId = findDefaultPlan(connection);
+                if (planId <= 0) throw new SQLException("The active DEFAULT plan is required for tenant provisioning.");
                 insertSubscription(connection, companyId, planId);
                 int userId = insertCompanyAdmin(connection, registration, companyId, password);
                 String convert = "UPDATE RegistrationRequests SET Status='CONVERTED', ConvertedCompanyId=?, "
@@ -706,16 +699,6 @@ public class RegistrationRequestDAO {
         log.setNewValues("{\"status\":\"" + newStatus + "\"}");
         log.setIpAddress(ipAddress == null || ipAddress.length() > 50 ? null : ipAddress);
         new AuditLogDAO().insert(connection, log);
-    }
-
-    private int resolveActivePlan(Connection connection, int planId) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(
-                "SELECT PlanId FROM Plans WITH (UPDLOCK,HOLDLOCK) WHERE PlanId=? AND IsActive=1")) {
-            statement.setInt(1, planId);
-            try (ResultSet result = statement.executeQuery()) {
-                return result.next() ? result.getInt(1) : -1;
-            }
-        }
     }
 
     public MutationResult resendActivationPrepare(int requestId, int actorId, String password, String ipAddress)

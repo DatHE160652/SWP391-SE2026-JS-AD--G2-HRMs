@@ -27,7 +27,7 @@ public class PlatformAuditDAO {
     public record AuditLogEntry(long logId, String action, String tableName, String recordId,
                                 int actorUserId, String actorName, String actorEmail, String companyName,
                                 String oldValues, String newValues, String ipAddress,
-                                String createdAtDisplay, boolean canRollbackRenew) {
+                                String createdAtDisplay) {
         public String oldValuesDisplay() {
             return formatAuditJson(oldValues);
         }
@@ -48,15 +48,7 @@ public class PlatformAuditDAO {
     public List<AuditLogEntry> findPlatformAuditLogs(String actionFilter, String query, int limit) throws SQLException {
         StringBuilder sql = new StringBuilder("""
                 SELECT TOP (?) a.LogId, a.UserId AS ActorUserId, a.Action, a.TableName, a.RecordId, a.OldValues, a.NewValues, a.IpAddress, a.CreatedAt,
-                       u.DisplayName AS ActorName, u.Email AS ActorEmail, c.CompanyName,
-                       CASE WHEN a.Action = N'RENEW_SUBSCRIPTION'
-                                 AND a.OldValues LIKE N'%"endDate"%'
-                                 AND NOT EXISTS (
-                                     SELECT 1 FROM AuditLogs r
-                                     WHERE r.Action = N'ROLLBACK_RENEW_SUBSCRIPTION'
-                                       AND r.NewValues LIKE N'%"revertedLogId":' + CONVERT(NVARCHAR(30), a.LogId) + N'%'
-                                 )
-                            THEN 1 ELSE 0 END AS CanRollbackRenew
+                       u.DisplayName AS ActorName, u.Email AS ActorEmail, c.CompanyName
                 FROM AuditLogs a
                 LEFT JOIN Users u ON u.UserId = a.UserId
                 LEFT JOIN Companies c ON c.CompanyId = a.CompanyId
@@ -98,8 +90,7 @@ public class PlatformAuditDAO {
                             rs.getNString("OldValues"),
                             rs.getNString("NewValues"),
                             rs.getString("IpAddress"),
-                            formatTimestamp(rs.getTimestamp("CreatedAt")),
-                            rs.getBoolean("CanRollbackRenew")
+                            formatTimestamp(rs.getTimestamp("CreatedAt"))
                     ));
                 }
                 return list;
@@ -172,15 +163,7 @@ public class PlatformAuditDAO {
     private static String formatPair(String key, String val) {
         return switch (key) {
             case "status" -> "Trạng thái: " + translateStatus(val);
-            case "endDate" -> "Ngày kết thúc: " + formatDateSafe(val);
-            case "months" -> "Số tháng gia hạn: +" + val + " tháng";
             case "reason" -> "Ghi chú: " + val;
-            case "planName" -> "Tên gói: " + val;
-            case "maxAccounts" -> "Tài khoản tối đa: " + val;
-            case "maxManagers" -> "Manager tối đa: " + val;
-            case "price" -> "Giá gói: " + formatPriceSafe(val) + " đ";
-            case "billingCycle" -> "Chu kỳ: " + ("YEARLY".equalsIgnoreCase(val) ? "Năm" : "Tháng");
-            case "isActive" -> "Trạng thái gói: " + ("true".equalsIgnoreCase(val) ? "Đang mở" : "Tạm ẩn");
             default -> key + ": " + val;
         };
     }
@@ -192,15 +175,6 @@ public class PlatformAuditDAO {
             case "MARK_UNDER_REVIEW" -> "Bắt đầu xem xét yêu cầu";
             case "DELETE_REQUEST", "SOFT_DELETE_REQUEST" -> "Từ chối / Xóa yêu cầu";
             case "RESEND_ACTIVATION" -> "Gửi lại email kích hoạt";
-            case "RENEW_SUBSCRIPTION" -> "Gia hạn gói dịch vụ";
-            case "ROLLBACK_RENEW_SUBSCRIPTION" -> "Khôi phục lại";
-            case "CHANGE_PLAN" -> "Đổi gói dịch vụ";
-            case "CREATE_PLAN" -> "Tạo gói dịch vụ";
-            case "UPDATE_PLAN" -> "Cập nhật gói dịch vụ";
-            case "ACTIVATE_PLAN" -> "Mở lại gói dịch vụ";
-            case "DEACTIVATE_PLAN" -> "Tạm ẩn gói dịch vụ";
-            case "SUSPEND_SUBSCRIPTION" -> "Tạm ngưng gói dịch vụ";
-            case "ACTIVATE_SUBSCRIPTION" -> "Kích hoạt gói dịch vụ";
             default -> action;
         };
     }

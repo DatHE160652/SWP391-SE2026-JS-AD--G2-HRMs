@@ -20,11 +20,7 @@
             <div class="company-hero-title"><h1 id="company-title"><c:out value="${company.companyName}"/></h1><span class="company-hero-status"><i></i><c:set var="i18nDisplayLabel" value="${company.subscriptionStatus}"/><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("i18nDisplayLabel")) %>'/> · <c:set var="i18nDisplayLabel" value="${company.subscriptionActive ? 'Đang hoạt động' : 'Đã tạm ngưng'}"/><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("i18nDisplayLabel")) %>'/></span><span class="region-label"><c:set var="i18nDisplayLabel" value="${company.regionLabel}"/><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("i18nDisplayLabel")) %>'/></span></div>
             <p><%= com.hrms.i18n.Language.text(request, "ui_01834dd867de", "Ngày tạo:") %> <strong><c:out value="${company.companyCreatedAtDisplay}"/></strong> <span class="workspace-code">Workspace: <c:out value="${company.workspaceCode}"/></span></p>
         </div>
-        <div class="company-hero-actions">
-            <button class="button button-primary" type="button" data-dialog-open="renew-subscription-dialog">Gia hạn gói</button>
-            <button class="button" type="button" data-dialog-open="change-plan-dialog">Đổi gói dịch vụ</button>
-        </div>
-    </section>
+            </section>
     <c:if test="${not empty actionMessage}"><div class="alert alert-success" role="status"><c:out value='<%= com.hrms.i18n.Language.message(request, pageContext.findAttribute("actionMessage")) %>'/></div></c:if>
 
     <div class="company-detail-row company-detail-row-top">
@@ -106,47 +102,6 @@
         </section>
     </div>
 
-    <dialog class="action-dialog" id="renew-subscription-dialog" aria-labelledby="renew-subscription-title">
-        <form method="post" action="${pageContext.request.contextPath}/systemadmin/company/renew">
-            <input type="hidden" name="id" value="<c:out value='${company.companyId}'/>">
-            <input type="hidden" name="csrfToken" value="<c:out value='${sessionScope.systemAdminCsrfToken}'/>">
-            <h2 id="renew-subscription-title">Gia hạn Subscription</h2>
-            <p>Gia hạn thời gian sử dụng cho <strong><c:out value="${company.companyName}"/></strong>. Nếu gói đang tạm ngưng do hết hạn, hệ thống sẽ tự kích hoạt lại sang <code>ACTIVE</code>.</p>
-            <label class="dialog-field" for="renew-months">Thời gian gia hạn thêm
-                <select id="renew-months" name="months" style="width:100%; margin-top:6px;">
-                    <option value="1">+1 tháng</option>
-                    <option value="3">+3 tháng</option>
-                    <option value="6">+6 tháng</option>
-                    <option value="12">+12 tháng (1 năm)</option>
-                </select>
-            </label>
-            <div class="dialog-actions">
-                <button class="button" type="button" data-dialog-close>Hủy bỏ</button>
-                <button class="button button-primary" type="submit">Xác nhận gia hạn</button>
-            </div>
-        </form>
-    </dialog>
-    <dialog class="action-dialog" id="change-plan-dialog" aria-labelledby="change-plan-title">
-        <form method="post" action="${pageContext.request.contextPath}/systemadmin/company/change-plan">
-            <input type="hidden" name="id" value="<c:out value='${company.companyId}'/>">
-            <input type="hidden" name="csrfToken" value="<c:out value='${sessionScope.systemAdminCsrfToken}'/>">
-            <h2 id="change-plan-title">Đổi gói dịch vụ (Plan)</h2>
-            <p>Gói hiện tại: <strong><c:out value="${company.planName}"/></strong> (<c:out value="${company.accountCount}"/> / <c:out value="${company.maxAccounts}"/> tài khoản đang dùng).</p>
-            <label class="dialog-field" for="new-plan-id">Chọn gói mới
-                <select id="new-plan-id" name="planId" style="width:100%; margin-top:6px;">
-                    <c:forEach var="plan" items="${activePlans}">
-                        <option value="${plan.planId}" ${plan.planName == company.planName ? 'selected' : ''}>
-                            <c:out value="${plan.planName}"/> — tối đa <c:out value="${plan.maxAccounts}"/> acc — <c:out value="${plan.formattedPrice}"/> đ/<c:out value="${plan.billingCycleLabel}"/>
-                        </option>
-                    </c:forEach>
-                </select>
-            </label>
-            <div class="dialog-actions">
-                <button class="button" type="button" data-dialog-close>Hủy bỏ</button>
-                <button class="button button-primary" type="submit">Cập nhật gói</button>
-            </div>
-        </form>
-    </dialog>
-</main>
+    </main>
 </body>
 </html>

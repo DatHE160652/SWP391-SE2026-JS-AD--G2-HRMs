@@ -3,9 +3,7 @@ package com.hrms.controller.sysadmin;
 import com.hrms.model.CompanyAdministrationFilter;
 import com.hrms.model.CompanyAdministrationView;
 import com.hrms.service.sysadmin.CompanyAdministrationService;
-import com.hrms.service.sysadmin.RequestActionException;
 import com.hrms.service.sysadmin.RegistrationRequestService;
-import com.hrms.service.security.SystemAdminPrincipal;
 import com.hrms.util.SecuritySupport;
 
 import jakarta.servlet.ServletException;
@@ -16,9 +14,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.SQLException;
 
-/** System Admin Company pages and guarded Subscription suspend/activate actions. */
+/** Read-only System Admin Company list/detail controller. */
 public class CompanyAdministrationController extends HttpServlet {
-    private static final String FLASH_MESSAGE = "companyActionMessage";
     private final CompanyAdministrationService companyService;
     private final RegistrationRequestService registrationRequestService;
 
@@ -30,6 +27,13 @@ public class CompanyAdministrationController extends HttpServlet {
                                     RegistrationRequestService registrationRequestService) {
         this.companyService = companyService;
         this.registrationRequestService = registrationRequestService;
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        SecuritySupport.applyNoStore(response::setHeader);
+        response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
     }
 
     @Override
@@ -45,62 +49,9 @@ public class CompanyAdministrationController extends HttpServlet {
             showDetails(request, response);
             return;
         }
-        if ("/systemadmin/company/renew".equals(path)
-                || "/systemadmin/company/change-plan".equals(path)) {
-            response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
-            return;
-        }
         response.sendError(HttpServletResponse.SC_NOT_FOUND);
     }
 
-    @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        SecuritySupport.applyNoStore(response::setHeader);
-        String path = request.getServletPath();
-        if (!"/systemadmin/company/renew".equals(path)
-                && !"/systemadmin/company/change-plan".equals(path)) {
-            response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
-            return;
-        }
-        if (!SecuritySupport.isSystemAdmin(request) || !SecuritySupport.hasValidCsrfToken(request)
-                || SecuritySupport.getPrincipal(request).getUserId() == null
-                || SecuritySupport.getPrincipal(request).getUserId() <= 0) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Phiên thao tác không hợp lệ.");
-            return;
-        }
-        int companyId;
-        try {
-            companyId = parsePositiveId(request.getParameter("id"));
-        } catch (IllegalArgumentException exception) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Mã Company không hợp lệ.");
-            return;
-        }
-
-        SystemAdminPrincipal principal = SecuritySupport.getPrincipal(request);
-        try {
-            if ("/systemadmin/company/renew".equals(path)) {
-                int months = parsePositiveId(request.getParameter("months"));
-                companyService.renew(companyId, principal.getUserId(), months, request.getRemoteAddr());
-                request.getSession(true).setAttribute(FLASH_MESSAGE,
-                        "Đã gia hạn Subscription thêm " + months + " tháng.");
-            } else {
-                int planId = parsePositiveId(request.getParameter("planId"));
-                companyService.changePlan(companyId, principal.getUserId(), planId, request.getRemoteAddr());
-                request.getSession(true).setAttribute(FLASH_MESSAGE,
-                        "Đã cập nhật gói dịch vụ (Plan) cho doanh nghiệp.");
-            }
-            response.sendRedirect(request.getContextPath() + "/systemadmin/company-details?id=" + companyId);
-        } catch (RequestActionException exception) {
-            showErrorWithStatus(request, response, statusFor(exception), exception.getMessage());
-        } catch (IllegalArgumentException exception) {
-            showErrorWithStatus(request, response, HttpServletResponse.SC_BAD_REQUEST, exception.getMessage());
-        } catch (SQLException exception) {
-            getServletContext().log("System Admin subscription mutation failed; SQLState="
-                    + exception.getSQLState() + "; errorCode=" + exception.getErrorCode());
-            showError(request, response, "Không thể lưu thao tác Subscription. Vui lòng thử lại sau.");
-        }
-    }
 
     private void showList(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -136,9 +87,7 @@ public class CompanyAdministrationController extends HttpServlet {
                 return;
             }
             setNavigation(request);
-            consumeFlash(request);
             request.setAttribute("company", company);
-            request.setAttribute("activePlans", new com.hrms.dao.sysadmin.PlanDAO().findActive());
             request.getRequestDispatcher("/WEB-INF/views/sysadmin/company-details.jsp").forward(request, response);
         } catch (SQLException exception) {
             showError(request, response, "Không thể tải chi tiết Company.");
@@ -149,13 +98,6 @@ public class CompanyAdministrationController extends HttpServlet {
         SecuritySupport.ensureCsrfToken(request.getSession(true));
         request.setAttribute("activeNav", "companies");
         request.setAttribute("pendingCount", registrationRequestService.getStats(false).getPendingCount());
-    }
-
-    private void consumeFlash(HttpServletRequest request) {
-        if (request.getSession(false) == null) return;
-        Object message = request.getSession(false).getAttribute(FLASH_MESSAGE);
-        request.getSession(false).removeAttribute(FLASH_MESSAGE);
-        if (message != null) request.setAttribute("actionMessage", message);
     }
 
     private int parsePositiveId(String value) {
@@ -169,13 +111,7 @@ public class CompanyAdministrationController extends HttpServlet {
         }
     }
 
-    private int statusFor(RequestActionException exception) {
-        return switch (exception.getReason()) {
-            case FORBIDDEN -> HttpServletResponse.SC_FORBIDDEN;
-            case NOT_FOUND -> HttpServletResponse.SC_NOT_FOUND;
-            case CONFLICT -> HttpServletResponse.SC_CONFLICT;
-        };
-    }
+
 
     private void showError(HttpServletRequest request, HttpServletResponse response, String message)
             throws ServletException, IOException {

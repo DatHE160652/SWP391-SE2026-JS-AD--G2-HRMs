@@ -43,12 +43,8 @@ public class RegistrationRequestService {
 
     public ConfirmationResult confirm(int requestId, int actorId, String ipAddress)
             throws SQLException, RequestActionException {
-        return confirm(requestId, actorId, ipAddress, null);
-    }
-
-    public ConfirmationResult confirm(int requestId, int actorId, String ipAddress, Integer planId)
-            throws SQLException, RequestActionException {
         validateActionIds(requestId, actorId);
+        // WF2-UC05 always provisions with the platform DEFAULT plan; plan selection is out of scope.
         if (registrationRequestDAO.hasUndeliverableReceipt(requestId)) {
             throw new RequestActionException(RequestActionException.Reason.CONFLICT,
                     "Không thể khởi tạo công ty: email đăng ký không tồn tại hoặc không thể nhận thư.");
@@ -68,7 +64,7 @@ public class RegistrationRequestService {
         String temporaryPassword = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
         try {
             RegistrationRequestDAO.MutationResult result = registrationRequestDAO.confirmAndProvision(
-                    requestId, actorId, temporaryPassword, ipAddress, planId);
+                    requestId, actorId, temporaryPassword, ipAddress);
             return sendAndRecordActivation(result, temporaryPassword);
         } finally {
             java.util.Arrays.fill(bytes, (byte) 0);
