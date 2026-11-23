@@ -1,10 +1,9 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
     <%@ taglib prefix="c" uri="jakarta.tags.core" %>
         <!DOCTYPE html>
-        <html lang="<%= com.hrms.i18n.Language.selected(request) %>">
+        <html lang="vi">
 
         <head>
-            <%@ include file="/WEB-INF/views/common/language.jspf" %>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1">
                 <title>Nhật ký hệ thống &amp; Email | HRMs.Admin</title>

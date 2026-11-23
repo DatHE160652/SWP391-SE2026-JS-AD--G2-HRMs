@@ -168,10 +168,6 @@ public class RegistrationRequestService {
             boolean emailMetadataRecorded) {
     }
 
-    public List<RegistrationRequest> getVisibleRequests() throws SQLException {
-        return registrationRequestDAO.findVisibleRequests();
-    }
-
     public RegistrationRequestFilter createFilter(String q, String status, String region, String date,
             String page, String size) {
         return new RegistrationRequestFilter(q, status, region, date, page, size);
@@ -187,10 +183,6 @@ public class RegistrationRequestService {
 
     public List<RegistrationRequest> getRecentPending() throws SQLException {
         return registrationRequestDAO.findRecentPending();
-    }
-
-    public RegistrationRequest getVisibleRequest(int requestId) throws SQLException {
-        return registrationRequestDAO.findVisibleById(requestId);
     }
 
     public RegistrationRequest openRequestDetails(int requestId, Integer actorId, String ipAddress)

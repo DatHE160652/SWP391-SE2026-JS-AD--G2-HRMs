@@ -194,23 +194,6 @@ public class PlatformAuditDAO {
         };
     }
 
-    private static String formatDateSafe(String isoDate) {
-        try {
-            return LocalDate.parse(isoDate).format(DISPLAY_DATE);
-        } catch (Exception ex) {
-            return isoDate;
-        }
-    }
-
-    private static String formatPriceSafe(String rawPrice) {
-        try {
-            long num = new java.math.BigDecimal(rawPrice).longValue();
-            return NumberFormat.getNumberInstance(Locale.US).format(num);
-        } catch (Exception ex) {
-            return rawPrice;
-        }
-    }
-
     private static String formatTimestamp(Timestamp ts) {
         if (ts == null) return "—";
         return ts.toInstant().atZone(DISPLAY_ZONE).format(DISPLAY_TIME);

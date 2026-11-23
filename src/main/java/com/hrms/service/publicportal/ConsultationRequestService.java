@@ -90,16 +90,6 @@ public class ConsultationRequestService {
         }
     }
 
-    public RegistrationRequest insertWithoutEmail(String fullName, String email, String phone,
-                                                   String companyName, String region)
-            throws InvalidConsultationException, DuplicateConsultationException, SQLException {
-        ConsultationValidation validation = validate(fullName, email, phone, companyName, region);
-        if (!validation.isValid()) throw new InvalidConsultationException(validation);
-        RegistrationRequestDAO.InsertResult insert = dao.insertNew(validation.getRequest());
-        if (insert == null) throw new DuplicateConsultationException();
-        return insert.request();
-    }
-
     public static String normalizeCompanyName(String value) {
         return clean(value).replaceAll("\\s+", " ");
     }
