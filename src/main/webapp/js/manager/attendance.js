@@ -464,8 +464,14 @@ function renderViolationNoticeBanner(summary, records) {
 function renderPersonalRows(records) {
     const tbody = document.getElementById('attendanceRows');
     if (!tbody) return;
+
+    const isManagerRole = (document.body.dataset.profileRole || '').toUpperCase() === 'MANAGER'
+        || window.location.pathname.includes('manager-personal-attendance')
+        || document.body.dataset.personalScope === 'self'
+        || !document.getElementById('modalSubmitExplanation');
+
     if (!records || records.length === 0) {
-        tbody.innerHTML = HrmI18n.fragment('<tr><td colspan="8" style="text-align:center;color:#667085;padding:32px;">Không có bản ghi chấm công nào trong tháng này.</td></tr>');
+        tbody.innerHTML = HrmI18n.fragment(`<tr style="text-align:center;color:#667085;"><td colspan="${isManagerRole ? 8 : 9}" style="padding:32px;">Không có bản ghi chấm công nào trong tháng này.</td></tr>`);
         return;
     }
 
@@ -499,6 +505,10 @@ function renderPersonalRows(records) {
             creditBadgeHtml = HrmI18n.fragment('<span class="badge" style="background:#f2f4f7;color:#667085;font-weight:600;">0 công</span>');
         }
 
+        const actionCell = isManagerRole ? '' : `
+                <td style="text-align:center;">
+                    <button class="button small secondary btn-open-exp-modal" data-date="${safe(r.attendanceDate)}" data-in="${r.checkInTime || '08:30:00'}" data-out="${r.checkOutTime || '17:30:00'}${HrmI18n.fragment("\" style=\"padding:4px 8px;font-size:12px;display:inline-flex;align-items:center;gap:4px;\">\n                        <svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M12 20h9\"></path><path d=\"M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z\"></path></svg>\n                        Giải trình\n                    </button>\n                </td>")}`;
+
         return `
             <tr>
                 <td><strong>${safe(r.attendanceDate)}</strong></td>
@@ -508,19 +518,21 @@ function renderPersonalRows(records) {
                 <td><strong>${r.totalHours || '0.00'}</strong> hrs</td>
                 <td>${creditBadgeHtml}</td>
                 <td>${badgeHtml}</td>
-                <td><span class="text-muted">${safe(r.note)}</span></td>
-                <td style="text-align:center;">
-                    <button class="button small secondary btn-open-exp-modal" data-date="${safe(r.attendanceDate)}" data-in="${r.checkInTime || '08:30:00'}" data-out="${r.checkOutTime || '17:30:00'}${HrmI18n.fragment("\" style=\"padding:4px 8px;font-size:12px;display:inline-flex;align-items:center;gap:4px;\">\n                        <svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M12 20h9\"></path><path d=\"M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z\"></path></svg>\n                        Giải trình\n                    </button>\n                </td>\n            </tr>\n        ")}`;
+                <td><span class="text-muted">${safe(r.note)}</span></td>${actionCell}
+            </tr>
+        `;
     }).join('');
 
-    document.querySelectorAll('.btn-open-exp-modal').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const date = btn.dataset.date;
-            const inTime = (btn.dataset.in || '08:30:00').substring(0, 5);
-            const outTime = (btn.dataset.out || '17:30:00').substring(0, 5);
-            openSubmitExplanationModal(date, inTime, outTime);
+    if (!isManagerRole) {
+        document.querySelectorAll('.btn-open-exp-modal').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const date = btn.dataset.date;
+                const inTime = (btn.dataset.in || '08:30:00').substring(0, 5);
+                const outTime = (btn.dataset.out || '17:30:00').substring(0, 5);
+                openSubmitExplanationModal(date, inTime, outTime);
+            });
         });
-    });
+    }
 }
 
 /* =========================================================================

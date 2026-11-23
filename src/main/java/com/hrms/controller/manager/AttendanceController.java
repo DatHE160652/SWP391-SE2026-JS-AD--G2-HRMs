@@ -213,6 +213,7 @@ public class AttendanceController extends HttpServlet {
         LocalTime time = parseOptionalTime(request.getParameter("time"));
 
         AttendanceDTO result = attendanceService.checkIn(SecuritySupport.requireCompanyId(request), employeeId, date, time);
+        autoRecordManagerAttendanceIfApplicable(request, date, time, "check-in");
         writeJson(response, HttpServletResponse.SC_OK,
                 "{\"success\":true,\"message\":\"Điểm danh vào ca thành công!\",\"data\":" + toJson(result) + "}");
     }
@@ -230,6 +231,7 @@ public class AttendanceController extends HttpServlet {
         LocalTime time = parseOptionalTime(request.getParameter("time"));
 
         AttendanceDTO result = attendanceService.checkOut(SecuritySupport.requireCompanyId(request), employeeId, date, time);
+        autoRecordManagerAttendanceIfApplicable(request, date, time, "check-out");
         writeJson(response, HttpServletResponse.SC_OK,
                 "{\"success\":true,\"message\":\"Điểm danh tan ca thành công!\",\"data\":" + toJson(result) + "}");
     }
@@ -302,6 +304,10 @@ public class AttendanceController extends HttpServlet {
             }
         }
 
+        if (successCount > 0) {
+            autoRecordManagerAttendanceIfApplicable(request, date, time, action);
+        }
+
         List<AttendanceDTO> updatedList = scopedAttendance(request, date);
         String msg;
         if ("check-in".equalsIgnoreCase(action)) {
@@ -358,6 +364,7 @@ public class AttendanceController extends HttpServlet {
         AttendanceDTO result = attendanceService.manualAdjustAttendance(
                 companyId, employeeId, date, checkInTime, checkOutTime, note, adjustedByUserId
         );
+        autoRecordManagerAttendanceIfApplicable(request, date, checkInTime != null ? checkInTime : checkOutTime, "check-in");
 
         writeJson(response, HttpServletResponse.SC_OK,
                 "{\"success\":true,\"message\":\"Điểm danh bổ sung thành công!\",\"data\":" + toJson(result) + "}");
@@ -769,6 +776,17 @@ public class AttendanceController extends HttpServlet {
             if (managerEmployeeId == null || attendanceService.getTeamAttendance(SecuritySupport.requireCompanyId(request), managerEmployeeId, date)
                     .stream().noneMatch(item -> item.getEmployeeId() == employeeId)) {
                 throw new IllegalArgumentException("Bạn chỉ được quản lý chấm công của cấp dưới trực tiếp.");
+            }
+        }
+    }
+
+    private void autoRecordManagerAttendanceIfApplicable(HttpServletRequest request, LocalDate date, LocalTime time, String action) throws SQLException {
+        TenantPrincipal principal = SecuritySupport.getTenantPrincipal(request);
+        if (isRole(principal, "MANAGER") && principal.getEmployeeId() != null && principal.getEmployeeId() > 0) {
+            LocalDate today = LocalDate.now();
+            if (date == null || date.isEqual(today)) {
+                int companyId = SecuritySupport.requireCompanyId(request);
+                attendanceService.recordManagerAutoAttendance(companyId, principal.getEmployeeId(), date, time, action);
             }
         }
     }
