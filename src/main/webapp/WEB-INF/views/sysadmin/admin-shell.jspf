@@ -19,8 +19,8 @@
         <a aria-label="Doanh nghiệp" class="nav-link ${activeNav == 'companies' ? 'active' : ''}" aria-current="${activeNav == 'companies' ? 'page' : 'false'}" href="${pageContext.request.contextPath}/systemadmin/company">
             <svg class="icon" aria-hidden="true"><use href="${icons}#building"/></svg><span>Quản lý doanh nghiệp</span>
         </a>
-        <a aria-label="Nhật ký &amp; Email" class="nav-link ${activeNav == 'audit' ? 'active' : ''}" aria-current="${activeNav == 'audit' ? 'page' : 'false'}" href="${pageContext.request.contextPath}/systemadmin/audit-logs">
-            <svg class="icon" aria-hidden="true"><use href="${icons}#shield"/></svg><span>Nhật ký &amp; Email</span>
+        <a aria-label="Lịch sử gửi Email" class="nav-link ${activeNav == 'audit' ? 'active' : ''}" aria-current="${activeNav == 'audit' ? 'page' : 'false'}" href="${pageContext.request.contextPath}/systemadmin/audit-logs">
+            <svg class="icon" aria-hidden="true"><use href="${icons}#shield"/></svg><span>Lịch sử gửi Email</span>
         </a>
     </nav>
     <div class="sidebar-footer">
@@ -42,11 +42,13 @@
         <svg class="icon" aria-hidden="true"><use href="${icons}#menu"/></svg>
     </button>
     <c:set var="companyNavigation" value="${activeNav == 'companies'}"/>
-    <form class="header-search" method="get" action="${pageContext.request.contextPath}${companyNavigation ? '/systemadmin/company' : '/systemadmin/registration-request'}" role="search">
-        <label class="sr-only" for="global-search"><c:choose><c:when test="${companyNavigation}">Tìm Company</c:when><c:otherwise>Tìm yêu cầu đăng ký</c:otherwise></c:choose></label>
+    <c:set var="auditNavigation" value="${activeNav == 'audit'}"/>
+    <form class="header-search" method="get" action="${pageContext.request.contextPath}${companyNavigation ? '/systemadmin/company' : (auditNavigation ? '/systemadmin/audit-logs' : '/systemadmin/registration-request')}" role="search">
+        <c:if test="${auditNavigation}"><input type="hidden" name="tab" value="<c:out value='${tab}'/>"/></c:if>
+        <label class="sr-only" for="global-search"><c:choose><c:when test="${companyNavigation}">Tìm Company</c:when><c:when test="${auditNavigation}">Tìm nhật ký và email</c:when><c:otherwise>Tìm yêu cầu đăng ký</c:otherwise></c:choose></label>
         <svg class="icon" aria-hidden="true"><use href="${icons}#search"/></svg>
-        <c:set var="searchPlaceholder" value="${companyNavigation ? 'Tìm doanh nghiệp, workspace, email admin...' : 'Tìm doanh nghiệp, email, mã yêu cầu...'}"/>
-        <input id="global-search" name="q" type="search" maxlength="150" placeholder="<c:out value='${searchPlaceholder}'/>" value="<c:out value='${filter.q}'/>">
+        <c:set var="searchPlaceholder" value="${companyNavigation ? 'Tìm doanh nghiệp, workspace, email admin...' : (auditNavigation ? 'Tìm email, công ty, action...' : 'Tìm doanh nghiệp, email, mã yêu cầu...')}"/>
+        <input id="global-search" name="q" type="search" maxlength="150" placeholder="<c:out value='${searchPlaceholder}'/>" value="<c:out value='${filter.q}'/>"/>
         <button class="search-shortcut" type="submit" aria-label="Tìm kiếm">↵</button>
     </form>
     <span class="portal-badge"><svg class="icon" aria-hidden="true"><use href="${icons}#shield"/></svg>Cổng quản trị hệ thống</span>

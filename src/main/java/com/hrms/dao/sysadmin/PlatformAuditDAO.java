@@ -7,96 +7,19 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.text.NumberFormat;
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-/** Read-only queries for System Admin AuditLogs and EmailAttempts monitoring. */
+/** Read-only queries for System Admin EmailAttempts monitoring. */
 public class PlatformAuditDAO {
     private static final ZoneId DISPLAY_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final DateTimeFormatter DISPLAY_TIME = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-    private static final DateTimeFormatter DISPLAY_DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final Pattern JSON_KV = Pattern.compile("\"([^\"]+)\"\\s*:\\s*(?:\"([^\"]*)\"|(-?\\d+(?:\\.\\d+)?|true|false))");
-
-    public record AuditLogEntry(long logId, String action, String tableName, String recordId,
-                                int actorUserId, String actorName, String actorEmail, String companyName,
-                                String oldValues, String newValues, String ipAddress,
-                                String createdAtDisplay) {
-        public String oldValuesDisplay() {
-            return formatAuditJson(oldValues);
-        }
-
-        public String newValuesDisplay() {
-            return formatAuditJson(newValues);
-        }
-
-        public String actionLabel() {
-            return translateAction(action);
-        }
-    }
 
     public record EmailAttemptEntry(long emailAttemptId, String emailType, String recipientEmail,
                                     String status, String errorCode, Integer registrationRequestId,
                                     String companyName, String createdAtDisplay, String completedAtDisplay) {}
-
-    public List<AuditLogEntry> findPlatformAuditLogs(String actionFilter, String query, int limit) throws SQLException {
-        StringBuilder sql = new StringBuilder("""
-                SELECT TOP (?) a.LogId, a.UserId AS ActorUserId, a.Action, a.TableName, a.RecordId, a.OldValues, a.NewValues, a.IpAddress, a.CreatedAt,
-                       u.DisplayName AS ActorName, u.Email AS ActorEmail, c.CompanyName
-                FROM AuditLogs a
-                LEFT JOIN Users u ON u.UserId = a.UserId
-                LEFT JOIN Companies c ON c.CompanyId = a.CompanyId
-                WHERE (u.CompanyId IS NULL OR a.TableName IN ('RegistrationRequests', 'Subscriptions', 'Plans'))
-                """);
-        List<Object> params = new ArrayList<>();
-        params.add(limit);
-
-        if (actionFilter != null && !actionFilter.isBlank()) {
-            sql.append(" AND a.Action = ? ");
-            params.add(actionFilter.trim());
-        }
-        if (query != null && !query.isBlank()) {
-            sql.append(" AND (a.Action LIKE ? OR a.TableName LIKE ? OR u.Email LIKE ? OR c.CompanyName LIKE ? OR a.RecordId LIKE ?) ");
-            String like = "%" + query.trim() + "%";
-            for (int i = 0; i < 5; i++) params.add(like);
-        }
-        sql.append(" ORDER BY a.LogId DESC");
-
-        try (Connection connection = DBConnection.getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql.toString())) {
-            for (int i = 0; i < params.size(); i++) {
-                Object p = params.get(i);
-                if (p instanceof Integer n) ps.setInt(i + 1, n);
-                else ps.setNString(i + 1, String.valueOf(p));
-            }
-            try (ResultSet rs = ps.executeQuery()) {
-                List<AuditLogEntry> list = new ArrayList<>();
-                while (rs.next()) {
-                    list.add(new AuditLogEntry(
-                            rs.getLong("LogId"),
-                            rs.getNString("Action"),
-                            rs.getNString("TableName"),
-                            rs.getString("RecordId"),
-                            rs.getInt("ActorUserId"),
-                            rs.getNString("ActorName"),
-                            rs.getString("ActorEmail"),
-                            rs.getNString("CompanyName"),
-                            rs.getNString("OldValues"),
-                            rs.getNString("NewValues"),
-                            rs.getString("IpAddress"),
-                            formatTimestamp(rs.getTimestamp("CreatedAt"))
-                    ));
-                }
-                return list;
-            }
-        }
-    }
 
     public List<EmailAttemptEntry> findEmailAttempts(String statusFilter, String query, int limit) throws SQLException {
         StringBuilder sql = new StringBuilder("""
@@ -145,53 +68,6 @@ public class PlatformAuditDAO {
                 return list;
             }
         }
-    }
-
-    private static String formatAuditJson(String raw) {
-        if (raw == null || raw.isBlank()) return "—";
-        Matcher matcher = JSON_KV.matcher(raw);
-        List<String> parts = new ArrayList<>();
-        while (matcher.find()) {
-            String key = matcher.group(1);
-            String val = matcher.group(2) != null ? matcher.group(2) : matcher.group(3);
-            if ("revertedLogId".equals(key)) continue;
-            parts.add(formatPair(key, val));
-        }
-        return parts.isEmpty() ? raw : String.join(" · ", parts);
-    }
-
-    private static String formatPair(String key, String val) {
-        return switch (key) {
-            case "status" -> "Trạng thái: " + translateStatus(val);
-            case "reason" -> "Ghi chú: " + val;
-            default -> key + ": " + val;
-        };
-    }
-
-    private static String translateAction(String action) {
-        if (action == null) return "—";
-        return switch (action.toUpperCase(Locale.ROOT)) {
-            case "CONFIRM_REQUEST" -> "Phê duyệt & khởi tạo doanh nghiệp";
-            case "MARK_UNDER_REVIEW" -> "Bắt đầu xem xét yêu cầu";
-            case "DELETE_REQUEST", "SOFT_DELETE_REQUEST" -> "Từ chối / Xóa yêu cầu";
-            case "RESEND_ACTIVATION" -> "Gửi lại email kích hoạt";
-            default -> action;
-        };
-    }
-
-    private static String translateStatus(String status) {
-        if (status == null) return "—";
-        return switch (status.toUpperCase(Locale.ROOT)) {
-            case "ACTIVE" -> "Đang hoạt động";
-            case "SUSPENDED" -> "Đã tạm ngưng";
-            case "NEW" -> "Mới tiếp nhận";
-            case "UNDER_REVIEW" -> "Đang xem xét";
-            case "CONVERTED" -> "Đã khởi tạo";
-            case "DELETED" -> "Đã xóa";
-            case "PENDING_ACTIVATION" -> "Chờ kích hoạt";
-            case "RESENT" -> "Đã gửi lại email kích hoạt";
-            default -> status;
-        };
     }
 
     private static String formatTimestamp(Timestamp ts) {

@@ -11,7 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.SQLException;
 
-/** Read-only System Admin view for platform AuditLogs and EmailAttempts. */
+/** Read-only System Admin view for EmailAttempts monitoring. */
 public class PlatformAuditController extends HttpServlet {
     private final PlatformAuditDAO auditDAO = new PlatformAuditDAO();
     private final RegistrationRequestDAO requestDAO = new RegistrationRequestDAO();
@@ -20,25 +20,20 @@ public class PlatformAuditController extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         SecuritySupport.applyNoStore(response::setHeader);
-        String tab = "email".equalsIgnoreCase(request.getParameter("tab")) ? "email" : "audit";
-        String actionFilter = request.getParameter("actionFilter");
         String statusFilter = request.getParameter("statusFilter");
         String q = request.getParameter("q");
 
         try {
-            request.setAttribute("tab", tab);
-            request.setAttribute("actionFilter", actionFilter == null ? "" : actionFilter);
             request.setAttribute("statusFilter", statusFilter == null ? "" : statusFilter);
             request.setAttribute("q", q == null ? "" : q);
-            request.setAttribute("auditLogs", auditDAO.findPlatformAuditLogs(actionFilter, q, 100));
             request.setAttribute("emailAttempts", auditDAO.findEmailAttempts(statusFilter, q, 100));
             request.setAttribute("activeNav", "audit");
             request.setAttribute("pendingCount", requestDAO.getStats(false).getPendingCount());
             SecuritySupport.ensureCsrfToken(request.getSession(true));
             request.getRequestDispatcher("/WEB-INF/views/sysadmin/audit-logs.jsp").forward(request, response);
         } catch (SQLException ex) {
-            getServletContext().log("Failed to load platform audit logs", ex);
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Không tải được nhật ký hệ thống.");
+            getServletContext().log("Failed to load email attempts history", ex);
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Không tải được lịch sử gửi email.");
         }
     }
 
