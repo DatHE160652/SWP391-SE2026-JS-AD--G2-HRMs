@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/attendance.css?v=<%= application.getResource("/css/attendance.css").openConnection().getLastModified() %>">
 <%@ include file="/WEB-INF/views/common/workspace-theme.jspf" %>
 </head>
-<body class="lc" data-page="employee-attendance" data-personal-scope="self">
+<body class="lc" data-page="employee-attendance" data-personal-scope="self" data-profile-role="<c:out value='${sessionScope.tenantPrincipal.roleCode}'/>">
 <c:set var="managerNavPage" value="personal-attendance"/>
 <c:set var="managerNavTitle" value="Chấm công Cá nhân"/>
 <%@ include file="/WEB-INF/views/common/manager-shell.jspf" %>

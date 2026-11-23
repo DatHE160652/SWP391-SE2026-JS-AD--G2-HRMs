@@ -455,4 +455,86 @@ public class AttendanceShiftSettingTest {
                 eq("Điểm danh sớm"), eq(1)
         );
     }
+
+    @Test
+    public void testRecordManagerAutoAttendance_CheckIn_InsertsPresentRecord() throws SQLException {
+        AttendanceDAO mockAttendanceDAO = mock(AttendanceDAO.class);
+        CompanyShiftSettingDAO mockShiftDAO = mock(CompanyShiftSettingDAO.class);
+
+        int companyId = 1;
+        int managerEmployeeId = 50;
+        LocalDate today = LocalDate.now();
+        LocalTime actionTime = LocalTime.of(8, 0);
+
+        CompanyShiftSetting setting = new CompanyShiftSetting(companyId, LocalTime.of(8, 0), LocalTime.of(17, 0), 60, 0);
+        when(mockShiftDAO.getShiftSetting(companyId)).thenReturn(setting);
+        when(mockAttendanceDAO.getAttendanceByEmployeeAndDate(managerEmployeeId, today)).thenReturn(null);
+        when(mockAttendanceDAO.insertCheckIn(eq(managerEmployeeId), eq(companyId), eq(today), eq(actionTime), eq("Present"))).thenReturn(100L);
+
+        AttendanceService service = new AttendanceService(mockAttendanceDAO, mockShiftDAO);
+        service.recordManagerAutoAttendance(companyId, managerEmployeeId, today, actionTime, "check-in");
+
+        // 1. Verify that manager's check-in is inserted with actionTime and Status = "Present"
+        verify(mockAttendanceDAO).insertCheckIn(eq(managerEmployeeId), eq(companyId), eq(today), eq(actionTime), eq("Present"));
+
+        // 2. Verify that manager's check-out defaults to company shift end (17:00) with 8.00 hours calculated
+        verify(mockAttendanceDAO).updateCheckOut(eq(100L), eq(LocalTime.of(17, 0)), eq(new BigDecimal("8.00")), eq("Present"));
+    }
+
+    @Test
+    public void testRecordManagerAutoAttendance_CheckOut_UpdatesCheckOutAndCalculatesHours() throws SQLException {
+        AttendanceDAO mockAttendanceDAO = mock(AttendanceDAO.class);
+        CompanyShiftSettingDAO mockShiftDAO = mock(CompanyShiftSettingDAO.class);
+
+        int companyId = 1;
+        int managerEmployeeId = 50;
+        LocalDate today = LocalDate.now();
+        LocalTime checkInTime = LocalTime.of(8, 0);
+        LocalTime checkOutTime = LocalTime.of(17, 30);
+
+        CompanyShiftSetting setting = new CompanyShiftSetting(companyId, LocalTime.of(8, 0), LocalTime.of(17, 0), 60, 0);
+        when(mockShiftDAO.getShiftSetting(companyId)).thenReturn(setting);
+
+        AttendanceDAO.AttendanceDTO existing = new AttendanceDAO.AttendanceDTO();
+        existing.setAttendanceId(999L);
+        existing.setEmployeeId(managerEmployeeId);
+        existing.setAttendanceDate(today);
+        existing.setCheckInTime(checkInTime);
+        existing.setStatus("Present");
+
+        when(mockAttendanceDAO.getAttendanceByEmployeeAndDate(managerEmployeeId, today)).thenReturn(existing);
+
+        AttendanceService service = new AttendanceService(mockAttendanceDAO, mockShiftDAO);
+        service.recordManagerAutoAttendance(companyId, managerEmployeeId, today, checkOutTime, "check-out");
+
+        // 08:00 to 17:30 = 9.5 hours minus 1 hour lunch = 8.50 hours
+        BigDecimal expectedHours = new BigDecimal("8.50");
+        verify(mockAttendanceDAO).updateCheckOut(eq(999L), eq(checkOutTime), eq(expectedHours), eq("Present"));
+    }
+
+    @Test
+    public void testRecordManagerAutoAttendance_ExistingStatusNotPresent_UpdatesToPresent() throws SQLException {
+        AttendanceDAO mockAttendanceDAO = mock(AttendanceDAO.class);
+        CompanyShiftSettingDAO mockShiftDAO = mock(CompanyShiftSettingDAO.class);
+
+        int companyId = 1;
+        int managerEmployeeId = 50;
+        LocalDate today = LocalDate.now();
+        LocalTime checkInTime = LocalTime.of(8, 30);
+
+        AttendanceDAO.AttendanceDTO existing = new AttendanceDAO.AttendanceDTO();
+        existing.setAttendanceId(888L);
+        existing.setEmployeeId(managerEmployeeId);
+        existing.setAttendanceDate(today);
+        existing.setCheckInTime(checkInTime);
+        existing.setStatus("Absent");
+
+        when(mockAttendanceDAO.getAttendanceByEmployeeAndDate(managerEmployeeId, today)).thenReturn(existing);
+
+        AttendanceService service = new AttendanceService(mockAttendanceDAO, mockShiftDAO);
+        service.recordManagerAutoAttendance(companyId, managerEmployeeId, today, checkInTime, "check-in");
+
+        // Verify status is updated to "Present"
+        verify(mockAttendanceDAO).updateCheckIn(eq(888L), eq(checkInTime), eq("Present"));
+    }
 }

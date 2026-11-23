@@ -148,6 +148,28 @@ public class AttendanceManagerDailyScreenTest {
     }
 
     @Test
+    public void testCheckIn_AsManagerToday_TriggersManagerAutoAttendance() throws Exception {
+        when(request.getServletPath()).thenReturn(ApiRoutes.ATTENDANCE_CHECK_IN);
+        when(request.getParameter("employeeId")).thenReturn(String.valueOf(EMP_ID_1));
+        LocalDate today = LocalDate.now();
+        LocalTime time = LocalTime.of(8, 25);
+        when(request.getParameter("date")).thenReturn(today.toString());
+        when(request.getParameter("time")).thenReturn("08:25");
+
+        AttendanceDTO stubSubordinate = AttendanceTestHelper.createAttendanceDTO(0L, COMPANY_ID, EMP_ID_1, "EMP101", "Trần A", 1, "IT", today, null, null, BigDecimal.ZERO, null);
+        when(attendanceService.getTeamAttendance(COMPANY_ID, MANAGER_EMP_ID, today)).thenReturn(List.of(stubSubordinate));
+
+        AttendanceDTO checkedInDto = AttendanceTestHelper.createAttendanceDTO(1L, COMPANY_ID, EMP_ID_1, "EMP101", "Trần A",
+                1, "IT", today, time, null, BigDecimal.ZERO, "Present");
+        when(attendanceService.checkIn(COMPANY_ID, EMP_ID_1, today, time)).thenReturn(checkedInDto);
+
+        controller.doPost(request, response);
+
+        verify(response).setStatus(HttpServletResponse.SC_OK);
+        verify(attendanceService).recordManagerAutoAttendance(eq(COMPANY_ID), eq(MANAGER_EMP_ID), eq(today), eq(time), eq("check-in"));
+    }
+
+    @Test
     public void testCheckIn_Late_ReturnsSuccessWithLateStatus() throws Exception {
         when(request.getServletPath()).thenReturn(ApiRoutes.ATTENDANCE_CHECK_IN);
         when(request.getParameter("employeeId")).thenReturn(String.valueOf(EMP_ID_1));

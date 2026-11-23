@@ -64,6 +64,74 @@ public class AttendanceService {
         return checkOutInternal(companyId, employeeId, date, time);
     }
 
+    /**
+     * Tự động ghi nhận điểm danh cho Quản lý khi Quản lý thao tác điểm danh cho nhân viên trong phòng ban.
+     * Khi Quản lý điểm danh nhân viên:
+     * - Lưu trạng thái vào (giờ vào khi thao tác, trạng thái Present).
+     * - Giờ ra của Quản lý: hệ thống mặc định là giờ ra theo ca làm việc của công ty luôn.
+     * - Tổng giờ làm và ngày công được tính tự động theo ca làm việc của công ty và quy tắc trừ giờ nghỉ trưa.
+     */
+    public void recordManagerAutoAttendance(int companyId, int managerEmployeeId, LocalDate date, LocalTime actionTime, String action) throws SQLException {
+        if (managerEmployeeId <= 0 || companyId <= 0) {
+            return;
+        }
+        if (date == null) {
+            date = LocalDate.now();
+        }
+        if (actionTime == null) {
+            actionTime = LocalTime.now().withNano(0);
+        }
+
+        CompanyShiftSetting shiftSetting = shiftSettingDAO != null ? shiftSettingDAO.getShiftSetting(companyId) : null;
+        LocalTime companyShiftEnd = (shiftSetting != null && shiftSetting.getShiftEndTime() != null)
+                ? shiftSetting.getShiftEndTime()
+                : CompanyShiftSetting.DEFAULT_SHIFT_END;
+
+        AttendanceDTO existing = attendanceDAO.getAttendanceByEmployeeAndDate(managerEmployeeId, date);
+
+        LocalTime checkInTime;
+        if (existing == null || existing.getCheckInTime() == null) {
+            if ("check-out".equalsIgnoreCase(action)) {
+                LocalTime shiftStart = (shiftSetting != null && shiftSetting.getShiftStartTime() != null)
+                        ? shiftSetting.getShiftStartTime()
+                        : CompanyShiftSetting.DEFAULT_SHIFT_START;
+                checkInTime = actionTime.isBefore(shiftStart) ? actionTime : shiftStart;
+            } else {
+                checkInTime = actionTime;
+            }
+        } else {
+            checkInTime = existing.getCheckInTime();
+        }
+
+        LocalTime checkOutTime = companyShiftEnd;
+        if (actionTime != null && actionTime.isAfter(checkOutTime)) {
+            checkOutTime = actionTime;
+        }
+        if (checkInTime != null && checkInTime.isAfter(checkOutTime)) {
+            checkOutTime = checkInTime;
+        }
+
+        BigDecimal totalHours = calculateWorkedHours(checkInTime, checkOutTime, shiftSetting);
+
+        if (existing == null) {
+            long id = attendanceDAO.insertCheckIn(managerEmployeeId, companyId, date, checkInTime, "Present");
+            attendanceDAO.updateCheckOut(id, checkOutTime, totalHours, "Present");
+        } else {
+            if (existing.getCheckInTime() == null || !"Present".equalsIgnoreCase(existing.getStatus())) {
+                attendanceDAO.updateCheckIn(existing.getAttendanceId(), checkInTime, "Present");
+            }
+            attendanceDAO.updateCheckOut(existing.getAttendanceId(), checkOutTime, totalHours, "Present");
+        }
+    }
+
+    public void recordManagerAutoAttendanceOnSubordinateCheckIn(int companyId, int managerEmployeeId, LocalDate date, LocalTime actionTime) throws SQLException {
+        recordManagerAutoAttendance(companyId, managerEmployeeId, date, actionTime, "check-in");
+    }
+
+    public void recordManagerAutoAttendanceOnSubordinateCheckOut(int companyId, int managerEmployeeId, LocalDate date, LocalTime actionTime) throws SQLException {
+        recordManagerAutoAttendance(companyId, managerEmployeeId, date, actionTime, "check-out");
+    }
+
     public List<AttendanceDTO> getPersonalAttendance(int companyId, int employeeId, int month, int year) throws SQLException {
         requireEmployee(companyId, employeeId);
         List<AttendanceDTO> list = attendanceDAO.getPersonalAttendance(employeeId, month, year);
