@@ -285,9 +285,9 @@
         </div>
     </main>
 
-<script src="../js/attendance.js?v=<%= application.getResource("/js/attendance.js").openConnection().getLastModified() %>"></script>
+<script src="../js/manager/attendance.js?v=<%= application.getResource("/js/manager/attendance.js").openConnection().getLastModified() %>"></script>
 <%@ include file="/WEB-INF/views/common/import-modal.jspf" %>
-<script src="${pageContext.request.contextPath}/js/import-modal.js"></script>
+<script src="${pageContext.request.contextPath}/js/import/import-modal.js"></script>
 <script>
     document.getElementById('btnExportAttendance')?.addEventListener('click', function() {
         const departmentId = document.getElementById('deptFilter')?.value || '';
@@ -322,6 +322,6 @@
         });
     });
 </script>
-<script src="${pageContext.request.contextPath}/js/organization-shell.js?v=<%= application.getResource("/js/organization-shell.js").openConnection().getLastModified() %>" defer></script>
+<script src="${pageContext.request.contextPath}/js/companyadmin/organization-shell.js?v=<%= application.getResource("/js/companyadmin/organization-shell.js").openConnection().getLastModified() %>" defer></script>
 </body>
 </html>

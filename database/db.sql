@@ -30,11 +30,11 @@ CREATE TABLE Plans (
     PlanId INT IDENTITY(1,1) PRIMARY KEY,
     PlanName NVARCHAR(100) NOT NULL UNIQUE,
     MaxEmployees INT NULL,                          -- Legacy HR; không dùng để giới hạn tài khoản
-    MaxAccounts INT NOT NULL DEFAULT 20 CHECK (MaxAccounts = 20),
-    MaxManagers INT NOT NULL DEFAULT 3 CHECK (MaxManagers = 3),
+    MaxAccounts INT NOT NULL DEFAULT 20 CONSTRAINT CK_Plans_MaxAccounts_Positive CHECK (MaxAccounts >= 1),
+    MaxManagers INT NOT NULL DEFAULT 3 CONSTRAINT CK_Plans_MaxManagers_Positive CHECK (MaxManagers >= 1),
     Price DECIMAL(18,2) NOT NULL DEFAULT 59000.00 CHECK (Price >= 0),
     BillingCycle NVARCHAR(20) NOT NULL DEFAULT 'MONTHLY'
-        CHECK (BillingCycle = 'MONTHLY'),           -- Đơn vị giá tham chiếu, chưa quyết định hết hạn
+        CONSTRAINT CK_Plans_BillingCycle_Valid CHECK (BillingCycle IN ('MONTHLY', 'YEARLY')),
     IsActive BIT NOT NULL DEFAULT 1,
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     CONSTRAINT CK_Plans_MaxEmployees CHECK (MaxEmployees IS NULL OR MaxEmployees > 0)
@@ -640,77 +640,56 @@ CREATE INDEX IX_Employees_DepartmentId ON Employees(DepartmentId);
 
 -- Enforce each tenant's subscribed MaxAccounts limit for every Users insert/update.
 -- CompanyId NULL is reserved for platform accounts and is not part of a tenant quota.
+-- Only enabled, unlocked accounts consume a workspace's MaxAccounts quota.
 CREATE OR ALTER TRIGGER dbo.TR_Users_MaxAccounts
 ON dbo.Users
 AFTER INSERT, UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
+    DECLARE @AffectedCompanies TABLE(CompanyId INT PRIMARY KEY);
+    INSERT @AffectedCompanies(CompanyId)
+    SELECT CompanyId FROM (
+        SELECT CompanyId,SUM(CONVERT(BIGINT,CASE WHEN IsActive=1 AND IsLocked=0 THEN 1 ELSE 0 END)) Delta
+        FROM inserted WHERE CompanyId IS NOT NULL GROUP BY CompanyId
+        UNION ALL
+        SELECT CompanyId,-SUM(CONVERT(BIGINT,CASE WHEN IsActive=1 AND IsLocked=0 THEN 1 ELSE 0 END))
+        FROM deleted WHERE CompanyId IS NOT NULL GROUP BY CompanyId
+    ) changes GROUP BY CompanyId HAVING SUM(Delta)>0;
 
-    DECLARE @AffectedCompanies TABLE (
-        CompanyId INT NOT NULL PRIMARY KEY
-    );
-
-    INSERT INTO @AffectedCompanies (CompanyId)
-    SELECT CompanyId FROM inserted WHERE CompanyId IS NOT NULL
-    UNION
-    SELECT CompanyId FROM deleted WHERE CompanyId IS NOT NULL;
-
-    DECLARE @CompanyId INT;
-    DECLARE @LockResult INT;
-    DECLARE @Resource NVARCHAR(255);
-    DECLARE @AccountCount BIGINT;
-    DECLARE @MaxAccounts INT;
-
-    DECLARE CompanyQuotaCursor CURSOR LOCAL FAST_FORWARD FOR
-        SELECT CompanyId FROM @AffectedCompanies ORDER BY CompanyId;
-
+    DECLARE @CompanyId INT,@LockResult INT,@Resource NVARCHAR(255),@MaxAccounts INT,@AccountCount BIGINT;
+    DECLARE CompanyQuotaCursor CURSOR LOCAL FAST_FORWARD FOR SELECT CompanyId FROM @AffectedCompanies ORDER BY CompanyId;
     OPEN CompanyQuotaCursor;
     FETCH NEXT FROM CompanyQuotaCursor INTO @CompanyId;
-
-    WHILE @@FETCH_STATUS = 0
+    WHILE @@FETCH_STATUS=0
     BEGIN
-        SET @MaxAccounts = NULL;
-        SET @Resource = N'Users.MaxAccounts.Company.' + CONVERT(NVARCHAR(20), @CompanyId);
-        EXEC @LockResult = sys.sp_getapplock
-            @Resource = @Resource,
-            @LockMode = 'Exclusive',
-            @LockOwner = 'Transaction',
-            @LockTimeout = 10000;
-
-        IF @LockResult < 0
+        SET @Resource=N'Users.MaxAccounts.Company.'+CONVERT(NVARCHAR(20),@CompanyId);
+        EXEC @LockResult=sys.sp_getapplock @Resource=@Resource,@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=10000;
+        IF @LockResult<0
         BEGIN
             CLOSE CompanyQuotaCursor;
             DEALLOCATE CompanyQuotaCursor;
-            THROW 51160, 'Could not acquire the tenant account quota lock.', 1;
+            THROW 51160,'Could not acquire the tenant account quota lock.',1;
         END;
-
-        SELECT @MaxAccounts = p.MaxAccounts
-        FROM dbo.Subscriptions s WITH (UPDLOCK, HOLDLOCK)
-        INNER JOIN dbo.Plans p WITH (UPDLOCK, HOLDLOCK) ON p.PlanId = s.PlanId
-        WHERE s.CompanyId = @CompanyId;
-
+        SET @MaxAccounts=NULL;
+        SELECT @MaxAccounts=p.MaxAccounts FROM dbo.Subscriptions s WITH(UPDLOCK,HOLDLOCK)
+        JOIN dbo.Plans p WITH(UPDLOCK,HOLDLOCK) ON p.PlanId=s.PlanId WHERE s.CompanyId=@CompanyId;
         IF @MaxAccounts IS NULL
         BEGIN
             CLOSE CompanyQuotaCursor;
             DEALLOCATE CompanyQuotaCursor;
-            THROW 51161, 'A tenant account requires an active Subscription and Plan.', 1;
+            THROW 51161,'A tenant account requires a Subscription and Plan.',1;
         END;
-
-        SELECT @AccountCount = COUNT_BIG(*)
-        FROM dbo.Users WITH (UPDLOCK, HOLDLOCK, INDEX(IX_Users_CompanyId))
-        WHERE CompanyId = @CompanyId;
-
-        IF @AccountCount > @MaxAccounts
+        SELECT @AccountCount=COUNT_BIG(*) FROM dbo.Users WITH(UPDLOCK,HOLDLOCK,INDEX(IX_Users_CompanyId))
+        WHERE CompanyId=@CompanyId AND IsActive=1 AND IsLocked=0;
+        IF @AccountCount>@MaxAccounts
         BEGIN
             CLOSE CompanyQuotaCursor;
             DEALLOCATE CompanyQuotaCursor;
-            THROW 51162, 'The tenant account limit for its Subscription Plan has been reached.', 1;
+            THROW 51162,N'Đã đạt đến giới hạn của gói bạn đang dùng hiện tại',1;
         END;
-
         FETCH NEXT FROM CompanyQuotaCursor INTO @CompanyId;
     END;
-
     CLOSE CompanyQuotaCursor;
     DEALLOCATE CompanyQuotaCursor;
 END;

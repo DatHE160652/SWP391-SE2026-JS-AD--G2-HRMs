@@ -33,5 +33,5 @@
     .required { color:#b42318; }
     .form-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:24px; }
 </style>
-<script src="../js/leave.js?v=<%= application.getResource("/js/leave.js").openConnection().getLastModified() %>"></script>
+<script src="../js/manager/leave.js?v=<%= application.getResource("/js/manager/leave.js").openConnection().getLastModified() %>"></script>
 </body></html>

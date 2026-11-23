@@ -166,7 +166,7 @@
     </main>
 
 
-<script src="../js/employee.js?v=<%= application.getResource("/js/employee.js").openConnection().getLastModified() %>"></script>
-<script src="../js/payroll-notifications.js?v=<%= application.getResource("/js/payroll-notifications.js").openConnection().getLastModified() %>"></script>
+<script src="../js/companyadmin/employee.js?v=<%= application.getResource("/js/companyadmin/employee.js").openConnection().getLastModified() %>"></script>
+<script src="../js/companyadmin/payroll-notifications.js?v=<%= application.getResource("/js/companyadmin/payroll-notifications.js").openConnection().getLastModified() %>"></script>
 </body>
 </html>

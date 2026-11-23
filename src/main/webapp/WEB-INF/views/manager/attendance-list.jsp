@@ -149,6 +149,6 @@
         </div>
     </main>
 
-<script src="../js/attendance.js?v=<%= application.getResource("/js/attendance.js").openConnection().getLastModified() %>"></script>
+<script src="../js/manager/attendance.js?v=<%= application.getResource("/js/manager/attendance.js").openConnection().getLastModified() %>"></script>
 </body>
 </html>

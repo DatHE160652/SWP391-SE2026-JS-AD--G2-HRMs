@@ -1,0 +1,811 @@
+(() => {
+    'use strict';
+    const context = document.body.dataset.context || '';
+    const page = document.body.dataset.lifecycle;
+    const csrf = document.querySelector('meta[name="csrf-token"]').content;
+    const select = selector => document.querySelector(selector);
+    const escape = value => String(value ?? '').replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
+    const vietnamese = value => globalThis.HrmVietnamese?.label(value) ?? value;
+    const money = value => value == null ? HrmI18n.t('Chưa có dữ liệu') : new Intl.NumberFormat(HrmI18n.locale, {style:'currency',currency:'VND'}).format(value);
+    const initials = name => String(name || '?').trim().split(/\s+/).slice(-2).map(part => part[0]).join('').toUpperCase();
+    const empty = message => `<div class="lc-empty">${escape(message)}</div>`;
+    const badge = status => `<span class="lc-badge ${['Active','ACTIVE'].includes(status) ? 'active' : ''}">${escape(vietnamese(status))}</span>`;
+    const profileStatus = employee => employee.profileStatus || (employee.userId && employee.accountActive === true ? 'Active' : 'Inactive');
+    const profileStatusLabel = employee => HrmI18n.t(profileStatus(employee) === 'Active' ? 'Đang hoạt động' : 'Không hoạt động');
+    const canUseProfile = employee => employee?.status === 'Active' && profileStatus(employee) === 'Active';
+    const profileBadge = employee => `<span class="lc-badge ${profileStatus(employee) === 'Active' ? 'active' : ''}">${escape(profileStatusLabel(employee))}</span>`;
+    let toastTimer;
+    let employees = [];
+    let departments = [];
+    let currentEmployee = null;
+    const requestedTab = new URLSearchParams(location.search).get('tab');
+    let activeTab = ['info','organization','salary','history','audit','documents'].includes(requestedTab) ? requestedTab : 'info';
+    let detailRevision = 0;
+    let employeePage = 1;
+    let employeePageSize = 10;
+    const error = exception => { select('#lc-error').textContent = HrmI18n.t(exception.message || String(exception)); };
+    const toast = message => {
+        clearTimeout(toastTimer);
+        select('#lc-toast').textContent = HrmI18n.t(message);
+        toastTimer = setTimeout(() => { select('#lc-toast').textContent = ''; }, 4500);
+    };
+    async function api(path, values) {
+        const options = {headers:{Accept:'application/json'},credentials:'same-origin'};
+        if (values) {
+            options.method = 'POST';
+            options.body = globalThis.HrmLifecycleHttp.formBody(values, csrf);
+        }
+        const response = await fetch(context + path, options);
+        const result = await response.json().then(HrmI18n.response);
+        if (!response.ok || !result.success) {
+            const exception = new Error(result.message || HrmI18n.t('Không thể xử lý yêu cầu.'));
+            exception.fieldErrors = result.fieldErrors;
+            throw exception;
+        }
+        return result.data;
+    }
+    document.querySelectorAll('.lc-sidebar nav a').forEach(link => link.classList.toggle('active', link.pathname === location.pathname));
+    document.addEventListener('click', event => {
+        const button = event.target.closest('[data-close]');
+        if (button) button.closest('dialog').close();
+    });
+    document.addEventListener('click', async event => {
+        const button = event.target.closest('[data-copy-password]');
+        if (!button) return;
+        const dialog = button.closest('dialog');
+        const password = dialog.querySelector('.lc-password')?.textContent;
+        if (!dialog.open || !password) return;
+        const status = dialog.querySelector('.lc-copy-status');
+        button.disabled = true;
+        status.textContent = '';
+        try {
+            try {
+                if (!navigator.clipboard?.writeText) throw new Error(HrmI18n.t("Không có quyền sử dụng bộ nhớ tạm"));
+                await navigator.clipboard.writeText(password);
+            } catch (_) {
+                const field = document.createElement('textarea');
+                field.value = password;
+                field.readOnly = true;
+                field.className = 'lc-clipboard-fallback';
+                dialog.append(field);
+                try {
+                    field.select();
+                    if (!document.execCommand('copy')) throw new Error(HrmI18n.t("Không sao chép được"));
+                } finally { field.remove(); }
+            }
+            status.textContent = HrmI18n.t('Đã sao chép mật khẩu.');
+        } catch (_) {
+            status.textContent = HrmI18n.t('Không thể sao chép tự động. Bạn có thể chọn mật khẩu và sao chép thủ công.');
+        } finally {
+            button.disabled = false;
+            if (dialog.open && button.isConnected) button.focus();
+        }
+    });
+    document.querySelectorAll('dialog').forEach(dialog => dialog.addEventListener('close', () => {
+        const password = dialog.querySelector('.lc-password');
+        if (password && !dialog.open) password.textContent = '';
+    }));
+    function historyActorLabel(value) {
+        if (!value || ['Không ghi nhận','Chưa ghi nhận người thực hiện'].includes(value)) return HrmI18n.t('Chưa ghi nhận người thực hiện');
+        if (['System','SYSTEM'].includes(value)) return HrmI18n.t('Hệ thống');
+        return value;
+    }
+    function option(value, label) { return `<option value="${escape(value)}">${escape(vietnamese(label))}</option>`; }
+    function filteredEmployees() {
+        const query = select('#lc-search').value.trim().toLocaleLowerCase('vi');
+        const department = select('#lc-department-filter').value;
+        return employees.filter(employee => (!department || String(employee.departmentId) === department)
+            && `${employee.fullName} ${employee.employeeCode}`.toLocaleLowerCase('vi').includes(query));
+    }
+    function renderEmployees() {
+        const filtered = filteredEmployees();
+        const totalPages = Math.ceil(filtered.length / employeePageSize);
+        employeePage = Math.max(1,Math.min(employeePage,totalPages || 1));
+        const start = (employeePage - 1) * employeePageSize;
+        const visible = filtered.slice(start,start + employeePageSize);
+        select('#lc-count').textContent = `${filtered.length} / ${employees.length}`;
+        HrmPagination.render(select('#lc-employee-pagination'),{
+            total:filtered.length,page:employeePage,pageSize:employeePageSize,compact:true,idPrefix:'lc-page',
+            label:HrmI18n.t('Phân trang danh sách nhân viên'),onChange(page,pageSize) {
+                employeePage=page; employeePageSize=pageSize;
+                renderEmployees();
+                select('#lc-employees').scrollTop=0;
+            }
+        });
+        select('#lc-employees').innerHTML = visible.length ? visible.map(employee => `<div class="lc-employee ${currentEmployee?.employeeId === employee.employeeId ? 'selected' : ''}">
+            <button type="button" class="lc-select-employee" data-employee="${employee.employeeId}"><span class="lc-avatar">${escape(initials(employee.fullName))}</span>
+            <span><span class="lc-employee-name">${escape(employee.fullName)}</span><br><span class="lc-employee-code">${escape(employee.employeeCode)} · ${escape(employee.departmentName || HrmI18n.t('Chưa phân công'))}</span><br>
+            <span class="lc-employee-code"><i class="lc-status-dot ${profileStatus(employee) === 'Active' ? 'active' : ''}"></i>${escape(profileStatusLabel(employee))}</span></span></button></div>`).join('') : empty(HrmI18n.t('Không tìm thấy nhân viên'));
+    }
+    async function loadEmployees(preferredId) {
+        employees = await api('/employees');
+        const target = employees.find(employee => employee.employeeId === Number(preferredId)) || employees[0];
+        if (target) await chooseEmployee(target.employeeId);
+        else { currentEmployee = null; select('#lc-profile').innerHTML = empty(HrmI18n.t('Chưa có nhân viên. Thêm hồ sơ đầu tiên.')); }
+        renderEmployees();
+    }
+    async function chooseEmployee(employeeId) {
+        const revision = ++detailRevision;
+        const employee = await api(`/employees/detail?id=${employeeId}`);
+        if (revision !== detailRevision) return;
+        currentEmployee = employee;
+        const selectedIndex = filteredEmployees().findIndex(item => item.employeeId === employee.employeeId);
+        if (selectedIndex >= 0) employeePage = Math.floor(selectedIndex / employeePageSize) + 1;
+        const url = new URL(location.href);
+        url.searchParams.set('id', employeeId);
+        url.searchParams.set('tab', activeTab);
+        history.replaceState(null, '', url);
+        renderEmployees();
+        await renderProfile();
+    }
+    function fields(items) {
+        return `<div class="lc-fields">${items.map(([label,value]) => `<div><div class="lc-field-label">${escape(vietnamese(label))}</div><div class="lc-field-value">${escape(value == null || value === '' ? HrmI18n.t('Chưa có dữ liệu') : vietnamese(value))}</div></div>`).join('')}</div>`;
+    }
+    async function renderProfile() {
+        const employee = currentEmployee;
+        const revision = detailRevision;
+        select('#lc-profile').innerHTML = `<div class="lc-profile-head"><span class="lc-avatar large">${escape(initials(employee.fullName))}</span>
+            <div><h2>${escape(employee.fullName)}</h2><div class="lc-muted">${escape(employee.employeeCode)} · ${escape(employee.positionTitle || HrmI18n.t('Chưa có vị trí'))}</div><div class="lc-muted">${escape(employee.departmentName || HrmI18n.t('Chưa phân công'))}</div></div>
+            <div class="lc-profile-actions">${profileBadge(employee)}${HrmI18n.fragment("<div class=\"lc-actions\" style=\"margin-top:12px\"><button class=\"small secondary\" data-edit>Sửa hồ sơ</button><button class=\"small danger\" data-status>")}${employee.status === 'Active' ? HrmI18n.t('Ngừng làm việc') : HrmI18n.t('Kích hoạt')}${HrmI18n.fragment("</button></div></div></div>\n            <div class=\"lc-tabs\" role=\"tablist\" aria-label=\"Hồ sơ nhân viên\">")}${[['info',HrmI18n.t('Thông tin')],['organization',HrmI18n.t('Phân công & Cấp dưới')],['salary',HrmI18n.t('Lương & Phụ cấp')],['history',HrmI18n.t('Quá trình công tác')],['audit',HrmI18n.t('Lịch sử cập nhật')],['documents',HrmI18n.t('Tài liệu')]].map(([key,label]) => `<button role="tab" aria-selected="${activeTab === key}" data-profile-tab="${key}" class="${activeTab === key ? 'active' : ''}">${label}</button>`).join('')}</div><div class="lc-panel-body" id="lc-tab-content" role="tabpanel"></div>`;
+        select('#lc-profile [data-status]').disabled = employee.status === 'Active' && !canUseProfile(employee);
+        const container = select('#lc-tab-content');
+        if (activeTab === 'info') {
+            container.innerHTML = `${HrmI18n.fragment("<section class=\"lc-info-section\"><h3>Thông tin liên hệ</h3>")}${fields([[HrmI18n.t('Email công ty'),employee.email],[HrmI18n.t('Email đăng nhập'),employee.accountEmail || HrmI18n.t('Chưa cấp tài khoản')],[HrmI18n.t('Điện thoại'),employee.phone]])}${HrmI18n.fragment("</section>\n                <section class=\"lc-info-section\"><h3>Thông tin cá nhân</h3>")}${fields([[HrmI18n.t('Ngày sinh'),employee.dateOfBirth],[HrmI18n.t('Giới tính'),employee.gender],[HrmI18n.t('Số CCCD/CMND'),employee.identityNumber],[HrmI18n.t('Ngày cấp'),employee.identityIssuedDate],[HrmI18n.t('Nơi cấp'),employee.identityIssuedPlace],[HrmI18n.t('Địa chỉ thường trú'),employee.permanentAddress],[HrmI18n.t('Quê quán'),employee.hometown],[HrmI18n.t('Ngành học'),employee.major]])}${HrmI18n.fragment("</section>\n                <section class=\"lc-info-section\"><h3>Phân công tổ chức</h3>")}${fields([[HrmI18n.t('Phòng ban'),employee.departmentName],[HrmI18n.t('Chức danh hiện tại'),employee.positionTitle],[HrmI18n.t('Quản lý trực tiếp'),employee.managerName],[HrmI18n.t('Loại hợp đồng'),employeeContractLabel(employee)],[HrmI18n.t('Mã hợp đồng'),employee.contractCode || HrmI18n.t('Chưa có hợp đồng')]])}${HrmI18n.fragment("<p><button type=\"button\" class=\"secondary small\" data-profile-tab=\"organization\">Quản lý phân công và cấp dưới →</button></p><a href=\"")}${context}/lifecycle/contracts?employeeId=${employee.employeeId}${HrmI18n.fragment("\">Xem hợp đồng lao động →</a></section>")}`;
+            return;
+        }
+        container.innerHTML = HrmI18n.fragment('<div class="lc-spinner">Đang tải dữ liệu…</div>');
+        try {
+            if (activeTab === 'organization') {
+                container.classList.add('ea-details','lc-embedded-organization');
+                container.innerHTML = '<div id="message" class="message" role="status"></div>' + select('#lc-organization-template').innerHTML;
+                if (canUseProfile(employee)) container.insertAdjacentHTML('afterbegin',HrmI18n.fragment('<div class="lc-actions" style="margin-bottom:20px"><button type="button" class="secondary small" data-assign-organization>Phân công / Chuyển chức danh</button></div>'));
+                const form = container.querySelector('#organizationForm');
+                form.dataset.embedded = 'true';
+                FormValidation.init(form);
+                const manageTeamForm = container.querySelector('#manageTeamForm');
+                if (manageTeamForm) FormValidation.init(manageTeamForm);
+                await setupOrganizationForm(employee);
+                if (revision !== detailRevision || activeTab !== 'organization' || !form.isConnected) return;
+            } else if (activeTab === 'salary') {
+                const [records,allowances] = await Promise.all([
+                    api(`/lifecycle/api/compensation?employeeId=${employee.employeeId}`),
+                    api(`/lifecycle/api/allowance?employeeId=${employee.employeeId}`)
+                ]);
+                if (revision !== detailRevision || activeTab !== 'salary') return;
+                const effective = records.find(record => record.IsCurrent === 1);
+                const allowance=allowances[0];
+                container.innerHTML = (effective ? fields([[HrmI18n.t('Lương trước khấu trừ'),money(effective.BaseSalary)],[HrmI18n.t('Phụ cấp theo hợp đồng'),money(effective.TravelAllowance)]]) : empty(HrmI18n.t('Chưa có lương có hiệu lực')))
+                    + fields([[HrmI18n.t('Phụ cấp chức vụ (theo cấp trách nhiệm)'),allowance?.Amount != null ? money(allowance.Amount) : allowance ? HrmI18n.t('Chưa cấu hình phụ cấp có hiệu lực') : HrmI18n.t('Chưa có phân công tổ chức có hiệu lực')]]);
+                if (effective?.SourceContractId) container.innerHTML += `${HrmI18n.fragment("<p class=\"lc-form-hint\">Lương trước khấu trừ được đồng bộ từ <a href=\"")}${context}/lifecycle/contracts?employeeId=${employee.employeeId}${HrmI18n.fragment("\">hợp đồng ")}${escape(effective.ContractCode || effective.SourceContractId)}</a>.</p>`;
+                container.innerHTML += `${HrmI18n.fragment("<section class=\"lc-info-section\"><div class=\"lc-heading\"><h3>Lịch sử lương</h3><a class=\"small secondary\" href=\"")}${context}/lifecycle/contracts?employeeId=${employee.employeeId}${HrmI18n.fragment("\">Quản lý trong hợp đồng</a></div>")}${table([HrmI18n.t('Hiệu lực từ'),HrmI18n.t('Đến ngày'),HrmI18n.t('Lương trước khấu trừ'),HrmI18n.t('Phụ cấp chức vụ (lịch sử)'),HrmI18n.t('Nguồn'),HrmI18n.t('Lý do')], records.map(record => [record.EffectiveFrom,record.IsSuperseded ? HrmI18n.t('Thay thế trong ngày') : record.EffectiveTo || HrmI18n.t('Hiện tại'),money(record.BaseSalary),record.PositionAllowance == null ? {html:HrmI18n.fragment('<span title="Bản lương này chưa lưu mức phụ cấp tại thời điểm ghi lương; mức hiện hành nằm ở phía trên.">Không có dữ liệu lịch sử</span>')} : money(record.PositionAllowance),record.ContractCode || HrmI18n.t('Khởi tạo / Điều chỉnh'),vietnamese(record.Reason)]))}</section>`;
+            } else if (activeTab === 'history') {
+                const records = await api(`/employees/career-history?id=${employee.employeeId}`);
+                if (revision !== detailRevision || activeTab !== 'history') return;
+                container.innerHTML = records.length ? `<div class="lc-timeline" data-pagination="career-timeline">${records.map(record => `<article class="lc-event"><small>${escape(record.effectiveDate || record.recordedAt)}</small><h3>${escape(vietnamese(record.eventType))} ${badge(record.status)}</h3><p>${escape(record.newValue)}</p><small>${record.reason ? `${HrmI18n.fragment("Lý do: ")}${escape(vietnamese(record.reason))}<br>` : ''}${HrmI18n.fragment("Người thực hiện: ")}${escape(historyActorLabel(record.changedBy))}</small></article>`).join('')}</div>` : empty(HrmI18n.t('Chưa có lịch sử công tác'));
+                if (canUseProfile(employee)) container.insertAdjacentHTML('afterbegin',HrmI18n.fragment('<div class="lc-actions" style="margin-bottom:20px"><button type="button" class="secondary small" data-assign-organization>Phân công / Chuyển chức danh</button></div>'));
+            } else if (activeTab === 'audit') {
+                const audit = await api(`/employees/history?id=${employee.employeeId}`);
+                if (revision !== detailRevision || activeTab !== 'audit') return;
+                container.innerHTML = HrmI18n.fragment('<section><h3>Lịch sử cập nhật</h3>') + table([HrmI18n.t('Thời điểm'),HrmI18n.t('Thao tác'),HrmI18n.t('Người thực hiện'),HrmI18n.t('Trước thay đổi'),HrmI18n.t('Sau thay đổi')],audit.map(record => [record.createdAt,historyActionLabel(record.action),historyActorLabel(record.changedBy),{html:formatHistoryValue(record.oldValue)},{html:formatHistoryValue(record.newValue)}])) + '</section>';
+            } else {
+                const [records, docTypes] = await Promise.all([
+                    api(`/documents?employeeId=${employee.employeeId}`),
+                    api('/employees/document-update-periods?action=types').catch(() => [])
+                ]);
+                if (revision !== detailRevision || activeTab !== 'documents') return;
+                const typeOptions = `<option value="">${escape(HrmI18n.t('-- Chọn loại tài liệu --'))}</option>`
+                    + (docTypes || []).map(t => `<option value="${escape(t.typeName)}">${escape(t.typeName)}</option>`).join('');
+                container.innerHTML = `<form id="lc-upload" class="lc-form-grid"><input type="hidden" name="employeeId" value="${employee.employeeId}${HrmI18n.fragment("\"><label>Loại tài liệu *<select name=\"documentType\" required>")}${typeOptions}${HrmI18n.fragment("</select></label><label class=\"full\">Tệp PDF, Word, JPG, PNG (tối đa 10 MB)<input type=\"file\" name=\"file\" accept=\".pdf,.doc,.docx,.jpg,.png\" required></label><div><button type=\"submit\">↑ Tải tài liệu lên</button></div></form><div class=\"lc-info-section\" style=\"margin-top:24px\">")}${table([HrmI18n.t('Tài liệu'),HrmI18n.t('Loại tài liệu'),HrmI18n.t('Ngày tải'),HrmI18n.t('Trạng thái'),HrmI18n.t('Thao tác')], records.map(record => [record.documentName,record.documentType || '—',record.uploadedDate,vietnamese(record.status),{html:`${record.status === 'Active' ? `<a href="${context}/documents/download?id=${record.documentId}&inline=true" target="_blank" rel="noopener">Xem</a> · <a href="${context}/documents/download?id=${record.documentId}${HrmI18n.fragment("\">Tải xuống</a>")}` : ''} <button type="button" class="small secondary" data-document="${record.documentId}" data-document-action="${record.status === 'Active' ? 'deactivate' : 'activate'}">${record.status === 'Active' ? HrmI18n.t('Lưu trữ') : HrmI18n.t('Khôi phục')}</button>`}]))}</div>`;
+            }
+        } catch (exception) { if (revision === detailRevision && container.isConnected) container.innerHTML = empty(exception.message); }
+    }
+    function employeeCodeFields(form) {
+        const editing = Boolean(form.elements.employeeId.value);
+        form.elements.employeeCode.disabled = editing;
+        form.elements.employeeCode.required = false;
+        form.elements.employeeCode.placeholder = HrmI18n.t('Nhập mã đang dùng tại công ty');
+        FormValidation.setError(form, 'employeeCode', '');
+    }
+    async function employeeModal(editing) {
+        const form = select('#lc-employee-form');
+        form.reset();
+        for (const element of form.elements) element.disabled = false;
+        select('#lc-form-error').textContent = '';
+        select('#lc-modal-title').textContent = editing ? HrmI18n.t('Chỉnh sửa hồ sơ') : HrmI18n.t('Thêm nhân viên');
+        select('#lc-save').textContent = editing ? HrmI18n.t('Lưu thay đổi') : HrmI18n.t('Thêm nhân viên');
+        if (editing) for (const [key,value] of Object.entries(currentEmployee)) if (form.elements.namedItem(key)) form.elements.namedItem(key).value = value ?? '';
+        if (editing) {
+            ['employeeCode','status'].forEach(name => { form.elements[name].disabled = true; });
+        }
+        employeeCodeFields(form);
+        const today = new Date().toLocaleDateString('en-CA');
+        form.elements.dateOfBirth.max = today;
+        form.elements.identityIssuedDate.max = today;
+        form.elements.identityNumber.required = !editing;
+        select('#lc-employee-modal').showModal();
+    }
+    async function initEmployees() {
+        bindActionForm();
+        departments = await api('/departments');
+        select('#lc-department-filter').innerHTML += departments.map(department => option(department.departmentId,department.departmentName)).join('');
+        const resetEmployeePage = () => { employeePage = 1; renderEmployees(); select('#lc-employees').scrollTop = 0; };
+        select('#lc-search').addEventListener('input',resetEmployeePage);
+        select('#lc-department-filter').addEventListener('change',resetEmployeePage);
+        select('#lc-employees').addEventListener('click',event => { const target = event.target.closest('[data-employee]'); if (target) chooseEmployee(Number(target.dataset.employee)).catch(error); });
+        select('#lc-add').addEventListener('click',() => employeeModal(false).catch(error));
+        select('#lc-export-employees')?.addEventListener('click', () => {
+            const dept = select('#lc-department-filter')?.value || '';
+            const q = select('#lc-search')?.value || '';
+            const params = new URLSearchParams();
+            if (dept) params.set('departmentId', dept);
+            if (q) params.set('keyword', q);
+            window.location.href = `${context}/employees/export?${params.toString()}`;
+        });
+        select('#lc-employee-form').addEventListener('submit',async event => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            if (!FormValidation.validate(form)) return;
+            const values = new FormData(form);
+            const editing = Boolean(values.get('employeeId'));
+            if (editing) ['employeeCode','departmentId','positionId','status'].forEach(name => values.set(name,currentEmployee[name] ?? ''));
+            const button = select('#lc-save'); button.disabled = true;
+            try {
+                const employee = await api(editing ? '/employees/update' : '/employees/create',values);
+                select('#lc-employee-modal').close();
+                select('#lc-search').value = ''; select('#lc-department-filter').value = '';
+                await loadEmployees(employee.employeeId);
+                toast(editing ? HrmI18n.t('Đã cập nhật hồ sơ') : HrmI18n.t('Đã thêm nhân viên'));
+            } catch (exception) {
+                select('#lc-form-error').textContent = FormValidation.showErrors(form,exception) ? '' : exception.message;
+            } finally { button.disabled = false; }
+        });
+        select('#lc-profile').addEventListener('click',async event => {
+            try {
+                const tab = event.target.closest('[data-profile-tab]');
+                if (tab) {
+                    activeTab = tab.dataset.profileTab;
+                    const url = new URL(location.href);
+                    url.searchParams.set('tab',activeTab);
+                    history.replaceState(null,'',url);
+                    await renderProfile();
+                }
+                if (event.target.closest('[data-edit]')) await employeeModal(true);
+                if (event.target.closest('[data-assign-organization]')) await organizationAssignmentModal();
+                if (event.target.closest('[data-status]')) {
+                    if (currentEmployee.status === 'Active' && !canUseProfile(currentEmployee)) throw new Error(HrmI18n.t('Hồ sơ không hoạt động. Vui lòng tạo hoặc mở lại tài khoản trước.'));
+                    if (currentEmployee.status === 'Active') {
+                        const reason = await AppDialog.prompt(HrmI18n.t('Lý do ngừng làm việc (sẽ kết thúc phân công, xử lý hợp đồng và khóa tài khoản):'));
+                        if (!reason?.trim()) return;
+                        await api('/lifecycle/api/terminate',{employeeId:currentEmployee.employeeId,reason});
+                    } else {
+                        const reason = await AppDialog.prompt(HrmI18n.t('Kích hoạt lại hồ sơ nhân viên. Tài khoản nhân viên và phân công được quản lý riêng.'), {
+                            title:HrmI18n.t('Kích hoạt lại nhân viên'), label:HrmI18n.t('Lý do kích hoạt lại'), placeholder:HrmI18n.t('Nhập lý do kích hoạt lại...')
+                        });
+                        if (!reason?.trim()) return;
+                        await api('/employees/activate',{employeeId:currentEmployee.employeeId,reason});
+                    }
+                    await loadEmployees(currentEmployee.employeeId); toast(HrmI18n.t('Đã cập nhật trạng thái'));
+                }
+                const documentButton = event.target.closest('[data-document]');
+                if (documentButton) { await api(`/documents/${documentButton.dataset.documentAction}`,{documentId:documentButton.dataset.document}); await renderProfile(); toast(HrmI18n.t('Đã cập nhật tài liệu')); }
+            } catch (exception) { error(exception); }
+        });
+        select('#lc-profile').addEventListener('submit',async event => {
+            if (event.target.id !== 'lc-upload') return;
+            event.preventDefault();
+            const button = event.target.querySelector('button'); button.disabled = true;
+            try {
+                const values = new FormData(event.target);
+                const file = values.get('file');
+                if (file.size>10*1024*1024) throw new Error(HrmI18n.t('Tệp không được vượt quá 10 MB.'));
+                await api('/documents/upload',values); await renderProfile(); toast(HrmI18n.t('Đã tải tài liệu lên'));
+            } catch (exception) { error(exception); button.disabled = false; }
+        });
+        document.addEventListener('employee-organization-updated', async event => {
+            if (Number(event.detail.employeeId) !== currentEmployee?.employeeId) return;
+            try { await loadEmployees(currentEmployee.employeeId); toast(HrmI18n.t('Đã cập nhật phân công')); } catch (exception) { error(exception); }
+        });
+        const requested = new URLSearchParams(location.search).get('id');
+        await loadEmployees(requested);
+        if (new URLSearchParams(location.search).get('add')==='1') await employeeModal(false);
+        if (location.pathname.endsWith('/employee-form')) await employeeModal(Boolean(requested));
+    }
+    function table(headers, rows, paginationKey = headers.join('|')) {
+        if (!rows.length) return empty(HrmI18n.t('Chưa có dữ liệu'));
+        return `<div class="lc-table-wrap"><table data-pagination="${escape(paginationKey)}"><thead><tr>${headers.map(header => `<th>${escape(header)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(value => `<td>${value && typeof value === 'object' && 'html' in value ? value.html : escape(value ?? '—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    }
+    let actionHandler;
+    function bindActionForm() {
+        select('#lc-action-form').addEventListener('submit',async event => {
+            event.preventDefault();
+            if (!actionHandler) return;
+            const form = event.currentTarget;
+            const button = select('#lc-action-save'); button.disabled = true;
+            try { await actionHandler(new FormData(form)); select('#lc-action-modal').close(); }
+            catch (exception) { select('#lc-action-error').textContent = FormValidation.showErrors(form,exception) ? '' : exception.message; }
+            finally { button.disabled = false; }
+        });
+    }
+    async function organizationAssignmentModal() {
+        if (!canUseProfile(currentEmployee)) throw new Error(HrmI18n.t('Hồ sơ không hoạt động. Không thể phân công phòng ban hoặc chức danh.'));
+        const [positions,levels,directReports] = await Promise.all([
+            api('/positions?activeOnly=true'),
+            api('/responsibility-levels'),
+            api('/employees/direct-reports?id='+encodeURIComponent(currentEmployee.employeeId)).catch(()=>[])
+        ]);
+        const availableForAssignment=position=>{
+            if (String(position.positionId)===String(currentEmployee.positionId)) return true;
+            const level=levels.find(item=>String(item.responsibilityLevelId)===String(position.responsibilityLevelId));
+            const employee=['EMP','EMPLOYEE'].includes(String(level?.levelCode || '').trim().toUpperCase())
+                || String(level?.levelName || '').trim().toUpperCase()==='EMPLOYEE';
+            const manager=!employee && (position.canManageEmployees===true || String(level?.levelCode || '').trim().toUpperCase()==='MANAGER'
+                || String(level?.levelName || '').trim().toUpperCase()==='MANAGER');
+            return !manager || position.assignmentOccupied!==true;
+        };
+        const fieldsHtml = HrmI18n.fragment('<label class="full">Phòng ban *<select name="departmentId" required>')
+            + option('',HrmI18n.t('Chọn phòng ban')) + departments.filter(item=>item.isActive!==false).map(item=>option(item.departmentId,item.departmentName)).join('')+'</select></label>'
+            + HrmI18n.fragment('<label class="full">Chức danh *<select name="positionId" required></select></label>')
+            + HrmI18n.fragment('<div class="full"><label>Vai trò theo chức danh</label><span data-assignment-role class="lc-badge"></span></div>')
+            + HrmI18n.fragment('<label class="full">Quản lý trực tiếp<select name="managerId"></select></label>')
+            + '<div data-direct-reports-notice class="full lc-muted" style="padding:10px 12px;border-radius:8px;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa" hidden></div>'
+            + HrmI18n.fragment('<p class="full lc-muted">Lưu sẽ áp dụng ngay, đồng bộ vai trò Employee/Manager và giữ lịch sử. Đề xuất cũ chưa áp dụng (nếu có) sẽ được ghi nhận là đã bị thay thế. Tài khoản Admin Company/HR được giữ nguyên quyền.</p>');
+        actionModal(HrmI18n.t('Phân công / Chuyển chức danh'),fieldsHtml,async values=>{
+            values.set('employeeId',currentEmployee.employeeId);
+            values.set('managerAction',values.get('managerId')?'ASSIGN':'REMOVE');
+            await api('/employees/assign-organization',values);
+            await loadEmployees(currentEmployee.employeeId);
+            toast(HrmI18n.t('Đã cập nhật phân công và vai trò theo chức danh.'));
+        });
+        const form=select('#lc-action-form');
+        let departmentRevision=0;
+        let availableManagers=[];
+        const syncPosition=()=>{
+            const position=positions.find(item=>String(item.positionId)===form.elements.positionId.value);
+            const level=levels.find(item=>String(item.responsibilityLevelId)===String(position?.responsibilityLevelId));
+            const employeeLevel=['EMP','EMPLOYEE'].includes(String(level?.levelCode || '').trim().toUpperCase())
+                || String(level?.levelName || '').trim().toUpperCase()==='EMPLOYEE';
+            const manager=position && !employeeLevel && (position.canManageEmployees===true
+                || String(level?.levelCode || '').trim().toUpperCase()==='MANAGER'
+                || String(level?.levelName || '').trim().toUpperCase()==='MANAGER');
+            form.querySelector('[data-assignment-role]').textContent=position?(manager?'Manager':'Employee'):HrmI18n.t('Chưa chọn chức danh');
+            form.elements.managerId.replaceChildren(new Option(HrmI18n.t('Không có quản lý trực tiếp'),''));
+            const matching=!position ? [] : (position.reportsToPositionId == null ? availableManagers : availableManagers.filter(member=>String(member.positionId)===String(position.reportsToPositionId)));
+            if (!manager) for (const member of matching)
+                form.elements.managerId.add(new Option(member.fullName+' · '+member.positionTitle,member.employeeId));
+            form.elements.managerId.disabled=Boolean(manager);
+            if (!manager && matching.some(member=>member.employeeId===currentEmployee.managerId))
+                form.elements.managerId.value=currentEmployee.managerId;
+            const notice=form.querySelector('[data-direct-reports-notice]');
+            if (notice) {
+                const willDetach = Array.isArray(directReports) && directReports.length > 0 && position && (
+                    !manager
+                    || String(form.elements.departmentId.value) !== String(currentEmployee.departmentId)
+                    || directReports.some(report => {
+                        const reportPos = positions.find(item => String(item.positionId) === String(report.positionId));
+                        return reportPos?.reportsToPositionId != null && String(reportPos.reportsToPositionId) !== String(position.positionId);
+                    })
+                );
+                notice.hidden = !willDetach;
+                notice.textContent = willDetach
+                    ? `Nhân viên này đang quản lý trực tiếp ${directReports.length} cấp dưới. Khi lưu thay đổi, hệ thống sẽ tự động gỡ quản lý trực tiếp của các cấp dưới cũ (để trống quản lý để phân công lại sau).`
+                    : '';
+            }
+        };
+        const syncDepartment=async()=>{
+            const revision=++departmentRevision;
+            select('#lc-action-save').disabled=true;
+            form.elements.positionId.innerHTML=option('',HrmI18n.t('Chọn chức danh'))+positions.filter(item=>String(item.departmentId)===form.elements.departmentId.value && availableForAssignment(item))
+                .map(item=>option(item.positionId,item.positionTitle+' · '+item.responsibilityLevelName)).join('');
+            if (String(currentEmployee.departmentId)===form.elements.departmentId.value)
+                form.elements.positionId.value=currentEmployee.positionId || '';
+            availableManagers=[]; syncPosition();
+            try {
+                const members=form.elements.departmentId.value?await api('/departments/members?departmentId='+form.elements.departmentId.value):[];
+                if (revision!==departmentRevision) return;
+                availableManagers=members.filter(member=>member.canManageTeam===true && member.employeeId!==currentEmployee.employeeId
+                    && String(member.departmentId)===form.elements.departmentId.value);
+                syncPosition();
+                select('#lc-action-error').textContent='';
+            } catch(exception) {
+                if (revision===departmentRevision) select('#lc-action-error').textContent=exception.message;
+                return;
+            }
+            if (revision===departmentRevision) select('#lc-action-save').disabled=false;
+        };
+        form.elements.departmentId.value=currentEmployee.departmentId || '';
+        form.elements.departmentId.addEventListener('change',syncDepartment);
+        form.elements.positionId.addEventListener('change',syncPosition);
+        await syncDepartment();
+    }
+    function actionModal(title, fieldsHtml, handler) {
+        select('#lc-action-title').textContent = title;
+        select('#lc-action-fields').innerHTML = fieldsHtml;
+        FormValidation.init(select('#lc-action-form'));
+        select('#lc-action-error').textContent = '';
+        select('#lc-action-save').hidden = !handler;
+        select('#lc-action-save').disabled = false;
+        select('#lc-action-save').textContent = HrmI18n.t('Lưu');
+        actionHandler = handler;
+        select('#lc-action-modal').showModal();
+    }
+    function input(label, name, type, value, required = false) {
+        return `<label>${escape(label)}<input name="${name}" type="${type}" value="${escape(value ?? '')}" ${required ? 'required' : ''} ${type === 'number' ? 'min="0" step="0.01"' : ''}></label>`;
+    }
+    let records = [];
+    let contractEmployeeId = null;
+    const contractStatuses = ['DRAFT','SCHEDULED','ACTIVE','EXPIRED','TERMINATED','CANCELLED'];
+    const contractTypes = option('PROBATION',HrmI18n.t('Thử việc')) + option('FIXED_TERM',HrmI18n.t('Có thời hạn')) + option('INDEFINITE',HrmI18n.t('Không xác định thời hạn'));
+    async function allowanceSettings() {
+        const [types,allLevels] = await Promise.all([api('/lifecycle/api/allowance-types'),api('/responsibility-levels')]);
+        const levels = allLevels.filter(level => level.isActive);
+        const typeForm = type => `<form class="lc-form-grid" data-allowance-settings novalidate><input type="hidden" name="allowanceTypeId" value="${escape(type?.AllowanceTypeId || '')}"><label>${HrmI18n.t('Tên loại phụ cấp *')}<input name="typeName" required maxlength="150" value="${escape(type?.TypeName || '')}"></label><label>${HrmI18n.t('Trạng thái')}<select name="active">${option('true',HrmI18n.t('Đang sử dụng'))}${option('false',HrmI18n.t('Ngừng sử dụng'))}</select></label><h4 class="full">${HrmI18n.t('Mức cố định theo cấp trách nhiệm (VND)')}</h4>${levels.map(level => {
+            const amount = type?.LevelAmounts?.find(rate => rate.ResponsibilityLevelId === level.responsibilityLevelId)?.Amount ?? '0';
+            return `<label><input type="hidden" name="responsibilityLevelId" value="${escape(level.responsibilityLevelId)}">${escape(level.levelName)} *<input name="levelAmount" data-validation-label="${escape(level.levelName)}" type="number" required min="0" step="0.01" value="${escape(amount)}"></label>`;
+        }).join('') || `<p class="full lc-form-hint">${HrmI18n.t('Hãy tạo cấp trách nhiệm trước khi cấu hình mức phụ cấp.')}</p>`}<div class="full lc-actions"><button type="submit" ${levels.length ? '' : 'disabled'}>${type ? HrmI18n.t('Lưu thay đổi') : HrmI18n.t('Thêm loại phụ cấp')}</button></div></form>`;
+        select('#lc-allowance-settings-list').innerHTML = `${types.length ? types.map(typeForm).join('<hr>') : empty(HrmI18n.t('Công ty chưa cấu hình loại phụ cấp.'))}<hr><h3>${HrmI18n.t('Thêm loại phụ cấp')}</h3>${typeForm(null)}`;
+        select('#lc-allowance-settings-list').querySelectorAll('form').forEach((form,index) => {
+            form.elements.active.value = types[index]?.IsActive === false ? 'false' : 'true';
+            FormValidation.init(form);
+        });
+        select('#lc-allowance-settings-error').textContent = '';
+        const dialog = select('#lc-allowance-settings');
+        if (!dialog.open) dialog.showModal();
+    }
+    function contractAllowanceText(record) {
+        if (record.Allowances?.length) return record.Allowances.map(line => `${line.TypeName}: ${money(line.Amount)}`).join('; ');
+        return record.TravelAllowance == null ? HrmI18n.t('Chưa khai báo') : money(record.TravelAllowance);
+    }
+    function canAddContractHardCopy(record) {
+        return ['ACTIVE','EXPIRED','TERMINATED'].includes(record.Status) && !record.HardCopies?.length;
+    }
+    function addContractHardCopyModal(record) {
+        actionModal(HrmI18n.t('Bổ sung hợp đồng bản cứng'),`<p class="full"><strong>${escape(record.ContractCode)}</strong> · ${escape(record.FullName)}</p><label class="full">${HrmI18n.t('Hợp đồng bản cứng *')}<input type="file" name="contractFile" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" required><small>${HrmI18n.t('File PDF, Word hoặc ảnh JPG/JPEG, PNG, tối đa 10 MB.')}</small></label>`,async values => {
+            values.set('contractId',record.ContractId);
+            await api('/lifecycle/api/contracts/hard-copy',values);
+            await refreshResource();
+            toast(HrmI18n.t('Đã bổ sung hợp đồng bản cứng'));
+        });
+    }
+    function contractHardCopyLinks(record) {
+        const copies = record?.HardCopies || [];
+        return `<section class="full"><h3>${HrmI18n.t('Hợp đồng bản cứng')}</h3>${copies.length ? copies.map(copy => `<div class="lc-actions"><span>${escape(copy.FileName)}</span><a href="${context}/documents/download?id=${encodeURIComponent(copy.DocumentId)}&inline=true" target="_blank" rel="noopener">${HrmI18n.t('Xem')}</a><a href="${context}/documents/download?id=${encodeURIComponent(copy.DocumentId)}">${HrmI18n.t('Tải xuống')}</a></div>`).join('') : `<p class="lc-form-hint">${HrmI18n.t('Chưa tải lên hợp đồng bản cứng.')}</p>`}</section>`;
+    }
+    async function contractModal(record, renewal = false, signedExisting = false, employeeId = null) {
+        const fixedEmployeeId = employeeId || (select('#lc-employee-contracts')?.open ? record?.EmployeeId : null);
+        const fixedEmployee = fixedEmployeeId && employees.find(employee => String(employee.employeeId) === String(fixedEmployeeId));
+        if (fixedEmployeeId && !fixedEmployee) throw new Error(HrmI18n.t('Không tìm thấy nhân viên'));
+        const targetProfile = fixedEmployee || employees.find(employee => employee.employeeId === record?.EmployeeId);
+        if (targetProfile && !canUseProfile(targetProfile)) throw new Error(HrmI18n.t('Hồ sơ không hoạt động. Không thể tạo hoặc ký hợp đồng.'));
+        const employeeField = fixedEmployee
+            ? `<input type="hidden" name="employeeId" value="${escape(fixedEmployee.employeeId)}"><label class="full">${HrmI18n.t('Nhân viên')}<input value="${escape(`${fixedEmployee.fullName} · ${fixedEmployee.employeeCode}`)}" readonly></label>`
+            : null;
+        const allowanceFields = `<section class="full" data-contract-allowances><h3>${HrmI18n.t('Phụ cấp theo cấp trách nhiệm')}</h3><div data-allowance-preview></div><p class="lc-form-hint">${HrmI18n.t('Mức phụ cấp được lấy tự động theo cấp trách nhiệm tại ngày bắt đầu hợp đồng và không thể sửa trên hợp đồng.')}</p></section>`;
+        const hardCopyField = `<label class="full">${HrmI18n.t('Hợp đồng bản cứng')}<input type="file" name="contractFile" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"><small>${HrmI18n.t('File PDF, Word hoặc ảnh JPG/JPEG, PNG, tối đa 10 MB. Có thể bổ sung sau nếu hợp đồng chưa có bản cứng.')}</small></label>${record && !renewal && record.HardCopies?.length ? contractHardCopyLinks(record) : ''}`;
+        const useDuration = !record || renewal;
+        const durationFields = `<input type="hidden" name="durationBased" value="true"><label data-contract-duration>${HrmI18n.t('Thời hạn hợp đồng *')}<input name="duration" type="number" min="1" step="1" required></label><label data-contract-duration>${HrmI18n.t('Đơn vị *')}<select name="durationUnit" required>${option('MONTHS',HrmI18n.t('Tháng'))}${option('YEARS',HrmI18n.t('Năm'))}</select></label>`;
+        const employeeOptions = employees.filter(canUseProfile).map(employee => option(employee.employeeId,`${employee.fullName} · ${employee.employeeCode}`)).join('');
+        const fieldsHtml = `${employeeField || `${HrmI18n.fragment("<label class=\"full\">Nhân viên *<select name=\"employeeId\" required>")}${option('',HrmI18n.t('Chọn nhân viên'))}${employeeOptions}</select></label>`}
+            ${input(HrmI18n.t('Mã hợp đồng *'),'contractCode','text',renewal ? '' : record?.ContractCode,true)}${HrmI18n.fragment("<label>Loại hợp đồng *<select name=\"contractType\">")}${contractTypes}</select></label>
+            ${input(HrmI18n.t('Ngày bắt đầu *'),'startDate','date',renewal && record?.EndDate ? nextDay(record.EndDate) : record?.StartDate,true)}${useDuration ? durationFields : input(HrmI18n.t('Ngày kết thúc'),'endDate','date',record?.EndDate)}${HrmI18n.fragment("\n            <h3 class=\"full\">Lương &amp; Phụ cấp theo hợp đồng</h3>")}${input(HrmI18n.t('Lương trước khấu trừ *'),'grossSalary','number',record?.GrossSalary,true)}${allowanceFields}${signedExisting ? `${input(HrmI18n.t('Ngày ký thực tế *'),'signedDate','date','',true)}${HrmI18n.fragment("<label class=\"full\">Xử lý lương<select name=\"synchronizeSalary\">")}${option('false',HrmI18n.t('Giữ nguyên lịch sử lương hiện có (khuyến nghị)'))}${option('true',HrmI18n.t('Đồng bộ lương từ ngày bắt đầu hợp đồng'))}${HrmI18n.fragment("</select></label><p class=\"full lc-form-hint\">Ghi nhận hợp đồng đã ký ngoài hệ thống, không phải ký mới hay gia hạn. Trạng thái tự xác định theo thời hạn. Mặc định chỉ lưu lương và các khoản phụ cấp trên hợp đồng, không sửa lịch sử lương. Chỉ chọn đồng bộ khi cần khởi tạo lương: lịch lương phát sinh sau đó hoặc kỳ lương đã duyệt sẽ chặn thao tác. Hợp đồng hết hạn không được đồng bộ lương. Nếu hợp đồng đã có trên hệ thống, hãy dùng bản ghi hiện có. Có thể tải bản scan ngay bên dưới.</p>")}` : ''}${HrmI18n.fragment("<label class=\"full\">Ghi chú<textarea name=\"notes\" maxlength=\"1000\">")}${escape(renewal ? `${HrmI18n.fragment("Gia hạn hợp đồng ")}${record.ContractCode}` : record?.Notes || '')}</textarea></label>${hardCopyField}`;
+        actionModal(signedExisting ? HrmI18n.t('Ghi nhận hợp đồng đã ký') : renewal ? HrmI18n.t('Gia hạn bằng hợp đồng mới') : record ? HrmI18n.t('Chỉnh sửa hợp đồng nháp') : HrmI18n.t('Tạo hợp đồng'), fieldsHtml, async values => {
+            if (record && !renewal) { values.set('contractId',record.ContractId); values.set('version',record.Version); }
+            if (fixedEmployeeId) values.set('employeeId',fixedEmployeeId);
+            if (useDuration) values.set('endDate', contractEndDate(values.get('contractType'), values.get('startDate'), values.get('duration'), values.get('durationUnit')));
+            values.set('creationMode',signedExisting ? 'SIGNED_EXISTING' : 'DRAFT');
+            await api('/lifecycle/api/contracts/save',values);
+            await refreshResource();
+            toast(signedExisting ? HrmI18n.t('Đã ghi nhận hợp đồng đã ký theo thời hạn thực tế') : HrmI18n.t('Đã lưu hợp đồng nháp; Lương trước khấu trừ sẽ đồng bộ khi kích hoạt'));
+        });
+        select('#lc-action-form').elements.employeeId.value = fixedEmployeeId || record?.EmployeeId || '';
+        select('#lc-action-form').elements.contractType.value = record?.ContractType || 'FIXED_TERM';
+        select('#lc-action-form').elements.contractCode.maxLength = 60;
+        const allowanceForm = select('#lc-action-form');
+        const preview = allowanceForm.querySelector('[data-allowance-preview]');
+        let previewRevision = 0;
+        const refreshAllowancePreview = async () => {
+            const revision = ++previewRevision;
+            const employee = allowanceForm.elements.employeeId.value;
+            const start = allowanceForm.elements.startDate.value;
+            if (!employee || !start) {
+                preview.textContent = HrmI18n.t('Chọn nhân viên và ngày bắt đầu để xem phụ cấp theo cấp trách nhiệm.');
+                return;
+            }
+            preview.textContent = HrmI18n.t('Đang tải…');
+            try {
+                const policy = await api(`/lifecycle/api/allowance-preview?employeeId=${encodeURIComponent(employee)}&startDate=${encodeURIComponent(start)}`);
+                if (revision !== previewRevision || !preview.isConnected) return;
+                preview.innerHTML = `<p>${HrmI18n.t('Cấp trách nhiệm')}: <strong>${escape(policy.LevelName || HrmI18n.t('Chưa phân công'))}</strong></p>${policy.Warning ? `<p class="lc-alert" role="alert">${escape(policy.Warning)}</p>` : ''}${policy.Allowances.length ? fields(policy.Allowances.map(line => [line.TypeName,line.Amount == null ? HrmI18n.t('Chưa cấu hình') : money(line.Amount)])) : empty(HrmI18n.t('Không có phụ cấp đang áp dụng.'))}`;
+            } catch (exception) {
+                if (revision === previewRevision && preview.isConnected) preview.textContent = exception.message;
+            }
+        };
+        allowanceForm.elements.employeeId.addEventListener('change',refreshAllowancePreview);
+        allowanceForm.elements.startDate.addEventListener('change',refreshAllowancePreview);
+        await refreshAllowancePreview();
+        if (useDuration) {
+            const form = select('#lc-action-form');
+            const syncDuration = () => {
+                const indefinite = form.elements.contractType.value === 'INDEFINITE';
+                form.querySelectorAll('[data-contract-duration]').forEach(label => { label.hidden = indefinite; });
+                for (const name of ['duration','durationUnit']) {
+                    form.elements[name].disabled = indefinite;
+                    form.elements[name].required = !indefinite;
+                    FormValidation.setError(form, name, '');
+                }
+            };
+            form.elements.contractType.addEventListener('change', syncDuration);
+            syncDuration();
+        }
+        if (signedExisting) {
+            const today = new Date();
+            const dateLimit = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+            select('#lc-action-form').elements.startDate.max = dateLimit;
+            select('#lc-action-form').elements.signedDate.max = dateLimit;
+        }
+    }
+    function contractEndDate(type, startDate, duration, unit) {
+        if (type === 'INDEFINITE') return '';
+        const amount = Number(duration);
+        if (!/^[1-9][0-9]*$/.test(duration || '') || !Number.isSafeInteger(amount)) {
+            throw new Error(HrmI18n.t('Thời hạn hợp đồng phải là số nguyên lớn hơn 0.'));
+        }
+        if (!['MONTHS','YEARS'].includes(unit)) throw new Error(HrmI18n.t('Vui lòng chọn thời hạn theo tháng hoặc năm.'));
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate || '')) throw new Error(HrmI18n.t('Vui lòng nhập ngày bắt đầu.'));
+        const start = new Date(`${startDate}T00:00:00Z`);
+        if (!Number.isFinite(start.getTime()) || start.toISOString().slice(0,10) !== startDate) throw new Error(HrmI18n.t('Vui lòng nhập ngày bắt đầu hợp lệ.'));
+        const months = unit === 'YEARS' ? amount * 12 : amount;
+        if (months > 120000) throw new Error(HrmI18n.t('Thời hạn hợp đồng vượt quá giới hạn ngày cho phép.'));
+        const end = new Date(start);
+        end.setUTCDate(1);
+        end.setUTCMonth(end.getUTCMonth() + months);
+        const lastDay = new Date(end);
+        lastDay.setUTCMonth(lastDay.getUTCMonth() + 1);
+        lastDay.setUTCDate(0);
+        end.setUTCDate(Math.min(start.getUTCDate(), lastDay.getUTCDate()));
+        end.setUTCDate(end.getUTCDate() - 1);
+        if (end.getUTCFullYear() > 9999) throw new Error(HrmI18n.t('Thời hạn hợp đồng vượt quá giới hạn ngày cho phép.'));
+        return end.toISOString().slice(0,10);
+    }
+    function nextDay(value) { const date = new Date(`${value}T12:00:00Z`); date.setUTCDate(date.getUTCDate()+1); return date.toISOString().slice(0,10); }
+    function filteredRecords() {
+        const query = (select('#lc-resource-search')?.value || '').toLocaleLowerCase('vi');
+        const status = select('#lc-resource-status')?.value || '';
+        const type = select('#lc-resource-type')?.value || '';
+        const department = select('#lc-resource-department')?.value || '';
+        const employeeId = page === 'contracts' ? null : new URLSearchParams(location.search).get('employeeId');
+        return records.filter(record => JSON.stringify(record).toLocaleLowerCase('vi').includes(query)
+            && (!status || (record.DisplayStatus || accountStatus(record)) === status)
+            && (!department || (department === 'UNASSIGNED' ? record.DepartmentId == null : String(record.DepartmentId) === department))
+            && (!type || record.ContractType === type) && (!employeeId || String(record.EmployeeId) === employeeId));
+    }
+    function accountStatus(record) { return record.UserId == null ? 'NONE' : record.AdministrativeIsActive === false ? 'INACTIVE' : record.ContractAccessAllowed === false ? 'INACTIVE' : !record.IsActive ? 'INACTIVE' : record.IsLocked ? 'LOCKED' : 'ACTIVE'; }
+    function renderContractEmployees(visible) {
+        const matchingEmployees = new Set(visible.map(record => String(record.EmployeeId)));
+        const groups = new Map();
+        for (const record of records) {
+            const employeeId = String(record.EmployeeId);
+            if (!matchingEmployees.has(employeeId)) continue;
+            if (!groups.has(employeeId)) groups.set(employeeId,[]);
+            groups.get(employeeId).push(record);
+        }
+        select('#lc-resource-table').innerHTML = groups.size ? table([HrmI18n.t('Mã nhân viên'),HrmI18n.t('Nhân viên'),HrmI18n.t('Mã hợp đồng'),HrmI18n.t('Loại hợp đồng'),HrmI18n.t('Số hợp đồng'),HrmI18n.t('Trạng thái các hợp đồng'),HrmI18n.t('Thao tác')],[...groups.values()].map(contracts => {
+            const employee = contracts[0];
+            const statuses = [...new Set(contracts.map(record => record.DisplayStatus))];
+            const contractCodesHtml = contracts.map(c => `<button type="button" class="lc-badge info font-mono" style="font-weight:600;font-size:12px;margin:1px 2px;cursor:pointer;border:none;background:var(--accent-light,#e0e7ff);color:var(--accent,#3730a3);padding:2px 8px;border-radius:4px;" data-contract-employee="${escape(employee.EmployeeId)}" title="${HrmI18n.t('Nhấn để xem chi tiết')}">${escape(c.ContractCode)}</button>`).join(' ');
+            const contractTypesText = [...new Set(contracts.map(c => vietnamese(c.ContractType)))].join(', ');
+            return [employee.EmployeeCode,employee.FullName,
+                {html: contractCodesHtml},
+                contractTypesText,
+                contracts.length,
+                {html:statuses.map(status => badge(status)).join(' ') + (contracts.some(record => record.Expiring) ? HrmI18n.fragment(' <span class="lc-badge warning">Sắp hết hạn</span>') : '')},
+                {html:`<button type="button" class="small secondary" data-contract-employee="${escape(employee.EmployeeId)}${HrmI18n.fragment("\">Xem hợp đồng</button>")}`}];
+        }),'contract-employees') : empty(HrmI18n.t('Không có nhân viên có hợp đồng phù hợp'));
+    }
+    function renderEmployeeContracts() {
+        const allContracts = records.filter(record => String(record.EmployeeId) === contractEmployeeId);
+        const status = select('#lc-employee-contract-status')?.value || '';
+        const type = select('#lc-employee-contract-type')?.value || '';
+        const contracts = allContracts.filter(record => (!status || record.DisplayStatus === status) && (!type || record.ContractType === type));
+        const profile = employees.find(employee => String(employee.employeeId) === contractEmployeeId);
+        const enabled = Boolean(profile && canUseProfile(profile));
+        select('#lc-employee-contract-create').disabled = !enabled;
+        select('#lc-employee-contract-record-signed').disabled = !enabled;
+        const employee = allContracts[0] || (profile && {FullName:profile.fullName, EmployeeCode:profile.employeeCode});
+        select('#lc-employee-contracts-title').textContent = employee ? `${HrmI18n.fragment("Hợp đồng · ")}${employee.FullName}` : HrmI18n.t('Hợp đồng của nhân viên');
+        select('#lc-employee-contracts-summary').textContent = employee ? `${employee.EmployeeCode} · ${contracts.length} / ${allContracts.length}${HrmI18n.fragment(" hợp đồng")}` : HrmI18n.t('Không có hợp đồng');
+        select('#lc-employee-contracts-list').innerHTML = contracts.length ? table([HrmI18n.t('Mã hợp đồng'),HrmI18n.t('Loại'),HrmI18n.t('Thời hạn'),HrmI18n.t('Lương trước khấu trừ'),HrmI18n.t('Phụ cấp theo hợp đồng'),HrmI18n.t('Trạng thái'),HrmI18n.t('Thao tác')],contracts.map(record => [
+            record.ContractCode,vietnamese(record.ContractType),`${record.StartDate} → ${record.EndDate || HrmI18n.t('Không thời hạn')}`,money(record.GrossSalary),contractAllowanceText(record),{html:badge(record.DisplayStatus)+(record.Expiring ? HrmI18n.fragment(' <span class="lc-badge warning">Sắp hết hạn</span>') : '')},
+            {html:`<div class="lc-actions">${canAddContractHardCopy(record) ? `<button type="button" class="small secondary" data-contract="${record.ContractId}" data-action="hard-copy">${HrmI18n.t('Bổ sung bản cứng')}</button>` : ''}<button class="small secondary" data-contract="${record.ContractId}${HrmI18n.fragment("\" data-action=\"view\">Chi tiết</button>")}${record.Status === 'DRAFT' ? `<button class="small secondary" data-contract="${record.ContractId}${HrmI18n.fragment("\" data-action=\"edit\">Sửa</button><button class=\"small\" data-contract=\"")}${record.ContractId}${HrmI18n.fragment("\" data-action=\"activate\">Kích hoạt</button><button class=\"small danger\" data-contract=\"")}${record.ContractId}${HrmI18n.fragment("\" data-action=\"cancel\">Hủy</button>")}` : record.Status !== 'CANCELLED' ? `<button class="small secondary" data-contract="${record.ContractId}${HrmI18n.fragment("\" data-action=\"renew\">Gia hạn</button>")}` : ''}${record.DisplayStatus === 'SCHEDULED' ? `<button class="small danger" data-contract="${record.ContractId}${HrmI18n.fragment("\" data-action=\"cancel\">Hủy hợp đồng</button>")}` : record.DisplayStatus === 'ACTIVE' ? `<button class="small danger" data-contract="${record.ContractId}${HrmI18n.fragment("\" data-action=\"terminate\">Chấm dứt</button>")}` : ''}</div>`}
+        ]),`employee-contracts-${contractEmployeeId}-${status}-${type}`) : empty(HrmI18n.t('Không có hợp đồng phù hợp với bộ lọc.'));
+        select('#lc-employee-contracts-list').querySelectorAll('[data-action="edit"],[data-action="activate"],[data-action="renew"]').forEach(button => { button.disabled = !enabled; });
+    }
+    function openEmployeeContracts(employeeId) {
+        contractEmployeeId = String(employeeId);
+        select('#lc-employee-contract-status').value = '';
+        select('#lc-employee-contract-type').value = '';
+        renderEmployeeContracts();
+        select('#lc-employee-contracts').showModal();
+    }
+    function renderResourceTable() {
+        const visible = filteredRecords();
+        if (page === 'contracts') renderContractEmployees(visible);
+        else select('#lc-resource-table').innerHTML = table([HrmI18n.t('Nhân viên'),HrmI18n.t('Chức danh'),HrmI18n.t('Email đăng nhập'),HrmI18n.t('Email liên hệ'),HrmI18n.t('Vai trò'),HrmI18n.t('Trạng thái'),HrmI18n.t('Thao tác')],visible.map(record => [record.FullName,record.PositionTitle || HrmI18n.t('Chưa phân công'),record.Email || HrmI18n.t('Chưa cấp'),record.ContactEmail || HrmI18n.t('Chưa cập nhật'),vietnamese(record.RoleCode),{html:badge(accountStatus(record))+(record.ContractAccessAllowed === false ? HrmI18n.fragment('<small class="lc-form-hint">Hợp đồng đã kết thúc; chờ hợp đồng mới có hiệu lực.</small>') : '')},{html:record.UserId == null ? `<button class="small" data-account="${record.EmployeeId}${HrmI18n.fragment("\" data-action=\"create\">Tạo tài khoản</button>")}` : `<div class="lc-actions">${[['lock',HrmI18n.t('Khóa')],['unlock',HrmI18n.t('Mở khóa')]].map(([action,label]) => `<button class="small secondary" data-account="${record.EmployeeId}" data-action="${action}">${label}</button>`).join('')}</div>`}]));
+    }
+    function renderUnregisteredAccounts() {
+        const pending = records.filter(record => record.UserId == null);
+        select('#lc-unregistered-accounts-open').textContent = `${HrmI18n.fragment("＋ Tạo tài khoản (")}${pending.length})`;
+        const keyword = select('#lc-unregistered-accounts-search').value.trim().toLocaleLowerCase('vi');
+        const visible = pending.filter(record => [record.FullName,record.EmployeeCode,record.ContactEmail]
+            .some(value => String(value || '').toLocaleLowerCase('vi').includes(keyword)));
+        select('#lc-unregistered-accounts-summary').textContent = `${visible.length} / ${pending.length}${HrmI18n.fragment(" nhân viên chưa được tạo tài khoản")}`;
+        select('#lc-unregistered-accounts-list').innerHTML = visible.length
+            ? table([HrmI18n.t('Mã nhân viên'),HrmI18n.t('Họ tên'),HrmI18n.t('Chức danh'),HrmI18n.t('Email liên hệ'),HrmI18n.t('Thao tác')],visible.map(record => [
+                record.EmployeeCode,record.FullName,record.PositionTitle || HrmI18n.t('Chưa phân công'),record.ContactEmail || HrmI18n.t('Chưa cập nhật'),
+                {html:`<button type="button" class="small" data-account="${escape(record.EmployeeId)}${HrmI18n.fragment("\" data-action=\"create\">Tạo tài khoản</button>")}`}
+            ]),'unregistered-accounts')
+            : empty(pending.length ? HrmI18n.t('Không tìm thấy nhân viên phù hợp') : HrmI18n.t('Tất cả nhân viên đã được tạo tài khoản'));
+    }
+    async function refreshResource() {
+        records = await api(`/lifecycle/api/${page}`);
+        renderResourceTable();
+        if (page === 'accounts') renderUnregisteredAccounts();
+        if (page === 'contracts' && select('#lc-employee-contracts').open) renderEmployeeContracts();
+    }
+    async function accountModal(record, action) {
+        const content = `<div class="full">${escape(record.FullName)} · ${escape(record.EmployeeCode)}${HrmI18n.fragment("<br><small>Chức danh: ")}${escape(record.PositionTitle || HrmI18n.t('Chưa phân công'))}</small></div>`
+            + (action === 'create' ? HrmI18n.fragment('<div class="full"><label>Email đăng nhập</label><div class="lc-field-value">') + escape(record.ContactEmail || HrmI18n.t('Chưa có email liên hệ')) + HrmI18n.fragment('</div></div><p class="full lc-form-hint">Tài khoản dùng email liên hệ đã lưu trong hồ sơ, không tự sinh tên đăng nhập. Cần bổ sung email và mã định danh trước khi cấp tài khoản. Mật khẩu ban đầu là mã định danh cá nhân; nhân viên bắt buộc đổi ở lần đăng nhập đầu.</p>') : '')
+            + (action === 'create' ? HrmI18n.fragment('<div class="full"><label>Vai trò theo phân công</label><div class="lc-field-value">')+escape(vietnamese(record.AssignmentRoleCode || 'EMPLOYEE'))+HrmI18n.fragment('</div></div><p class="full lc-form-hint">Vai trò Employee/Manager được đồng bộ tại Phòng ban khi phân công chức danh.</p>') : HrmI18n.fragment('<p class="full lc-muted">Xác nhận thay đổi quyền truy cập hệ thống của nhân viên này.</p>'));
+        actionModal(action === 'create' ? HrmI18n.t('Cấp tài khoản nhân viên') : HrmI18n.t("Tài khoản nhân viên · ")+action,content,async values => {
+            values.set('employeeId',record.EmployeeId); values.set('action',action);
+            const result = await api('/lifecycle/api/accounts/action',values);
+            await refreshResource();
+            if (result.temporaryPassword) {
+                const saved=records.find(account => account.EmployeeId===record.EmployeeId);
+                setTimeout(() => actionModal(HrmI18n.t('Mật khẩu tạm thời'),`${HrmI18n.fragment("<p class=\"full\">Email đăng nhập: <strong>")}${escape(saved?.Email)}${HrmI18n.fragment("</strong></p><p class=\"full\">Gửi mật khẩu qua kênh riêng cho nhân viên. Mật khẩu chỉ hiển thị lần này và phải đổi ở lần đăng nhập đầu.</p><div class=\"lc-password-copy full\"><div class=\"lc-password\">")}${escape(result.temporaryPassword)}${HrmI18n.fragment("</div><button type=\"button\" class=\"secondary\" data-copy-password aria-label=\"Sao chép mật khẩu tạm thời\">Sao chép</button></div><small class=\"lc-copy-status full\" role=\"status\" aria-live=\"polite\"></small>")}`,null),0);
+            } else toast(result.message || HrmI18n.t('Đã cập nhật tài khoản nhân viên'));
+        });
+        if (action === 'create') select('#lc-action-save').textContent = HrmI18n.t('Cấp tài khoản');
+    }
+    async function initResource() {
+        const labels = {contracts:[HrmI18n.t('Hợp đồng lao động'),HrmI18n.t('Theo dõi hợp đồng và thời hạn ký kết')],accounts:[HrmI18n.t('Tài khoản nhân viên'),HrmI18n.t('Quản lý quyền truy cập hệ thống của nhân viên')],organization:[HrmI18n.t('Sơ đồ tổ chức'),HrmI18n.t('Cơ cấu từ các phân công có hiệu lực')],dashboard:[HrmI18n.t('Bảng điều khiển'),HrmI18n.t('Tổng quan nhân sự & lương · ')+new Intl.DateTimeFormat(HrmI18n.locale,{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date())]};
+        select('#lc-page-title').textContent = labels[page][0]; select('#lc-page-label').textContent = labels[page][0]; select('#lc-page-subtitle').textContent = labels[page][1];
+        if (page === 'dashboard') { await renderDashboard(); return; }
+        if (page === 'organization') { await renderOrganization(); return; }
+        employees = await api('/employees');
+        if (page === 'contracts') departments = await api('/departments');
+        select('#lc-page-content').innerHTML = `${HrmI18n.fragment("<section class=\"lc-card\"><div class=\"lc-filterbar\"><input type=\"search\" id=\"lc-resource-search\" placeholder=\"Tìm nhân viên, mã, email…\" aria-label=\"Tìm kiếm\"><select id=\"lc-resource-status\" aria-label=\"Trạng thái\">")}${option('',HrmI18n.t('Tất cả trạng thái'))}${(page === 'contracts' ? contractStatuses : ['NONE','ACTIVE','INACTIVE','LOCKED']).map(status => option(status,status)).join('')}</select>${page === 'contracts' ? `${HrmI18n.fragment("<select id=\"lc-resource-type\" aria-label=\"Loại hợp đồng\">")}${option('',HrmI18n.t('Tất cả loại'))}${contractTypes}</select>` : ''}</div><div id="lc-resource-table"></div></section>`;
+        if (page === 'contracts') {
+            const departmentFilter = document.createElement('select');
+            departmentFilter.id = 'lc-resource-department';
+            departmentFilter.setAttribute('aria-label',HrmI18n.t('Phòng ban'));
+            departmentFilter.innerHTML = option('',HrmI18n.t('Tất cả phòng ban')) + option('UNASSIGNED',HrmI18n.t('Chưa phân công'))
+                + departments.map(department => option(department.departmentId,department.departmentName)).join('');
+            select('#lc-resource-search').insertAdjacentElement('afterend',departmentFilter);
+            departmentFilter.addEventListener('change',renderResourceTable);
+            select('#lc-employee-contract-status').innerHTML = option('',HrmI18n.t('Tất cả trạng thái')) + contractStatuses.map(status => option(status,status)).join('');
+            select('#lc-employee-contract-type').innerHTML = option('',HrmI18n.t('Tất cả loại')) + contractTypes;
+            select('#lc-employee-contract-status').addEventListener('change',renderEmployeeContracts);
+            select('#lc-employee-contract-type').addEventListener('change',renderEmployeeContracts);
+        }
+        select('#lc-resource-search').addEventListener('input',renderResourceTable); select('#lc-resource-status').addEventListener('change',renderResourceTable); select('#lc-resource-type')?.addEventListener('change',renderResourceTable);
+        if (page === 'contracts') {
+            select('#lc-page-add').hidden = false;
+            const settingsButton = document.createElement('button');
+            settingsButton.type = 'button';
+            settingsButton.className = 'secondary';
+            settingsButton.textContent = HrmI18n.t('Cấu hình phụ cấp');
+            select('#lc-page-add').insertAdjacentElement('afterend',settingsButton);
+            settingsButton.addEventListener('click', () => allowanceSettings().catch(error));
+            select('#lc-allowance-settings').addEventListener('submit', async event => {
+                const form = event.target.closest('[data-allowance-settings]');
+                if (!form) return;
+                event.preventDefault();
+                const button = form.querySelector('button[type="submit"]');
+                button.disabled = true;
+                try {
+                    await api('/lifecycle/api/allowance-types/save',new FormData(form));
+                    await allowanceSettings();
+                    toast(HrmI18n.t('Đã lưu cấu hình phụ cấp của công ty'));
+                } catch (exception) {
+                    select('#lc-allowance-settings-error').textContent = FormValidation.showErrors(form,exception) ? '' : exception.message;
+                } finally { button.disabled = false; }
+            });
+            select('#lc-page-add').textContent = HrmI18n.t('Tạo hợp đồng mới');
+            select('#lc-page-add').addEventListener('click',() => contractModal(null).catch(error));
+            if (select('#lc-page-export')) {
+                select('#lc-page-export').hidden = false;
+                select('#lc-page-export').addEventListener('click', () => {
+                    const status = select('#lc-resource-status')?.value || '';
+                    const type = select('#lc-resource-type')?.value || '';
+                    const q = select('#lc-resource-search')?.value || '';
+
+                    const department = select('#lc-resource-department')?.value || '';
+                    const params = new URLSearchParams();
+                    if (status) params.set('status', status);
+                    if (type) params.set('type', type);
+                    if (q) params.set('keyword', q);
+                    if (department) params.set('departmentId',department);
+
+                    window.location.href = `${context}/lifecycle/contracts/export?${params.toString()}`;
+                });
+            }
+            if (select('#lc-page-import-contracts')) {
+                select('#lc-page-import-contracts').hidden = false;
+                select('#lc-page-import-contracts').addEventListener('click', () => {
+                    if (window.DataImporter) {
+                        DataImporter.open('CONTRACT', {
+                            onSuccess: (result) => {
+                                refreshResource();
+                                if (result && result.message) {
+                                    toast(result.message);
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+            const signedButton = document.createElement('button');
+            signedButton.type = 'button'; signedButton.className = 'secondary';
+            signedButton.textContent = HrmI18n.t('Ghi nhận hợp đồng đã ký');
+            signedButton.addEventListener('click',() => contractModal(null,false,true).catch(error));
+            settingsButton.insertAdjacentElement('beforebegin',signedButton);
+        }
+        bindActionForm();
+        const handleResourceClick = async event => {
+            try {
+                const employeeButton = event.target.closest('[data-contract-employee]');
+                if (employeeButton) { openEmployeeContracts(employeeButton.dataset.contractEmployee); return; }
+                const contractButton = event.target.closest('[data-contract]');
+                if (contractButton) {
+                    const record = records.find(item => item.ContractId === Number(contractButton.dataset.contract));
+                    const action = contractButton.dataset.action;
+                    if (['edit','renew','activate'].includes(action) && !canUseProfile(employees.find(employee => employee.employeeId === record.EmployeeId))) throw new Error(HrmI18n.t('Hồ sơ không hoạt động. Không thể tạo hoặc ký hợp đồng.'));
+                    if (action === 'edit' || action === 'renew') await contractModal(record,action === 'renew');
+                    else if (action === 'hard-copy') addContractHardCopyModal(record);
+                    else if (action === 'view') actionModal(HrmI18n.t('Chi tiết hợp đồng'),`<div class="full">${fields([[HrmI18n.t('Nhân viên'),record.FullName],[HrmI18n.t('Mã nhân viên'),record.EmployeeCode],[HrmI18n.t('Mã hợp đồng'),record.ContractCode],[HrmI18n.t('Loại hợp đồng'),vietnamese(record.ContractType)],[HrmI18n.t('Ngày bắt đầu'),record.StartDate],[HrmI18n.t('Ngày kết thúc'),record.EndDate || HrmI18n.t('Không xác định thời hạn')],[HrmI18n.t('Lương trước khấu trừ'),money(record.GrossSalary)],[HrmI18n.t('Phụ cấp theo hợp đồng'),contractAllowanceText(record)],[HrmI18n.t('Trạng thái'),vietnamese(record.DisplayStatus)],[HrmI18n.t('Ngày ghi nhận ký kết'),record.SignedDate],[HrmI18n.t('Ngày chấm dứt'),record.TerminatedDate],[HrmI18n.t('Lý do chấm dứt'),record.TerminationReason],[HrmI18n.t('Ghi chú'),record.Notes]])}</div>${contractHardCopyLinks(record)}`,null);
+                    else actionModal(action === 'activate' ? HrmI18n.t('Kích hoạt hợp đồng') : action === 'cancel' ? HrmI18n.t('Hủy hợp đồng') : HrmI18n.t('Chấm dứt hợp đồng'),`<p class="full">${escape(record.ContractCode)} · ${escape(record.FullName)}</p>${action === 'terminate' || action === 'cancel' ? HrmI18n.fragment('<label class="full">Lý do *<textarea name="reason" maxlength="500" required></textarea></label>') + (action === 'cancel' && record.Status === 'ACTIVE' ? HrmI18n.fragment('<p class="full lc-muted">Hợp đồng chưa đến ngày bắt đầu hiệu lực sẽ được chuyển sang trạng thái Đã hủy và hoàn tác lịch lương tương lai đã đồng bộ (nếu có).</p>') : '') : HrmI18n.fragment('<p class="full lc-muted">Kích hoạt sẽ lưu lịch sử ký kết và đồng bộ lương trước khấu trừ từ ngày bắt đầu hợp đồng. Nếu ngày bắt đầu ở tương lai, hợp đồng sẽ ở trạng thái Chờ hiệu lực và tự động có hiệu lực khi đến hạn.</p>')}`,async values => {
+                        values.set('contractId',record.ContractId); values.set('action',action); values.set('version',record.Version);
+                        await api('/lifecycle/api/contracts/transition',values); await refreshResource(); toast(HrmI18n.t('Đã cập nhật hợp đồng'));
+                    });
+                }
+                const accountButton = event.target.closest('[data-account]');
+                if (accountButton) await accountModal(records.find(record => record.EmployeeId === Number(accountButton.dataset.account)),accountButton.dataset.action);
+            } catch (exception) { error(exception); }
+        };
+        select('#lc-page-content').addEventListener('click',handleResourceClick);
+        if (page === 'accounts') {
+            const openButton = select('#lc-unregistered-accounts-open');
+            openButton.hidden = false;
+            openButton.addEventListener('click', () => {
+                select('#lc-unregistered-accounts-search').value = '';
+                renderUnregisteredAccounts();
+                select('#lc-unregistered-accounts').showModal();
+                select('#lc-unregistered-accounts-search').focus();
+            });
+            select('#lc-unregistered-accounts-search').addEventListener('input',renderUnregisteredAccounts);
+            select('#lc-unregistered-accounts-list').addEventListener('click',handleResourceClick);
+        }
+        if (page === 'contracts') select('#lc-employee-contracts-list').addEventListener('click',handleResourceClick);
+        if (page === 'contracts') select('#lc-employee-contract-create').addEventListener('click', () => {
+            if (contractEmployeeId) contractModal(null, false, false, contractEmployeeId).catch(error);
+        });
+        if (page === 'contracts') select('#lc-employee-contract-record-signed').addEventListener('click', () => {
+            if (contractEmployeeId) contractModal(null, false, true, contractEmployeeId).catch(error);
+        });
+        await refreshResource();
+        const requestedEmployeeId = new URLSearchParams(location.search).get('employeeId');
+        if (page === 'contracts' && requestedEmployeeId && employees.some(employee => String(employee.employeeId) === requestedEmployeeId)) openEmployeeContracts(requestedEmployeeId);
+    }
+    async function renderOrganization() {
+        const [assignments,profiles,administrators]=await Promise.all([api('/lifecycle/api/organization'),api('/employees'),api('/lifecycle/api/organization-admins')]);
+        const members=globalThis.HrmOrganizationExplorer.combine(assignments,profiles);
+        globalThis.HrmOrganizationExplorer.mount(select('#lc-page-content'),members,context,administrators);
+        select('#lc-page-title').textContent=HrmI18n.t('Cơ cấu tổ chức (')+members.length+')';
+        select('#lc-page-subtitle').textContent=HrmI18n.t('Danh sách · Danh bạ · Sơ đồ tổ chức — dữ liệu phân công có hiệu lực');
+    }
+    async function renderDashboard() {
+        const data = await api('/lifecycle/api/dashboard');
+        select('#lc-page-content').innerHTML = globalThis.HrmDashboard.render(data,context);
+    }
+    (page === 'employees' ? initEmployees() : initResource()).catch(error);
+})();

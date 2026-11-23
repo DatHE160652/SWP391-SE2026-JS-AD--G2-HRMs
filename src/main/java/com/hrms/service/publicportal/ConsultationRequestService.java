@@ -1,6 +1,6 @@
 package com.hrms.service.publicportal;
 
-import com.hrms.dao.RegistrationRequestDAO;
+import com.hrms.dao.sysadmin.RegistrationRequestDAO;
 import com.hrms.model.RegistrationRequest;
 import com.hrms.model.publicportal.ConsultationSubmission;
 import com.hrms.model.publicportal.ConsultationValidation;
@@ -88,16 +88,6 @@ public class ConsultationRequestService {
         } catch (SQLException ignored) {
             // The request is committed; metadata failure must not change the public outcome.
         }
-    }
-
-    public RegistrationRequest insertWithoutEmail(String fullName, String email, String phone,
-                                                   String companyName, String region)
-            throws InvalidConsultationException, DuplicateConsultationException, SQLException {
-        ConsultationValidation validation = validate(fullName, email, phone, companyName, region);
-        if (!validation.isValid()) throw new InvalidConsultationException(validation);
-        RegistrationRequestDAO.InsertResult insert = dao.insertNew(validation.getRequest());
-        if (insert == null) throw new DuplicateConsultationException();
-        return insert.request();
     }
 
     public static String normalizeCompanyName(String value) {

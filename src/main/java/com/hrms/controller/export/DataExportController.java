@@ -1,16 +1,16 @@
 package com.hrms.controller.export;
 
-import com.hrms.dao.AttendanceDAO.AttendanceDTO;
+import com.hrms.dao.manager.AttendanceDAO.AttendanceDTO;
 import com.hrms.model.Department;
 import com.hrms.model.Employee;
 import com.hrms.model.Position;
-import com.hrms.service.AttendanceService;
-import com.hrms.service.DepartmentService;
-import com.hrms.service.EmployeeLifecycleService;
-import com.hrms.service.EmployeeService;
-import com.hrms.service.GeneralExportExcelService;
-import com.hrms.service.LeaveService;
-import com.hrms.service.PositionService;
+import com.hrms.service.manager.AttendanceService;
+import com.hrms.service.companyadmin.DepartmentService;
+import com.hrms.service.companyadmin.EmployeeLifecycleService;
+import com.hrms.service.companyadmin.EmployeeService;
+import com.hrms.service.export.GeneralExportExcelService;
+import com.hrms.service.manager.LeaveService;
+import com.hrms.service.companyadmin.PositionService;
 import com.hrms.service.security.TenantPrincipal;
 import com.hrms.util.SecuritySupport;
 import jakarta.servlet.ServletException;
@@ -160,6 +160,12 @@ public class DataExportController extends HttpServlet {
         String keyword = trimToNull(request.getParameter("keyword"));
 
         List<Map<String, Object>> contracts = lifecycleService.read(principal, "contracts", employeeId);
+
+        String department = trimToNull(request.getParameter("departmentId"));
+        if (department != null) {
+            contracts = contracts.stream().filter(c -> "UNASSIGNED".equals(department)
+                    ? c.get("DepartmentId") == null : department.equals(String.valueOf(c.get("DepartmentId")))).toList();
+        }
 
         if (status != null && !status.isBlank()) {
             contracts = contracts.stream().filter(c ->

@@ -13,7 +13,7 @@ import java.util.Set;
 
 public final class FileUploadUtil {
     private static final long MAX_FILE_SIZE = 10L * 1024L * 1024L;
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(".pdf", ".doc", ".docx", ".jpg", ".png");
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png");
 
     private FileUploadUtil() {
     }
@@ -99,7 +99,7 @@ public final class FileUploadUtil {
         return switch (extension) {
             case ".pdf" -> hex.startsWith("255044462d");
             case ".png" -> hex.startsWith("89504e470d0a1a0a");
-            case ".jpg" -> hex.startsWith("ffd8ff");
+            case ".jpg", ".jpeg" -> hex.startsWith("ffd8ff");
             case ".docx" -> hex.startsWith("504b0304");
             case ".doc" -> hex.startsWith("d0cf11e0a1b11ae1");
             default -> false;
@@ -111,7 +111,7 @@ public final class FileUploadUtil {
         return switch(getExtension(fileName)) {
             case ".pdf" -> "application/pdf";
             case ".png" -> "image/png";
-            case ".jpg" -> "image/jpeg";
+            case ".jpg", ".jpeg" -> "image/jpeg";
             case ".doc" -> "application/msword";
             case ".docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             default -> "application/octet-stream";

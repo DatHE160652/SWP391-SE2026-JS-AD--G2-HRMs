@@ -27,7 +27,10 @@
                     <h2><%= com.hrms.i18n.Language.text(request, "ui_9f3108223d6f", "Cấp dưới trực tiếp (") %><span id="directReportsCount">0</span>)</h2>
                     <p id="directReportsWarning" role="alert"></p>
                     <table data-pagination="direct-reports" style="margin-top: 18px;">
-                        <thead><tr><th><%= com.hrms.i18n.Language.text(request, "ui_84979604c762", "Mã nhân viên") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_3da3c8c2738b", "Họ tên") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_6f358f848e2e", "Phòng ban") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_285d666f18b5", "Chức danh") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th></tr></thead>
+                        <thead>
+                        <tr><th><%= com.hrms.i18n.Language.text(request, "ui_84979604c762", "Mã nhân viên") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_3da3c8c2738b", "Họ tên") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_6f358f848e2e", "Phòng ban") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_285d666f18b5", "Chức danh") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_fed024b82c0a", "Thao tác") %></th>
+                        </tr>
+                        </thead>
                         <tbody id="directReportRows"></tbody>
                     </table>
                 </section>

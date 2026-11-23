@@ -10,7 +10,7 @@
         <link rel="stylesheet" href="${pageContext.request.contextPath}/css/public-portal.css">
     </head>
     <body>
-        <%@ include file="homepage-header.jspf" %>
+        <%@ include file="public-header.jspf" %>
         <main>
             <section class="hero public-container">
                 <div class="hero-copy">
@@ -141,8 +141,8 @@
                 </div>
             </section>
         </main>
-        <%@ include file="homepage-footer.jspf" %>
-        <script src="${pageContext.request.contextPath}/js/public-portal.js?v=<%= application.getResource("/js/public-portal.js").openConnection().getLastModified() %>" defer>
+        <%@ include file="public-footer.jspf" %>
+        <script src="${pageContext.request.contextPath}/js/publicportal/public-portal.js?v=<%= application.getResource("/js/publicportal/public-portal.js").openConnection().getLastModified() %>" defer>
         </script>
     </body>
 </html>

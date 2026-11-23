@@ -22,4 +22,4 @@
     </form>
 </dialog>
 <link rel="stylesheet" href="${pageContext.request.contextPath}/css/initial-assignment.css?v=<%= application.getResource("/css/initial-assignment.css").openConnection().getLastModified() %>">
-<script src="${pageContext.request.contextPath}/js/initial-assignment.js?v=<%= application.getResource("/js/initial-assignment.js").openConnection().getLastModified() %>" defer></script>
+<script src="${pageContext.request.contextPath}/js/companyadmin/initial-assignment.js?v=<%= application.getResource("/js/companyadmin/initial-assignment.js").openConnection().getLastModified() %>" defer></script>

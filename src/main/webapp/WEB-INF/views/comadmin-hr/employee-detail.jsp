@@ -23,7 +23,10 @@
             <a id="detailBackLink" class="button secondary" href="employee-list"><%= com.hrms.i18n.Language.text(request, "ui_19c90ec517eb", "Quay lại hồ sơ") %></a>
         </div>
 
-        <div class="panel ea-summary"><span id="detailAvatar" class="lc-avatar large" aria-hidden="true">…</span><div><strong id="detailEmployeeCode"><%= com.hrms.i18n.Language.text(request, "ui_23dcfd5155ec", "Đang tải thông tin nhân viên…") %></strong><p id="detailSubtitle" class="page-subtitle"></p></div><a id="detailOrgChartLink" class="button secondary" href="${pageContext.request.contextPath}/lifecycle/organization"><%= com.hrms.i18n.Language.text(request, "ui_96f1e29be0e5", "Xem sơ đồ tổ chức") %></a></div>
+        <div class="panel ea-summary"><span id="detailAvatar" class="lc-avatar large" aria-hidden="true">…</span>
+        <div><strong id="detailEmployeeCode"><%= com.hrms.i18n.Language.text(request, "ui_23dcfd5155ec", "Đang tải thông tin nhân viên…") %></strong><p id="detailSubtitle" class="page-subtitle"></p>
+        </div><a id="detailOrgChartLink" class="button secondary" href="${pageContext.request.contextPath}/lifecycle/organization"><%= com.hrms.i18n.Language.text(request, "ui_96f1e29be0e5", "Xem sơ đồ tổ chức") %></a>
+        </div>
         <div id="message" class="message" role="status"></div>
         <section class="panel">
             <div class="tabs lc-tabs" role="tablist" aria-label="<%= com.hrms.i18n.Language.text(request, "ui_25447f03ac1e", "Thông tin nhân viên") %>">
@@ -61,7 +64,10 @@
                 <p class="page-subtitle"><%= com.hrms.i18n.Language.text(request, "ui_d25b2cc95a2f", "100 sự kiện gần nhất: phân công người quản lý, chuyển vị trí/phòng ban, thăng cấp, hạ cấp và hiệu chỉnh. Bản ghi hiệu chỉnh trong ngày được giữ đúng loại CORRECTION.") %></p>
                 <div style="overflow-x: auto;">
                     <table data-pagination="legacy-career-history">
-                        <thead><tr><th><%= com.hrms.i18n.Language.text(request, "ui_651d62aeac55", "Ngày hiệu lực") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_d5ea59943f84", "Nghiệp vụ") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_cc7a9e410e67", "Trước thay đổi") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_a27c5dda3b3e", "Sau thay đổi") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_ecdb468a6da0", "Lý do") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_e03c1401e314", "Trạng thái") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_382efb78e209", "Người thực hiện") %></th></tr></thead>
+                        <thead>
+                        <tr><th><%= com.hrms.i18n.Language.text(request, "ui_651d62aeac55", "Ngày hiệu lực") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_d5ea59943f84", "Nghiệp vụ") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_cc7a9e410e67", "Trước thay đổi") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_a27c5dda3b3e", "Sau thay đổi") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_ecdb468a6da0", "Lý do") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_e03c1401e314", "Trạng thái") %></th><th><%= com.hrms.i18n.Language.text(request, "ui_382efb78e209", "Người thực hiện") %></th>
+                        </tr>
+                        </thead>
                         <tbody id="careerHistoryRows"></tbody>
                     </table>
                 </div>
@@ -83,8 +89,8 @@
     </main>
 
 
-<script src="../js/employee.js?v=<%= application.getResource("/js/employee.js").openConnection().getLastModified() %>"></script>
-<script src="../js/document.js?v=<%= application.getResource("/js/document.js").openConnection().getLastModified() %>"></script>
-<script src="${pageContext.request.contextPath}/js/organization-shell.js?v=<%= application.getResource("/js/organization-shell.js").openConnection().getLastModified() %>" defer></script>
+<script src="../js/companyadmin/employee.js?v=<%= application.getResource("/js/companyadmin/employee.js").openConnection().getLastModified() %>"></script>
+<script src="../js/employee/document.js?v=<%= application.getResource("/js/employee/document.js").openConnection().getLastModified() %>"></script>
+<script src="${pageContext.request.contextPath}/js/companyadmin/organization-shell.js?v=<%= application.getResource("/js/companyadmin/organization-shell.js").openConnection().getLastModified() %>" defer></script>
 </body>
 </html>

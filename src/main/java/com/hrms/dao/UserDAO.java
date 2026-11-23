@@ -1,4 +1,5 @@
 package com.hrms.dao;
+import com.hrms.dao.companyadmin.ContractAccessPolicy;
 
 import com.hrms.model.TenantAccount;
 import com.hrms.model.User;
@@ -278,8 +279,10 @@ public class UserDAO {
         try (Connection connection = DBConnection.getConnection()) {
             applyAuthWriteOptions(connection);
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.setInt(1, maxAttempts); statement.setInt(2, maxAttempts);
-                statement.setInt(3, lockMinutes); statement.setInt(4, user.getUserId());
+                statement.setInt(1, maxAttempts);
+                statement.setInt(2, maxAttempts);
+                statement.setInt(3, lockMinutes);
+                statement.setInt(4, user.getUserId());
                 statement.setString(5, user.getPassword());
                 statement.executeUpdate();
             }

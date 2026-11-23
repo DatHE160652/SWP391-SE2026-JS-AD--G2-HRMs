@@ -4,7 +4,7 @@ import com.hrms.util.ValidationSupport;
 import com.hrms.util.SecuritySupport;
 
 import com.hrms.model.Department;
-import com.hrms.service.DepartmentService;
+import com.hrms.service.companyadmin.DepartmentService;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;

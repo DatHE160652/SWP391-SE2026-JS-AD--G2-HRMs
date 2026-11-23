@@ -5,7 +5,12 @@ import java.time.LocalDate;
 
 public record EmploymentContract(Long contractId, int employeeId, String contractCode, String contractType,
         LocalDate startDate, LocalDate endDate, BigDecimal grossSalary, String notes, String expectedUpdatedAt,
-        BigDecimal travelAllowance) {
+        BigDecimal travelAllowance, java.util.List<ContractAllowance> allowances) {
+    public EmploymentContract(Long contractId, int employeeId, String contractCode, String contractType,
+            LocalDate startDate, LocalDate endDate, BigDecimal grossSalary, String notes, String expectedUpdatedAt,
+            BigDecimal travelAllowance) {
+        this(contractId, employeeId, contractCode, contractType, startDate, endDate, grossSalary, notes, expectedUpdatedAt, travelAllowance, null);
+    }
     public EmploymentContract(Long contractId, int employeeId, String contractCode, String contractType,
             LocalDate startDate, LocalDate endDate, BigDecimal grossSalary, String notes, String expectedUpdatedAt) {
         this(contractId, employeeId, contractCode, contractType, startDate, endDate, grossSalary, notes, expectedUpdatedAt, null);

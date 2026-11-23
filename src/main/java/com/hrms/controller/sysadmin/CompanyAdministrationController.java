@@ -1,12 +1,9 @@
 package com.hrms.controller.sysadmin;
 
-import com.hrms.api.ApiRoutes;
 import com.hrms.model.CompanyAdministrationFilter;
 import com.hrms.model.CompanyAdministrationView;
-import com.hrms.service.CompanyAdministrationService;
-import com.hrms.service.RequestActionException;
-import com.hrms.service.RegistrationRequestService;
-import com.hrms.service.security.SystemAdminPrincipal;
+import com.hrms.service.sysadmin.CompanyAdministrationService;
+import com.hrms.service.sysadmin.RegistrationRequestService;
 import com.hrms.util.SecuritySupport;
 
 import jakarta.servlet.ServletException;
@@ -17,9 +14,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.SQLException;
 
-/** System Admin Company pages and guarded Subscription suspend/activate actions. */
+/** Read-only System Admin Company list/detail controller. */
 public class CompanyAdministrationController extends HttpServlet {
-    private static final String FLASH_MESSAGE = "companyActionMessage";
     private final CompanyAdministrationService companyService;
     private final RegistrationRequestService registrationRequestService;
 
@@ -34,73 +30,28 @@ public class CompanyAdministrationController extends HttpServlet {
     }
 
     @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        SecuritySupport.applyNoStore(response::setHeader);
+        response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+    }
+
+    @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         SecuritySupport.applyNoStore(response::setHeader);
         String path = request.getServletPath();
-        if (ApiRoutes.SYSTEM_ADMIN_COMPANIES.equals(path)) {
+        if ("/systemadmin/company".equals(path)) {
             showList(request, response);
             return;
         }
-        if (ApiRoutes.SYSTEM_ADMIN_COMPANY_DETAILS.equals(path)) {
+        if ("/systemadmin/company-details".equals(path)) {
             showDetails(request, response);
-            return;
-        }
-        if (ApiRoutes.SYSTEM_ADMIN_COMPANY_SUSPEND.equals(path)
-                || ApiRoutes.SYSTEM_ADMIN_COMPANY_ACTIVATE.equals(path)) {
-            response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
             return;
         }
         response.sendError(HttpServletResponse.SC_NOT_FOUND);
     }
 
-    @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        SecuritySupport.applyNoStore(response::setHeader);
-        String path = request.getServletPath();
-        if (!ApiRoutes.SYSTEM_ADMIN_COMPANY_SUSPEND.equals(path)
-                && !ApiRoutes.SYSTEM_ADMIN_COMPANY_ACTIVATE.equals(path)) {
-            response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
-            return;
-        }
-        if (!SecuritySupport.isSystemAdmin(request) || !SecuritySupport.hasValidCsrfToken(request)
-                || SecuritySupport.getPrincipal(request).getUserId() == null
-                || SecuritySupport.getPrincipal(request).getUserId() <= 0) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Phiên thao tác không hợp lệ.");
-            return;
-        }
-        int companyId;
-        try {
-            companyId = parsePositiveId(request.getParameter("id"));
-        } catch (IllegalArgumentException exception) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Mã Company không hợp lệ.");
-            return;
-        }
-
-        SystemAdminPrincipal principal = SecuritySupport.getPrincipal(request);
-        try {
-            String reason = request.getParameter("reason");
-            if (ApiRoutes.SYSTEM_ADMIN_COMPANY_SUSPEND.equals(path)) {
-                companyService.suspend(companyId, principal.getUserId(), reason, request.getRemoteAddr());
-                request.getSession(true).setAttribute(FLASH_MESSAGE,
-                        "Đã tạm ngưng Subscription. Workspace đã bị chặn cho mọi phiên tenant.");
-            } else {
-                companyService.activate(companyId, principal.getUserId(), reason, request.getRemoteAddr());
-                request.getSession(true).setAttribute(FLASH_MESSAGE,
-                        "Đã kích hoạt lại Subscription. Workspace có thể đăng nhập nếu Company và tài khoản vẫn hợp lệ.");
-            }
-            response.sendRedirect(request.getContextPath() + ApiRoutes.SYSTEM_ADMIN_COMPANY_DETAILS + "?id=" + companyId);
-        } catch (RequestActionException exception) {
-            showErrorWithStatus(request, response, statusFor(exception), exception.getMessage());
-        } catch (IllegalArgumentException exception) {
-            showErrorWithStatus(request, response, HttpServletResponse.SC_BAD_REQUEST, exception.getMessage());
-        } catch (SQLException exception) {
-            getServletContext().log("System Admin subscription mutation failed; SQLState="
-                    + exception.getSQLState() + "; errorCode=" + exception.getErrorCode());
-            showError(request, response, "Không thể lưu thao tác Subscription. Vui lòng thử lại sau.");
-        }
-    }
 
     private void showList(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -136,7 +87,6 @@ public class CompanyAdministrationController extends HttpServlet {
                 return;
             }
             setNavigation(request);
-            consumeFlash(request);
             request.setAttribute("company", company);
             request.getRequestDispatcher("/WEB-INF/views/sysadmin/company-details.jsp").forward(request, response);
         } catch (SQLException exception) {
@@ -150,13 +100,6 @@ public class CompanyAdministrationController extends HttpServlet {
         request.setAttribute("pendingCount", registrationRequestService.getStats(false).getPendingCount());
     }
 
-    private void consumeFlash(HttpServletRequest request) {
-        if (request.getSession(false) == null) return;
-        Object message = request.getSession(false).getAttribute(FLASH_MESSAGE);
-        request.getSession(false).removeAttribute(FLASH_MESSAGE);
-        if (message != null) request.setAttribute("actionMessage", message);
-    }
-
     private int parsePositiveId(String value) {
         if (value == null || value.isBlank()) throw new IllegalArgumentException();
         try {
@@ -168,13 +111,7 @@ public class CompanyAdministrationController extends HttpServlet {
         }
     }
 
-    private int statusFor(RequestActionException exception) {
-        return switch (exception.getReason()) {
-            case FORBIDDEN -> HttpServletResponse.SC_FORBIDDEN;
-            case NOT_FOUND -> HttpServletResponse.SC_NOT_FOUND;
-            case CONFLICT -> HttpServletResponse.SC_CONFLICT;
-        };
-    }
+
 
     private void showError(HttpServletRequest request, HttpServletResponse response, String message)
             throws ServletException, IOException {

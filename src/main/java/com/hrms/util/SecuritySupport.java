@@ -1,6 +1,5 @@
 package com.hrms.util;
 
-import com.hrms.api.ApiRoutes;
 import com.hrms.service.security.SystemAdminPrincipal;
 import com.hrms.service.security.TenantPrincipal;
 
@@ -111,7 +110,7 @@ public final class SecuritySupport {
     }
 
     public static String loginUrl(HttpServletRequest request) {
-        return request.getContextPath() + ApiRoutes.SYSTEM_ADMIN_LOGIN;
+        return request.getContextPath() + "/systemadmin/login";
     }
 
     private static String ensureToken(HttpSession session, String attribute) {
