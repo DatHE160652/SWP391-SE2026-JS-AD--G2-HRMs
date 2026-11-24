@@ -32,6 +32,21 @@
     .form-hint { color:#667085; font-size:13px; margin:6px 0 0; }
     .required { color:#b42318; }
     .form-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:24px; }
+    .lc .content .message { display:none; margin:0 0 18px; padding:13px 18px; border-radius:8px; font-size:13px; font-weight:500; }
+    .lc .content .message.show { display:block; background:#e8f8f0; color:#247652; }
+    .lc .content .message.error { background:#fff1f3; color:#b3334b; }
+    .quota-summary-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin-bottom:22px; }
+    .quota-stat-card { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 18px; border-radius:12px; border:1px solid var(--lc-line,#e5e9f5); background:var(--lc-surface,#fff); box-shadow:0 2px 8px rgba(16,24,40,.04); }
+    .quota-stat-info { display:flex; flex-direction:column; gap:4px; min-width:0; }
+    .quota-stat-label { font-size:12.5px; font-weight:600; color:var(--lc-muted,#667085); }
+    .quota-stat-sub { font-size:11.5px; color:#98a2b3; }
+    .quota-stat-value { display:inline-flex; align-items:baseline; gap:4px; padding:6px 12px; border-radius:10px; font-weight:800; font-size:20px; line-height:1; white-space:nowrap; }
+    .quota-stat-value small { font-size:12px; font-weight:600; }
+    .quota-stat-card.max .quota-stat-value { background:#eef2ff; color:#4f46e5; }
+    .quota-stat-card.used .quota-stat-value { background:#fff4e5; color:#b54708; }
+    .quota-stat-card.remaining .quota-stat-value { background:#e8f8f0; color:#067647; }
+    .quota-stat-card.remaining.exhausted .quota-stat-value { background:#fff1f3; color:#b3334b; }
+    @media(max-width:768px) { .quota-summary-grid { grid-template-columns:1fr; } }
 </style>
 <script src="../js/manager/leave.js?v=<%= application.getResource("/js/manager/leave.js").openConnection().getLastModified() %>"></script>
 </body></html>

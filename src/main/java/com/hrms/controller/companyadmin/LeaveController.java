@@ -86,6 +86,7 @@ public class LeaveController extends HttpServlet {
                     data.put("success", true);
                     data.put("today", service.tomorrow().minusDays(1));
                     data.put("earliestDate", service.tomorrow());
+                    data.put("usedByMonth", service.getUsedDaysByMonth(actor));
                     data.put("policy",
                             policy == null ? null
                                     : Map.of("quotaMode", policy.quotaMode(), "quotaDays", policy.quotaDays(),

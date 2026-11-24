@@ -7,10 +7,10 @@
     <div class="header-actions"><a href="my-requests" class="button secondary">Đơn của tôi</a></div>
 </div>
 
+<div id="submitMessage" class="message" role="alert"></div>
 <section class="panel">
     <form id="leaveSubmitForm">
-        <p id="submitMessage" role="alert"></p>
-        <p id="policyNotice"></p>
+        <div id="policyNotice" class="quota-summary-grid"></div>
 
         <div class="form-grid">
             <div class="form-group-full">
@@ -19,6 +19,7 @@
                     <input type="date" id="leaveDate" class="form-control">
                     <button type="button" id="addLeaveDate" class="button secondary" disabled>Thêm ngày</button>
                 </div>
+                <small id="leaveDateError" class="field-error" aria-live="polite"></small>
             </div>
 
             <div class="form-group-full">

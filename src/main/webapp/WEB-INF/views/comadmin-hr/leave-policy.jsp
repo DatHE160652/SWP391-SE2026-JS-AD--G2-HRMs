@@ -5,9 +5,9 @@
         <p class="page-subtitle">Thiết lập hạn mức nghỉ phép chung cho nhân viên.</p>
     </div>
 </div>
+<div id="policyMessage" class="message" role="status"></div>
 <section class="panel">
     <form id="leavePolicyForm">
-        <p id="policyMessage" role="alert"></p>
         <div class="form-grid">
             <div class="form-group-full">
                 <label class="form-label" for="quotaMode">Cấp quota theo</label>

@@ -6,6 +6,7 @@
     </div>
     <div class="header-actions"><a class="button" href="submit">Tạo đơn mới</a></div>
 </div>
+<div id="actionMessage" class="message" role="status"></div>
 <section class="panel">
     <div class="filter-bar" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:16px;">
         <div class="filter-group">
@@ -28,6 +29,7 @@
             <th style="width:220px;">Ngày nghỉ</th>
             <th style="width:90px;">Số ngày</th>
             <th style="width:130px;">Trạng thái</th>
+            <th style="width:130px;text-align:center;">Hành động</th>
         </tr>
         </thead>
         <tbody id="requestsTableBody"></tbody>

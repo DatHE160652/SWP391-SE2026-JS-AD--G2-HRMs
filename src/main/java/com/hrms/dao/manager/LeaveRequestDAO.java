@@ -25,6 +25,30 @@ public class LeaveRequestDAO {
         }
     }
 
+    /** Approved leave days grouped by YYYY-MM for an employee from a given start date onwards. */
+    public java.util.Map<String, Integer> usedDaysByMonth(Connection conn, int companyId, int employeeId, LocalDate fromDate) throws SQLException {
+        java.util.Map<String, Integer> result = new java.util.LinkedHashMap<>();
+        try (PreparedStatement ps = conn.prepareStatement("""
+            SELECT YEAR(rd.LeaveDate) AS Y, MONTH(rd.LeaveDate) AS M, COUNT(*) AS C
+            FROM LeaveRequestDates rd
+            JOIN LeaveRequests lr ON lr.LeaveRequestId=rd.LeaveRequestId
+            WHERE lr.CompanyId=? AND lr.EmployeeId=? AND lr.Status='Approved' AND lr.IsLegacy=0
+              AND rd.LeaveDate>=?
+            GROUP BY YEAR(rd.LeaveDate), MONTH(rd.LeaveDate)
+            """)) {
+            ps.setInt(1, companyId);
+            ps.setInt(2, employeeId);
+            ps.setDate(3, Date.valueOf(fromDate.withDayOfMonth(1)));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String ym = String.format("%04d-%02d", rs.getInt("Y"), rs.getInt("M"));
+                    result.put(ym, rs.getInt("C"));
+                }
+            }
+        }
+        return result;
+    }
+
     private static final String SELECT = """
         SELECT lr.*,e.EmployeeCode,e.FullName EmployeeFullName,e.ManagerId,e.UserId RequesterUserId,
             d.DepartmentName,p.PositionTitle,r.RoleCode RequesterRole,u.DisplayName ApproverDisplayName

@@ -54,6 +54,13 @@ public class LeaveService {
         try (Connection conn = DBConnection.getConnection()) { return policies.getPolicy(conn, actor.getCompanyId()); }
     }
 
+    public Map<String, Integer> getUsedDaysByMonth(TenantPrincipal actor) throws SQLException {
+        if (actor.getEmployeeId() == null) return Map.of();
+        try (Connection conn = DBConnection.getConnection()) {
+            return requests.usedDaysByMonth(conn, actor.getCompanyId(), actor.getEmployeeId(), tomorrow().minusDays(1));
+        }
+    }
+
     public void savePolicy(TenantPrincipal actor, String mode, int days, int maximum) throws SQLException {
         requireRole(actor, "COMPANY_ADMIN");
         LeavePolicy policy = new LeavePolicy(actor.getCompanyId(), mode, days, maximum);
@@ -67,8 +74,8 @@ public class LeaveService {
         return transaction(actor.getCompanyId(), conn -> {
             requireEmployee(conn, actor);
             LeavePolicy policy = requirePolicy(conn, actor.getCompanyId());
-            List<LocalDate> selected = validateDates(dates, 366);
-            // Pending requests do not reserve or consume quota. Quota is checked atomically at approval.
+            List<LocalDate> selected = validateDates(dates, policy.maxDaysPerRequest());
+            checkQuota(conn, policy, actor.getEmployeeId(), selected);
             for (LocalDate date : selected) {
                 if (requests.hasOverlap(conn, actor.getCompanyId(), actor.getEmployeeId(), date, 0))
                     throw new FieldValidationException("dates", "Ngày " + date + " đã có đơn được duyệt.");
